@@ -1,87 +1,106 @@
 import { useMemo, useState } from "react";
-import type { ContentStatus, NoticeContent } from "../../types/content";
+import type { SubmissionStatus } from "@/entities/submission";
+import type { SubmissionView } from "@/entities/submission/model/types";
+import { EmptyState, SectionHeader } from "@/shared/components";
+import { Button } from "@/shared/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { PosterCard } from "../common/PosterCard";
 
-interface RecentContentSectionProps {
-  contents: NoticeContent[];
-}
-
-type FilterKey = "all" | ContentStatus;
+/**
+ * 내 콘텐츠 목록.
+ *
+ * 전체 접근을 위한 pagination과 URL 필터 동기화는 Phase 03 범위다.
+ * 여기서는 목록의 출처를 fixture에서 repository로 옮기는 것까지만 한다.
+ */
+type FilterKey = "ALL" | SubmissionStatus;
 
 const filterTabs: { key: FilterKey; label: string }[] = [
-  { key: "all", label: "전체" },
-  { key: "published", label: "게시 중" },
-  { key: "scheduled", label: "예약됨" },
-  { key: "pending", label: "승인대기" },
-  { key: "ended", label: "종료됨" },
+  { key: "ALL", label: "전체" },
+  { key: "PUBLISHED", label: "게시 중" },
+  { key: "SCHEDULED", label: "예약됨" },
+  { key: "PENDING_REVIEW", label: "승인 대기" },
+  { key: "ENDED", label: "종료됨" },
 ];
 
-export function RecentContentSection({ contents }: RecentContentSectionProps) {
-  const [filter, setFilter] = useState<FilterKey>("all");
+const PREVIEW_COUNT = 4;
+
+interface RecentContentSectionProps {
+  submissions: SubmissionView[];
+}
+
+export function RecentContentSection({ submissions }: RecentContentSectionProps) {
+  const [filter, setFilter] = useState<FilterKey>("ALL");
 
   const counts = useMemo(() => {
-    return {
-      all: contents.length,
-      published: contents.filter((c) => c.status === "published").length,
-      scheduled: contents.filter((c) => c.status === "scheduled").length,
-      pending: contents.filter((c) => c.status === "pending").length,
-      ended: contents.filter((c) => c.status === "ended").length,
+    const base: Record<FilterKey, number> = {
+      ALL: submissions.length,
+      PUBLISHED: 0,
+      SCHEDULED: 0,
+      PENDING_REVIEW: 0,
+      ENDED: 0,
+      DRAFT: 0,
+      REJECTED: 0,
+      APPROVED: 0,
+      SUSPENDED: 0,
+      CANCELED: 0,
+      ARCHIVED: 0,
     };
-  }, [contents]);
+    for (const submission of submissions) base[submission.status] += 1;
+    return base;
+  }, [submissions]);
 
-  const filtered = useMemo(() => {
-    if (filter === "all") return contents;
-    return contents.filter((c) => c.status === filter);
-  }, [contents, filter]);
+  const filtered = useMemo(
+    () =>
+      filter === "ALL"
+        ? submissions
+        : submissions.filter((submission) => submission.status === filter),
+    [submissions, filter],
+  );
 
   return (
-    <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm shadow-violet-100/40">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-black text-gray-900">내 콘텐츠</h2>
-        <a
-          href="/studio"
-          className="text-xs font-bold text-violet-600 hover:text-violet-700"
-        >
-          새 콘텐츠 등록 →
-        </a>
-      </div>
+    <section className="min-w-0 rounded-card border border-line bg-surface p-5 shadow-card">
+      <SectionHeader
+        title="내 콘텐츠"
+        action={
+          <Button variant="link" size="sm" asChild>
+            <a href="/studio">새 콘텐츠 등록 →</a>
+          </Button>
+        }
+      />
 
-      <div className="mt-4 flex flex-wrap items-center gap-1.5">
-        {filterTabs.map((tab) => {
-          const active = filter === tab.key;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setFilter(tab.key)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${
-                active
-                  ? "bg-violet-600 text-white"
-                  : "text-gray-500 hover:bg-gray-50"
-              }`}
-            >
+      <Tabs
+        value={filter}
+        onValueChange={(value) => setFilter(value as FilterKey)}
+        className="mt-4 max-w-full"
+      >
+        {/* 좁은 화면에서 탭이 넘칠 때 가로로 스크롤한다. 페이지는 넘치지 않는다. */}
+        <TabsList className="max-w-full overflow-x-auto">
+          {filterTabs.map((tab) => (
+            <TabsTrigger key={tab.key} value={tab.key}>
               {tab.label}
-              <span
-                className={`text-[11px] ${
-                  active ? "text-violet-100" : "text-gray-400"
-                }`}
-              >
+              <span className="ml-1 text-caption tabular-nums">
                 {counts[tab.key]}
               </span>
-            </button>
-          );
-        })}
-      </div>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {filtered.slice(0, 4).map((content) => (
-          <PosterCard key={content.id} content={content} />
+        {filtered.slice(0, PREVIEW_COUNT).map((submission) => (
+          <PosterCard key={submission.id} submission={submission} />
         ))}
-        {filtered.length === 0 && (
-          <p className="col-span-full py-10 text-center text-sm font-semibold text-gray-400">
-            해당 상태의 콘텐츠가 없습니다.
-          </p>
-        )}
       </div>
+
+      {filtered.length === 0 && (
+        <EmptyState title="해당 상태의 콘텐츠가 없습니다." />
+      )}
+
+      {filtered.length > PREVIEW_COUNT && (
+        <p className="mt-4 text-center text-caption text-ink-subtle">
+          최근 {PREVIEW_COUNT}건만 표시합니다. 전체 목록과 페이지 이동은 준비 중입니다.
+        </p>
+      )}
     </section>
   );
 }

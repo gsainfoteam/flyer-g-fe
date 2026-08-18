@@ -23,6 +23,14 @@ export interface PlaylistItemDto {
   endsAt: string;
   priority: number;
   checksum: string;
+
+  /**
+   * 아래 세 필드는 명세 8.3 예시에 없지만 Phase 05의 SINGLE 레이아웃이
+   * 일시·장소·주최를 요구한다. 실제 계약 확정 시 조정한다.
+   */
+  subtitle?: string | null;
+  location?: string | null;
+  organizerName?: string | null;
 }
 
 export interface PlaylistDto {

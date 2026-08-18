@@ -1,3 +1,10 @@
+/**
+ * 주의: 실제 QR이 아니라 시드 기반 패턴 자리표시자다. 스캔되지 않는다.
+ * 실제 QR 생성은 Phase 02(미리보기)와 Phase 05(플레이어)에서 도입한다.
+ * (명세 FR-PLY-05, 12.2)
+ *
+ * `value`에는 반드시 신청의 `detailUrl`을 넘긴다. QR 값의 단일 원천이다.
+ */
 interface QRCodeBoxProps {
   value: string;
   label?: string;
@@ -64,10 +71,8 @@ export function QRCodeBox({
   return (
     <div className="inline-flex flex-col items-center gap-2">
       <div
-        className={`${sizeClassName[size]} rounded-xl ${
-          inverse ? "bg-white" : "bg-white"
-        } p-1.5 shadow-sm ring-1 ring-black/5`}
-        aria-label={`QR 코드 ${value}`}
+        className={`${sizeClassName[size]} rounded-control bg-white p-1.5 shadow-card ring-1 ring-black/5`}
+        aria-label={`QR 코드 자리표시자: ${value}`}
       >
         <div
           className="grid h-full w-full"
@@ -76,15 +81,15 @@ export function QRCodeBox({
           {cells.map((filled, index) => (
             <span
               key={index}
-              className={filled ? "bg-gray-950" : "bg-transparent"}
+              className={filled ? "bg-ink" : "bg-transparent"}
             />
           ))}
         </div>
       </div>
       {label && (
         <span
-          className={`text-[11px] font-bold ${
-            inverse ? "text-white/80" : "text-gray-500"
+          className={`text-caption font-bold ${
+            inverse ? "text-white/80" : "text-ink-muted"
           }`}
         >
           {label}

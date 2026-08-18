@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { createRepositories } from "@/shared/api/create-repositories";
 import type { Repositories } from "@/shared/api/repositories";
 import { getAppEnv } from "@/shared/config/env";
+import { Toaster } from "@/shared/ui/sonner";
 import { RepositoriesContext } from "./repositories-context";
 
 function createQueryClient(): QueryClient {
@@ -40,6 +41,7 @@ export function AppProviders({
     <QueryClientProvider client={client}>
       <RepositoriesContext.Provider value={repos}>
         {children}
+        <Toaster position="top-right" />
       </RepositoriesContext.Provider>
     </QueryClientProvider>
   );

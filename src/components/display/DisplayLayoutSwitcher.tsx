@@ -1,4 +1,5 @@
 import { Grid2X2, Square } from "lucide-react";
+import { cn } from "@/shared/lib/utils";
 
 export type DisplayMode = "single" | "four";
 
@@ -17,7 +18,7 @@ export function DisplayLayoutSwitcher({
   onModeChange,
 }: DisplayLayoutSwitcherProps) {
   return (
-    <div className="flex items-center gap-1 rounded-full bg-white/70 p-1.5 shadow-lg shadow-violet-300/20 ring-1 ring-white/60 backdrop-blur-xl">
+    <div className="flex items-center gap-1 rounded-pill bg-surface/70 p-1.5 shadow-floating ring-1 ring-white/60 backdrop-blur-xl">
       {modes.map((item) => {
         const Icon = item.icon;
         const active = mode === item.id;
@@ -25,13 +26,15 @@ export function DisplayLayoutSwitcher({
           <button
             key={item.id}
             onClick={() => onModeChange(item.id)}
-            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold transition ${
+            aria-pressed={active}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-pill px-4 py-2 text-body font-bold transition",
               active
-                ? "bg-violet-600 text-white shadow-md shadow-violet-300"
-                : "text-gray-500 hover:bg-white"
-            }`}
+                ? "bg-brand text-brand-on shadow-card"
+                : "text-ink-muted hover:bg-surface",
+            )}
           >
-            <Icon className="size-4" />
+            <Icon className="size-4" aria-hidden="true" />
             {item.label}
           </button>
         );

@@ -196,9 +196,31 @@ production 빌드에서는 `import.meta.env.DEV` 분기로 import 자체가 제�
 > focus 복원은 jsdom에서 재현되지 않아 단위 테스트에서 제외했다. Radix FocusScope의
 > 동작이며 실제 브라우저에서 확인했다. 회귀가 걱정되면 Phase 07의 E2E에서 다시 잡는다.
 
-## 7. 남은 일
+## 7. 화면 적용 현황 (Phase 00-C)
 
-- 기존 세 화면은 아직 프로토타입 스타일을 쓴다. Phase 00-C에서 이 토큰과 컴포넌트로 옮긴다.
-- `App.tsx`의 손수 만든 `useToast`는 timer 정리가 없다. 00-C에서 `sonner`로 교체한다.
-- TV 플레이어 전용 표현(포스터 렌더러, QR, 빈 화면 fallback)은 여기서 일반화하지 않았다.
-  Phase 05에서 Flyer.G 전용 컴포넌트로 만든다.
+세 화면 모두 토큰과 공통 컴포넌트로 옮겼다. 손수 만든 `useToast`는 제거하고 `sonner`를 쓴다.
+`src/components/common/StatusBadge.tsx`(4개 상태)는 삭제하고 `@/shared/components`의
+`StatusBadge`(10개 상태)로 통일했다.
+
+| 화면 | 적용한 것 |
+|---|---|
+| 대시보드 | `StatCard`(증감률·조회수 제거), `PosterCard`, `StatusBadge`, `Tabs`, `SectionHeader`, `PageState` |
+| 스튜디오 | `FormField` + shadcn `Input`/`Select`, `PageState`, `Button` |
+| TV 플레이어 | 토큰 기반 색·모서리·그림자, `PageState`의 빈 상태, `Button` |
+
+### 추가 검증 (2026-08-18)
+
+| 항목 | 결과 |
+|---|---|
+| 대시보드 375px | 탭 목록이 화면을 밀어내 가로 스크롤 발생 → 그리드 항목에 `min-w-0`, 탭에 가로 스크롤 적용해 해결 |
+| 대시보드 320px | 가로 overflow 없음 |
+| 스튜디오 320px | 가로 overflow 없음 (내용은 데스크톱 전용 레이아웃) |
+| 콘솔 오류 | 없음 |
+
+## 8. 남은 일
+
+- TV 플레이어 전용 표현(실제 QR, 빈 화면 fallback, kiosk 컨트롤 숨김)은 여기서
+  일반화하지 않았다. Phase 05에서 Flyer.G 전용 컴포넌트로 만든다.
+- 포스터 렌더 모델(`@/entities/poster`)은 props 계약만 고정했다. 미리보기와 플레이어가
+  공유하는 실제 렌더러는 Phase 02에서 만든다.
+- 모바일 내비게이션(좁은 화면에서 Sidebar 대체)은 Phase 01 범위다.

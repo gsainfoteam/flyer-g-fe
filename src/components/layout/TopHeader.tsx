@@ -1,35 +1,42 @@
 import { Plus } from "lucide-react";
+import { Button } from "@/shared/ui/button";
 
+/**
+ * 사용자 이름과 역할은 Phase 01의 인증 세션에서 받아온다.
+ * 지금은 자리표시자이며 실제 계정 정보가 아니다.
+ */
 export function TopHeader() {
   return (
     <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-black tracking-tight text-gray-900">
+        <h1 className="flex items-center gap-2 text-title tracking-tight text-ink">
           안녕하세요, 지스트님!
-          <span className="text-2xl">👋</span>
+          <span aria-hidden="true">👋</span>
         </h1>
-        <p className="mt-1.5 text-sm font-medium text-gray-500">
+        <p className="mt-1.5 text-body text-ink-muted">
           전단지 관리 현황을 확인하고, 새 콘텐츠를 등록해 보세요.
         </p>
       </div>
 
       <div className="flex items-center gap-2.5">
-        <div className="flex items-center gap-2.5 rounded-full bg-white py-1.5 pl-1.5 pr-3.5 shadow-sm ring-1 ring-gray-100">
-          <div className="grid size-8 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-400 text-xs font-black text-white">
+        <div className="flex items-center gap-2.5 rounded-pill bg-surface py-1.5 pl-1.5 pr-3.5 shadow-card ring-1 ring-line">
+          <div
+            className="grid size-8 place-items-center rounded-pill bg-brand text-label font-black text-brand-on"
+            aria-hidden="true"
+          >
             지
           </div>
           <div className="hidden leading-tight sm:block">
-            <p className="text-xs font-black text-gray-900">지스트님</p>
-            <p className="text-[10px] font-semibold text-gray-400">관리자</p>
+            <p className="text-label font-bold text-ink">지스트님</p>
+            <p className="text-caption text-ink-subtle">관리자</p>
           </div>
         </div>
-        <a
-          href="/studio"
-          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-violet-500 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-violet-200"
-        >
-          <Plus className="size-4" />
-          콘텐츠 등록
-        </a>
+        <Button asChild size="lg">
+          <a href="/studio">
+            <Plus aria-hidden="true" />
+            콘텐츠 등록
+          </a>
+        </Button>
       </div>
     </header>
   );

@@ -1,5 +1,6 @@
-import { Clock, Eye, FileText, Monitor, Pause, Play, Send } from "lucide-react";
+import { Clock, FileText, Monitor, Pause, Play } from "lucide-react";
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import "./App.css";
 import { Logo } from "./components/common/Logo";
 import { ApprovalPanel } from "./components/dashboard/ApprovalPanel";
@@ -14,138 +15,147 @@ import { TopHeader } from "./components/layout/TopHeader";
 import { CanvasPreview } from "./components/studio/CanvasPreview";
 import { RegisterMetaPanel } from "./components/studio/RegisterMetaPanel";
 import { UploadPanel } from "./components/studio/UploadPanel";
-import { mockContents } from "./data/mockContents";
-import type { ContentCategory } from "./types/content";
+import { fromSubmissionView } from "@/entities/poster";
+import type { SubmissionView } from "@/entities/submission/model/types";
+import { useDisplayPlaylist } from "@/features/display/api/queries";
+import { usePendingReviews } from "@/features/reviews/api/queries";
+import {
+  useSubmissionSummary,
+  useSubmissionViews,
+} from "@/features/submissions/api/queries";
+import { PageState } from "@/shared/components";
+import { formatSeoulDateTime, toSeoulDateInputValue } from "@/shared/lib/datetime";
+import { Button } from "@/shared/ui/button";
 
-const ROTATE_MS = 5000;
-
-function useToast() {
-  const [toast, setToast] = useState("");
-  const showToast = (message: string) => {
-    setToast(message);
-    window.setTimeout(() => setToast(""), 2600);
-  };
-  return { toast, showToast };
-}
+/** Phase 01에서 실제 기기 route(`/display/:deviceId`)로 바뀐다. */
+const PREVIEW_DEVICE_ID = "device-preview";
 
 function DashboardPage() {
-  const { toast, showToast } = useToast();
+  const summary = useSubmissionSummary("me");
+  const list = useSubmissionViews({ limit: 12 });
+  const pending = usePendingReviews(5);
 
-  const stats = useMemo(() => {
-    const published = mockContents.filter((c) => c.status === "published").length;
-    const scheduled = mockContents.filter((c) => c.status === "scheduled").length;
-    const totalViews = mockContents.reduce((sum, c) => sum + c.views, 0);
-    return {
-      total: mockContents.length,
-      published,
-      scheduled,
-      totalViews,
-    };
-  }, []);
+  const isLoading = summary.isPending || list.isPending || pending.isPending;
+  const error = summary.error ?? list.error ?? pending.error;
+
+  const retry = () => {
+    void summary.refetch();
+    void list.refetch();
+    void pending.refetch();
+  };
 
   return (
-    <div className="min-h-screen bg-[#F8F7FF] text-gray-900">
+    <div className="min-h-screen bg-canvas text-ink">
       <div className="flex">
         <Sidebar />
         <main className="min-w-0 flex-1 px-5 py-6 lg:px-8">
-          <div className="mx-auto max-w-[1500px] space-y-6">
+          <div className="mx-auto max-w-content space-y-6">
             <div className="md:hidden">
               <Logo />
             </div>
             <TopHeader />
 
-            <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              <StatCard
-                label="전체 콘텐츠"
-                value={String(stats.total)}
-                unit="개"
-                change="12%"
-                icon={FileText}
-                tone="violet"
-              />
-              <StatCard
-                label="게시 중인 콘텐츠"
-                value={String(stats.published)}
-                unit="개"
-                change="5%"
-                icon={Monitor}
-                tone="blue"
-              />
-              <StatCard
-                label="예약된 콘텐츠"
-                value={String(stats.scheduled)}
-                unit="개"
-                change="20%"
-                icon={Clock}
-                tone="orange"
-              />
-              <StatCard
-                label="총 조회수"
-                value={stats.totalViews.toLocaleString()}
-                change="18%"
-                icon={Eye}
-                tone="green"
-              />
-            </section>
+            <PageState isLoading={isLoading} error={error} onRetry={retry}>
+              {summary.data && list.data && pending.data && (
+                <div className="space-y-6">
+                  <section
+                    aria-label="운영 요약"
+                    className="grid grid-cols-2 gap-4 md:grid-cols-4"
+                  >
+                    <StatCard
+                      label="전체 콘텐츠"
+                      value={String(summary.data.total)}
+                      unit="개"
+                      icon={FileText}
+                      tone="brand"
+                    />
+                    <StatCard
+                      label="게시 중인 콘텐츠"
+                      value={String(summary.data.published)}
+                      unit="개"
+                      icon={Monitor}
+                      tone="success"
+                    />
+                    <StatCard
+                      label="예약된 콘텐츠"
+                      value={String(summary.data.scheduled)}
+                      unit="개"
+                      icon={Clock}
+                      tone="info"
+                    />
+                    <StatCard
+                      label="승인 대기"
+                      value={String(summary.data.pendingReview)}
+                      unit="건"
+                      icon={Clock}
+                      tone="warning"
+                    />
+                  </section>
 
-            <div className="grid gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <RecentContentSection contents={mockContents} />
-              </div>
-              <div>
-                <ApprovalPanel onToast={showToast} />
-              </div>
-            </div>
+                  {/* 명세 FR-DASH-01: 통계의 기준 시각을 명시한다. */}
+                  <p className="text-caption text-ink-subtle">
+                    {formatSeoulDateTime(summary.data.calculatedAt)} 기준
+                  </p>
+
+                  <div className="grid gap-6 lg:grid-cols-3">
+                    <div className="min-w-0 lg:col-span-2">
+                      <RecentContentSection submissions={list.data.items} />
+                    </div>
+                    <div className="min-w-0">
+                      <ApprovalPanel submissions={pending.data.items} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </PageState>
           </div>
         </main>
       </div>
-
-      {toast && (
-        <div className="fixed right-6 top-20 z-50 rounded-2xl bg-gray-900 px-5 py-3.5 text-sm font-bold text-white shadow-2xl">
-          {toast}
-        </div>
-      )}
     </div>
   );
 }
 
+interface StudioDraft {
+  title: string;
+  category: string;
+  startDate: string;
+  endDate: string;
+  detailUrl: string;
+}
+
+const EMPTY_DRAFT: StudioDraft = {
+  title: "",
+  category: "공지",
+  startDate: "",
+  endDate: "",
+  detailUrl: "",
+};
+
+function toDraft(submission: SubmissionView | undefined): StudioDraft {
+  if (!submission) return EMPTY_DRAFT;
+  return {
+    title: submission.title,
+    category: submission.categoryName,
+    startDate: toSeoulDateInputValue(submission.startAt),
+    endDate: toSeoulDateInputValue(submission.endAt),
+    detailUrl: submission.detailUrl,
+  };
+}
+
 function StudioPage() {
-  const [selectedContentId, setSelectedContentId] = useState(
-    mockContents[0].id,
-  );
+  const list = useSubmissionViews({ limit: 12 });
+  const submissions = useMemo(() => list.data?.items ?? [], [list.data]);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [customPreviewUrl, setCustomPreviewUrl] = useState<string | null>(null);
-  const [title, setTitle] = useState(mockContents[0].title);
-  const [category, setCategory] = useState<ContentCategory>(
-    mockContents[0].category,
-  );
-  const [startDate, setStartDate] = useState(mockContents[0].startDate);
-  const [endDate, setEndDate] = useState(mockContents[0].endDate ?? "");
-  const [linkUrl, setLinkUrl] = useState(mockContents[0].linkUrl);
-  const { toast, showToast } = useToast();
+  /** 선택한 포스터 값 위에 사용자가 덮어쓴 부분만 담는다. */
+  const [edits, setEdits] = useState<Partial<StudioDraft>>({});
 
-  const selectedContent =
-    mockContents.find((content) => content.id === selectedContentId) ??
-    mockContents[0];
+  const selected =
+    submissions.find((item) => item.id === selectedId) ?? submissions[0];
 
-  const handleSelectContent = (id: string) => {
-    const content = mockContents.find((item) => item.id === id);
-    setSelectedContentId(id);
-    setCustomPreviewUrl(null);
-    if (content) {
-      setTitle(content.title);
-      setCategory(content.category);
-      setStartDate(content.startDate);
-      setEndDate(content.endDate ?? "");
-      setLinkUrl(content.linkUrl);
-    }
-  };
-
-  const handleFileSelect = (file: File) => {
-    if (customPreviewUrl) URL.revokeObjectURL(customPreviewUrl);
-    const url = URL.createObjectURL(file);
-    setCustomPreviewUrl(url);
-    setTitle(file.name.replace(/\.[^.]+$/, ""));
-  };
+  // 폼 값은 선택한 포스터에서 파생한다. Phase 02에서 Ziggle 공지 자동 채움으로 대체된다.
+  const draft = { ...toDraft(selected), ...edits };
 
   useEffect(() => {
     return () => {
@@ -153,149 +163,189 @@ function StudioPage() {
     };
   }, [customPreviewUrl]);
 
+  const handleSelect = (id: string) => {
+    if (!submissions.some((item) => item.id === id)) return;
+    setSelectedId(id);
+    setEdits({});
+    setCustomPreviewUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return null;
+    });
+  };
+
+  const handleFileSelect = (file: File) => {
+    setCustomPreviewUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return URL.createObjectURL(file);
+    });
+  };
+
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gray-50 text-gray-900">
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-100 bg-white px-5">
+    <div className="flex h-screen flex-col overflow-hidden bg-canvas text-ink">
+      <header className="flex h-(--layout-header-height) shrink-0 items-center justify-between border-b border-line bg-surface px-5">
         <div className="flex items-center gap-4">
           <Logo size="sm" subtitle={false} />
-          <div className="h-8 w-px bg-gray-200" />
+          <div className="h-8 w-px bg-line" />
           <div>
-            <h1 className="text-base font-black text-gray-900">콘텐츠 등록</h1>
-            <p className="text-[11px] font-medium text-gray-400">
-              포스터를 올리고 TV 게시판에 게시 요청하세요.
+            <h1 className="text-heading text-ink">콘텐츠 등록</h1>
+            <p className="text-caption text-ink-subtle">
+              포스터를 올리고 TV 게시판에 게시를 신청하세요.
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2.5">
-          <a
-            href="/display"
-            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50"
-          >
-            <Monitor className="size-4" />
-            미리보기
-          </a>
-          <button
+          <Button variant="outline" asChild>
+            <a href="/display">
+              <Monitor aria-hidden="true" />
+              미리보기
+            </a>
+          </Button>
+          <Button
             onClick={() =>
-              showToast("게시 요청이 접수되었습니다. 승인 후 TV에 노출됩니다.")
+              toast.info("게시 신청은 Phase 02에서 서버와 연결됩니다.", {
+                description: "지금은 화면 흐름만 확인할 수 있습니다.",
+              })
             }
-            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-violet-600 to-violet-500 px-4 py-2 text-sm font-black text-white shadow-lg shadow-violet-200"
           >
-            <Send className="size-4" />
-            게시하기
-          </button>
+            게시 신청
+          </Button>
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <UploadPanel
-          contents={mockContents}
-          selectedId={selectedContentId}
-          onSelectContent={handleSelectContent}
-          onFileSelect={handleFileSelect}
-          customPreviewUrl={customPreviewUrl}
-        />
-        <CanvasPreview
-          content={selectedContent}
-          customPreviewUrl={customPreviewUrl}
-        />
-        <RegisterMetaPanel
-          title={title}
-          category={category}
-          startDate={startDate}
-          endDate={endDate}
-          linkUrl={linkUrl}
-          onTitleChange={setTitle}
-          onCategoryChange={setCategory}
-          onStartDateChange={setStartDate}
-          onEndDateChange={setEndDate}
-          onLinkUrlChange={setLinkUrl}
-        />
+        <PageState
+          isLoading={list.isPending}
+          error={list.error}
+          onRetry={() => void list.refetch()}
+        >
+          {selected && (
+            <div className="flex min-h-0 flex-1">
+              <UploadPanel
+                submissions={submissions}
+                selectedId={selected.id}
+                onSelectSubmission={handleSelect}
+                onFileSelect={handleFileSelect}
+                customPreviewUrl={customPreviewUrl}
+              />
+              <CanvasPreview
+                poster={fromSubmissionView(selected)}
+                customPreviewUrl={customPreviewUrl}
+              />
+              <RegisterMetaPanel
+                title={draft.title}
+                category={draft.category}
+                startDate={draft.startDate}
+                endDate={draft.endDate}
+                detailUrl={draft.detailUrl}
+                onTitleChange={(title) => setEdits((d) => ({ ...d, title }))}
+                onCategoryChange={(category) =>
+                  setEdits((d) => ({ ...d, category }))
+                }
+                onStartDateChange={(startDate) =>
+                  setEdits((d) => ({ ...d, startDate }))
+                }
+                onEndDateChange={(endDate) => setEdits((d) => ({ ...d, endDate }))}
+                onDetailUrlChange={(detailUrl) =>
+                  setEdits((d) => ({ ...d, detailUrl }))
+                }
+              />
+            </div>
+          )}
+        </PageState>
       </div>
-
-      {toast && (
-        <div className="fixed right-6 top-20 z-50 rounded-2xl bg-gray-900 px-5 py-3.5 text-sm font-bold text-white shadow-2xl">
-          {toast}
-        </div>
-      )}
     </div>
   );
 }
 
 function DisplayPage() {
+  const playlist = useDisplayPlaylist(PREVIEW_DEVICE_ID);
+  const posters = useMemo(() => playlist.data?.posters ?? [], [playlist.data]);
+
   const [mode, setMode] = useState<DisplayMode>("single");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [paused, setPaused] = useState(false);
 
-  const published = useMemo(
-    () =>
-      mockContents.filter(
-        (c) => c.status === "published" || c.status === "scheduled",
-      ),
-    [],
-  );
-  const rotationPool = published.length > 0 ? published : mockContents;
-  const current = rotationPool[currentIndex % rotationPool.length];
+  const rotationMs = (playlist.data?.layout.rotationSeconds ?? 10) * 1000;
+
+  useEffect(() => {
+    if (paused || posters.length <= 1) return;
+    const id = window.setInterval(() => {
+      setCurrentIndex((index) => (index + 1) % posters.length);
+    }, rotationMs);
+    return () => window.clearInterval(id);
+  }, [paused, posters.length, rotationMs]);
 
   const handleModeChange = (nextMode: DisplayMode) => {
     setMode(nextMode);
     setCurrentIndex(0);
   };
 
-  useEffect(() => {
-    if (paused) return;
-    const id = window.setInterval(() => {
-      setCurrentIndex((index) => (index + 1) % rotationPool.length);
-    }, ROTATE_MS);
-    return () => window.clearInterval(id);
-  }, [paused, rotationPool.length]);
+  const current = posters[currentIndex % Math.max(posters.length, 1)];
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden p-6 text-gray-900">
+    <div className="relative flex h-screen flex-col overflow-hidden p-6 text-ink">
       <div className="tv-gradient absolute inset-0" />
 
-      <header className="relative z-10 flex shrink-0 justify-center pb-4">
+      {/* 운영 화면에서는 이 컨트롤을 숨겨야 한다. preview mode 분리는 Phase 05 범위. */}
+      <header className="relative z-(--layer-header) flex shrink-0 justify-center pb-4">
         <DisplayLayoutSwitcher mode={mode} onModeChange={handleModeChange} />
       </header>
 
-      <main className="relative z-10 min-h-0 flex-1">
-        {mode === "single" && <SinglePosterDisplay current={current} />}
-        {mode === "four" && (
-          <FourSplitDisplay
-            contents={[
-              ...rotationPool.slice(currentIndex),
-              ...rotationPool.slice(0, currentIndex),
-            ]}
-          />
-        )}
+      <main className="relative z-(--layer-base) min-h-0 flex-1">
+        <PageState
+          isLoading={playlist.isPending}
+          error={playlist.error}
+          onRetry={() => void playlist.refetch()}
+          isEmpty={posters.length === 0}
+          empty={{
+            title: "지금 표시할 콘텐츠가 없습니다.",
+            description: "승인된 게시 기간의 콘텐츠가 있으면 자동으로 나타납니다.",
+          }}
+        >
+          {current && mode === "single" && <SinglePosterDisplay poster={current} />}
+          {current && mode === "four" && (
+            <FourSplitDisplay
+              posters={[
+                ...posters.slice(currentIndex),
+                ...posters.slice(0, currentIndex),
+              ]}
+            />
+          )}
+        </PageState>
       </main>
 
-      <footer className="relative z-10 flex shrink-0 items-center justify-center pt-4">
-        <div className="flex items-center gap-2">
-          {rotationPool.map((content, index) => (
-            <button
-              key={content.id}
-              aria-label={`${index + 1}번째 콘텐츠`}
-              onClick={() => setCurrentIndex(index)}
-              className={`h-2 rounded-full transition-all ${
-                index === currentIndex % rotationPool.length
-                  ? "w-8 bg-violet-600"
-                  : "w-2 bg-gray-300 hover:bg-gray-400"
-              }`}
-            />
-          ))}
-        </div>
-        <button
-          onClick={() => setPaused((value) => !value)}
-          aria-label={paused ? "자동 재생" : "일시정지"}
-          className="absolute right-0 grid size-11 place-items-center rounded-full bg-violet-600 text-white shadow-lg shadow-violet-300"
-        >
-          {paused ? (
-            <Play className="size-5" fill="currentColor" />
-          ) : (
-            <Pause className="size-5" fill="currentColor" />
-          )}
-        </button>
-      </footer>
+      {posters.length > 0 && (
+        <footer className="relative z-(--layer-header) flex shrink-0 items-center justify-center pt-4">
+          <div className="flex items-center gap-2">
+            {posters.map((poster, index) => (
+              <button
+                key={poster.id}
+                type="button"
+                aria-label={`${index + 1}번째 콘텐츠`}
+                aria-current={index === currentIndex % posters.length}
+                onClick={() => setCurrentIndex(index)}
+                className={`h-2 rounded-pill transition-all ${
+                  index === currentIndex % posters.length
+                    ? "w-8 bg-brand"
+                    : "w-2 bg-line-strong hover:bg-ink-subtle"
+                }`}
+              />
+            ))}
+          </div>
+          <Button
+            size="icon-lg"
+            aria-label={paused ? "자동 재생" : "일시정지"}
+            onClick={() => setPaused((value) => !value)}
+            className="absolute right-0 rounded-pill"
+          >
+            {paused ? (
+              <Play fill="currentColor" aria-hidden="true" />
+            ) : (
+              <Pause fill="currentColor" aria-hidden="true" />
+            )}
+          </Button>
+        </footer>
+      )}
     </div>
   );
 }

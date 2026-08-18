@@ -1,60 +1,52 @@
-import { useState } from "react";
-import {
-  mockContents,
-  pendingApprovals as initialApprovals,
-  type ApprovalItem,
-} from "../../data/mockContents";
+import { fromSubmissionView } from "@/entities/poster";
+import type { SubmissionView } from "@/entities/submission/model/types";
+import { EmptyState, StatusBadge } from "@/shared/components";
+import { formatSeoulDateTime } from "@/shared/lib/datetime";
+import { Badge } from "@/shared/ui/badge";
 import { PosterArtwork } from "../common/PosterArtwork";
 
+/**
+ * 승인 대기 목록(읽기 전용).
+ *
+ * 승인·반려 동작은 사유 입력, 버전 확인, 동시 처리 충돌 처리가 함께 필요해서
+ * Phase 04에서 구현한다. 서버에 반영되지 않는 승인 버튼은 두지 않는다.
+ * (명세 12.2가 지적한 프로토타입의 함정)
+ */
 interface ApprovalPanelProps {
-  onToast?: (message: string) => void;
+  submissions: SubmissionView[];
 }
 
-export function ApprovalPanel({ onToast }: ApprovalPanelProps) {
-  const [items, setItems] = useState<ApprovalItem[]>(initialApprovals);
-
-  const handleApprove = (item: ApprovalItem) => {
-    setItems((current) => current.filter((entry) => entry.id !== item.id));
-    onToast?.(`「${item.title}」이(가) 승인되었습니다.`);
-  };
-
+export function ApprovalPanel({ submissions }: ApprovalPanelProps) {
   return (
-    <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm shadow-violet-100/40">
+    <section className="rounded-card border border-line bg-surface p-5 shadow-card">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-black text-gray-900">승인 대기</h2>
-        <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-black text-violet-700">
-          {items.length}건
-        </span>
+        <h2 className="text-heading text-ink">승인 대기</h2>
+        <Badge variant="outline" className="bg-brand-subtle text-brand-strong">
+          {submissions.length}건
+        </Badge>
       </div>
+
       <div className="mt-4 space-y-3">
-        {items.map((item) => {
-          const poster = mockContents.find((c) => c.id === item.posterId);
-          return (
-            <div key={item.id} className="flex items-center gap-3">
-              <div className="aspect-[3/4] w-9 shrink-0 overflow-hidden rounded-lg bg-gray-100">
-                {poster && <PosterArtwork content={poster} fit="cover" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-gray-900">
-                  {item.title}
-                </p>
-                <p className="mt-0.5 text-[11px] font-semibold text-gray-400">
-                  업로드: {item.uploadedAt}
-                </p>
-              </div>
-              <button
-                onClick={() => handleApprove(item)}
-                className="shrink-0 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-[11px] font-black text-violet-700 transition hover:bg-violet-100"
-              >
-                승인하기
-              </button>
+        {submissions.map((submission) => (
+          <div key={submission.id} className="flex items-center gap-3">
+            <div className="aspect-[3/4] w-9 shrink-0 overflow-hidden rounded-md bg-surface-muted">
+              <PosterArtwork poster={fromSubmissionView(submission)} fit="cover" />
             </div>
-          );
-        })}
-        {items.length === 0 && (
-          <p className="py-6 text-center text-sm font-semibold text-gray-400">
-            승인 대기 항목이 없습니다.
-          </p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-body font-semibold text-ink">
+                {submission.title}
+              </p>
+              <p className="mt-0.5 truncate text-caption text-ink-subtle">
+                {submission.organizationName} ·{" "}
+                {formatSeoulDateTime(submission.startAt)} 시작
+              </p>
+            </div>
+            <StatusBadge status={submission.status} hideIcon className="shrink-0" />
+          </div>
+        ))}
+
+        {submissions.length === 0 && (
+          <EmptyState title="승인 대기 항목이 없습니다." />
         )}
       </div>
     </section>

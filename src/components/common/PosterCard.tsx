@@ -1,44 +1,34 @@
-import { Eye, Heart, MoreVertical } from "lucide-react";
-import type { NoticeContent } from "../../types/content";
+import { fromSubmissionView } from "@/entities/poster";
+import type { SubmissionView } from "@/entities/submission/model/types";
+import { StatusBadge } from "@/shared/components";
+import { formatSeoulPeriod } from "@/shared/lib/datetime";
 import { PosterArtwork } from "./PosterArtwork";
-import { StatusBadge } from "./StatusBadge";
 
 interface PosterCardProps {
-  content: NoticeContent;
+  submission: SubmissionView;
 }
 
-export function PosterCard({ content }: PosterCardProps) {
+export function PosterCard({ submission }: PosterCardProps) {
+  const poster = fromSubmissionView(submission);
+
   return (
-    <article className="group overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm shadow-violet-100/40 transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-50">
-        <PosterArtwork content={content} fit="cover" />
+    <article className="group overflow-hidden rounded-card border border-line bg-surface shadow-card transition hover:-translate-y-0.5 hover:shadow-floating">
+      <div className="relative aspect-[3/4] w-full overflow-hidden bg-surface-muted">
+        <PosterArtwork poster={poster} fit="cover" />
         <div className="absolute left-2.5 top-2.5">
-          <StatusBadge status={content.status} />
+          <StatusBadge status={submission.status} />
         </div>
       </div>
-      <div className="space-y-2 p-3">
-        <h3 className="line-clamp-1 break-keep text-sm font-black text-gray-900">
-          {content.title}
+      <div className="space-y-1.5 p-3">
+        <h3 className="line-clamp-1 break-keep text-body font-bold text-ink">
+          {submission.title}
         </h3>
-        <p className="text-[11px] font-semibold text-gray-400">
-          {content.startDate.replaceAll("-", ".")} ~{" "}
-          {content.endDate?.replaceAll("-", ".")}
+        <p className="text-caption font-semibold text-ink-subtle">
+          {formatSeoulPeriod(submission.startAt, submission.endAt)}
         </p>
-        <div className="flex items-center justify-between border-t border-gray-50 pt-2">
-          <div className="flex items-center gap-3 text-[11px] font-bold text-gray-400">
-            <span className="flex items-center gap-1">
-              <Eye className="size-3.5" />
-              {content.views.toLocaleString()}
-            </span>
-            <span className="flex items-center gap-1">
-              <Heart className="size-3.5" />
-              {content.likes ?? 0}
-            </span>
-          </div>
-          <button className="grid size-6 place-items-center rounded-lg text-gray-300 hover:bg-gray-50 hover:text-gray-500">
-            <MoreVertical className="size-4" />
-          </button>
-        </div>
+        <p className="line-clamp-1 text-caption text-ink-subtle">
+          {submission.organizationName}
+        </p>
       </div>
     </article>
   );

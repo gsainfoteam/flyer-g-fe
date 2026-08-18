@@ -1,4 +1,4 @@
-# 프론트엔드 아키텍처 (Phase 00-A, 00-B 기준)
+# 프론트엔드 아키텍처 (Phase 00 완료 기준)
 
 > 대상: 이후 Phase를 맡는 사람과 Agent
 > 범위: 구조, 도메인 타입, API 경계, mock, 테스트 기반
@@ -18,8 +18,9 @@ src/
 │  └─ components/     primitive를 조합한 Flyer.G 제품 컴포넌트
 ├─ dev/               개발 전용 화면 (컴포넌트 카탈로그)
 ├─ mocks/             개발·테스트 fixture와 in-memory repository
-├─ components/        (기존 프로토타입 화면. Phase 00-C에서 전환 예정)
-├─ data/, types/      (레거시 목 데이터·타입. adapter를 거쳐서만 참조)
+├─ features/          기능별 서버 상태 hook (submissions, reviews, display)
+├─ components/        화면 컴포넌트 (대시보드·스튜디오·플레이어)
+├─ data/, types/      레거시 목 데이터·타입. adapter를 거쳐서만 참조
 └─ test/              테스트 setup
 ```
 
@@ -79,13 +80,38 @@ bun run test:watch
 Vitest + React Testing Library + jsdom. 테스트는 실제 시간과 네트워크에 의존하지 않는다.
 시각이 필요하면 `createFixedClock()`을 주입한다.
 
-## Phase 00-B, 00-C 인계
+## 서버 상태 hook
 
-- `app/providers/AppProviders`는 아직 `main.tsx`에 연결하지 않았다. 화면이 repository를
-  실제로 쓰기 시작하는 Phase 00-C에서 연결한다.
-- 기존 세 화면은 여전히 `src/data/mockContents`와 `src/types/content`를 직접 쓴다.
-  전환은 `toSignageSubmissionExpandedDto()` adapter를 거친다.
-- 레거시 목 데이터의 `views`, `likes`는 새 모델로 옮기지 않았다. 대시보드의 조회수 카드와
-  하드코딩 증감률은 Phase 00-C 또는 Phase 03에서 제거한다.
-- 실제 HTTP repository 구현은 비어 있다. `createRepositories()`가 mock이 아닐 때 명시적으로
-  실패하므로, 계약이 확정되면 이 지점부터 구현한다.
+화면은 repository를 직접 부르지 않고 `src/features/**/api/queries.ts`의 hook을 쓴다.
+
+| hook | 용도 |
+|---|---|
+| `useSubmissionSummary(scope)` | 운영 요약 통계 |
+| `useSubmissionViews(params)` | 신청 목록 (표시 모델로 변환) |
+| `usePendingReviews(limit)` | 승인 대기 목록 |
+| `useDisplayPlaylist(deviceId)` | 기기 편성 (만료 항목 방어적 제외) |
+
+필터·pagination·무효화 규칙 확장은 Phase 03~05에서 한다.
+
+## Phase 01 인계
+
+- **라우팅**: `App.tsx`는 아직 `window.location.pathname`으로 분기한다. Phase 01의 첫 작업이다.
+- **기기 ID**: `/display`가 상수 `PREVIEW_DEVICE_ID`를 쓴다. `/display/:deviceId`로 바꾼다.
+- **세션**: `TopHeader`의 사용자 이름·역할은 자리표시자다. 인증 세션에서 받아온다.
+- **실제 API**: HTTP repository 구현은 비어 있다. `createRepositories()`가 mock이 아닐 때
+  명시적으로 실패하므로, 계약이 확정되면 이 지점부터 구현한다.
+
+## 남은 프로토타입 요소
+
+아래는 의도적으로 남긴 것이며 담당 Phase가 처리한다.
+
+| 항목 | 현재 상태 | 담당 |
+|---|---|---|
+| `QRCodeBox` | 스캔되지 않는 시드 기반 자리표시자 | Phase 02, 05 |
+| 스튜디오 제출 | toast만 띄우고 서버에 저장하지 않음 | Phase 02 |
+| 업로드 검증 | 형식·용량·해상도 검사 없음 | Phase 02 |
+| 목록 전체 보기 | 최근 4건만 표시, pagination 없음 | Phase 03 |
+| 승인·반려 동작 | 승인 대기 목록은 읽기 전용 | Phase 04 |
+| 플레이어 컨트롤 | 운영 화면에도 레이아웃 전환·일시정지 노출 | Phase 05 |
+| 4분할 레이아웃 | 페이지 단위 순환 아님, 1920x1080 미최적화 | Phase 05 |
+| 레거시 목 데이터 | `src/data/mockContents.ts`, `src/types/content.ts` | 목 재작성 시 제거 |

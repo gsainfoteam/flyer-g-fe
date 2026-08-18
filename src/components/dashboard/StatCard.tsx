@@ -1,55 +1,51 @@
-import { TrendingUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { cn } from "@/shared/lib/utils";
 
+/**
+ * 운영 요약의 단일 수치.
+ *
+ * 증감률과 조회수는 근거 데이터가 없어 제거했다. 노출 통계는 수집 API가 확정된 뒤
+ * Phase 03(FR-DASH-03)에서 다시 다룬다. (명세 FR-DASH-01)
+ */
 interface StatCardProps {
   label: string;
   value: string;
   unit?: string;
-  change: string;
   icon: LucideIcon;
-  tone?: "violet" | "blue" | "orange" | "green";
+  tone?: "brand" | "info" | "warning" | "success";
 }
 
-const toneClassName = {
-  violet: "bg-violet-100 text-violet-600",
-  blue: "bg-sky-100 text-sky-600",
-  orange: "bg-orange-100 text-orange-600",
-  green: "bg-emerald-100 text-emerald-600",
+const toneClassName: Record<NonNullable<StatCardProps["tone"]>, string> = {
+  brand: "bg-brand-subtle text-brand-strong",
+  info: "bg-info-subtle text-info-strong",
+  warning: "bg-warning-subtle text-warning-strong",
+  success: "bg-success-subtle text-success-strong",
 };
 
 export function StatCard({
   label,
   value,
   unit,
-  change,
   icon: Icon,
-  tone = "violet",
+  tone = "brand",
 }: StatCardProps) {
   return (
-    <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm shadow-violet-100/40">
-      <div className="flex items-start justify-between">
-        <div
-          className={`grid size-11 place-items-center rounded-xl ${toneClassName[tone]}`}
-        >
-          <Icon className="size-5" />
-        </div>
+    <article className="rounded-card border border-line bg-surface p-5 shadow-card">
+      <div
+        className={cn(
+          "grid size-11 place-items-center rounded-control",
+          toneClassName[tone],
+        )}
+      >
+        <Icon className="size-5" aria-hidden="true" />
       </div>
-      <p className="mt-4 text-sm font-bold text-gray-500">{label}</p>
+      <p className="mt-4 text-body font-semibold text-ink-muted">{label}</p>
       <p className="mt-1 flex items-baseline gap-1">
-        <span className="text-2xl font-black tracking-tight text-gray-900">
+        <span className="text-title font-black tracking-tight text-ink">
           {value}
         </span>
-        {unit && (
-          <span className="text-sm font-bold text-gray-500">{unit}</span>
-        )}
+        {unit && <span className="text-body font-semibold text-ink-muted">{unit}</span>}
       </p>
-      <div className="mt-3 flex items-center gap-1.5 text-xs font-bold">
-        <span className="text-gray-400">지난 7일 대비</span>
-        <span className="inline-flex items-center gap-0.5 text-emerald-600">
-          <TrendingUp className="size-3.5" />
-          {change}
-        </span>
-      </div>
     </article>
   );
 }

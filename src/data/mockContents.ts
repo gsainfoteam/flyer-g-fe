@@ -1,3 +1,12 @@
+/**
+ * 초기 프로토타입의 레거시 목 데이터.
+ *
+ * 직접 import하지 않는다. `src/mocks/fixtures.ts`가 adapter를 거쳐 새 모델로
+ * 변환한 뒤 mock repository를 통해서만 화면에 도달한다.
+ *
+ * 게시 기간은 fixture 생성 시 기준 시각에 맞춰 다시 계산되므로 아래 날짜 값은
+ * 순서와 형식을 보여주는 의미만 가진다.
+ */
 import type { NoticeContent } from "../types/content";
 
 export const mockContents: NoticeContent[] = [
@@ -145,87 +154,4 @@ export const mockContents: NoticeContent[] = [
     views: 135,
     likes: 18,
   },
-];
-
-type ScheduleTone = "violet" | "green" | "orange" | "gray";
-
-export interface ScheduleItem {
-  date: string;
-  day: string;
-  time: string;
-  title: string;
-  tone: ScheduleTone;
-}
-
-export const scheduleItems: ScheduleItem[] = [
-  {
-    date: "5.25",
-    day: "일",
-    time: "20:00",
-    title: "도백 도둑 정기공연 시작",
-    tone: "violet",
-  },
-  {
-    date: "5.28",
-    day: "금",
-    time: "18:00",
-    title: "지구는 처음이야 동아리 부스 시작",
-    tone: "green",
-  },
-  {
-    date: "6.05",
-    day: "금",
-    time: "13:30",
-    title: "수리 전공 설명회 종료",
-    tone: "gray",
-  },
-  {
-    date: "6.10",
-    day: "화",
-    time: "11:00",
-    title: "진로 페스티벌 안내 시작",
-    tone: "orange",
-  },
-];
-
-export interface ApprovalItem {
-  id: string;
-  title: string;
-  uploader: string;
-  uploadedAt: string;
-  posterId: string;
-}
-
-export const pendingApprovals: ApprovalItem[] = [
-  {
-    id: "approval-1",
-    title: "어쩌면 해피엔딩 공연",
-    uploader: "문화기획단",
-    uploadedAt: "2026.05.30",
-    posterId: "notice-006",
-  },
-  {
-    id: "approval-2",
-    title: "GIST 개발자 세미나",
-    uploader: "인포팀",
-    uploadedAt: "2026.05.30",
-    posterId: "notice-008",
-  },
-  {
-    id: "approval-3",
-    title: "어쩌면 봉사연합 활동",
-    uploader: "박서연",
-    uploadedAt: "2026.05.29",
-    posterId: "notice-005",
-  },
-];
-
-export const weeklyViews = [
-  { label: "5.29", value: 1820 },
-  { label: "5.30", value: 2380 },
-  { label: "5.31", value: 1960 },
-  { label: "6.01", value: 1840 },
-  { label: "6.02", value: 2040 },
-  { label: "6.03", value: 1880 },
-  { label: "6.04", value: 2560 },
 ];

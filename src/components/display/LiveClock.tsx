@@ -1,39 +1,37 @@
 import { useEffect, useState } from "react";
+import { getSeoulParts } from "@/shared/lib/datetime";
 
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+/**
+ * TV 화면의 현재 시각. 표시는 항상 Asia/Seoul 기준이다. (명세 6.3)
+ * 기기의 시간대 설정과 무관하게 같은 시각을 보여준다.
+ */
+const pad = (value: number) => String(value).padStart(2, "0");
 
-function formatClock(now: Date) {
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  const weekday = WEEKDAYS[now.getDay()];
-  const hours24 = now.getHours();
-  const period = hours24 >= 12 ? "PM" : "AM";
-  const hours12 = hours24 % 12 || 12;
-  const minutes = String(now.getMinutes()).padStart(2, "0");
-
-  return {
-    date: `${y}. ${m}. ${d}. (${weekday})`,
-    time: `${hours12}:${minutes}`,
-    period,
-  };
+interface LiveClockProps {
+  /** 테스트에서 고정 시각을 넣는다. */
+  now?: Date;
 }
 
-export function LiveClock() {
-  const [now, setNow] = useState(() => new Date());
+export function LiveClock({ now }: LiveClockProps) {
+  const [tick, setTick] = useState(() => now ?? new Date());
 
   useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 1000);
+    if (now) return;
+    const id = window.setInterval(() => setTick(new Date()), 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [now]);
 
-  const { date, time, period } = formatClock(now);
+  const current = now ?? tick;
+  const { year, month, day, weekday, hour12, minute, meridiem } =
+    getSeoulParts(current);
 
   return (
     <div className="text-right">
-      <p className="text-lg font-black text-gray-500">{date}</p>
-      <p className="text-4xl font-black tracking-tight text-gray-900">
-        {time} <span className="text-2xl">{period}</span>
+      <p className="text-heading font-black text-ink-muted">
+        {year}. {pad(month)}. {pad(day)}. ({weekday})
+      </p>
+      <p className="text-[2.25rem] font-black leading-tight tracking-tight text-ink">
+        {hour12}:{pad(minute)} <span className="text-title">{meridiem}</span>
       </p>
     </div>
   );

@@ -28,7 +28,7 @@ import type {
 import type { Clock } from "@/shared/lib/clock";
 import { systemClock } from "@/shared/lib/clock";
 import { parseIsoUtc, toIsoUtc } from "@/shared/lib/datetime";
-import { reviewFixtures, submissionFixtures } from "./fixtures";
+import { createReviewFixtures, createSubmissionFixtures } from "./fixtures";
 
 /**
  * 개발·테스트용 in-memory 구현. 실제 서버 대신 같은 repository 인터페이스를 만족한다.
@@ -72,9 +72,9 @@ class MockStore {
   private reviews: ReviewDto[];
   private readonly seenIdempotencyKeys = new Map<string, string>();
 
-  constructor() {
-    this.submissions = submissionFixtures.map((item) => ({ ...item }));
-    this.reviews = reviewFixtures.map((item) => ({ ...item }));
+  constructor(now: Date) {
+    this.submissions = createSubmissionFixtures(now);
+    this.reviews = createReviewFixtures(now);
   }
 
   all(): SignageSubmissionExpandedDto[] {
@@ -163,7 +163,7 @@ export function createMockRepositories(
 ): Repositories {
   const clock = options.clock ?? systemClock;
   const latencyMs = options.latencyMs ?? 0;
-  const store = new MockStore();
+  const store = new MockStore(clock.now());
 
   const settle = async (signal?: AbortSignal): Promise<void> => {
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
@@ -388,6 +388,9 @@ export function createMockRepositories(
           endsAt: toIsoUtc(item.endAt),
           priority: item.priority,
           checksum: `mock-${item.id}`,
+          subtitle: item.subtitle,
+          location: item.location,
+          organizerName: item.organizationName,
         })),
       });
     },
