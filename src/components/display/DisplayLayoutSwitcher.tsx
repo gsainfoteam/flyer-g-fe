@@ -1,12 +1,10 @@
-import { Grid2X2, LayoutGrid, Square, SquareSplitHorizontal } from "lucide-react";
+import { Grid2X2, Square } from "lucide-react";
 
-export type DisplayMode = "single" | "split" | "four" | "grid";
+export type DisplayMode = "single" | "four";
 
 const modes = [
   { id: "single" as const, label: "1개 크게 보기", icon: Square },
-  { id: "split" as const, label: "2분할", icon: SquareSplitHorizontal },
   { id: "four" as const, label: "4분할", icon: Grid2X2 },
-  { id: "grid" as const, label: "그리드", icon: LayoutGrid },
 ];
 
 interface DisplayLayoutSwitcherProps {

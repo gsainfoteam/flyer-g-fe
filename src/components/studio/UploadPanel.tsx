@@ -1,50 +1,31 @@
-import { Trash2, UploadCloud } from "lucide-react";
-import { useState } from "react";
+import { UploadCloud } from "lucide-react";
 import type { NoticeContent } from "../../types/content";
 import { PosterArtwork } from "../common/PosterArtwork";
-import { PageManager } from "./PageManager";
 
 interface UploadPanelProps {
   contents: NoticeContent[];
   selectedId: string;
   onSelectContent: (id: string) => void;
-  pages: number[];
-  selectedPage: number;
-  onSelectPage: (page: number) => void;
-  onAddPage: () => void;
+  onFileSelect: (file: File) => void;
+  customPreviewUrl?: string | null;
 }
-
-const tabs = ["이미지 업로드", "내 업로드"];
 
 export function UploadPanel({
   contents,
   selectedId,
   onSelectContent,
-  pages,
-  selectedPage,
-  onSelectPage,
-  onAddPage,
+  onFileSelect,
+  customPreviewUrl,
 }: UploadPanelProps) {
-  const [activeTab, setActiveTab] = useState(0);
-  const uploaded = contents.slice(0, 4);
+  const uploaded = contents.slice(0, 6);
 
   return (
     <aside className="flex h-full w-[272px] shrink-0 flex-col overflow-y-auto border-r border-gray-100 bg-white">
-      <div className="flex border-b border-gray-100">
-        {tabs.map((tab, index) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(index)}
-            className={`relative flex-1 py-3.5 text-sm font-bold transition ${
-              activeTab === index ? "text-violet-700" : "text-gray-400"
-            }`}
-          >
-            {tab}
-            {activeTab === index && (
-              <span className="absolute inset-x-4 -bottom-px h-0.5 rounded-full bg-violet-600" />
-            )}
-          </button>
-        ))}
+      <div className="border-b border-gray-100 px-4 py-3.5">
+        <h2 className="text-sm font-black text-gray-900">포스터 업로드</h2>
+        <p className="mt-0.5 text-[11px] font-medium text-gray-400">
+          이미지를 선택하거나 더미 포스터를 고르세요
+        </p>
       </div>
 
       <div className="p-4">
@@ -53,6 +34,10 @@ export function UploadPanel({
             type="file"
             accept="image/jpeg,image/png,image/webp"
             className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) onFileSelect(file);
+            }}
           />
           <div className="grid size-12 place-items-center rounded-full bg-white text-violet-600 shadow-sm">
             <UploadCloud className="size-6" />
@@ -68,42 +53,44 @@ export function UploadPanel({
           </span>
         </label>
 
-        <div className="mt-5 flex items-center justify-between">
+        {customPreviewUrl && (
+          <div className="mt-4 overflow-hidden rounded-xl ring-2 ring-violet-500">
+            <div className="aspect-[3/4] w-full bg-gray-100">
+              <img
+                src={customPreviewUrl}
+                alt="업로드 미리보기"
+                className="h-full w-full object-cover"
+              />
+            </div>
+            <p className="bg-violet-50 px-2 py-1.5 text-center text-[11px] font-bold text-violet-700">
+              방금 업로드한 이미지
+            </p>
+          </div>
+        )}
+
+        <div className="mt-5">
           <h3 className="text-xs font-black text-gray-900">
-            업로드된 이미지{" "}
-            <span className="text-gray-400">({uploaded.length}/10)</span>
+            더미 포스터{" "}
+            <span className="text-gray-400">({uploaded.length})</span>
           </h3>
-          <button className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-400 hover:text-gray-600">
-            <Trash2 className="size-3.5" />
-            전체 삭제
-          </button>
+          <div className="mt-3 grid grid-cols-2 gap-2.5">
+            {uploaded.map((content) => (
+              <button
+                key={content.id}
+                onClick={() => onSelectContent(content.id)}
+                className={`overflow-hidden rounded-xl ring-2 transition ${
+                  !customPreviewUrl && selectedId === content.id
+                    ? "ring-violet-500"
+                    : "ring-transparent hover:ring-violet-200"
+                }`}
+              >
+                <div className="aspect-[3/4] w-full overflow-hidden bg-gray-100">
+                  <PosterArtwork content={content} fit="cover" />
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2.5">
-          {uploaded.map((content) => (
-            <button
-              key={content.id}
-              onClick={() => onSelectContent(content.id)}
-              className={`overflow-hidden rounded-xl ring-2 transition ${
-                selectedId === content.id
-                  ? "ring-violet-500"
-                  : "ring-transparent hover:ring-violet-200"
-              }`}
-            >
-              <div className="aspect-[3/4] w-full overflow-hidden bg-gray-100">
-                <PosterArtwork content={content} fit="cover" />
-              </div>
-            </button>
-          ))}
-        </div>
-
-        <PageManager
-          pages={pages}
-          selectedPage={selectedPage}
-          onSelectPage={onSelectPage}
-          onAddPage={onAddPage}
-          posters={contents}
-        />
       </div>
     </aside>
   );

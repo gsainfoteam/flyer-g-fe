@@ -3,6 +3,7 @@ import type { NoticeContent } from "../../types/content";
 import { Logo } from "../common/Logo";
 import { PosterArtwork } from "../common/PosterArtwork";
 import { QRCodeBox } from "../common/QRCodeBox";
+import { LiveClock } from "./LiveClock";
 
 interface SinglePosterDisplayProps {
   current: NoticeContent;
@@ -33,11 +34,8 @@ export function SinglePosterDisplay({ current }: SinglePosterDisplayProps) {
 
   return (
     <div className="relative h-full">
-      <div className="absolute right-1 top-1 text-right">
-        <p className="text-lg font-black text-gray-500">2026. 06. 05. (금)</p>
-        <p className="text-4xl font-black tracking-tight text-gray-900">
-          10:30 <span className="text-2xl">AM</span>
-        </p>
+      <div className="absolute right-1 top-1">
+        <LiveClock />
       </div>
 
       <div className="flex h-full items-stretch gap-8 pr-44">
