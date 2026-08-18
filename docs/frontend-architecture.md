@@ -1,8 +1,8 @@
-# 프론트엔드 아키텍처 (Phase 00-A 기준)
+# 프론트엔드 아키텍처 (Phase 00-A, 00-B 기준)
 
 > 대상: 이후 Phase를 맡는 사람과 Agent
 > 범위: 구조, 도메인 타입, API 경계, mock, 테스트 기반
-> 디자인 토큰과 공통 UI는 Phase 00-B에서 다룬다.
+> 디자인 토큰과 공통 UI는 [design-system.md](./design-system.md) 참고.
 
 ## 디렉터리 경계
 
@@ -13,7 +13,10 @@ src/
 ├─ shared/
 │  ├─ api/            transport, 오류 모델, repository 인터페이스, query key
 │  ├─ config/         환경 변수 파싱·검증
-│  └─ lib/            날짜, clock, Ziggle URL 등 순수 함수
+│  ├─ lib/            날짜, clock, Ziggle URL, cn 등 순수 함수
+│  ├─ ui/             shadcn primitive (생성본)
+│  └─ components/     primitive를 조합한 Flyer.G 제품 컴포넌트
+├─ dev/               개발 전용 화면 (컴포넌트 카탈로그)
 ├─ mocks/             개발·테스트 fixture와 in-memory repository
 ├─ components/        (기존 프로토타입 화면. Phase 00-C에서 전환 예정)
 ├─ data/, types/      (레거시 목 데이터·타입. adapter를 거쳐서만 참조)
@@ -44,6 +47,8 @@ src/
 | 날짜·시각 | `@/shared/lib/datetime`, `@/shared/lib/clock` |
 | Ziggle URL 검증 | `@/shared/lib/ziggle-url` |
 | repository 주입 | `@/app/providers/repositories-context` |
+| shadcn primitive | `@/shared/ui/*` |
+| 제품 공통 컴포넌트 | `@/shared/components` |
 
 ### 상태
 

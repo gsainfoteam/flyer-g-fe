@@ -1,5 +1,5 @@
 import { Clock, Eye, FileText, Monitor, Pause, Play, Send } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import "./App.css";
 import { Logo } from "./components/common/Logo";
 import { ApprovalPanel } from "./components/dashboard/ApprovalPanel";
@@ -300,8 +300,23 @@ function DisplayPage() {
   );
 }
 
+/**
+ * 개발 전용 컴포넌트 카탈로그. production 빌드에서는 import 자체가 제거되어
+ * 번들에 포함되지 않고 경로로도 접근할 수 없다. (Phase 00 문서 6절)
+ */
+const ComponentCatalog = import.meta.env.DEV
+  ? lazy(() => import("./dev/ComponentCatalog"))
+  : null;
+
 function App() {
   const pathname = window.location.pathname;
+  if (ComponentCatalog && pathname.startsWith("/catalog")) {
+    return (
+      <Suspense fallback={null}>
+        <ComponentCatalog />
+      </Suspense>
+    );
+  }
   if (pathname.startsWith("/studio")) return <StudioPage />;
   if (pathname.startsWith("/display")) return <DisplayPage />;
   return <DashboardPage />;

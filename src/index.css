@@ -1,95 +1,292 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* ==========================================================================
+   Flyer.G 디자인 토큰
+   --------------------------------------------------------------------------
+   이 파일이 색·타이포·간격·모서리·그림자·모션·레이아웃·레이어의 단일 원천이다.
+   컴포넌트에서 임의 hex, 임의 shadow, 임의 z-index를 새로 만들지 않는다.
+   설계 원칙과 사용 예시는 docs/design-system.md 참고.
+   MVP는 light theme만 지원한다.
+   ========================================================================== */
+
+@theme {
+  /* --- 서체 -------------------------------------------------------------
+     한국어 본문 가독성이 최우선이므로 Pretendard를 앞에 둔다. */
+  --font-sans:
+    Pretendard, Inter, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-heading: var(--font-sans);
+
+  /* --- 타이포그래피 -----------------------------------------------------
+     display는 TV 원거리 가독성용, 나머지는 관리자 웹용이다. */
+  --text-display: 3.5rem;
+  --text-display--line-height: 1.08;
+  --text-display--font-weight: 900;
+  --text-title: 1.5rem;
+  --text-title--line-height: 1.3;
+  --text-title--font-weight: 800;
+  --text-heading: 1.125rem;
+  --text-heading--line-height: 1.4;
+  --text-heading--font-weight: 700;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.6;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1.4;
+  --text-label--font-weight: 600;
+  --text-caption: 0.6875rem;
+  --text-caption--line-height: 1.4;
+
+  /* --- 브랜드 -----------------------------------------------------------
+     보라색은 브랜드 전용이다. 상태 표현에 쓰지 않는다. */
+  --color-brand: oklch(0.541 0.247 293.01);
+  --color-brand-strong: oklch(0.491 0.27 292.58);
+  --color-brand-muted: oklch(0.606 0.25 292.72);
+  --color-brand-subtle: oklch(0.969 0.016 293.76);
+  --color-brand-border: oklch(0.894 0.057 293.28);
+  --color-brand-on: oklch(1 0 0);
+  /* 보조 강조색. 포인트 요소에만 제한적으로 쓴다. */
+  --color-accent-brand: oklch(0.661 0.196 38.21);
+
+  /* --- 표면과 글자 ------------------------------------------------------ */
+  --color-canvas: oklch(0.979 0.011 291.96);
+  --color-surface: oklch(1 0 0);
+  --color-surface-muted: oklch(0.971 0.003 264.54);
+  --color-line: oklch(0.928 0.006 264.53);
+  --color-line-strong: oklch(0.872 0.01 258.34);
+  --color-ink: oklch(0.21 0.032 264.66);
+  --color-ink-muted: oklch(0.551 0.023 264.36);
+  --color-ink-subtle: oklch(0.707 0.022 261.33);
+  --color-focus: oklch(0.541 0.247 293.01);
+
+  /* --- 상태 색 ----------------------------------------------------------
+     solid는 아이콘·강조, subtle은 배경, strong은 subtle 위 글자색이다.
+     색만으로 상태를 구분하지 않고 항상 문구를 함께 쓴다. (명세 9.6) */
+  --color-info: oklch(0.546 0.245 262.88);
+  --color-info-subtle: oklch(0.97 0.014 254.6);
+  --color-info-strong: oklch(0.488 0.243 264.38);
+
+  --color-success: oklch(0.627 0.194 149.21);
+  --color-success-subtle: oklch(0.962 0.044 156.74);
+  --color-success-strong: oklch(0.527 0.154 150.07);
+
+  --color-warning: oklch(0.666 0.179 58.32);
+  --color-warning-subtle: oklch(0.973 0.071 103.19);
+  --color-warning-strong: oklch(0.555 0.163 48.998);
+
+  --color-danger: oklch(0.577 0.245 27.325);
+  --color-danger-subtle: oklch(0.971 0.013 17.38);
+  --color-danger-strong: oklch(0.505 0.213 27.518);
+
+  /* --- 모서리 -----------------------------------------------------------
+     shadcn의 --radius-sm/md/lg 계열과 공존한다. 제품 컴포넌트는 아래를 쓴다. */
+  --radius-control: 0.75rem;
+  --radius-card: 1rem;
+  --radius-dialog: 1.25rem;
+  --radius-pill: 9999px;
+
+  /* --- 그림자 ----------------------------------------------------------- */
+  --shadow-card: 0 1px 2px oklch(0.541 0.247 293.01 / 0.04),
+    0 4px 16px oklch(0.541 0.247 293.01 / 0.06);
+  --shadow-floating: 0 4px 12px oklch(0.21 0.032 264.66 / 0.08),
+    0 12px 32px oklch(0.21 0.032 264.66 / 0.1);
+  --shadow-dialog: 0 16px 48px oklch(0.21 0.032 264.66 / 0.18);
+
+  /* --- 모션 -------------------------------------------------------------
+     duration은 Tailwind theme namespace가 없어 :root 변수로 함께 둔다. */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
+
+  /* --- 레이아웃 ---------------------------------------------------------- */
+  --container-content: 1500px;
+  --container-form: 720px;
+  /* TV 기준 해상도. 플레이어 레이아웃 검증용 breakpoint. */
+  --breakpoint-tv: 1920px;
+}
 
 :root {
-  color: #111827;
-  background: #f8f7ff;
+  /* --- 간격 -------------------------------------------------------------
+     Tailwind v4의 4px 기반 spacing scale을 그대로 쓴다. (p-1 = 4px) */
+  --spacing: 0.25rem;
+
+  /* --- 모션 시간 --------------------------------------------------------
+     사용법: transition-all duration-(--duration-base) ease-standard */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+
+  /* --- 레이어 -----------------------------------------------------------
+     사용법: z-(--layer-header). 컴포넌트에서 새 z-index를 만들지 않는다. */
+  --layer-base: 0;
+  --layer-header: 30;
+  --layer-dropdown: 40;
+  --layer-dialog: 50;
+  --layer-toast: 60;
+
+  /* --- 레이아웃 치수 ----------------------------------------------------- */
+  --layout-sidebar-width: 240px;
+  --layout-header-height: 4rem;
+
+  /* ======================================================================
+     shadcn theme 변수 → Flyer.G 토큰 연결
+     생성된 shadcn 컴포넌트는 아래 변수만 참조한다.
+     화면에서 컴포넌트 내부 색을 덮어쓰지 말고 이 표를 고친다.
+     ====================================================================== */
+  --background: var(--color-canvas);
+  --foreground: var(--color-ink);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-brand);
+  --primary-foreground: var(--color-brand-on);
+  --secondary: var(--color-surface-muted);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-surface-muted);
+  --muted-foreground: var(--color-ink-muted);
+  --accent: var(--color-brand-subtle);
+  --accent-foreground: var(--color-brand-strong);
+  --destructive: var(--color-danger);
+  --border: var(--color-line);
+  --input: var(--color-line);
+  --ring: var(--color-focus);
+  --radius: 0.75rem;
+  --sidebar: var(--color-surface);
+  --sidebar-foreground: var(--color-ink);
+  --sidebar-primary: var(--color-brand);
+  --sidebar-primary-foreground: var(--color-brand-on);
+  --sidebar-accent: var(--color-brand-subtle);
+  --sidebar-accent-foreground: var(--color-brand-strong);
+  --sidebar-border: var(--color-line);
+  --sidebar-ring: var(--color-focus);
+
   color-scheme: light;
-  font-family:
-    Pretendard,
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-* {
-  box-sizing: border-box;
+/* shadcn 컴포넌트가 쓰는 --color-* 별칭. 값은 위 표에서만 바뀐다. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-html {
-  min-width: 360px;
-  background: #f8f7ff;
+@layer base {
+  * {
+    box-sizing: border-box;
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    /* 관리자 화면이 지원하는 최소 폭. Phase 00 문서 6절의 검증 기준. */
+    min-width: 320px;
+    @apply bg-background font-sans;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    @apply bg-background text-foreground;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  background: #f8f7ff;
-}
-
-button,
-a,
-input,
-select {
-  font: inherit;
-}
-
-button,
-a {
-  -webkit-tap-highlight-color: transparent;
-}
-
-button {
-  border: 0;
-  cursor: pointer;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-#root {
-  min-height: 100vh;
-}
-
-.line-clamp-1 {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  overflow: hidden;
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
-
+/* TV 플레이어 배경. 명세 9.6에 따라 모션 감소 설정을 존중한다. */
 .tv-gradient {
   background:
-    radial-gradient(circle at 12% 18%, rgba(139, 92, 246, 0.22), transparent 30%),
-    radial-gradient(circle at 86% 20%, rgba(241, 90, 36, 0.14), transparent 28%),
-    linear-gradient(135deg, #f8f7ff 0%, #ffffff 45%, #efe9ff 100%);
-  animation: tv-gradient-drift 14s ease-in-out infinite alternate;
+    radial-gradient(
+      circle at 12% 18%,
+      color-mix(in oklch, var(--color-brand) 22%, transparent),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 86% 20%,
+      color-mix(in oklch, var(--color-accent-brand) 14%, transparent),
+      transparent 28%
+    ),
+    linear-gradient(
+      135deg,
+      var(--color-canvas) 0%,
+      var(--color-surface) 45%,
+      var(--color-brand-subtle) 100%
+    );
+  animation: tv-gradient-drift 14s var(--ease-standard) infinite alternate;
 }
 
 @keyframes tv-gradient-drift {
   from {
     transform: scale(1) translate3d(0, 0, 0);
-    filter: hue-rotate(0deg);
   }
-
   to {
     transform: scale(1.04) translate3d(-1%, 1%, 0);
-    filter: hue-rotate(8deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-gradient {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

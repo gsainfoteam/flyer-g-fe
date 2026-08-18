@@ -1,0 +1,204 @@
+# Flyer.G 디자인 시스템
+
+> 대상: 이후 Phase를 맡는 사람과 Agent
+> 범위: 디자인 원칙, 토큰, shadcn/ui 도입 방식, 공통 컴포넌트
+> 단일 원천: `src/index.css`(토큰), `src/shared/ui`(primitive), `src/shared/components`(제품 컴포넌트)
+
+## 1. 디자인 원칙
+
+전단지는 두 개의 화면 종류를 하나의 브랜드로 묶는다. 관리자 웹은 가까이서 많은 정보를
+빠르게 판단하는 화면이고, TV 플레이어는 멀리서 한 가지를 읽는 화면이다.
+
+1. **명료함이 먼저다.** 캠퍼스 구성원이 처음 봐도 무엇을 해야 하는지 알 수 있어야 한다.
+2. **정보 밀도는 관리자 화면의 기능이다.** 승인 대기 20건을 한 화면에서 판단할 수 있어야 한다.
+3. **중요한 상태와 작업은 시각적으로 분리한다.** 승인·반려·중단은 일반 작업과 다르게 보인다.
+4. **TV와 관리자 웹이 같은 브랜드로 느껴진다.** 같은 보라색, 같은 서체, 같은 모서리를 쓴다.
+5. **원거리 가독성과 접근성을 함께 만족한다.** TV는 큰 글자와 대비, 웹은 키보드와 label.
+6. **장식보다 콘텐츠와 상태를 우선한다.** 그림자와 모션은 위계를 만들 때만 쓴다.
+
+### 색 사용 규칙
+
+- **보라(brand)는 브랜드 전용이다.** 상태를 표현하는 데 쓰지 않는다.
+- **상태는 상태 색(info/success/warning/danger)만 쓴다.** 브랜드 색과 섞지 않는다.
+- **색만으로 의미를 전달하지 않는다.** 항상 문구를 함께 쓰고, 필요하면 아이콘을 더한다.
+  (명세 9.6)
+- 주황(`accent-brand`)은 포인트 요소에만 제한적으로 쓴다.
+
+## 2. 토큰
+
+모든 토큰은 `src/index.css` 한 곳에서 정의한다. 컴포넌트에서 임의 hex, 임의 shadow,
+임의 z-index를 새로 만들지 않는다. MVP는 light theme만 지원한다.
+
+| 갈래 | 토큰 | 사용 예 |
+|---|---|---|
+| 브랜드 | `brand`, `brand-strong`, `brand-muted`, `brand-subtle`, `brand-border`, `brand-on`, `accent-brand` | `bg-brand`, `text-brand-strong` |
+| 표면 | `canvas`, `surface`, `surface-muted` | `bg-canvas`, `bg-surface` |
+| 선·글자 | `line`, `line-strong`, `ink`, `ink-muted`, `ink-subtle`, `focus` | `border-line`, `text-ink-muted` |
+| 상태 | `info`/`success`/`warning`/`danger` × `-subtle`, `-strong` | `bg-danger-subtle text-danger-strong` |
+| 타이포 | `display`, `title`, `heading`, `body`, `label`, `caption` | `text-body`, `text-display` |
+| 간격 | Tailwind 4px scale (`--spacing: 0.25rem`) | `p-4` = 16px |
+| 모서리 | `control`, `card`, `dialog`, `pill` | `rounded-card` |
+| 그림자 | `card`, `floating`, `dialog` | `shadow-card` |
+| 모션 | `--duration-fast/base/slow`, `ease-standard`, `ease-emphasized` | `duration-(--duration-base) ease-standard` |
+| 레이아웃 | `--container-content`, `--container-form`, `--layout-sidebar-width`, `--layout-header-height`, `--breakpoint-tv` | `max-w-content` |
+| 레이어 | `--layer-header/dropdown/dialog/toast` | `z-(--layer-header)` |
+
+`--duration-*`, `--layer-*`, `--layout-*`는 Tailwind theme namespace가 없어 `:root` 변수로
+두고 arbitrary value 문법(`z-(--layer-dialog)`)으로 쓴다.
+
+### 토큰 바꾸는 법
+
+1. 색·타이포·모서리를 바꾸려면 `src/index.css`의 `@theme` 블록만 고친다.
+2. shadcn 컴포넌트의 색을 바꾸려면 `:root`의 **shadcn theme 변수 연결표**를 고친다.
+   (`--primary: var(--color-brand)` 같은 줄)
+3. 화면이나 컴포넌트에서 shadcn 내부 색을 덮어쓰지 않는다.
+
+## 3. shadcn/ui 도입 방식
+
+shadcn/ui는 런타임 패키지가 아니라 **프로젝트가 소유하는 소스**다. 생성된 파일도
+프로젝트 코드와 동일하게 검토·테스트·유지보수한다.
+
+- 설치: `bunx shadcn@latest init --base radix --preset nova --css-variables`
+- 추가: `bunx shadcn@latest add <component>`
+- 설정: `components.json` (alias는 `@/shared/ui`, `@/shared/lib/utils`)
+- 패키지 매니저: Bun. `shadcn` CLI는 devDependency다.
+- 공식 registry만 사용한다. 출처가 불명확한 third-party registry는 쓰지 않는다.
+
+> `shadcn` CLI는 alias를 `tsconfig.json`에서 찾는다. 그래서 빌드에 쓰이지 않는
+> `tsconfig.json`에도 `paths`를 둔다. 없으면 저장소 루트에 `@/` 디렉터리를 만들어 버린다.
+
+### 레이어 구분
+
+```text
+src/shared/ui/          shadcn primitive (생성본)
+src/shared/components/  primitive를 조합한 Flyer.G 제품 컴포넌트
+src/features/**         특정 기능에서만 쓰는 컴포넌트
+```
+
+- `Button`, `Dialog`처럼 의미가 그대로인 primitive에 이름만 바꾼 wrapper를 만들지 않는다.
+- 제품 컴포넌트는 반복되는 **제품 의미나 정책**을 담을 때만 만든다.
+
+### 설치한 컴포넌트와 선택 이유
+
+| 컴포넌트 | 쓰는 곳 |
+|---|---|
+| `button` | 모든 작업 버튼. 승인·반려·중단의 variant 구분 |
+| `input`, `textarea`, `select`, `label` | 게시 신청 폼, 반려 사유 |
+| `card` | 대시보드 섹션, 목록 카드 |
+| `tabs` | 상태별 콘텐츠 필터 |
+| `badge` | `StatusBadge`의 기반 |
+| `dialog` | `ConfirmActionDialog`의 기반 |
+| `dropdown-menu` | 목록 행의 권한별 작업 메뉴 |
+| `pagination` | 콘텐츠 목록 (명세 FR-DASH-02) |
+| `skeleton`, `spinner` | 로딩 표현 |
+| `alert` | 폼·상세의 경고와 안내 |
+| `sonner` | 작업 결과 알림 |
+
+전체 컴포넌트를 한꺼번에 설치하지 않았다. 필요한 화면이 생길 때 추가한다.
+
+### 생성본 수정 내역
+
+재생성·비교가 가능하도록 구조는 바꾸지 않고 최소한만 고쳤다.
+
+| 파일 | 수정 | 이유 |
+|---|---|---|
+| `sonner.tsx` | `next-themes` 의존 제거, `theme="light"` 고정 | MVP는 light theme만 지원. theme provider를 두지 않는다 |
+| `spinner.tsx` | `aria-label`을 "불러오는 중"으로 | 한국어 사용자 대상 |
+| `dialog.tsx` | 닫기 버튼 sr-only 문구를 "닫기"로 | 한국어 사용자 대상 |
+| `pagination.tsx` | 기본 문구와 `aria-label`을 한국어로 | 한국어 사용자 대상 |
+| `alert.tsx` | `info`/`success`/`warning` variant 추가 | 제품에 필요한 semantic tone (Phase 00 문서 4절) |
+
+`eslint.config.js`는 `src/shared/ui/**`에서 `react-refresh/only-export-components`를 끈다.
+생성본이 컴포넌트와 cva variant를 한 파일에서 내보내기 때문이며, 생성본 구조를 바꾸는
+대신 규칙을 완화했다.
+
+## 4. Flyer.G 제품 컴포넌트
+
+`@/shared/components`에서 가져온다.
+
+### `StatusBadge`
+
+명세 6.3의 10개 상태를 label + icon + tone으로 그린다. 상태 문구를 화면에서 직접 쓰지 않는다.
+
+```tsx
+<StatusBadge status="PENDING_REVIEW" />
+<StatusBadge status="PUBLISHED" hideIcon />   // 좁은 목록
+```
+
+### `SectionHeader`
+
+제목, 설명, 작업 버튼의 배치를 통일한다. `as`로 heading level을 문서 구조에 맞춘다.
+
+```tsx
+<SectionHeader as="h1" title="내 콘텐츠" description="..." action={<Button>등록</Button>} />
+```
+
+### `FormField`
+
+label, description, error를 `aria-describedby`로 연결한다. 화면마다 연결을 새로 만들지 않는다.
+
+```tsx
+<FormField label="제목" description="1~80자" error={errors.title} required>
+  {(control) => <Input {...control} value={title} onChange={...} />}
+</FormField>
+```
+
+### `PageState` / `LoadingState` / `EmptyState` / `ErrorState`
+
+로딩 → 오류 → 빈 상태 → 본문 순서를 강제한다. `ErrorState`는 `ApiError`에서 사용자 문구와
+요청 ID만 뽑고 내부 stack이나 서버 message를 노출하지 않는다.
+
+```tsx
+<PageState isLoading={isPending} error={error} isEmpty={items.length === 0}
+  onRetry={refetch} empty={{ title: "아직 신청한 콘텐츠가 없습니다." }}>
+  {items.map(...)}
+</PageState>
+```
+
+### `ConfirmActionDialog`
+
+승인·반려·중단의 확인 절차를 통일한다.
+
+- `tone="destructive"`는 게시자에게 영향이 큰 작업에 쓴다.
+- 처리 중 중복 클릭을 막는다.
+- **실패하면 닫지 않는다.** 오류 표시는 `onError`로 호출부가 담당한다.
+- focus trap, Escape 닫기, focus 복원은 Radix Dialog 동작을 그대로 쓴다.
+
+`AsyncButton`은 만들지 않았다. 중복 제출 차단이 지금은 이 dialog 안에만 있어서, 실제로
+반복될 때 Phase 02~04에서 도입한다.
+
+## 5. 컴포넌트 카탈로그
+
+```bash
+bun run dev     # http://localhost:5173/catalog
+```
+
+모든 variant, 상태, 긴 한국어 문구를 한 화면에서 확인한다. **새 화면을 만들기 전에 여기서
+쓸 컴포넌트를 먼저 찾는다.**
+
+production 빌드에서는 `import.meta.env.DEV` 분기로 import 자체가 제거되어 번들에 포함되지
+않고 경로로도 접근할 수 없다.
+
+## 6. 검증 기록 (2026-08-18)
+
+| 항목 | 방법 | 결과 |
+|---|---|---|
+| 토큰 해석 | 브라우저 computed style | `--color-brand`, `--radius-card`, `--shadow-*`, `--layer-*` 모두 의도한 값 |
+| 그림자 적용 | computed `box-shadow` | `shadow-floating` 2개 레이어 정상 |
+| 320px overflow | `body.scrollWidth` 측정 | 없음 (`html { min-width }`를 360px → 320px로 낮춤) |
+| 1280px overflow | 동일 | 없음 |
+| Dialog focus 이동 | 브라우저 | 열면 focus가 dialog 안으로 이동 |
+| Dialog focus 복원 | 브라우저 | 닫으면 trigger로 복원 |
+| Dialog Escape 닫기 | jsdom 테스트 | 통과 |
+| 확인 버튼 비활성 | 브라우저 | 사유 미입력 시 disabled |
+| Button/Tabs 키보드 | jsdom 테스트 | Tab 포커스, Enter 실행, 화살표 탭 이동 통과 |
+
+> focus 복원은 jsdom에서 재현되지 않아 단위 테스트에서 제외했다. Radix FocusScope의
+> 동작이며 실제 브라우저에서 확인했다. 회귀가 걱정되면 Phase 07의 E2E에서 다시 잡는다.
+
+## 7. 남은 일
+
+- 기존 세 화면은 아직 프로토타입 스타일을 쓴다. Phase 00-C에서 이 토큰과 컴포넌트로 옮긴다.
+- `App.tsx`의 손수 만든 `useToast`는 timer 정리가 없다. 00-C에서 `sonner`로 교체한다.
+- TV 플레이어 전용 표현(포스터 렌더러, QR, 빈 화면 fallback)은 여기서 일반화하지 않았다.
+  Phase 05에서 Flyer.G 전용 컴포넌트로 만든다.
