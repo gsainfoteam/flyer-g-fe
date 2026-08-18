@@ -16,13 +16,13 @@ export function CanvasPreview({ poster, customPreviewUrl }: CanvasPreviewProps) 
   return (
     <main className="flex min-w-0 flex-1 flex-col bg-canvas">
       <div className="border-b border-line bg-surface/60 px-4 py-3 backdrop-blur">
-        <p className="text-center text-label font-semibold text-ink-muted">
+        <p className="text-center text-caption text-ink-muted">
           TV 표시 미리보기 · 세로형 포스터 (3:4)
         </p>
       </div>
 
       <div className="flex flex-1 items-center justify-center overflow-hidden p-6">
-        <div className="aspect-[3/4] h-full max-h-full overflow-hidden rounded-card bg-surface shadow-dialog ring-1 ring-line">
+        <div className="aspect-[3/4] h-full max-h-full overflow-hidden rounded-card bg-surface shadow-floating ring-1 ring-line">
           {customPreviewUrl ? (
             <img
               src={customPreviewUrl}

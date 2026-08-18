@@ -21,77 +21,83 @@
 
   /* --- 타이포그래피 -----------------------------------------------------
      display는 TV 원거리 가독성용, 나머지는 관리자 웹용이다. */
-  --text-display: 3.5rem;
-  --text-display--line-height: 1.08;
-  --text-display--font-weight: 900;
-  --text-title: 1.5rem;
-  --text-title--line-height: 1.3;
-  --text-title--font-weight: 800;
-  --text-heading: 1.125rem;
-  --text-heading--line-height: 1.4;
-  --text-heading--font-weight: 700;
+  /* 굵기는 400 / 500 / 600 / 700 네 단계만 쓴다. 900은 쓰지 않는다. */
+  --text-display: 3.25rem;
+  --text-display--line-height: 1.1;
+  --text-display--font-weight: 700;
+  --text-metric: 1.75rem;
+  --text-metric--line-height: 1.15;
+  --text-metric--font-weight: 600;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.35;
+  --text-title--font-weight: 600;
+  --text-heading: 0.9375rem;
+  --text-heading--line-height: 1.45;
+  --text-heading--font-weight: 600;
   --text-body: 0.875rem;
-  --text-body--line-height: 1.6;
-  --text-label: 0.75rem;
-  --text-label--line-height: 1.4;
-  --text-label--font-weight: 600;
-  --text-caption: 0.6875rem;
+  --text-body--line-height: 1.55;
+  --text-body--font-weight: 400;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.45;
+  --text-label--font-weight: 500;
+  --text-caption: 0.75rem;
   --text-caption--line-height: 1.4;
+  --text-caption--font-weight: 400;
 
   /* --- 브랜드 -----------------------------------------------------------
      보라색은 브랜드 전용이다. 상태 표현에 쓰지 않는다. */
-  --color-brand: oklch(0.541 0.247 293.01);
-  --color-brand-strong: oklch(0.491 0.27 292.58);
+  --color-brand: oklch(0.511 0.244 292.8);
+  --color-brand-strong: oklch(0.446 0.216 292.3);
   --color-brand-muted: oklch(0.606 0.25 292.72);
-  --color-brand-subtle: oklch(0.969 0.016 293.76);
-  --color-brand-border: oklch(0.894 0.057 293.28);
+  --color-brand-subtle: oklch(0.968 0.014 293.7);
+  --color-brand-border: oklch(0.902 0.048 293.3);
   --color-brand-on: oklch(1 0 0);
-  /* 보조 강조색. 포인트 요소에만 제한적으로 쓴다. */
-  --color-accent-brand: oklch(0.661 0.196 38.21);
+  /* 로고의 G 한 글자에만 쓰는 보조색. 다른 곳에 쓰지 않는다. */
+  --color-accent-brand: oklch(0.628 0.208 38.5);
 
   /* --- 표면과 글자 ------------------------------------------------------ */
-  --color-canvas: oklch(0.979 0.011 291.96);
+  --color-canvas: oklch(0.977 0.001 286.4);
   --color-surface: oklch(1 0 0);
-  --color-surface-muted: oklch(0.971 0.003 264.54);
-  --color-line: oklch(0.928 0.006 264.53);
-  --color-line-strong: oklch(0.872 0.01 258.34);
-  --color-ink: oklch(0.21 0.032 264.66);
-  --color-ink-muted: oklch(0.551 0.023 264.36);
-  --color-ink-subtle: oklch(0.707 0.022 261.33);
-  --color-focus: oklch(0.541 0.247 293.01);
+  --color-surface-muted: oklch(0.963 0.002 286.4);
+  --color-line: oklch(0.918 0.004 286.3);
+  --color-line-strong: oklch(0.856 0.006 286.3);
+  --color-ink: oklch(0.208 0.006 285.9);
+  --color-ink-muted: oklch(0.534 0.012 285.9);
+  --color-ink-subtle: oklch(0.681 0.014 286.1);
+  --color-focus: oklch(0.511 0.244 292.8);
 
   /* --- 상태 색 ----------------------------------------------------------
      solid는 아이콘·강조, subtle은 배경, strong은 subtle 위 글자색이다.
      색만으로 상태를 구분하지 않고 항상 문구를 함께 쓴다. (명세 9.6) */
   --color-info: oklch(0.546 0.245 262.88);
-  --color-info-subtle: oklch(0.97 0.014 254.6);
+  --color-info-subtle: oklch(0.968 0.012 254.6);
   --color-info-strong: oklch(0.488 0.243 264.38);
 
   --color-success: oklch(0.627 0.194 149.21);
-  --color-success-subtle: oklch(0.962 0.044 156.74);
+  --color-success-subtle: oklch(0.962 0.031 156.7);
   --color-success-strong: oklch(0.527 0.154 150.07);
 
   --color-warning: oklch(0.666 0.179 58.32);
-  --color-warning-subtle: oklch(0.973 0.071 103.19);
+  --color-warning-subtle: oklch(0.973 0.046 92.5);
   --color-warning-strong: oklch(0.555 0.163 48.998);
 
   --color-danger: oklch(0.577 0.245 27.325);
-  --color-danger-subtle: oklch(0.971 0.013 17.38);
+  --color-danger-subtle: oklch(0.969 0.015 17.4);
   --color-danger-strong: oklch(0.505 0.213 27.518);
 
   /* --- 모서리 -----------------------------------------------------------
      shadcn의 --radius-sm/md/lg 계열과 공존한다. 제품 컴포넌트는 아래를 쓴다. */
-  --radius-control: 0.75rem;
-  --radius-card: 1rem;
-  --radius-dialog: 1.25rem;
+  --radius-control: 0.5rem;
+  --radius-card: 0.625rem;
+  --radius-dialog: 0.75rem;
+  /* pill은 상태 배지처럼 텍스트를 감싸는 요소에만 쓴다. 버튼에는 쓰지 않는다. */
   --radius-pill: 9999px;
 
   /* --- 그림자 ----------------------------------------------------------- */
-  --shadow-card: 0 1px 2px oklch(0.541 0.247 293.01 / 0.04),
-    0 4px 16px oklch(0.541 0.247 293.01 / 0.06);
-  --shadow-floating: 0 4px 12px oklch(0.21 0.032 264.66 / 0.08),
-    0 12px 32px oklch(0.21 0.032 264.66 / 0.1);
-  --shadow-dialog: 0 16px 48px oklch(0.21 0.032 264.66 / 0.18);
+  --shadow-card: 0 1px 2px oklch(0.208 0.006 285.9 / 0.05);
+  --shadow-floating: 0 2px 4px oklch(0.208 0.006 285.9 / 0.06),
+    0 8px 24px oklch(0.208 0.006 285.9 / 0.08);
+  --shadow-dialog: 0 12px 40px oklch(0.208 0.006 285.9 / 0.16);
 
   /* --- 모션 -------------------------------------------------------------
      duration은 Tailwind theme namespace가 없어 :root 변수로 함께 둔다. */
@@ -151,7 +157,7 @@
   --border: var(--color-line);
   --input: var(--color-line);
   --ring: var(--color-focus);
-  --radius: 0.75rem;
+  --radius: 0.5rem;
   --sidebar: var(--color-surface);
   --sidebar-foreground: var(--color-ink);
   --sidebar-primary: var(--color-brand);
@@ -246,42 +252,22 @@
   }
 }
 
-/* TV 플레이어 배경. 명세 9.6에 따라 모션 감소 설정을 존중한다. */
-.tv-gradient {
+/*
+ * TV 플레이어 배경.
+ *
+ * 공공 화면이므로 움직이지 않는다. 시청자의 주의는 포스터로 가야 하고,
+ * Raspberry Pi에서 상시 애니메이션은 불필요한 연산이다. (명세 9.2, 9.6)
+ */
+.tv-surface {
   background:
-    radial-gradient(
-      circle at 12% 18%,
-      color-mix(in oklch, var(--color-brand) 22%, transparent),
-      transparent 30%
-    ),
-    radial-gradient(
-      circle at 86% 20%,
-      color-mix(in oklch, var(--color-accent-brand) 14%, transparent),
-      transparent 28%
-    ),
     linear-gradient(
-      135deg,
-      var(--color-canvas) 0%,
-      var(--color-surface) 45%,
-      var(--color-brand-subtle) 100%
+      180deg,
+      var(--color-surface) 0%,
+      var(--color-canvas) 100%
     );
-  animation: tv-gradient-drift 14s var(--ease-standard) infinite alternate;
-}
-
-@keyframes tv-gradient-drift {
-  from {
-    transform: scale(1) translate3d(0, 0, 0);
-  }
-  to {
-    transform: scale(1.04) translate3d(-1%, 1%, 0);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tv-gradient {
-    animation: none;
-  }
-
   *,
   *::before,
   *::after {

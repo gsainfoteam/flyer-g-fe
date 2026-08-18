@@ -48,7 +48,7 @@ export function RegisterMetaPanel({
   return (
     <aside className="flex h-full w-[288px] shrink-0 flex-col overflow-y-auto border-l border-line bg-surface">
       <div className="border-b border-line px-4 py-3.5">
-        <h2 className="text-body font-bold text-ink">게시 정보</h2>
+        <h2 className="text-heading text-ink">게시 정보</h2>
         <p className="mt-0.5 text-caption text-ink-subtle">
           제목, 기간, 링크를 입력하세요
         </p>
@@ -124,7 +124,7 @@ export function RegisterMetaPanel({
           )}
         </FormField>
 
-        <div className="flex items-center gap-3 rounded-card bg-surface-muted p-3">
+        <div className="flex items-center gap-3 rounded-card border border-line bg-surface-muted p-3">
           <QRCodeBox value={detailUrl || "https://ziggle.gistory.me"} size="md" />
           <p className="text-caption leading-relaxed text-ink-muted">
             실제 스캔 가능한 QR은 Phase 02에서 붙입니다. 지금은 자리표시자입니다.

@@ -71,7 +71,7 @@ export function QRCodeBox({
   return (
     <div className="inline-flex flex-col items-center gap-2">
       <div
-        className={`${sizeClassName[size]} rounded-control bg-white p-1.5 shadow-card ring-1 ring-black/5`}
+        className={`${sizeClassName[size]} rounded-sm bg-white p-1.5 ring-1 ring-line`}
         aria-label={`QR 코드 자리표시자: ${value}`}
       >
         <div

@@ -32,14 +32,14 @@ export function UploadPanel({
   return (
     <aside className="flex h-full w-[272px] shrink-0 flex-col overflow-y-auto border-r border-line bg-surface">
       <div className="border-b border-line px-4 py-3.5">
-        <h2 className="text-body font-bold text-ink">포스터 업로드</h2>
+        <h2 className="text-heading text-ink">포스터 업로드</h2>
         <p className="mt-0.5 text-caption text-ink-subtle">
           이미지를 선택하거나 예시 포스터를 고르세요
         </p>
       </div>
 
       <div className="p-4">
-        <label className="flex cursor-pointer flex-col items-center justify-center rounded-card border-2 border-dashed border-brand-border bg-brand-subtle/60 px-4 py-6 text-center transition hover:bg-brand-subtle focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus">
+        <label className="flex cursor-pointer flex-col items-center justify-center rounded-card border border-dashed border-line-strong bg-surface-muted/50 px-4 py-7 text-center transition hover:bg-surface-muted focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus">
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp"
@@ -49,22 +49,22 @@ export function UploadPanel({
               if (file) onFileSelect(file);
             }}
           />
-          <div className="grid size-12 place-items-center rounded-pill bg-surface text-brand shadow-card">
-            <UploadCloud className="size-6" aria-hidden="true" />
+          <div className="grid size-10 place-items-center rounded-pill border border-line bg-surface text-ink-muted">
+            <UploadCloud className="size-5" aria-hidden="true" />
           </div>
-          <p className="mt-3 text-label font-bold text-ink">
+          <p className="mt-3 text-label text-ink">
             이미지 파일을 선택해 업로드하세요
           </p>
           <p className="mt-1 text-caption text-ink-subtle">
             JPG, PNG, WebP (최대 10MB)
           </p>
-          <span className="mt-3 rounded-pill bg-brand px-4 py-1.5 text-label font-black text-brand-on">
+          <span className="mt-3 rounded-control bg-ink px-3 py-1.5 text-caption text-surface">
             파일 선택
           </span>
         </label>
 
         {customPreviewUrl && (
-          <div className="mt-4 overflow-hidden rounded-control ring-2 ring-brand">
+          <div className="mt-4 overflow-hidden rounded-control ring-1 ring-brand">
             <div className="aspect-[3/4] w-full bg-surface-muted">
               <img
                 src={customPreviewUrl}
@@ -72,14 +72,14 @@ export function UploadPanel({
                 className="h-full w-full object-cover"
               />
             </div>
-            <p className="bg-brand-subtle px-2 py-1.5 text-center text-caption font-bold text-brand-strong">
+            <p className="bg-brand-subtle px-2 py-1.5 text-center text-caption text-brand-strong">
               방금 업로드한 이미지
             </p>
           </div>
         )}
 
         <div className="mt-5">
-          <h3 className="text-label font-bold text-ink">
+          <h3 className="text-label text-ink">
             예시 포스터{" "}
             <span className="text-ink-subtle">({samples.length})</span>
           </h3>
@@ -92,11 +92,11 @@ export function UploadPanel({
                 aria-label={`${submission.title} 포스터 선택`}
                 aria-pressed={!customPreviewUrl && selectedId === submission.id}
                 className={cn(
-                  "overflow-hidden rounded-control ring-2 transition",
+                  "overflow-hidden rounded-sm ring-1 transition",
                   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
                   !customPreviewUrl && selectedId === submission.id
                     ? "ring-brand"
-                    : "ring-transparent hover:ring-brand-border",
+                    : "ring-line hover:ring-line-strong",
                 )}
               >
                 <div className="aspect-[3/4] w-full overflow-hidden bg-surface-muted">

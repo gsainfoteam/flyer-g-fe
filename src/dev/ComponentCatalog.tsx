@@ -109,12 +109,13 @@ function TokenSwatches() {
       </div>
 
       <div className="space-y-1">
-        <p className="text-display">display 3.5rem</p>
-        <p className="text-title">title 1.5rem</p>
-        <p className="text-heading">heading 1.125rem</p>
-        <p className="text-body">body 0.875rem — {LONG_KO}</p>
-        <p className="text-label">label 0.75rem</p>
-        <p className="text-caption">caption 0.6875rem</p>
+        <p className="text-display">display · TV 제목</p>
+        <p className="text-metric tabular-nums">metric · 1 234</p>
+        <p className="text-title">title · 화면 제목</p>
+        <p className="text-heading">heading · 섹션 제목</p>
+        <p className="text-body">body — {LONG_KO}</p>
+        <p className="text-label">label · 목록 제목과 입력 label</p>
+        <p className="text-caption">caption · 보조 설명</p>
       </div>
 
       {/* Tailwind는 class 이름을 정적으로 추출하므로 문자열을 합성하지 않는다. */}

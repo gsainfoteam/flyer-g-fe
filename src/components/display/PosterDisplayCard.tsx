@@ -14,14 +14,14 @@ export function PosterDisplayCard({
   compact = false,
 }: PosterDisplayCardProps) {
   return (
-    <article className="flex h-full items-center justify-center">
-      <div className="relative aspect-[3/4] h-full max-h-full overflow-hidden rounded-card shadow-floating ring-1 ring-white/60">
-        <PosterArtwork poster={poster} fit="cover" />
-        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-ink/85 via-ink/40 to-transparent p-3 pt-10 text-white">
+    <article className="flex h-full min-w-0 items-center justify-center">
+      <div className="relative aspect-[3/4] h-full max-h-full w-auto max-w-full overflow-hidden rounded-card shadow-floating ring-1 ring-line">
+        <PosterArtwork poster={poster} fit="cover" hideFallbackText />
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-ink/80 via-ink/35 to-transparent p-3 pt-12 text-white">
           <div className="min-w-0">
             <span
               className={cn(
-                "inline-block rounded-pill bg-brand/40 px-2 py-0.5 font-black text-white backdrop-blur",
+                "inline-block rounded-pill bg-white/20 px-2 py-0.5 font-medium text-white backdrop-blur",
                 compact ? "text-caption" : "text-label",
               )}
             >
@@ -29,7 +29,7 @@ export function PosterDisplayCard({
             </span>
             <h3
               className={cn(
-                "mt-1.5 line-clamp-1 break-keep font-black",
+                "mt-1.5 line-clamp-1 break-keep font-semibold",
                 compact ? "text-body" : "text-title",
               )}
             >
@@ -37,7 +37,7 @@ export function PosterDisplayCard({
             </h3>
             <p
               className={cn(
-                "mt-0.5 truncate font-semibold text-white/70",
+                "mt-0.5 truncate text-white/70",
                 compact ? "text-caption" : "text-body",
               )}
             >

@@ -18,7 +18,7 @@ export function DisplayLayoutSwitcher({
   onModeChange,
 }: DisplayLayoutSwitcherProps) {
   return (
-    <div className="flex items-center gap-1 rounded-pill bg-surface/70 p-1.5 shadow-floating ring-1 ring-white/60 backdrop-blur-xl">
+    <div className="flex items-center gap-1 rounded-control border border-line bg-surface/80 p-1 backdrop-blur">
       {modes.map((item) => {
         const Icon = item.icon;
         const active = mode === item.id;
@@ -28,10 +28,10 @@ export function DisplayLayoutSwitcher({
             onClick={() => onModeChange(item.id)}
             aria-pressed={active}
             className={cn(
-              "inline-flex items-center gap-2 rounded-pill px-4 py-2 text-body font-bold transition",
+              "inline-flex items-center gap-2 rounded-sm px-3 py-1.5 text-caption transition",
               active
-                ? "bg-brand text-brand-on shadow-card"
-                : "text-ink-muted hover:bg-surface",
+                ? "bg-ink text-surface"
+                : "text-ink-muted hover:bg-surface-muted",
             )}
           >
             <Icon className="size-4" aria-hidden="true" />

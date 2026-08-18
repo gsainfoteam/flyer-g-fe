@@ -27,11 +27,11 @@ export function LiveClock({ now }: LiveClockProps) {
 
   return (
     <div className="text-right">
-      <p className="text-heading font-black text-ink-muted">
+      <p className="text-heading font-normal text-ink-muted">
         {year}. {pad(month)}. {pad(day)}. ({weekday})
       </p>
-      <p className="text-[2.25rem] font-black leading-tight tracking-tight text-ink">
-        {hour12}:{pad(minute)} <span className="text-title">{meridiem}</span>
+      <p className="text-[2rem] font-semibold leading-tight tracking-tight text-ink">
+        {hour12}:{pad(minute)} <span className="text-title font-normal text-ink-muted">{meridiem}</span>
       </p>
     </div>
   );

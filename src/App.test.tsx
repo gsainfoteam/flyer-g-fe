@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import App from "./App";
 import { AppProviders } from "./app/providers/AppProviders";
@@ -33,8 +33,15 @@ describe("대시보드", () => {
     renderApp();
 
     expect(await screen.findByText("전체 콘텐츠")).toBeInTheDocument();
-    expect(screen.getByText("게시 중인 콘텐츠")).toBeInTheDocument();
-    expect(screen.getByText("예약된 콘텐츠")).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "운영 요약" }),
+    ).toBeInTheDocument();
+
+    // 요약 수치는 repository가 계산한 값을 그대로 쓴다.
+    const summary = screen.getByRole("region", { name: "운영 요약" });
+    for (const label of ["게시 중", "예약됨", "승인 대기"]) {
+      expect(within(summary).getByText(label)).toBeInTheDocument();
+    }
   });
 
   it("통계의 기준 시각을 함께 표시한다", async () => {

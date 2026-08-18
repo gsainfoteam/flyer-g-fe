@@ -1,9 +1,6 @@
-import { fromSubmissionView } from "@/entities/poster";
 import type { SubmissionView } from "@/entities/submission/model/types";
-import { EmptyState, StatusBadge } from "@/shared/components";
-import { formatSeoulDateTime } from "@/shared/lib/datetime";
-import { Badge } from "@/shared/ui/badge";
-import { PosterArtwork } from "../common/PosterArtwork";
+import { EmptyState } from "@/shared/components";
+import { SubmissionRow } from "../common/SubmissionRow";
 
 /**
  * 승인 대기 목록(읽기 전용).
@@ -18,37 +15,23 @@ interface ApprovalPanelProps {
 
 export function ApprovalPanel({ submissions }: ApprovalPanelProps) {
   return (
-    <section className="rounded-card border border-line bg-surface p-5 shadow-card">
-      <div className="flex items-center justify-between">
+    <section className="min-w-0 rounded-card border border-line bg-surface">
+      <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-3">
         <h2 className="text-heading text-ink">승인 대기</h2>
-        <Badge variant="outline" className="bg-brand-subtle text-brand-strong">
+        <span className="text-caption tabular-nums text-ink-muted">
           {submissions.length}건
-        </Badge>
+        </span>
       </div>
 
-      <div className="mt-4 space-y-3">
-        {submissions.map((submission) => (
-          <div key={submission.id} className="flex items-center gap-3">
-            <div className="aspect-[3/4] w-9 shrink-0 overflow-hidden rounded-md bg-surface-muted">
-              <PosterArtwork poster={fromSubmissionView(submission)} fit="cover" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-body font-semibold text-ink">
-                {submission.title}
-              </p>
-              <p className="mt-0.5 truncate text-caption text-ink-subtle">
-                {submission.organizationName} ·{" "}
-                {formatSeoulDateTime(submission.startAt)} 시작
-              </p>
-            </div>
-            <StatusBadge status={submission.status} hideIcon className="shrink-0" />
-          </div>
-        ))}
-
-        {submissions.length === 0 && (
-          <EmptyState title="승인 대기 항목이 없습니다." />
-        )}
-      </div>
+      {submissions.length === 0 ? (
+        <EmptyState title="승인 대기 항목이 없습니다." />
+      ) : (
+        <ul className="divide-y divide-line px-5">
+          {submissions.map((submission) => (
+            <SubmissionRow key={submission.id} submission={submission} />
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

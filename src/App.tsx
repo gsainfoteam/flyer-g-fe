@@ -1,11 +1,11 @@
-import { Clock, FileText, Monitor, Pause, Play } from "lucide-react";
+import { Monitor, Pause, Play } from "lucide-react";
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import "./App.css";
 import { Logo } from "./components/common/Logo";
 import { ApprovalPanel } from "./components/dashboard/ApprovalPanel";
 import { RecentContentSection } from "./components/dashboard/RecentContentSection";
-import { StatCard } from "./components/dashboard/StatCard";
+import { SummaryStats } from "./components/dashboard/SummaryStats";
 import { DisplayLayoutSwitcher } from "./components/display/DisplayLayoutSwitcher";
 import type { DisplayMode } from "./components/display/DisplayLayoutSwitcher";
 import { FourSplitDisplay } from "./components/display/FourSplitDisplay";
@@ -53,51 +53,30 @@ function DashboardPage() {
             <div className="md:hidden">
               <Logo />
             </div>
-            <TopHeader />
+            <TopHeader
+              title="대시보드"
+              description="게시 신청 현황과 승인 대기를 확인합니다."
+            />
 
             <PageState isLoading={isLoading} error={error} onRetry={retry}>
               {summary.data && list.data && pending.data && (
-                <div className="space-y-6">
-                  <section
-                    aria-label="운영 요약"
-                    className="grid grid-cols-2 gap-4 md:grid-cols-4"
-                  >
-                    <StatCard
-                      label="전체 콘텐츠"
-                      value={String(summary.data.total)}
-                      unit="개"
-                      icon={FileText}
-                      tone="brand"
-                    />
-                    <StatCard
-                      label="게시 중인 콘텐츠"
-                      value={String(summary.data.published)}
-                      unit="개"
-                      icon={Monitor}
-                      tone="success"
-                    />
-                    <StatCard
-                      label="예약된 콘텐츠"
-                      value={String(summary.data.scheduled)}
-                      unit="개"
-                      icon={Clock}
-                      tone="info"
-                    />
-                    <StatCard
-                      label="승인 대기"
-                      value={String(summary.data.pendingReview)}
-                      unit="건"
-                      icon={Clock}
-                      tone="warning"
-                    />
-                  </section>
+                <div className="space-y-5">
+                  <SummaryStats
+                    caption={`${formatSeoulDateTime(summary.data.calculatedAt)} 기준`}
+                    items={[
+                      { label: "전체 콘텐츠", value: summary.data.total, unit: "개" },
+                      { label: "게시 중", value: summary.data.published, unit: "개" },
+                      { label: "예약됨", value: summary.data.scheduled, unit: "개" },
+                      {
+                        label: "승인 대기",
+                        value: summary.data.pendingReview,
+                        unit: "건",
+                        emphasis: true,
+                      },
+                    ]}
+                  />
 
-                  {/* 명세 FR-DASH-01: 통계의 기준 시각을 명시한다. */}
-                  <p className="text-caption text-ink-subtle">
-                    {formatSeoulDateTime(summary.data.calculatedAt)} 기준
-                  </p>
-
-                  <div className="grid gap-6 lg:grid-cols-3">
+                  <div className="grid gap-5 lg:grid-cols-3">
                     <div className="min-w-0 lg:col-span-2">
                       <RecentContentSection submissions={list.data.items} />
                     </div>
@@ -188,8 +167,8 @@ function StudioPage() {
           <div className="h-8 w-px bg-line" />
           <div>
             <h1 className="text-heading text-ink">콘텐츠 등록</h1>
-            <p className="text-caption text-ink-subtle">
-              포스터를 올리고 TV 게시판에 게시를 신청하세요.
+            <p className="text-caption text-ink-muted">
+              포스터를 올리고 TV 게시판에 게시를 신청합니다.
             </p>
           </div>
         </div>
@@ -284,7 +263,7 @@ function DisplayPage() {
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden p-6 text-ink">
-      <div className="tv-gradient absolute inset-0" />
+      <div className="tv-surface absolute inset-0" />
 
       {/* 운영 화면에서는 이 컨트롤을 숨겨야 한다. preview mode 분리는 Phase 05 범위. */}
       <header className="relative z-(--layer-header) flex shrink-0 justify-center pb-4">
