@@ -37,7 +37,7 @@ export function PosterDisplayCard({
             </h3>
             <p
               className={cn(
-                "mt-0.5 truncate text-white/70",
+                "mt-0.5 truncate text-white/80",
                 compact ? "text-caption" : "text-body",
               )}
             >

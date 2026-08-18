@@ -26,7 +26,7 @@ import { Badge } from "@/shared/ui/badge";
  *
  * 색만으로 상태를 구분하지 않도록 label과 icon을 항상 함께 그린다. (명세 9.6)
  */
-const toneClass = cva("border", {
+const toneClass = cva("border text-overline", {
   variants: {
     tone: {
       neutral: "bg-surface-muted text-ink-muted border-line",

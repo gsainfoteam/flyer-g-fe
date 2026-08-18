@@ -33,7 +33,7 @@ export function UploadPanel({
     <aside className="flex h-full w-[272px] shrink-0 flex-col overflow-y-auto border-r border-line bg-surface">
       <div className="border-b border-line px-4 py-3.5">
         <h2 className="text-heading text-ink">포스터 업로드</h2>
-        <p className="mt-0.5 text-caption text-ink-subtle">
+        <p className="mt-0.5 text-caption text-ink-muted">
           이미지를 선택하거나 예시 포스터를 고르세요
         </p>
       </div>
@@ -55,7 +55,7 @@ export function UploadPanel({
           <p className="mt-3 text-label text-ink">
             이미지 파일을 선택해 업로드하세요
           </p>
-          <p className="mt-1 text-caption text-ink-subtle">
+          <p className="mt-1 text-caption text-ink-muted">
             JPG, PNG, WebP (최대 10MB)
           </p>
           <span className="mt-3 rounded-control bg-ink px-3 py-1.5 text-caption text-surface">

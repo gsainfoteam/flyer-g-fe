@@ -49,7 +49,7 @@ export function RegisterMetaPanel({
     <aside className="flex h-full w-[288px] shrink-0 flex-col overflow-y-auto border-l border-line bg-surface">
       <div className="border-b border-line px-4 py-3.5">
         <h2 className="text-heading text-ink">게시 정보</h2>
-        <p className="mt-0.5 text-caption text-ink-subtle">
+        <p className="mt-0.5 text-caption text-ink-muted">
           제목, 기간, 링크를 입력하세요
         </p>
       </div>

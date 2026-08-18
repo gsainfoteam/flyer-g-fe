@@ -24,7 +24,7 @@ export function LoadingState({
   return (
     <div className={cn(shell, className)} role="status" aria-live="polite">
       <Spinner className="size-6 text-brand" aria-hidden="true" />
-      <p className="text-body text-muted-foreground">{label}</p>
+      <p className="text-label text-ink-muted">{label}</p>
     </div>
   );
 }
@@ -50,9 +50,9 @@ export function EmptyState({
         <Icon className="size-5" aria-hidden="true" />
       </span>
       <div className="space-y-1">
-        <p className="text-body font-semibold text-foreground">{title}</p>
+        <p className="text-heading text-ink">{title}</p>
         {description && (
-          <p className="text-label text-muted-foreground">{description}</p>
+          <p className="text-label text-ink-muted">{description}</p>
         )}
       </div>
       {action}
@@ -87,8 +87,8 @@ export function ErrorState({
         <TriangleAlert className="size-5" aria-hidden="true" />
       </span>
       <div className="space-y-1">
-        <p className="text-body font-semibold text-foreground">{title}</p>
-        <p className="text-label text-muted-foreground">{message}</p>
+        <p className="text-heading text-ink">{title}</p>
+        <p className="text-label text-ink-muted">{message}</p>
         {trace && <p className="text-caption text-ink-subtle">{trace}</p>}
       </div>
       {onRetry && (

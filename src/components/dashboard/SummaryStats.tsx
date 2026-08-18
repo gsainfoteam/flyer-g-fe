@@ -50,12 +50,12 @@ export function SummaryStats({ items, caption }: SummaryStatsProps) {
               >
                 {item.value}
               </span>
-              <span className="text-caption text-ink-muted">{item.unit}</span>
+              <span className="text-caption text-ink-subtle">{item.unit}</span>
             </dd>
           </div>
         ))}
       </dl>
-      <p className="border-t border-line bg-surface-muted px-5 py-2 text-caption text-ink-subtle">
+      <p className="border-t border-line bg-surface-muted px-5 py-2 text-caption text-ink-muted">
         {caption}
       </p>
     </section>

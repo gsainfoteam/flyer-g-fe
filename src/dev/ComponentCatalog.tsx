@@ -108,15 +108,32 @@ function TokenSwatches() {
         ))}
       </div>
 
-      <div className="space-y-1">
-        <p className="text-display">display · TV 제목</p>
-        <p className="text-metric tabular-nums">metric · 1 234</p>
-        <p className="text-title">title · 화면 제목</p>
-        <p className="text-heading">heading · 섹션 제목</p>
-        <p className="text-body">body — {LONG_KO}</p>
-        <p className="text-label">label · 목록 제목과 입력 label</p>
-        <p className="text-caption">caption · 보조 설명</p>
-      </div>
+      {/* 각 단계는 크기와 굵기를 함께 바꾼다. 왼쪽 회색이 실제 사용처다. */}
+      <dl className="divide-y divide-line">
+        {[
+          ["display", "56 / 800", "TV 포스터 제목", "text-display"],
+          ["metric", "30 / 700", "운영 요약 수치", "text-metric tabular-nums"],
+          ["title", "22 / 700", "화면 제목 (h1)", "text-title"],
+          ["heading", "17 / 600", "섹션 제목 (h2)", "text-heading"],
+          ["body", "15 / 400", "본문", "text-body"],
+          ["label", "14 / 500", "목록 제목, 입력 label, 버튼", "text-label"],
+          ["caption", "13 / 400", "메타 정보, 보조 설명", "text-caption"],
+          ["overline", "12 / 600", "상태 배지", "text-overline"],
+        ].map(([token, spec, use, className]) => (
+          <div
+            key={token}
+            className="flex items-baseline gap-4 py-2.5"
+          >
+            <div className="w-56 shrink-0">
+              <p className="text-caption text-ink">{token}</p>
+              <p className="text-caption text-ink-subtle">
+                {spec} · {use}
+              </p>
+            </div>
+            <p className={`min-w-0 truncate ${className}`}>{LONG_KO}</p>
+          </div>
+        ))}
+      </dl>
 
       {/* Tailwind는 class 이름을 정적으로 추출하므로 문자열을 합성하지 않는다. */}
       <div className="flex flex-wrap gap-3">

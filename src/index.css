@@ -1,4 +1,10 @@
 @import "tailwindcss";
+/*
+ * Pretendard 가변 폰트. 동적 서브셋이라 브라우저가 화면에 실제로 쓰인 글자 구간만
+ * 내려받는다. 전체 2MB가 아니라 보통 100~300KB 수준이다.
+ * 자기 호스팅이므로 외부 CDN에 의존하지 않는다. (명세 9.3 신뢰성)
+ */
+@import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -13,77 +19,101 @@
 
 @theme {
   /* --- 서체 -------------------------------------------------------------
-     한국어 본문 가독성이 최우선이므로 Pretendard를 앞에 둔다. */
+     Pretendard 하나로 통일한다. 가변 폰트라 100~900을 자유롭게 쓸 수 있고
+     macOS, Windows, Raspberry Pi(TV)에서 같은 모양으로 보인다. */
   --font-sans:
-    Pretendard, Inter, ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
+    "Pretendard Variable", Pretendard, ui-sans-serif, system-ui,
+    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-heading: var(--font-sans);
 
   /* --- 타이포그래피 -----------------------------------------------------
      display는 TV 원거리 가독성용, 나머지는 관리자 웹용이다. */
-  /* 굵기는 400 / 500 / 600 / 700 네 단계만 쓴다. 900은 쓰지 않는다. */
-  --text-display: 3.25rem;
-  --text-display--line-height: 1.1;
-  --text-display--font-weight: 700;
-  --text-metric: 1.75rem;
-  --text-metric--line-height: 1.15;
-  --text-metric--font-weight: 600;
-  --text-title: 1.25rem;
-  --text-title--line-height: 1.35;
-  --text-title--font-weight: 600;
-  --text-heading: 0.9375rem;
-  --text-heading--line-height: 1.45;
-  --text-heading--font-weight: 600;
-  --text-body: 0.875rem;
-  --text-body--line-height: 1.55;
-  --text-body--font-weight: 400;
-  --text-label: 0.8125rem;
+  /* --- 타이포그래피 -----------------------------------------------------
+     단계마다 크기와 굵기를 함께 바꿔 위계를 만든다. 크기만 조금씩 다른 단계는
+     위계가 아니라 편차다. 자세한 사용 규칙은 docs/design-system.md 참고.
+
+       12 → 13 → 14 → 15 → 17 → 22 → 30 → 56 (px)
+  */
+  --text-overline: 0.75rem;
+  --text-overline--line-height: 1.3;
+  --text-overline--font-weight: 600;
+  --text-overline--letter-spacing: 0.02em;
+
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.45;
+  --text-caption--font-weight: 400;
+
+  --text-label: 0.875rem;
   --text-label--line-height: 1.45;
   --text-label--font-weight: 500;
-  --text-caption: 0.75rem;
-  --text-caption--line-height: 1.4;
-  --text-caption--font-weight: 400;
+
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.6;
+  --text-body--font-weight: 400;
+
+  --text-heading: 1.0625rem;
+  --text-heading--line-height: 1.4;
+  --text-heading--font-weight: 600;
+  --text-heading--letter-spacing: -0.01em;
+
+  --text-title: 1.375rem;
+  --text-title--line-height: 1.3;
+  --text-title--font-weight: 700;
+  --text-title--letter-spacing: -0.015em;
+
+  --text-metric: 1.875rem;
+  --text-metric--line-height: 1.15;
+  --text-metric--font-weight: 700;
+  --text-metric--letter-spacing: -0.02em;
+
+  /* TV 전용. 원거리 가독성을 위해 굵기를 한 단계 더 올린다. */
+  --text-display: 3.5rem;
+  --text-display--line-height: 1.06;
+  --text-display--font-weight: 800;
+  --text-display--letter-spacing: -0.025em;
 
   /* --- 브랜드 -----------------------------------------------------------
      보라색은 브랜드 전용이다. 상태 표현에 쓰지 않는다. */
-  --color-brand: oklch(0.511 0.244 292.8);
-  --color-brand-strong: oklch(0.446 0.216 292.3);
-  --color-brand-muted: oklch(0.606 0.25 292.72);
-  --color-brand-subtle: oklch(0.968 0.014 293.7);
-  --color-brand-border: oklch(0.902 0.048 293.3);
+  --color-brand: oklch(0.541 0.247 293.0);
+  --color-brand-strong: oklch(0.478 0.245 292.5);
+  --color-brand-muted: oklch(0.606 0.25 292.7);
+  --color-brand-subtle: oklch(0.958 0.022 293.7);
+  --color-brand-border: oklch(0.888 0.058 293.3);
   --color-brand-on: oklch(1 0 0);
   /* 로고의 G 한 글자에만 쓰는 보조색. 다른 곳에 쓰지 않는다. */
   --color-accent-brand: oklch(0.628 0.208 38.5);
 
   /* --- 표면과 글자 ------------------------------------------------------ */
-  --color-canvas: oklch(0.977 0.001 286.4);
+  --color-canvas: oklch(0.971 0.003 286.3);
   --color-surface: oklch(1 0 0);
-  --color-surface-muted: oklch(0.963 0.002 286.4);
-  --color-line: oklch(0.918 0.004 286.3);
-  --color-line-strong: oklch(0.856 0.006 286.3);
-  --color-ink: oklch(0.208 0.006 285.9);
-  --color-ink-muted: oklch(0.534 0.012 285.9);
-  --color-ink-subtle: oklch(0.681 0.014 286.1);
-  --color-focus: oklch(0.511 0.244 292.8);
+  --color-surface-muted: oklch(0.967 0.001 286.4);
+  --color-line: oklch(0.92 0.004 286.3);
+  --color-line-strong: oklch(0.871 0.006 286.3);
+  /* 본문은 ink, 보조는 ink-muted(약 7:1), 3차 정보만 ink-subtle(약 4.6:1). */
+  --color-ink: oklch(0.21 0.006 285.9);
+  --color-ink-muted: oklch(0.442 0.017 285.8);
+  --color-ink-subtle: oklch(0.538 0.016 285.9);
+  --color-ink-inverse: oklch(0.985 0 0);
+  --color-focus: oklch(0.541 0.247 293.0);
 
   /* --- 상태 색 ----------------------------------------------------------
      solid는 아이콘·강조, subtle은 배경, strong은 subtle 위 글자색이다.
      색만으로 상태를 구분하지 않고 항상 문구를 함께 쓴다. (명세 9.6) */
   --color-info: oklch(0.546 0.245 262.88);
-  --color-info-subtle: oklch(0.968 0.012 254.6);
-  --color-info-strong: oklch(0.488 0.243 264.38);
+  --color-info-subtle: oklch(0.951 0.028 255.0);
+  --color-info-strong: oklch(0.455 0.204 264.0);
 
   --color-success: oklch(0.627 0.194 149.21);
-  --color-success-subtle: oklch(0.962 0.031 156.7);
-  --color-success-strong: oklch(0.527 0.154 150.07);
+  --color-success-subtle: oklch(0.949 0.052 157.0);
+  --color-success-strong: oklch(0.448 0.119 150.5);
 
   --color-warning: oklch(0.666 0.179 58.32);
-  --color-warning-subtle: oklch(0.973 0.046 92.5);
-  --color-warning-strong: oklch(0.555 0.163 48.998);
+  --color-warning-subtle: oklch(0.962 0.062 92.0);
+  --color-warning-strong: oklch(0.473 0.129 52.0);
 
   --color-danger: oklch(0.577 0.245 27.325);
-  --color-danger-subtle: oklch(0.969 0.015 17.4);
-  --color-danger-strong: oklch(0.505 0.213 27.518);
+  --color-danger-subtle: oklch(0.951 0.03 17.4);
+  --color-danger-strong: oklch(0.462 0.196 27.5);
 
   /* --- 모서리 -----------------------------------------------------------
      shadcn의 --radius-sm/md/lg 계열과 공존한다. 제품 컴포넌트는 아래를 쓴다. */

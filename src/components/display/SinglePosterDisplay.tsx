@@ -26,7 +26,7 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="inline-flex w-[4.5rem] shrink-0 items-center gap-1.5 text-[1rem] text-ink-subtle">
+      <span className="inline-flex w-[4.5rem] shrink-0 items-center gap-1.5 text-[1rem] text-ink-muted">
         <Icon className="size-4" aria-hidden="true" />
         {label}
       </span>
@@ -75,7 +75,7 @@ export function SinglePosterDisplay({ poster }: SinglePosterDisplayProps) {
           <div className="mt-auto flex items-center gap-5 pt-8">
             <QRCodeBox value={poster.detailUrl} size="xl" />
             <div>
-              <p className="text-[1.0625rem] text-ink-muted">
+              <p className="text-[1.0625rem] leading-relaxed text-ink-muted">
                 포스터의 자세한 내용은
                 <br />
                 QR을 스캔해 확인하세요.

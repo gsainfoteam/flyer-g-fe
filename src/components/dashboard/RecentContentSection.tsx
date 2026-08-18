@@ -72,18 +72,18 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
               aria-selected={active}
               onClick={() => setFilter(tab.key)}
               className={cn(
-                "shrink-0 rounded-control px-2.5 py-1 text-caption transition",
+                "shrink-0 rounded-control px-2.5 py-1 text-label transition",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
                 active
-                  ? "bg-ink text-surface"
-                  : "text-ink-muted hover:bg-surface-muted",
+                  ? "bg-brand text-brand-on"
+                  : "text-ink-muted hover:bg-surface-muted hover:text-ink",
               )}
             >
               {tab.label}
               <span
                 className={cn(
                   "ml-1.5 tabular-nums",
-                  active ? "text-surface/70" : "text-ink-subtle",
+                  active ? "text-brand-on/75" : "text-ink-subtle",
                 )}
               >
                 {count}
@@ -104,7 +104,7 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
       )}
 
       {filtered.length > PREVIEW_COUNT && (
-        <p className="border-t border-line px-5 py-2.5 text-caption text-ink-subtle">
+        <p className="border-t border-line px-5 py-2.5 text-caption text-ink-muted">
           {filtered.length}건 중 {PREVIEW_COUNT}건 표시 · 전체 목록은 준비 중입니다.
         </p>
       )}

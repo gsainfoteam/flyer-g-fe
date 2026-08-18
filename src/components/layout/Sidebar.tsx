@@ -46,7 +46,7 @@ export function Sidebar() {
                 "flex items-center gap-2.5 rounded-control px-2.5 py-2 text-label transition",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
                 active
-                  ? "bg-surface-muted text-ink"
+                  ? "bg-brand-subtle font-semibold text-brand-strong"
                   : "text-ink-muted hover:bg-surface-muted hover:text-ink",
               )}
             >

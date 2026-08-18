@@ -42,10 +42,43 @@
 
 ### 타이포그래피 규칙
 
-- 굵기는 **400 / 500 / 600 / 700** 네 단계만 쓴다. `font-black`(900)은 쓰지 않는다.
-- 수치에는 `tabular-nums`를 붙여 자릿수가 흔들리지 않게 한다.
-- TV는 관리자 웹의 scale을 그대로 쓰지 않는다. 화면 전용 크기를 명시하고 Phase 05에서
+**서체는 Pretendard 하나다.** 가변 폰트를 자기 호스팅하며, 동적 서브셋이라 브라우저가
+화면에 실제로 쓰인 유니코드 구간만 내려받는다(보통 100~300KB). macOS, Windows,
+Raspberry Pi(TV)에서 같은 모양으로 보인다.
+
+**위계는 크기와 굵기를 함께 바꿔 만든다.** 크기만 조금씩 다른 단계는 위계가 아니라 편차다.
+
+| 단계 | 크기 / 굵기 | 쓰는 곳 |
+|---|---|---|
+| `text-display` | 56 / 800 | TV 포스터 제목. 원거리용이라 굵기를 한 단계 더 올린다 |
+| `text-metric` | 30 / 700 | 운영 요약 수치. `tabular-nums`를 함께 쓴다 |
+| `text-title` | 22 / 700 | 화면 제목 (`h1`) |
+| `text-heading` | 17 / 600 | 섹션 제목 (`h2`), 빈 상태·오류 제목 |
+| `text-body` | 15 / 400 | 본문과 설명 문장 |
+| `text-label` | 14 / 500 | 목록 항목 제목, 입력 label, 버튼, 탭 |
+| `text-caption` | 13 / 400 | 메타 정보(기간·조직), 보조 설명 |
+| `text-overline` | 12 / 600 | 상태 배지처럼 아주 짧은 라벨 |
+
+- 굵기는 **400 / 500 / 600 / 700 / 800** 다섯 단계만 쓴다. 크기 토큰이 기본 굵기를
+  가지고 있으므로 `font-*` 클래스를 덧붙이는 것은 의도적으로 벗어날 때만 한다.
+- **본문보다 작은 글자를 제목에 쓰지 않는다.** 목록 항목 제목은 `label`, 그 아래 메타는
+  `caption`으로 한 단계 내려간다.
+- TV는 관리자 웹 scale을 그대로 쓰지 않는다. 화면 전용 크기를 명시하고 Phase 05에서
   1920x1080으로 실측한다.
+
+### 대비 규칙
+
+글자 색은 정보의 층위를 뜻한다. 흐리게 만드는 장치가 아니다.
+
+| 토큰 | 대비(흰 배경) | 쓰는 곳 |
+|---|---|---|
+| `text-ink` | 17.7:1 | 제목과 본문 |
+| `text-ink-muted` | 7.7:1 | 설명, 메타 정보 |
+| `text-ink-subtle` | 5.1:1 | 단위, 개수처럼 3차 정보만 |
+
+세 색 모두 `surface`, `canvas`, `surface-muted` 위에서 WCAG AA(4.5:1)를 넘는다.
+상태 배지의 `*-strong / *-subtle` 조합도 모두 6:1 이상이다. 새 색을 더할 때는 같은
+기준을 맞춘다. (명세 9.6)
 
 ## 2. 토큰
 
@@ -56,9 +89,9 @@
 |---|---|---|
 | 브랜드 | `brand`, `brand-strong`, `brand-muted`, `brand-subtle`, `brand-border`, `brand-on`, `accent-brand` | `bg-brand`, `text-brand-strong` |
 | 표면 | `canvas`, `surface`, `surface-muted` | `bg-canvas`, `bg-surface` |
-| 선·글자 | `line`, `line-strong`, `ink`, `ink-muted`, `ink-subtle`, `focus` | `border-line`, `text-ink-muted` |
+| 선·글자 | `line`, `line-strong`, `ink`, `ink-muted`, `ink-subtle`, `ink-inverse`, `focus` | `border-line`, `text-ink-muted` |
 | 상태 | `info`/`success`/`warning`/`danger` × `-subtle`, `-strong` | `bg-danger-subtle text-danger-strong` |
-| 타이포 | `display`, `metric`, `title`, `heading`, `body`, `label`, `caption` | `text-body`, `text-metric` |
+| 타이포 | `display`, `metric`, `title`, `heading`, `body`, `label`, `caption`, `overline` | 위 타이포그래피 표 참고 |
 | 간격 | Tailwind 4px scale (`--spacing: 0.25rem`) | `p-4` = 16px |
 | 모서리 | `control`, `card`, `dialog`, `pill` | `rounded-card` |
 | 그림자 | `card`, `floating`, `dialog` | `shadow-card` |
@@ -286,7 +319,32 @@ production 빌드에서는 `import.meta.env.DEV` 분기로 import 자체가 제�
 
 실제 포스터 이미지를 `public/posters/`에 넣으면 자동으로 대체된다.
 
-## 9. 남은 일
+## 9. 타이포그래피 재설계 (2026-08-19)
+
+"글자가 다 얇고 위계가 없다"는 지적에 따라 서체와 타입 스케일을 다시 짰다.
+
+**원인은 두 가지였다.**
+
+1. `--font-sans`에 Pretendard를 적어두고 **실제로는 한 번도 로드하지 않았다.** `@font-face`도
+   패키지도 없어서 모든 화면이 OS 기본 산세리프로 렌더링되고 있었다.
+2. 스케일이 위계를 만들지 못했다. `heading`(15px)이 `body`(14px)보다 1px 컸고,
+   `label`(13px)은 `body`보다 작은데 목록 제목에 쓰고 있었다. 세 단계가 12~15px 안에
+   몰려 있어 크기 차이가 위계로 읽히지 않았다.
+
+**고친 것**
+
+| | 전 | 후 |
+|---|---|---|
+| 서체 | 스택에만 적힌 Pretendard (미로드) | Pretendard 가변 폰트 자기 호스팅, 동적 서브셋 |
+| 스케일 | 12·13·14·15·20·28·52 (간격 불균등, 하단 밀집) | 12·13·14·15·17·22·30·56 |
+| 굵기 | 크기별 기본 굵기가 위계와 어긋남 | 단계마다 크기와 굵기를 함께 올림 |
+| 본문 대비 | `ink-muted` 5.4:1을 본문에까지 사용 | 본문 `ink` 17.7:1, 보조 `ink-muted` 7.7:1 |
+| 3차 정보 | `ink-subtle` 3.5:1 (AA 미달) | 5.1:1 (모든 표면에서 AA 통과) |
+| 브랜드 색 | 눌러서 회색에 묻힘 | 활성 탭·현재 메뉴·강조 수치에 분명히 사용 |
+
+측정은 브라우저에서 실제 계산된 색으로 WCAG 대비비를 계산해 확인했다.
+
+## 10. 남은 일
 
 - TV 플레이어 전용 표현(실제 QR, 빈 화면 fallback, kiosk 컨트롤 숨김)은 여기서
   일반화하지 않았다. Phase 05에서 Flyer.G 전용 컴포넌트로 만든다.

@@ -26,7 +26,7 @@ export function SectionHeader({
       <div className="min-w-0">
         <Heading className="text-heading text-foreground">{title}</Heading>
         {description && (
-          <p className="mt-1 text-label text-muted-foreground">{description}</p>
+          <p className="mt-1 text-label text-ink-muted">{description}</p>
         )}
       </div>
       {action && <div className="shrink-0">{action}</div>}
