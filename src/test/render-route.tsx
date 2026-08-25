@@ -1,0 +1,60 @@
+import { QueryClient } from "@tanstack/react-query";
+import { render } from "@testing-library/react";
+import { RouterProvider, createMemoryRouter } from "react-router";
+import { AppProviders } from "@/app/providers/AppProviders";
+import { routeTree } from "@/app/router/route-tree";
+import { createMockAuthAdapter } from "@/features/auth/api/mock-auth";
+import type { Role } from "@/features/auth/model/types";
+import { createMockRepositories } from "@/mocks/repositories";
+import type { Repositories } from "@/shared/api/repositories";
+import { createFixedClock } from "@/shared/lib/clock";
+import { parseIsoUtc } from "@/shared/lib/datetime";
+
+/**
+ * 실제 route 트리를 memory router로 띄운다.
+ *
+ * guard와 셸 분리를 화면 조립까지 포함해 확인하기 위한 것이다. 개별 페이지만
+ * 렌더링하면 guard를 건너뛰게 되어 정작 확인하려는 경계가 빠진다.
+ */
+export const TEST_NOW = parseIsoUtc("2026-06-08T03:00:00.000Z");
+
+interface RenderRouteOptions {
+  /** null이면 로그아웃 상태로 시작한다. */
+  role?: Role | null;
+  repositories?: Repositories;
+}
+
+export function renderRoute(
+  initialPath: string,
+  { role = null, repositories }: RenderRouteOptions = {},
+) {
+  // mock 인증은 sessionStorage에 역할을 남긴다. 테스트끼리 새지 않게 지운다.
+  sessionStorage.clear();
+
+  const authAdapter = createMockAuthAdapter({ initialRole: role });
+  const router = createMemoryRouter(routeTree, { initialEntries: [initialPath] });
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  const result = render(
+    <AppProviders
+      repositories={
+        repositories ??
+        createMockRepositories({ clock: createFixedClock(TEST_NOW) })
+      }
+      authAdapter={authAdapter}
+      queryClient={queryClient}
+    >
+      <RouterProvider router={router} />
+    </AppProviders>,
+  );
+
+  return { ...result, router, authAdapter };
+}
+
+/** 현재 주소를 `pathname + search` 형태로 읽는다. */
+export function currentPath(router: ReturnType<typeof createMemoryRouter>) {
+  const { pathname, search } = router.state.location;
+  return `${pathname}${search}`;
+}

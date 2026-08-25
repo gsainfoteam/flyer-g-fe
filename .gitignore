@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local scratch
+tmp/
+
+# docs
+docs/

@@ -1,0 +1,97 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { normalizeApiError } from "@/shared/api/error";
+import type { AuthAdapter } from "../api/auth-adapter";
+import type { MockAuthAdapter } from "../api/mock-auth";
+import { AuthContext } from "../model/auth-context";
+import type { AuthContextValue } from "../model/auth-context";
+import type { AuthState, Role } from "../model/types";
+
+/**
+ * 세션 상태를 앱 전체에 공급한다.
+ *
+ * 시작하면 기존 세션 복원을 한 번 시도한다. 그동안은 `initializing`이라 guard가
+ * 로그인 화면으로 보내지 않는다. 로그인한 사용자에게 로그인 화면이 스쳐 보이는
+ * 것을 막기 위한 것이다.
+ */
+function isMockAdapter(adapter: AuthAdapter): adapter is MockAuthAdapter {
+  return "switchRole" in adapter;
+}
+
+interface AuthProviderProps {
+  adapter: AuthAdapter;
+  children: ReactNode;
+}
+
+export function AuthProvider({ adapter, children }: AuthProviderProps) {
+  const [state, setState] = useState<AuthState>({ status: "initializing" });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+
+    adapter
+      .restore(controller.signal)
+      .then((user) => {
+        if (!active) return;
+        setState(
+          user
+            ? { status: "authenticated", user }
+            : { status: "unauthenticated" },
+        );
+      })
+      .catch((cause: unknown) => {
+        if (!active) return;
+        const error = normalizeApiError(cause);
+        if (error.kind === "canceled") return;
+        setState({ status: "error", error });
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [adapter]);
+
+  const signIn = useCallback(
+    async (returnTo: string) => {
+      try {
+        const user = await adapter.signIn(returnTo);
+        setState(
+          user
+            ? { status: "authenticated", user }
+            : { status: "unauthenticated" },
+        );
+        return user;
+      } catch (cause) {
+        setState({ status: "error", error: normalizeApiError(cause) });
+        return null;
+      }
+    },
+    [adapter],
+  );
+
+  const signOut = useCallback(async () => {
+    await adapter.signOut();
+    setState({ status: "unauthenticated" });
+  }, [adapter]);
+
+  const switchRole = useMemo(() => {
+    if (!isMockAdapter(adapter)) return null;
+    return (role: Role) => {
+      setState({ status: "authenticated", user: adapter.switchRole(role) });
+    };
+  }, [adapter]);
+
+  const availableRoles = useMemo(
+    () => (isMockAdapter(adapter) ? adapter.getAvailableRoles() : []),
+    [adapter],
+  );
+
+  const value = useMemo<AuthContextValue>(
+    () => ({ state, signIn, signOut, switchRole, availableRoles }),
+    [state, signIn, signOut, switchRole, availableRoles],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
