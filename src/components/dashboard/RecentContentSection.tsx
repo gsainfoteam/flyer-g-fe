@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router";
+import { to } from "@/app/router/routes";
 import { getStatusSentence } from "@/entities/submission";
 import type { SubmissionStatus } from "@/entities/submission";
 import type { SubmissionView } from "@/entities/submission/model/types";
@@ -68,7 +70,7 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
       title="내 신청"
       action={
         <Button variant="link" size="xs" asChild>
-          <a href="/studio">새 신청 →</a>
+          <Link to={to.studio()}>새 신청 →</Link>
         </Button>
       }
       flush

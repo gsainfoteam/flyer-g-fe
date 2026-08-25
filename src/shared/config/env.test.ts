@@ -6,6 +6,7 @@ describe("readAppEnv", () => {
     expect(readAppEnv({ PROD: false })).toEqual({
       apiBaseUrl: null,
       useMockApi: true,
+      useMockAuth: true,
       isProduction: false,
     });
   });
@@ -14,12 +15,26 @@ describe("readAppEnv", () => {
     expect(() =>
       readAppEnv({ PROD: true, VITE_USE_MOCK_API: "true" }),
     ).toThrow(EnvConfigError);
+
+    // mock 세션도 마찬가지다. 개발용 역할 전환이 운영에 새어 나가면 안 된다.
+    expect(() =>
+      readAppEnv({
+        PROD: true,
+        VITE_USE_MOCK_API: "false",
+        VITE_USE_MOCK_AUTH: "true",
+        VITE_API_BASE_URL: "https://api.example.com",
+      }),
+    ).toThrow(EnvConfigError);
   });
 
   it("실제 API 모드에는 base URL이 반드시 필요하다", () => {
-    expect(() => readAppEnv({ PROD: true, VITE_USE_MOCK_API: "false" })).toThrow(
-      EnvConfigError,
-    );
+    expect(() =>
+      readAppEnv({
+        PROD: true,
+        VITE_USE_MOCK_API: "false",
+        VITE_USE_MOCK_AUTH: "false",
+      }),
+    ).toThrow(EnvConfigError);
   });
 
   it("HTTPS가 아닌 base URL을 막고 localhost만 예외로 둔다", () => {
@@ -27,6 +42,7 @@ describe("readAppEnv", () => {
       readAppEnv({
         PROD: true,
         VITE_USE_MOCK_API: "false",
+        VITE_USE_MOCK_AUTH: "false",
         VITE_API_BASE_URL: "http://api.example.com",
       }),
     ).toThrow(EnvConfigError);
@@ -45,6 +61,7 @@ describe("readAppEnv", () => {
       readAppEnv({
         PROD: true,
         VITE_USE_MOCK_API: "false",
+        VITE_USE_MOCK_AUTH: "false",
         VITE_API_BASE_URL: "https://api.example.com/v1/",
       }).apiBaseUrl,
     ).toBe("https://api.example.com/v1");

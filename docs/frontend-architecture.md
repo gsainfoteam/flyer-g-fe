@@ -93,13 +93,26 @@ Vitest + React Testing Library + jsdom. 테스트는 실제 시간과 네트워�
 
 필터·pagination·무효화 규칙 확장은 Phase 03~05에서 한다.
 
-## Phase 01 인계
+## Phase 02 인계
 
-- **라우팅**: `App.tsx`는 아직 `window.location.pathname`으로 분기한다. Phase 01의 첫 작업이다.
-- **기기 ID**: `/display`가 상수 `PREVIEW_DEVICE_ID`를 쓴다. `/display/:deviceId`로 바꾼다.
-- **세션**: `TopHeader`의 사용자 이름·역할은 자리표시자다. 인증 세션에서 받아온다.
-- **실제 API**: HTTP repository 구현은 비어 있다. `createRepositories()`가 mock이 아닐 때
-  명시적으로 실패하므로, 계약이 확정되면 이 지점부터 구현한다.
+- **신청 생성**: `SubmissionRepository.create/submit`가 mock으로 동작한다. idempotency key를
+  넘기면 중복 생성되지 않는다.
+- **게시 신청 화면**: `/studio`는 셸과 미리보기까지만 있다. 업로드 검증, 폼 검증,
+  실제 제출, Ziggle 공지 자동 채움이 Phase 02 범위다.
+- **포스터 렌더러**: `@/entities/poster`의 `PosterRenderModel`이 미리보기와 플레이어가
+  공유하는 props 계약이다.
+- **실제 API**: HTTP repository와 실제 인증 adapter는 비어 있다. 각각
+  `createRepositories()`와 `createAuthAdapter()`가 mock이 아닐 때 명시적으로 실패한다.
+
+### 아직 화면이 없는 경로
+
+`ComingSoonPage`를 그린다. 경로와 권한 경계는 이미 서 있으니 해당 Phase에서 내용만 채운다.
+
+| 경로 | 담당 |
+|---|---|
+| `/submissions/:submissionId` | Phase 03 |
+| `/reviews/:submissionId` | Phase 04 |
+| `/displays` | P1 |
 
 ## 남은 프로토타입 요소
 
@@ -116,7 +129,48 @@ Vitest + React Testing Library + jsdom. 테스트는 실제 시간과 네트워�
 | 4분할 레이아웃 | 페이지 단위 순환 아님, 1920x1080 미최적화 | Phase 05 |
 | 레거시 목 데이터 | `src/data/mockContents.ts`, `src/types/content.ts` | 목 재작성 시 제거 |
 
-## 화면 구조
+## 라우팅과 셸
 
-관리 화면은 상단 내비게이션 + 본문(최대 1120px) + 푸터다. `AdminShell`(`src/App.tsx`)이
-이 셸을 만든다. 실제 라우팅으로 옮기는 것은 Phase 01 범위다.
+경로는 `src/app/router/routes.ts` 한곳에서 만든다. 화면에서 문자열을 조립하지 않는다.
+
+| | |
+|---|---|
+| `paths` | route 정의에 쓰는 패턴 (`/submissions/:submissionId`) |
+| `to` | 이동에 쓰는 생성기 (`to.submissionDetail(id)`) |
+| `safeReturnTo` | 로그인 복귀 경로를 앱 내부 경로로 좁힌다 (열린 리다이렉트 방지) |
+
+route 트리는 `src/app/router/route-tree.tsx`에 있다. 셸이 셋으로 나뉜다.
+
+| 셸 | 경로 | 특징 |
+|---|---|---|
+| `DisplayLayout` | `/display/:deviceId` | 관리 내비게이션 없음. **사용자 로그인을 요구하지 않는다** |
+| `StudioLayout` | `/studio` | 한 가지 일에 집중. 나가는 길만 |
+| `AdminLayout` | 나머지 | 상단 내비게이션 + 본문(최대 1120px) + 푸터 |
+
+## 인증
+
+```text
+src/features/auth/
+├─ model/types.ts         Role, SessionUser, AuthState
+├─ model/auth-context.ts  useAuth(), useSessionUser()
+├─ api/auth-adapter.ts    인증 경계 (계약만)
+├─ api/mock-auth.ts       개발용 구현
+└─ ui/guards.tsx          RequireSession, RequireRole
+```
+
+- 실제 인증 방식은 미확정이라(명세 15장 13번) `AuthAdapter` 뒤에 둔다. 확정되면 이
+  인터페이스를 구현하는 adapter만 새로 만든다.
+- 토큰은 이 계층 밖으로 나가지 않는다. 화면은 `SessionUser`만 본다.
+- mock은 자격 증명이 아니라 **역할 이름**만 sessionStorage에 둔다.
+- `VITE_USE_MOCK_AUTH`가 production에서 켜지면 `readAppEnv()`가 시작 시점에 막는다.
+
+### 역할
+
+| 역할 | 볼 수 있는 곳 |
+|---|---|
+| `SUBMITTER` | 홈, 내 신청, 게시 신청 |
+| `REVIEWER` | + 승인 대기, 검토 상세 |
+| `SUPER_ADMIN` | + 기기 관리 |
+
+역할에 없는 메뉴는 내비게이션에 그리지 않지만 **이는 편의일 뿐 보안이 아니다.**
+직접 URL로 들어와도 guard가 막고, 서버가 모든 변경 요청에서 다시 검증한다.

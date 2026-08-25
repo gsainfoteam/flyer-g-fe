@@ -7,6 +7,8 @@ export interface AppEnv {
   /** 실제 API base URL. mock 모드에서는 null일 수 있다. */
   apiBaseUrl: string | null;
   useMockApi: boolean;
+  /** 개발용 mock 세션 사용 여부. 역할 전환 UI도 이 값에 따라 노출된다. */
+  useMockAuth: boolean;
   isProduction: boolean;
 }
 
@@ -20,6 +22,7 @@ export class EnvConfigError extends Error {
 export interface RawEnv {
   VITE_API_BASE_URL?: string;
   VITE_USE_MOCK_API?: string;
+  VITE_USE_MOCK_AUTH?: string;
   PROD?: boolean;
 }
 
@@ -52,11 +55,17 @@ function parseBaseUrl(value: string | undefined): string | null {
 export function readAppEnv(raw: RawEnv): AppEnv {
   const isProduction = raw.PROD === true;
   const useMockApi = parseBoolean(raw.VITE_USE_MOCK_API, !isProduction);
+  const useMockAuth = parseBoolean(raw.VITE_USE_MOCK_AUTH, !isProduction);
   const apiBaseUrl = parseBaseUrl(raw.VITE_API_BASE_URL);
 
   if (isProduction && useMockApi) {
     throw new EnvConfigError(
       "production 빌드에서는 mock API를 사용할 수 없습니다. VITE_USE_MOCK_API를 false로 두세요.",
+    );
+  }
+  if (isProduction && useMockAuth) {
+    throw new EnvConfigError(
+      "production 빌드에서는 mock 세션을 사용할 수 없습니다. VITE_USE_MOCK_AUTH를 false로 두세요.",
     );
   }
   if (!useMockApi && apiBaseUrl === null) {
@@ -65,7 +74,7 @@ export function readAppEnv(raw: RawEnv): AppEnv {
     );
   }
 
-  return { apiBaseUrl, useMockApi, isProduction };
+  return { apiBaseUrl, useMockApi, useMockAuth, isProduction };
 }
 
 let cached: AppEnv | null = null;
