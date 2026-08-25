@@ -31,10 +31,14 @@ export function useSubmissionViews(params: SubmissionListParams = {}) {
       const page = await submissions.list(params, signal);
       return page;
     },
-    select: (page): { items: SubmissionView[]; totalCount: number } => ({
-      // 표시 상태는 저장된 값이 아니라 기간까지 반영한 실제 상태를 쓴다.
-      items: page.items.map((item) => toSubmissionView(item, new Date())),
+    select: (
+      page,
+    ): { items: SubmissionView[]; totalCount: number; serverTime: Date } => ({
+      // 표시 상태는 저장된 값이 아니라 서버 시각 기준으로 기간까지 반영한 실제
+      // 상태를 쓴다. 클라이언트 시계를 쓰지 않는다. (명세 6.3)
+      items: page.items.map((item) => toSubmissionView(item, page.serverTime)),
       totalCount: page.totalCount,
+      serverTime: page.serverTime,
     }),
   });
 }

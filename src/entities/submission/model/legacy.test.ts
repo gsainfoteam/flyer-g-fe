@@ -22,8 +22,11 @@ describe("기존 목 데이터를 새 모델로 변환", () => {
 
   it("날짜를 Seoul 입력으로 읽어 UTC로 저장한다", () => {
     const first = converted[0]!;
-    // 목 데이터의 2026-06-05는 Seoul 자정 = 2026-06-04T15:00Z
-    expect(first.startAt).toBe("2026-06-04T15:00:00.000Z");
+    // Seoul 자정으로 읽으므로 저장 값은 전날 15:00Z가 된다.
+    const seoulMidnight = `${mockContents[0]!.startDate}T00:00`;
+    expect(first.startAt).toBe(
+      new Date(`${seoulMidnight}+09:00`).toISOString(),
+    );
     expect(new Date(first.endAt).getTime()).toBeGreaterThan(
       new Date(first.startAt).getTime(),
     );

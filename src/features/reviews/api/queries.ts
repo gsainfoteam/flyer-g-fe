@@ -14,9 +14,12 @@ export function usePendingReviews(limit = 5) {
   return useQuery({
     queryKey: queryKeys.reviews.pending({ limit }),
     queryFn: ({ signal }) => reviews.listPending({ limit }, signal),
-    select: (page): { items: SubmissionView[]; totalCount: number } => ({
-      items: page.items.map((item) => toSubmissionView(item, new Date())),
+    select: (
+      page,
+    ): { items: SubmissionView[]; totalCount: number; serverTime: Date } => ({
+      items: page.items.map((item) => toSubmissionView(item, page.serverTime)),
       totalCount: page.totalCount,
+      serverTime: page.serverTime,
     }),
   });
 }

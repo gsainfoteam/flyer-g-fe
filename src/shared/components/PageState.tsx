@@ -1,30 +1,47 @@
-import { Inbox, TriangleAlert } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { isApiError, toTraceLabel, toUserMessage } from "@/shared/api/error";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
-import { Spinner } from "@/shared/ui/spinner";
 
 /**
  * 로딩·빈 상태·오류를 화면마다 다르게 그리지 않도록 통일한다.
+ *
+ * 내용은 왼쪽에 맞춘다. 가운데로 모으면 빈 화면이 실패처럼 보인다.
  * 오류 화면에는 내부 stack, token, request body를 노출하지 않는다. (명세 9.4, FR-PLY-06)
  */
-const shell = "flex flex-col items-center justify-center gap-3 px-6 py-12 text-center";
 
-interface LoadingStateProps {
-  label?: string;
-  className?: string;
-}
-
+/** 골격만 그린다. 자리표시자가 실제 콘텐츠보다 눈에 띄지 않게. */
 export function LoadingState({
+  rows = 3,
   label = "불러오는 중입니다.",
   className,
-}: LoadingStateProps) {
+}: {
+  rows?: number;
+  label?: string;
+  className?: string;
+}) {
   return (
-    <div className={cn(shell, className)} role="status" aria-live="polite">
-      <Spinner className="size-6 text-brand" aria-hidden="true" />
-      <p className="text-label text-ink-muted">{label}</p>
+    <div
+      className={cn("flex flex-col gap-4 py-2", className)}
+      role="status"
+      aria-live="polite"
+    >
+      <span className="sr-only">{label}</span>
+      {Array.from({ length: rows }, (_, index) => (
+        <div key={index} className="flex items-center gap-4" aria-hidden="true">
+          <div className="aspect-3/4 w-10 shrink-0 rounded-thumb bg-canvas" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <div
+              className="h-3.5 rounded-thumb bg-canvas"
+              style={{ width: `${64 - index * 8}%` }}
+            />
+            <div
+              className="h-3 rounded-thumb bg-canvas"
+              style={{ width: `${40 - index * 5}%` }}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -32,7 +49,6 @@ export function LoadingState({
 interface EmptyStateProps {
   title: string;
   description?: ReactNode;
-  icon?: LucideIcon;
   action?: ReactNode;
   className?: string;
 }
@@ -40,22 +56,16 @@ interface EmptyStateProps {
 export function EmptyState({
   title,
   description,
-  icon: Icon = Inbox,
   action,
   className,
 }: EmptyStateProps) {
   return (
-    <div className={cn(shell, className)}>
-      <span className="grid size-11 place-items-center rounded-pill bg-surface-muted text-ink-subtle">
-        <Icon className="size-5" aria-hidden="true" />
-      </span>
-      <div className="space-y-1">
-        <p className="text-heading text-ink">{title}</p>
-        {description && (
-          <p className="text-label text-ink-muted">{description}</p>
-        )}
-      </div>
-      {action}
+    <div className={cn("flex flex-col items-start gap-3 py-6", className)}>
+      <h3 className="text-title text-ink">{title}</h3>
+      {description && (
+        <p className="text-body text-ink-muted">{description}</p>
+      )}
+      {action && <div className="pt-1">{action}</div>}
     </div>
   );
 }
@@ -71,9 +81,9 @@ interface ErrorStateProps {
 
 export function ErrorState({
   error,
-  title = "내용을 불러오지 못했습니다.",
+  title = "내용을 불러오지 못했어요",
   onRetry,
-  retryLabel = "다시 시도",
+  retryLabel = "다시 불러오기",
   className,
 }: ErrorStateProps) {
   const message = isApiError(error)
@@ -82,17 +92,17 @@ export function ErrorState({
   const trace = isApiError(error) ? toTraceLabel(error) : null;
 
   return (
-    <div className={cn(shell, className)} role="alert">
-      <span className="grid size-11 place-items-center rounded-pill bg-danger-subtle text-danger-strong">
-        <TriangleAlert className="size-5" aria-hidden="true" />
-      </span>
+    <div
+      className={cn("flex flex-col items-start gap-3 py-6", className)}
+      role="alert"
+    >
+      <h3 className="text-title text-attention-strong">{title}</h3>
       <div className="space-y-1">
-        <p className="text-heading text-ink">{title}</p>
-        <p className="text-label text-ink-muted">{message}</p>
+        <p className="text-body text-ink-muted">{message}</p>
         {trace && <p className="text-caption text-ink-subtle">{trace}</p>}
       </div>
       {onRetry && (
-        <Button variant="outline" size="sm" onClick={onRetry}>
+        <Button variant="secondary" size="sm" onClick={onRetry} className="mt-1">
           {retryLabel}
         </Button>
       )}
@@ -105,7 +115,7 @@ interface PageStateProps {
   error?: unknown;
   isEmpty?: boolean;
   onRetry?: () => void;
-  loadingLabel?: string;
+  loadingRows?: number;
   empty?: EmptyStateProps;
   children: ReactNode;
 }
@@ -119,11 +129,11 @@ export function PageState({
   error,
   isEmpty = false,
   onRetry,
-  loadingLabel,
+  loadingRows,
   empty,
   children,
 }: PageStateProps) {
-  if (isLoading) return <LoadingState label={loadingLabel} />;
+  if (isLoading) return <LoadingState rows={loadingRows} />;
   if (error !== undefined && error !== null) {
     return <ErrorState error={error} onRetry={onRetry} />;
   }

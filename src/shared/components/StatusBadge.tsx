@@ -1,82 +1,38 @@
-import { cva, type VariantProps } from "class-variance-authority";
-import {
-  Archive,
-  Ban,
-  CalendarClock,
-  CircleCheck,
-  CircleMinus,
-  CircleOff,
-  CircleX,
-  Clock,
-  FilePen,
-  Monitor,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { cva } from "class-variance-authority";
 import { getStatusMeta } from "@/entities/submission";
 import type { StatusTone, SubmissionStatus } from "@/entities/submission";
 import { cn } from "@/shared/lib/utils";
-import { Badge } from "@/shared/ui/badge";
 
 /**
  * 신청 상태 배지.
  *
- * shadcn `Badge`의 variant는 제품 상태 tone(neutral/info/success/warning/danger)을
- * 표현하지 못하므로, 디자인 토큰으로 정의한 tone class를 이 한 곳에서 붙인다.
- * 화면에서 색을 다시 지정하지 않는다.
- *
- * 색만으로 상태를 구분하지 않도록 label과 icon을 항상 함께 그린다. (명세 9.6)
+ * 단색 체계라 상태마다 색을 나누지 않는다. 게시자가 **고쳐야 하는 상태**
+ * (반려됨·게시 중단)만 강조색으로 띄우고 나머지는 중성으로 둔다. 구분은 문구가
+ * 맡는다. 목록에서는 `getStatusSentence()`의 설명 문장을 함께 두는 것을 전제로 한다.
  */
-const toneClass = cva("border text-overline", {
-  variants: {
-    tone: {
-      neutral: "bg-surface-muted text-ink-muted border-line",
-      info: "bg-info-subtle text-info-strong border-info/20",
-      success: "bg-success-subtle text-success-strong border-success/20",
-      warning: "bg-warning-subtle text-warning-strong border-warning/25",
-      danger: "bg-danger-subtle text-danger-strong border-danger/20",
-    } satisfies Record<StatusTone, string>,
+const toneClass = cva(
+  "inline-flex shrink-0 items-center rounded-pill px-3 py-1.5 text-overline whitespace-nowrap",
+  {
+    variants: {
+      tone: {
+        neutral: "bg-surface-muted text-ink-muted",
+        attention: "bg-attention-subtle text-attention-strong",
+      } satisfies Record<StatusTone, string>,
+    },
+    defaultVariants: { tone: "neutral" },
   },
-  defaultVariants: { tone: "neutral" },
-});
+);
 
-const STATUS_ICONS: Record<SubmissionStatus, LucideIcon> = {
-  DRAFT: FilePen,
-  PENDING_REVIEW: Clock,
-  REJECTED: CircleX,
-  APPROVED: CircleCheck,
-  SCHEDULED: CalendarClock,
-  PUBLISHED: Monitor,
-  ENDED: CircleOff,
-  SUSPENDED: Ban,
-  CANCELED: CircleMinus,
-  ARCHIVED: Archive,
-};
-
-interface StatusBadgeProps
-  extends Omit<React.ComponentProps<typeof Badge>, "variant" | "children">,
-    Omit<VariantProps<typeof toneClass>, "tone"> {
+interface StatusBadgeProps extends React.ComponentProps<"span"> {
   status: SubmissionStatus;
-  /** 아이콘 없이 문구만 보여준다. 좁은 목록에서 쓴다. */
-  hideIcon?: boolean;
 }
 
-export function StatusBadge({
-  status,
-  hideIcon = false,
-  className,
-  ...props
-}: StatusBadgeProps) {
+export function StatusBadge({ status, className, ...props }: StatusBadgeProps) {
   const meta = getStatusMeta(status);
-  const Icon = STATUS_ICONS[status];
 
   return (
-    <Badge
-      variant="outline"
-      className={cn(toneClass({ tone: meta.tone }), className)}
-      {...props}
-    >
-      {!hideIcon && <Icon aria-hidden="true" />}
+    <span className={cn(toneClass({ tone: meta.tone }), className)} {...props}>
       {meta.label}
-    </Badge>
+    </span>
   );
 }

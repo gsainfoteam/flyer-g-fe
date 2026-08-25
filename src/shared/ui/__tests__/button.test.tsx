@@ -11,13 +11,23 @@ import { Spinner } from "@/shared/ui/spinner";
 describe("Button", () => {
   it("variant와 size가 class로 반영된다", () => {
     const { rerender } = render(<Button>승인</Button>);
-    const initial = screen.getByRole("button").className;
+    const primary = screen.getByRole("button").className;
+
+    rerender(<Button variant="secondary">취소</Button>);
+    expect(screen.getByRole("button").className).not.toBe(primary);
+
+    rerender(<Button size="lg">승인</Button>);
+    expect(screen.getByRole("button")).toHaveAttribute("data-size", "lg");
+  });
+
+  // 단색 체계라 destructive는 별도의 색을 쓰지 않는다. 확인 dialog의 실행
+  // 버튼이 곧 강조색이며, 위험은 문구와 확인 절차가 알린다.
+  it("destructive는 주 작업과 같은 강조색을 쓴다", () => {
+    const { rerender } = render(<Button>승인</Button>);
+    const primary = screen.getByRole("button").className;
 
     rerender(<Button variant="destructive">중단</Button>);
-    expect(screen.getByRole("button").className).not.toBe(initial);
-
-    rerender(<Button size="lg">중단</Button>);
-    expect(screen.getByRole("button")).toHaveAttribute("data-size", "lg");
+    expect(screen.getByRole("button").className).toBe(primary);
   });
 
   it("클릭 콜백이 실행된다", async () => {

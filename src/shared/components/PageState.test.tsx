@@ -59,7 +59,7 @@ describe("ErrorState", () => {
   it("재시도 버튼을 누르면 콜백이 실행된다", async () => {
     const onRetry = vi.fn();
     render(<ErrorState onRetry={onRetry} />);
-    await userEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+    await userEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
     expect(onRetry).toHaveBeenCalledOnce();
   });
 });

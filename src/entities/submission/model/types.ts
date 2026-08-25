@@ -87,6 +87,8 @@ export interface SubmissionView {
   status: SubmissionStatus;
   startAt: Date;
   endAt: Date;
+  /** 제출 시각. 관리자 목록에서 얼마나 기다렸는지 계산하는 데 쓴다. */
+  createdAt: Date;
   posterUrl: string;
   detailUrl: string;
   location: string | null;
@@ -115,4 +117,12 @@ export interface Page<T> {
   items: T[];
   nextCursor: string | null;
   totalCount: number;
+  /**
+   * 이 응답을 만든 서버 시각.
+   *
+   * 상태와 기간 판정은 클라이언트 시계가 아니라 이 값을 기준으로 한다.
+   * 목록과 요약이 서로 다른 시각을 쓰면 같은 건이 화면마다 다른 상태로 보인다.
+   * (명세 6.3)
+   */
+  serverTime: Date;
 }

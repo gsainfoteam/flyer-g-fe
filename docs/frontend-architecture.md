@@ -115,3 +115,8 @@ Vitest + React Testing Library + jsdom. 테스트는 실제 시간과 네트워�
 | 플레이어 컨트롤 | 운영 화면에도 레이아웃 전환·일시정지 노출 | Phase 05 |
 | 4분할 레이아웃 | 페이지 단위 순환 아님, 1920x1080 미최적화 | Phase 05 |
 | 레거시 목 데이터 | `src/data/mockContents.ts`, `src/types/content.ts` | 목 재작성 시 제거 |
+
+## 화면 구조
+
+관리 화면은 상단 내비게이션 + 본문(최대 1120px) + 푸터다. `AdminShell`(`src/App.tsx`)이
+이 셸을 만든다. 실제 라우팅으로 옮기는 것은 Phase 01 범위다.

@@ -25,8 +25,13 @@ describe("상태 표시 매핑", () => {
   it("명세 6.3의 UI 표시 문구를 쓴다", () => {
     expect(getStatusLabel("PENDING_REVIEW")).toBe("승인 대기");
     expect(getStatusLabel("SUSPENDED")).toBe("게시 중단");
-    expect(getStatusMeta("PUBLISHED").tone).toBe("success");
-    expect(getStatusMeta("REJECTED").tone).toBe("danger");
+  });
+
+  it("게시자가 고쳐야 하는 상태만 강조 tone을 쓴다", () => {
+    expect(getStatusMeta("REJECTED").tone).toBe("attention");
+    expect(getStatusMeta("SUSPENDED").tone).toBe("attention");
+    expect(getStatusMeta("PUBLISHED").tone).toBe("neutral");
+    expect(getStatusMeta("PENDING_REVIEW").tone).toBe("neutral");
   });
 });
 

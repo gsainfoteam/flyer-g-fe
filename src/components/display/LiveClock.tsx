@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getSeoulParts } from "@/shared/lib/datetime";
+import { cn } from "@/shared/lib/utils";
 
 /**
  * TV 화면의 현재 시각. 표시는 항상 Asia/Seoul 기준이다. (명세 6.3)
@@ -8,11 +9,12 @@ import { getSeoulParts } from "@/shared/lib/datetime";
 const pad = (value: number) => String(value).padStart(2, "0");
 
 interface LiveClockProps {
-  /** 테스트에서 고정 시각을 넣는다. */
+  /** 서버 시각을 넘기면 그 값을 고정해서 보여준다. 테스트에서도 쓴다. */
   now?: Date;
+  className?: string;
 }
 
-export function LiveClock({ now }: LiveClockProps) {
+export function LiveClock({ now, className }: LiveClockProps) {
   const [tick, setTick] = useState(() => now ?? new Date());
 
   useEffect(() => {
@@ -22,17 +24,11 @@ export function LiveClock({ now }: LiveClockProps) {
   }, [now]);
 
   const current = now ?? tick;
-  const { year, month, day, weekday, hour12, minute, meridiem } =
-    getSeoulParts(current);
+  const { year, month, day, weekday, hour24, minute } = getSeoulParts(current);
 
   return (
-    <div className="text-right">
-      <p className="text-heading font-normal text-ink-muted">
-        {year}. {pad(month)}. {pad(day)}. ({weekday})
-      </p>
-      <p className="text-[2rem] font-semibold leading-tight tracking-tight text-ink">
-        {hour12}:{pad(minute)} <span className="text-title font-normal text-ink-muted">{meridiem}</span>
-      </p>
-    </div>
+    <p className={cn("tabular-nums text-ink-subtle", className)}>
+      {year}. {pad(month)}. {pad(day)}. ({weekday}) {pad(hour24)}:{pad(minute)}
+    </p>
   );
 }

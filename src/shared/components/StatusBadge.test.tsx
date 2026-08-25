@@ -12,23 +12,17 @@ describe("StatusBadge", () => {
     }
   });
 
-  it("아이콘은 보조 표현이라 접근성 트리에서 감춘다", () => {
-    const { container } = render(<StatusBadge status="PUBLISHED" />);
-    const icon = container.querySelector("svg");
-    expect(icon).toHaveAttribute("aria-hidden", "true");
-  });
+  it("게시자가 고쳐야 하는 상태만 강조 tone을 쓴다", () => {
+    for (const status of ["REJECTED", "SUSPENDED"] as const) {
+      const { container, unmount } = render(<StatusBadge status={status} />);
+      expect(container.firstElementChild?.className).toContain("attention");
+      unmount();
+    }
 
-  it("hideIcon이면 문구만 남는다", () => {
-    const { container } = render(<StatusBadge status="PUBLISHED" hideIcon />);
-    expect(container.querySelector("svg")).toBeNull();
-    expect(screen.getByText("게시 중")).toBeInTheDocument();
-  });
-
-  it("상태마다 tone class가 달라진다", () => {
-    const { container: published } = render(<StatusBadge status="PUBLISHED" />);
-    const { container: rejected } = render(<StatusBadge status="REJECTED" />);
-    expect(published.firstElementChild?.className).not.toBe(
-      rejected.firstElementChild?.className,
-    );
+    for (const status of ["PUBLISHED", "SCHEDULED", "PENDING_REVIEW"] as const) {
+      const { container, unmount } = render(<StatusBadge status={status} />);
+      expect(container.firstElementChild?.className).not.toContain("attention");
+      unmount();
+    }
   });
 });

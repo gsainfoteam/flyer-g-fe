@@ -1,13 +1,21 @@
 import { useMemo, useState } from "react";
+import { getStatusSentence } from "@/entities/submission";
 import type { SubmissionStatus } from "@/entities/submission";
 import type { SubmissionView } from "@/entities/submission/model/types";
-import { EmptyState } from "@/shared/components";
+import { EmptyState, Panel, StatusBadge } from "@/shared/components";
+import {
+  formatSeoulDateTime,
+  formatSeoulShortDate,
+} from "@/shared/lib/datetime";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { SubmissionRow } from "../common/SubmissionRow";
 
 /**
- * 내 콘텐츠 목록.
+ * 내 신청 목록.
+ *
+ * 각 행은 상태 배지와 함께 "지금 어떤 상황인지" 한 문장을 보여준다. 배지 색을
+ * 구분하지 못해도 무엇을 해야 하는지 알 수 있어야 한다.
  *
  * 전체 접근을 위한 pagination과 URL 필터 동기화는 Phase 03 범위다.
  */
@@ -23,6 +31,14 @@ const filterTabs: { key: FilterKey; label: string }[] = [
 ];
 
 const PREVIEW_COUNT = 6;
+
+function sentenceFor(submission: SubmissionView): string {
+  return getStatusSentence({
+    status: submission.status,
+    startsAtLabel: formatSeoulDateTime(submission.startAt),
+    endsAtLabel: formatSeoulShortDate(submission.endAt),
+  });
+}
 
 interface RecentContentSectionProps {
   submissions: SubmissionView[];
@@ -48,18 +64,19 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
   );
 
   return (
-    <section className="min-w-0 rounded-card border border-line bg-surface">
-      <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-3">
-        <h2 className="text-heading text-ink">내 콘텐츠</h2>
-        <Button variant="link" size="sm" asChild>
-          <a href="/studio">새 콘텐츠 등록</a>
+    <Panel
+      title="내 신청"
+      action={
+        <Button variant="link" size="xs" asChild>
+          <a href="/studio">새 신청 →</a>
         </Button>
-      </div>
-
+      }
+      flush
+    >
       <div
         role="tablist"
         aria-label="상태별 보기"
-        className="flex gap-1 overflow-x-auto border-b border-line px-3 py-2"
+        className="mb-1 flex gap-1 overflow-x-auto px-1 pb-1"
       >
         {filterTabs.map((tab) => {
           const active = filter === tab.key;
@@ -72,10 +89,10 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
               aria-selected={active}
               onClick={() => setFilter(tab.key)}
               className={cn(
-                "shrink-0 rounded-control px-2.5 py-1 text-label transition",
+                "shrink-0 rounded-pill px-3.5 py-2 text-label font-semibold transition",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
                 active
-                  ? "bg-brand text-brand-on"
+                  ? "bg-ink text-ink-inverse"
                   : "text-ink-muted hover:bg-surface-muted hover:text-ink",
               )}
             >
@@ -83,7 +100,7 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
               <span
                 className={cn(
                   "ml-1.5 tabular-nums",
-                  active ? "text-brand-on/75" : "text-ink-subtle",
+                  active ? "text-ink-inverse/70" : "text-ink-subtle",
                 )}
               >
                 {count}
@@ -94,20 +111,30 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState title="해당 상태의 콘텐츠가 없습니다." />
+        <EmptyState
+          title="해당 상태의 신청이 없어요"
+          description="다른 상태를 눌러 보세요."
+          className="px-3"
+        />
       ) : (
-        <ul className="divide-y divide-line px-5">
-          {filtered.slice(0, PREVIEW_COUNT).map((submission) => (
-            <SubmissionRow key={submission.id} submission={submission} />
+        <ul className="flex flex-col">
+          {filtered.slice(0, PREVIEW_COUNT).map((submission, index) => (
+            <SubmissionRow
+              key={submission.id}
+              submission={submission}
+              sentence={sentenceFor(submission)}
+              className={index > 0 ? "border-t border-line" : undefined}
+              trailing={<StatusBadge status={submission.status} />}
+            />
           ))}
         </ul>
       )}
 
       {filtered.length > PREVIEW_COUNT && (
-        <p className="border-t border-line px-5 py-2.5 text-caption text-ink-muted">
-          {filtered.length}건 중 {PREVIEW_COUNT}건 표시 · 전체 목록은 준비 중입니다.
+        <p className="px-4 pt-3 pb-1 text-caption text-ink-muted">
+          {filtered.length}건 중 {PREVIEW_COUNT}건 · 전체 목록은 준비 중이에요
         </p>
       )}
-    </section>
+    </Panel>
   );
 }

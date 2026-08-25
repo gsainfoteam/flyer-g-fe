@@ -1,5 +1,6 @@
 export { StatusBadge } from "./StatusBadge";
 export { SectionHeader } from "./SectionHeader";
+export { Panel } from "./Panel";
 export { FormField } from "./FormField";
 export type { FormFieldControlProps } from "./FormField";
 export {

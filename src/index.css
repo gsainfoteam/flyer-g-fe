@@ -19,115 +19,123 @@
 
 @theme {
   /* --- 서체 -------------------------------------------------------------
-     Pretendard 하나로 통일한다. 가변 폰트라 100~900을 자유롭게 쓸 수 있고
-     macOS, Windows, Raspberry Pi(TV)에서 같은 모양으로 보인다. */
+     Pretendard 가변 폰트를 자기 호스팅한다. 동적 서브셋이라 브라우저가 화면에
+     실제로 쓰인 유니코드 구간만 내려받는다. macOS, Windows, Raspberry Pi(TV)에서
+     같은 모양으로 보인다. */
   --font-sans:
     "Pretendard Variable", Pretendard, ui-sans-serif, system-ui,
     -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-heading: var(--font-sans);
 
   /* --- 타이포그래피 -----------------------------------------------------
-     display는 TV 원거리 가독성용, 나머지는 관리자 웹용이다. */
-  /* --- 타이포그래피 -----------------------------------------------------
-     단계마다 크기와 굵기를 함께 바꿔 위계를 만든다. 크기만 조금씩 다른 단계는
-     위계가 아니라 편차다. 자세한 사용 규칙은 docs/design-system.md 참고.
+     단계마다 크기와 굵기를 함께 바꿔 위계를 만든다. 제목은 800, 항목 제목과
+     버튼은 700, 본문은 400이다. 자세한 규칙은 docs/design-system.md 참고.
 
-       12 → 13 → 14 → 15 → 17 → 22 → 30 → 56 (px)
+       12 → 13 → 14 → 15 → 17 → 19 → 24 → 32 (px)
   */
   --text-overline: 0.75rem;
-  --text-overline--line-height: 1.3;
-  --text-overline--font-weight: 600;
-  --text-overline--letter-spacing: 0.02em;
+  --text-overline--line-height: 1.35;
+  --text-overline--font-weight: 700;
 
   --text-caption: 0.8125rem;
-  --text-caption--line-height: 1.45;
+  --text-caption--line-height: 1.5;
   --text-caption--font-weight: 400;
 
   --text-label: 0.875rem;
-  --text-label--line-height: 1.45;
+  --text-label--line-height: 1.5;
   --text-label--font-weight: 500;
 
   --text-body: 0.9375rem;
-  --text-body--line-height: 1.6;
+  --text-body--line-height: 1.65;
   --text-body--font-weight: 400;
 
-  --text-heading: 1.0625rem;
-  --text-heading--line-height: 1.4;
-  --text-heading--font-weight: 600;
-  --text-heading--letter-spacing: -0.01em;
+  /* 목록 항목 제목. 본문보다 크고 굵어 훑을 때 먼저 잡힌다. */
+  --text-subhead: 1.0625rem;
+  --text-subhead--line-height: 1.4;
+  --text-subhead--font-weight: 700;
 
-  --text-title: 1.375rem;
+  --text-heading: 1.1875rem;
+  --text-heading--line-height: 1.35;
+  --text-heading--font-weight: 800;
+  --text-heading--letter-spacing: -0.02em;
+
+  --text-title: 1.5rem;
   --text-title--line-height: 1.3;
-  --text-title--font-weight: 700;
-  --text-title--letter-spacing: -0.015em;
+  --text-title--font-weight: 800;
+  --text-title--letter-spacing: -0.025em;
 
-  --text-metric: 1.875rem;
-  --text-metric--line-height: 1.15;
-  --text-metric--font-weight: 700;
-  --text-metric--letter-spacing: -0.02em;
-
-  /* TV 전용. 원거리 가독성을 위해 굵기를 한 단계 더 올린다. */
-  --text-display: 3.5rem;
-  --text-display--line-height: 1.06;
+  --text-display: 2rem;
+  --text-display--line-height: 1.25;
   --text-display--font-weight: 800;
   --text-display--letter-spacing: -0.025em;
 
-  /* --- 브랜드 -----------------------------------------------------------
-     보라색은 브랜드 전용이다. 상태 표현에 쓰지 않는다. */
-  --color-brand: oklch(0.541 0.247 293.0);
-  --color-brand-strong: oklch(0.478 0.245 292.5);
-  --color-brand-muted: oklch(0.606 0.25 292.7);
-  --color-brand-subtle: oklch(0.958 0.022 293.7);
-  --color-brand-border: oklch(0.888 0.058 293.3);
-  --color-brand-on: oklch(1 0 0);
-  /* 로고의 G 한 글자에만 쓰는 보조색. 다른 곳에 쓰지 않는다. */
-  --color-accent-brand: oklch(0.628 0.208 38.5);
+  /* 수치. tabular-nums와 함께 쓴다. */
+  --text-metric: 1.125rem;
+  --text-metric--line-height: 1.2;
+  --text-metric--font-weight: 800;
+
+  /* --- 강조색 -----------------------------------------------------------
+     단색 체계다. 빨강은 "지금 행동해야 하는 곳"에만 쓴다. 주 작업 버튼,
+     처리해야 할 건수, 반려·중단처럼 게시자가 고쳐야 하는 상태.
+     장식이나 브랜딩 배경으로 깔지 않는다. */
+  --color-accent: #ec3013;
+  --color-accent-100: #fff2ef;
+  --color-accent-200: #ffe0d9;
+  --color-accent-300: #ffc4b8;
+  --color-accent-600: #dd2b0f;
+  --color-accent-700: #ae1800;
+  --color-accent-800: #7c1405;
+  --color-accent-on: #ffffff;
 
   /* --- 표면과 글자 ------------------------------------------------------ */
-  --color-canvas: oklch(0.971 0.003 286.3);
-  --color-surface: oklch(1 0 0);
-  --color-surface-muted: oklch(0.967 0.001 286.4);
-  --color-line: oklch(0.92 0.004 286.3);
-  --color-line-strong: oklch(0.871 0.006 286.3);
-  /* 본문은 ink, 보조는 ink-muted(약 7:1), 3차 정보만 ink-subtle(약 4.6:1). */
-  --color-ink: oklch(0.21 0.006 285.9);
-  --color-ink-muted: oklch(0.442 0.017 285.8);
-  --color-ink-subtle: oklch(0.538 0.016 285.9);
-  --color-ink-inverse: oklch(0.985 0 0);
-  --color-focus: oklch(0.541 0.247 293.0);
+  --color-canvas: #f3f2f2;
+  --color-surface: #ffffff;
+  /* 칩 배경과 경계선이 같은 값이다. 면과 선을 한 톤으로 묶어 화면을 조용하게 둔다. */
+  --color-surface-muted: #eae7e7;
+  --color-line: #eae7e7;
+  --color-line-strong: #d7d3d3;
+  --color-ink: #201e1d;
+  --color-ink-muted: #605d5d;
+  --color-ink-subtle: #7d7979;
+  --color-ink-inverse: #ffffff;
+  --color-focus: #ec3013;
 
   /* --- 상태 색 ----------------------------------------------------------
-     solid는 아이콘·강조, subtle은 배경, strong은 subtle 위 글자색이다.
-     색만으로 상태를 구분하지 않고 항상 문구를 함께 쓴다. (명세 9.6) */
-  --color-info: oklch(0.546 0.245 262.88);
-  --color-info-subtle: oklch(0.951 0.028 255.0);
-  --color-info-strong: oklch(0.455 0.204 264.0);
+     단색 체계라 상태를 색으로 나누지 않는다. 주의가 필요한 상태만 강조색을
+     쓰고 나머지는 중성으로 둔다. 구분은 항상 문구가 한다. (명세 9.6) */
+  --color-attention: var(--color-accent);
+  --color-attention-subtle: var(--color-accent-100);
+  --color-attention-strong: var(--color-accent-800);
 
-  --color-success: oklch(0.627 0.194 149.21);
-  --color-success-subtle: oklch(0.949 0.052 157.0);
-  --color-success-strong: oklch(0.448 0.119 150.5);
+  --color-info: #605d5d;
+  --color-info-subtle: #eae7e7;
+  --color-info-strong: #2d2b2b;
 
-  --color-warning: oklch(0.666 0.179 58.32);
-  --color-warning-subtle: oklch(0.962 0.062 92.0);
-  --color-warning-strong: oklch(0.473 0.129 52.0);
+  --color-success: #605d5d;
+  --color-success-subtle: #eae7e7;
+  --color-success-strong: #2d2b2b;
 
-  --color-danger: oklch(0.577 0.245 27.325);
-  --color-danger-subtle: oklch(0.951 0.03 17.4);
-  --color-danger-strong: oklch(0.462 0.196 27.5);
+  --color-warning: var(--color-accent);
+  --color-warning-subtle: var(--color-accent-100);
+  --color-warning-strong: var(--color-accent-800);
+
+  --color-danger: var(--color-accent);
+  --color-danger-subtle: var(--color-accent-100);
+  --color-danger-strong: var(--color-accent-800);
 
   /* --- 모서리 -----------------------------------------------------------
-     shadcn의 --radius-sm/md/lg 계열과 공존한다. 제품 컴포넌트는 아래를 쓴다. */
-  --radius-control: 0.5rem;
-  --radius-card: 0.625rem;
-  --radius-dialog: 0.75rem;
-  /* pill은 상태 배지처럼 텍스트를 감싸는 요소에만 쓴다. 버튼에는 쓰지 않는다. */
+     카드는 넉넉히, 조작 요소는 그보다 작게, 칩과 배지는 알약으로. */
+  --radius-thumb: 0.5rem;
+  --radius-control: 0.875rem;
+  --radius-card: 1.25rem;
+  --radius-dialog: 1.25rem;
   --radius-pill: 9999px;
 
-  /* --- 그림자 ----------------------------------------------------------- */
-  --shadow-card: 0 1px 2px oklch(0.208 0.006 285.9 / 0.05);
-  --shadow-floating: 0 2px 4px oklch(0.208 0.006 285.9 / 0.06),
-    0 8px 24px oklch(0.208 0.006 285.9 / 0.08);
-  --shadow-dialog: 0 12px 40px oklch(0.208 0.006 285.9 / 0.16);
+  /* --- 그림자 -----------------------------------------------------------
+     카드를 바닥에서 살짝 띄우는 정도. 위계는 흰 면과 회색 바닥의 차이가 만든다. */
+  --shadow-card: 0 1px 2px color-mix(in srgb, #2d2b2b 14%, transparent);
+  --shadow-floating: 0 3px 10px color-mix(in srgb, #2d2b2b 16%, transparent);
+  --shadow-dialog: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
 
   /* --- 모션 -------------------------------------------------------------
      duration은 Tailwind theme namespace가 없어 :root 변수로 함께 둔다. */
@@ -135,7 +143,7 @@
   --ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
 
   /* --- 레이아웃 ---------------------------------------------------------- */
-  --container-content: 1500px;
+  --container-content: 1120px;
   --container-form: 720px;
   /* TV 기준 해상도. 플레이어 레이아웃 검증용 breakpoint. */
   --breakpoint-tv: 1920px;
@@ -161,8 +169,7 @@
   --layer-toast: 60;
 
   /* --- 레이아웃 치수 ----------------------------------------------------- */
-  --layout-sidebar-width: 240px;
-  --layout-header-height: 4rem;
+  --layout-header-height: 4.125rem;
 
   /* ======================================================================
      shadcn theme 변수 → Flyer.G 토큰 연결
@@ -175,25 +182,25 @@
   --card-foreground: var(--color-ink);
   --popover: var(--color-surface);
   --popover-foreground: var(--color-ink);
-  --primary: var(--color-brand);
-  --primary-foreground: var(--color-brand-on);
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-accent-on);
   --secondary: var(--color-surface-muted);
   --secondary-foreground: var(--color-ink);
   --muted: var(--color-surface-muted);
   --muted-foreground: var(--color-ink-muted);
-  --accent: var(--color-brand-subtle);
-  --accent-foreground: var(--color-brand-strong);
+  --accent: var(--color-surface-muted);
+  --accent-foreground: var(--color-ink);
   --destructive: var(--color-danger);
   --border: var(--color-line);
   --input: var(--color-line);
   --ring: var(--color-focus);
-  --radius: 0.5rem;
+  --radius: 0.875rem;
   --sidebar: var(--color-surface);
   --sidebar-foreground: var(--color-ink);
-  --sidebar-primary: var(--color-brand);
-  --sidebar-primary-foreground: var(--color-brand-on);
-  --sidebar-accent: var(--color-brand-subtle);
-  --sidebar-accent-foreground: var(--color-brand-strong);
+  --sidebar-primary: var(--color-accent);
+  --sidebar-primary-foreground: var(--color-accent-on);
+  --sidebar-accent: var(--color-surface-muted);
+  --sidebar-accent-foreground: var(--color-ink);
   --sidebar-border: var(--color-line);
   --sidebar-ring: var(--color-focus);
 
@@ -218,8 +225,9 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+  /* shadcn의 hover 표면 역할. 제품 강조색(--color-accent)과 구분한다. */
+  --color-ui-accent: var(--accent);
+  --color-ui-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
@@ -256,6 +264,10 @@
   body {
     margin: 0;
     min-height: 100vh;
+    /* 한국어는 단어 단위로 끊고, 자간을 살짝 좁혀 밀도를 맞춘다. */
+    word-break: keep-all;
+    text-wrap: pretty;
+    letter-spacing: -0.01em;
     @apply bg-background text-foreground;
   }
 
@@ -285,16 +297,12 @@
 /*
  * TV 플레이어 배경.
  *
- * 공공 화면이므로 움직이지 않는다. 시청자의 주의는 포스터로 가야 하고,
- * Raspberry Pi에서 상시 애니메이션은 불필요한 연산이다. (명세 9.2, 9.6)
+ * 흰 면이다. 포스터가 화면의 주인공이고 배경은 아무 일도 하지 않는다.
+ * 공공 화면이라 움직이지 않는다. Raspberry Pi에서 상시 애니메이션은
+ * 불필요한 연산이다. (명세 9.2, 9.6)
  */
 .tv-surface {
-  background:
-    linear-gradient(
-      180deg,
-      var(--color-surface) 0%,
-      var(--color-canvas) 100%
-    );
+  background: var(--color-surface);
 }
 
 @media (prefers-reduced-motion: reduce) {

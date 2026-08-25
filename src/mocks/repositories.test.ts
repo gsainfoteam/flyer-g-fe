@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { resolveEffectiveStatus } from "@/entities/submission";
 import { isApiError } from "@/shared/api/error";
 import type { Repositories } from "@/shared/api/repositories";
 import { createFixedClock } from "@/shared/lib/clock";
@@ -29,6 +30,27 @@ describe("mock repositories", () => {
     expect(second.items.length).toBeGreaterThan(0);
     expect(second.items[0]!.id).not.toBe(first.items[0]!.id);
     expect(first.totalCount).toBe(second.totalCount);
+  });
+
+  it("목록 응답이 서버 시각을 함께 주고, 표시 상태를 그 시각으로 판정한다", async () => {
+    // 클라이언트 시계로 판정하면 같은 건이 화면마다 다른 상태로 보인다. (명세 6.3)
+    const page = await repos.submissions.list({ limit: 100 });
+    expect(page.serverTime).toEqual(NOW);
+
+    const published = page.items.filter(
+      (item) => resolveEffectiveStatus(item, page.serverTime) === "PUBLISHED",
+    );
+    expect(published.length).toBeGreaterThan(0);
+    for (const item of published) {
+      expect(item.startAt.getTime()).toBeLessThanOrEqual(NOW.getTime());
+      expect(item.endAt.getTime()).toBeGreaterThan(NOW.getTime());
+    }
+  });
+
+  it("승인 대기 목록은 오래 기다린 순으로 준다", async () => {
+    const pending = await repos.reviews.listPending({ limit: 10 });
+    const created = pending.items.map((item) => item.createdAt.getTime());
+    expect(created).toEqual([...created].sort((a, b) => a - b));
   });
 
   it("요약 통계가 목록과 같은 기준 시각을 쓴다", async () => {

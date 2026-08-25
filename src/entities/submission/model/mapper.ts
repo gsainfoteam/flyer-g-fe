@@ -105,6 +105,7 @@ export function toSubmissionView(
     status: resolveEffectiveStatus(submission, serverNow),
     startAt: submission.startAt,
     endAt: submission.endAt,
+    createdAt: submission.createdAt,
     posterUrl: submission.posterUrl,
     detailUrl: submission.detailUrl,
     location: submission.location,

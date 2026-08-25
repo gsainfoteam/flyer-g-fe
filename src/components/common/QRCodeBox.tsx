@@ -8,15 +8,17 @@
 interface QRCodeBoxProps {
   value: string;
   label?: string;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: keyof typeof sizeClassName;
   inverse?: boolean;
 }
 
 const sizeClassName = {
   sm: "size-12",
   md: "size-20",
-  lg: "size-28",
-  xl: "size-36",
+  /** TV 4분할 슬롯 */
+  lg: "size-[108px]",
+  /** TV 단일 레이아웃. 5m 거리에서 스캔 가능한 크기 */
+  tv: "size-[216px]",
 };
 
 const GRID = 25;

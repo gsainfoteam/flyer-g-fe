@@ -121,6 +121,7 @@ class MockStore {
 function paginate(
   items: SignageSubmissionExpandedDto[],
   params: SubmissionListParams,
+  serverTime: Date,
 ): Page<SignageSubmissionExpanded> {
   const limit = params.limit ?? DEFAULT_PAGE_SIZE;
   const offset = params.cursor ? Number(params.cursor) : 0;
@@ -132,6 +133,7 @@ function paginate(
     items: slice.map(toSignageSubmissionExpanded),
     nextCursor: nextOffset < items.length ? String(nextOffset) : null,
     totalCount: items.length,
+    serverTime,
   };
 }
 
@@ -184,7 +186,7 @@ export function createMockRepositories(
           params.status
         );
       });
-      return paginate(filtered, params);
+      return paginate(filtered, params, now);
     },
 
     async getById(id, signal) {
@@ -275,11 +277,12 @@ export function createMockRepositories(
   const reviews: ReviewRepository = {
     async listPending(params, signal) {
       await settle(signal);
+      // 오래 기다린 순. 관리자가 먼저 처리해야 하는 건이 위로 온다.
       const pending = store
         .all()
         .filter((item) => item.status === "PENDING_REVIEW")
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-      return paginate(pending, params);
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      return paginate(pending, params, clock.now());
     },
 
     async listHistory(submissionId, signal) {

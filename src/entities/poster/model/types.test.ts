@@ -13,6 +13,7 @@ const view: SubmissionView = {
   status: "PUBLISHED",
   startAt: parseIsoUtc("2026-06-08T00:00:00.000Z"),
   endAt: parseIsoUtc("2026-06-15T00:00:00.000Z"),
+  createdAt: parseIsoUtc("2026-06-01T00:00:00.000Z"),
   posterUrl: "/posters/a.png",
   detailUrl: "https://ziggle.gistory.me/notices/1",
   location: "제1학생회관",

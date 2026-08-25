@@ -84,15 +84,15 @@ function Section({ title, description, children }: {
 
 function TokenSwatches() {
   const colors = [
-    ["brand", "bg-brand"],
-    ["brand-subtle", "bg-brand-subtle"],
-    ["accent-brand", "bg-accent-brand"],
+    ["accent", "bg-accent"],
+    ["accent-100", "bg-accent-100"],
+    ["accent-700", "bg-accent-700"],
     ["canvas", "bg-canvas"],
+    ["surface", "bg-surface"],
     ["surface-muted", "bg-surface-muted"],
-    ["info", "bg-info"],
-    ["success", "bg-success"],
-    ["warning", "bg-warning"],
-    ["danger", "bg-danger"],
+    ["ink", "bg-ink"],
+    ["ink-muted", "bg-ink-muted"],
+    ["ink-subtle", "bg-ink-subtle"],
   ] as const;
 
   return (
@@ -111,14 +111,15 @@ function TokenSwatches() {
       {/* 각 단계는 크기와 굵기를 함께 바꾼다. 왼쪽 회색이 실제 사용처다. */}
       <dl className="divide-y divide-line">
         {[
-          ["display", "56 / 800", "TV 포스터 제목", "text-display"],
-          ["metric", "30 / 700", "운영 요약 수치", "text-metric tabular-nums"],
-          ["title", "22 / 700", "화면 제목 (h1)", "text-title"],
-          ["heading", "17 / 600", "섹션 제목 (h2)", "text-heading"],
+          ["display", "32 / 800", "화면 제목 (h1)", "text-display"],
+          ["metric", "18 / 800", "상태별 건수", "text-metric tabular-nums"],
+          ["title", "24 / 800", "카드 제목, 빈 상태 제목", "text-title"],
+          ["heading", "19 / 800", "섹션 제목 (h2)", "text-heading"],
           ["body", "15 / 400", "본문", "text-body"],
-          ["label", "14 / 500", "목록 제목, 입력 label, 버튼", "text-label"],
+          ["subhead", "17 / 700", "목록 항목 제목", "text-subhead"],
+          ["label", "14 / 500", "메타 문장, 입력 label", "text-label"],
           ["caption", "13 / 400", "메타 정보, 보조 설명", "text-caption"],
-          ["overline", "12 / 600", "상태 배지", "text-overline"],
+          ["overline", "12 / 700", "상태 배지", "text-overline"],
         ].map(([token, spec, use, className]) => (
           <div
             key={token}
@@ -138,9 +139,9 @@ function TokenSwatches() {
       {/* Tailwind는 class 이름을 정적으로 추출하므로 문자열을 합성하지 않는다. */}
       <div className="flex flex-wrap gap-3">
         {[
+          ["thumb", "rounded-thumb"],
           ["control", "rounded-control"],
           ["card", "rounded-card"],
-          ["dialog", "rounded-dialog"],
           ["pill", "rounded-pill"],
         ].map(([name, className]) => (
           <div
@@ -227,10 +228,12 @@ export default function ComponentCatalog() {
               <StatusBadge key={status} status={status} />
             ))}
           </Row>
-          <Row label="아이콘 없이">
-            {SUBMISSION_STATUSES.slice(0, 5).map((status) => (
-              <StatusBadge key={status} status={status} hideIcon />
-            ))}
+          <Row label="주의가 필요한 상태">
+            <StatusBadge status="REJECTED" />
+            <StatusBadge status="SUSPENDED" />
+            <span className="text-caption text-ink-muted">
+              게시자가 고쳐야 하는 상태만 강조색을 쓴다
+            </span>
           </Row>
           <Row label="shadcn Badge">
             <Badge>기본</Badge>

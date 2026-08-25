@@ -59,8 +59,12 @@ export function createSubmissionFixtures(
     {
       ...base[0]!,
       id: "notice-901",
-      title: "여름 계절학기 수강 안내",
-      subtitle: "반려 사유 확인이 필요한 신청",
+      title: "슈퍼-피셜 신입 부원 모집",
+      subtitle: "그림 그리는 사람들의 모임",
+      categoryId: "동아리",
+      categoryName: "동아리",
+      organizationName: "슈퍼-피셜",
+      posterUrl: "/posters/superficial.webp",
       status: "REJECTED",
     },
     {
@@ -68,13 +72,15 @@ export function createSubmissionFixtures(
       id: "notice-902",
       title: "임시 저장한 동아리 홍보",
       subtitle: null,
+      posterUrl: "",
       status: "DRAFT",
     },
     {
       ...base[2]!,
       id: "notice-903",
-      title: "중단된 외부 행사 안내",
+      title: "여름 계절학기 수강 안내",
       subtitle: null,
+      organizationName: "학사지원팀",
       status: "SUSPENDED",
     },
   ];

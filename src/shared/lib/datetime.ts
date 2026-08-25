@@ -106,3 +106,29 @@ export function fromSeoulInput(value: string): Date {
   const withSeconds = normalized.length === 16 ? `${normalized}:00` : normalized;
   return parseIsoUtc(`${withSeconds}${SEOUL_UTC_OFFSET}`);
 }
+
+/**
+ * 얼마나 기다렸는지 사람이 읽는 형태로 나타낸다. "3일", "19시간", "12분".
+ * 관리자 목록에서 오래 기다린 건을 먼저 알아보게 하기 위한 것이다.
+ */
+export function formatElapsed(since: Date, now: Date): string {
+  const minutes = Math.max(
+    0,
+    Math.floor((now.getTime() - since.getTime()) / 60000),
+  );
+  if (minutes < 60) return `${minutes}분`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간`;
+  return `${Math.floor(hours / 24)}일`;
+}
+
+/** "08. 21." — 기간을 좁은 칸에 넣을 때 쓴다. */
+export function formatSeoulShortDate(date: Date): string {
+  const { month, day } = getSeoulParts(date);
+  return `${pad(month)}. ${pad(day)}.`;
+}
+
+/** "2026. 08. 21. ~ 09. 03." — 시작은 연도까지, 종료는 월일만. */
+export function formatSeoulPeriodCompact(startAt: Date, endAt: Date): string {
+  return `${formatSeoulDate(startAt)} ~ ${formatSeoulShortDate(endAt)}`;
+}
