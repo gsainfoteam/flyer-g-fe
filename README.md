@@ -1,75 +1,64 @@
-# React + TypeScript + Vite
+# 전단지 (Flyer.G)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+GIST 학사기숙사의 종이 게시판을 디지털 사이니지로 바꾸는 시스템의 프론트엔드다.
+기숙사 로비 TV에 승인된 포스터가 자동으로 돌아가고, 관리자 웹에서 신청과 승인을
+처리한다. 게시 기간이 끝나면 자동으로 내려간다.
 
-Currently, two official plugins are available:
+[Ziggle](https://ziggle.gistory.me)의 연장 서비스로, TV의 QR을 찍으면 Ziggle 원문으로
+간다.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 실행
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+bun install
+bun run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+| 명령 | 하는 일 |
+|---|---|
+| `bun run dev` | 개발 서버 |
+| `bun run test` | 테스트 1회 실행 |
+| `bun run test:watch` | 테스트 감시 모드 |
+| `bun run lint` | ESLint |
+| `bun run build` | 타입 검사 + production 빌드 |
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 화면
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| 경로 | 화면 |
+|---|---|
+| `/` | 대시보드 |
+| `/submissions` | 내 신청 목록 |
+| `/reviews` | 승인 대기 (하우스 관리자 이상) |
+| `/studio` | 게시 신청 |
+| `/display/:deviceId` | TV 플레이어 (로그인 불요) |
+| `/catalog` | 컴포넌트 카탈로그 (개발 빌드 전용) |
 
-```
+개발 환경에서는 mock 세션으로 시작한다. 상단 오른쪽에서 게시자 · 하우스 관리자 ·
+시스템 운영자로 역할을 바꿔 가며 권한 경계를 확인할 수 있다.
+
+## 환경 변수
+
+`.env.example`을 복사해 `.env.local`을 만든다. 비워 두면 개발 빌드는 mock으로,
+production 빌드는 실제 API로 동작하며, production에서 mock을 켜면 앱이 시작 시점에
+실패한다.
+
+## 문서
+
+제품 명세와 설계 문서는 저장소에 두지 않는다. 코드 주석에서 인용하는 `명세 6.3`,
+`FR-PLY-01` 같은 표기는 제품 명세서(`product-spec.md`)의 조항 번호다. 문서 위치는
+팀에 문의한다.
+
+로컬에서 작업한다면 저장소 루트의 `docs/`에 두면 된다. 해당 경로는 git에서 무시된다.
+
+| 문서 | 내용 |
+|---|---|
+| `product-spec.md` | 제품 범위, 상태 모델, API 계약, 인수 조건 |
+| `frontend-architecture.md` | 코드 구조, 경계, 라우팅과 인증 |
+| `design-system.md` | 디자인 토큰, 컴포넌트, shadcn 생성본 수정 내역 |
+| `design-context.md` | 디자인 작업용 맥락 |
+| `frontend-phases/` | Phase 00~07 구현 지시서 |
+
+## 기술 스택
+
+React 19 · TypeScript · Vite · Tailwind CSS 4 · shadcn/ui · TanStack Query ·
+React Router · Vitest · Pretendard

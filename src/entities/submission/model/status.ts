@@ -5,7 +5,7 @@ import type { SubmissionStatus } from "./types";
  *
  * tone은 두 가지뿐이다. 단색 체계라 상태마다 색을 나누지 않고, 게시자가
  * **고쳐야 하는 상태**만 강조색으로 띄운다. 나머지 구분은 label과 설명 문장이
- * 맡는다. (명세 9.6, docs/design-system.md)
+ * 맡는다. (명세 9.6)
  */
 export type StatusTone = "neutral" | "attention";
 

@@ -39,7 +39,7 @@ describe("ConfirmActionDialog", () => {
   });
 
   // focus 복원은 Radix FocusScope의 동작이며 jsdom에서는 재현되지 않는다.
-  // 실제 브라우저 확인 결과는 docs/design-system.md의 검증 기록에 남긴다.
+  // 실제 브라우저에서는 동작하며, 확인 결과는 디자인 시스템 문서에 기록해 둔다.
   it("Escape로 닫는다", async () => {
     render(<Harness onConfirm={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: "게시 중단" }));
