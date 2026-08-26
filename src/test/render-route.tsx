@@ -6,6 +6,9 @@ import { routeTree } from "@/app/router/route-tree";
 import { createMockAuthAdapter } from "@/features/auth/api/mock-auth";
 import type { Role } from "@/features/auth/model/types";
 import { createMockRepositories } from "@/mocks/repositories";
+import { createFakeUploadService } from "@/features/media-upload/api/fake-upload-service";
+import { createMockNoticeAdapter } from "@/features/ziggle-notice/api/mock-notices";
+import type { AppServices } from "@/app/providers/services-context";
 import type { Repositories } from "@/shared/api/repositories";
 import { createFixedClock } from "@/shared/lib/clock";
 import { parseIsoUtc } from "@/shared/lib/datetime";
@@ -22,11 +25,12 @@ interface RenderRouteOptions {
   /** null이면 로그아웃 상태로 시작한다. */
   role?: Role | null;
   repositories?: Repositories;
+  services?: Partial<AppServices>;
 }
 
 export function renderRoute(
   initialPath: string,
-  { role = null, repositories }: RenderRouteOptions = {},
+  { role = null, repositories, services }: RenderRouteOptions = {},
 ) {
   // mock 인증은 sessionStorage에 역할을 남긴다. 테스트끼리 새지 않게 지운다.
   sessionStorage.clear();
@@ -37,11 +41,20 @@ export function renderRoute(
     defaultOptions: { queries: { retry: false } },
   });
 
+  const clock = createFixedClock(TEST_NOW);
+  const resolvedServices: AppServices = {
+    // 업로드는 즉시 끝난다. 진행률 애니메이션을 기다리지 않는다.
+    assetUpload: createFakeUploadService({ tickMs: 0, tickCount: 2 }),
+    notices: createMockNoticeAdapter({ clock }),
+    ...services,
+  };
+
   const result = render(
     <AppProviders
+      services={resolvedServices}
       repositories={
         repositories ??
-        createMockRepositories({ clock: createFixedClock(TEST_NOW) })
+        createMockRepositories({ clock })
       }
       authAdapter={authAdapter}
       queryClient={queryClient}
