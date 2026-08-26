@@ -14,6 +14,11 @@ export const queryKeys = {
     summary: (scope: SubmissionListParams["scope"]) =>
       ["submissions", "summary", scope ?? "me"] as const,
   },
+  notices: {
+    all: () => ["notices"] as const,
+    detail: (noticeId: string) => ["notices", "detail", noticeId] as const,
+    submittable: () => ["notices", "submittable"] as const,
+  },
   reviews: {
     all: () => ["reviews"] as const,
     pending: (params: Omit<SubmissionListParams, "status" | "scope">) =>
