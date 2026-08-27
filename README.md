@@ -50,12 +50,10 @@ production 빌드는 실제 API로 동작하며, production에서 mock을 켜면
 
 로컬에서 작업한다면 저장소 루트의 `docs/`에 두면 된다. 해당 경로는 git에서 무시된다.
 
-백엔드에 요청할 API는 [API-REQUIREMENTS.md](./API-REQUIREMENTS.md)에 모은다. 화면을
-만들다 필요한 계약이 생기면 그때그때 덧붙이는 문서다.
-
 | 문서 | 내용 |
 |---|---|
 | `product-spec.md` | 제품 범위, 상태 모델, API 계약, 인수 조건 |
+| `API-REQUIREMENTS.md` | 화면이 필요로 하는 API. 백엔드에 전달하는 요구사항 |
 | `frontend-architecture.md` | 코드 구조, 경계, 라우팅과 인증 |
 | `design-system.md` | 디자인 토큰, 컴포넌트, shadcn 생성본 수정 내역 |
 | `design-context.md` | 디자인 작업용 맥락 |
