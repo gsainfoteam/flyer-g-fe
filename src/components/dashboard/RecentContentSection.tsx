@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { to } from "@/app/router/routes";
-import { getStatusSentence } from "@/entities/submission";
+import { getStatusSentence, groupOfStatus } from "@/entities/submission";
 import type { SubmissionStatus } from "@/entities/submission";
 import type { SubmissionView } from "@/entities/submission/model/types";
 import { EmptyState, Panel, StatusBadge } from "@/shared/components";
@@ -19,7 +19,7 @@ import { SubmissionRow } from "../common/SubmissionRow";
  * 각 행은 상태 배지와 함께 "지금 어떤 상황인지" 한 문장을 보여준다. 배지 색을
  * 구분하지 못해도 무엇을 해야 하는지 알 수 있어야 한다.
  *
- * 전체 접근을 위한 pagination과 URL 필터 동기화는 Phase 03 범위다.
+ * 대시보드용 미리보기라 최근 몇 건만 보여주고, 전체는 목록 페이지가 맡는다.
  */
 type FilterKey = "ALL" | SubmissionStatus;
 
@@ -125,6 +125,7 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
               key={submission.id}
               submission={submission}
               sentence={sentenceFor(submission)}
+              href={to.submissionDetail(submission.id)}
               className={index > 0 ? "border-t border-line" : undefined}
               trailing={<StatusBadge status={submission.status} />}
             />
@@ -133,9 +134,17 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
       )}
 
       {filtered.length > PREVIEW_COUNT && (
-        <p className="px-4 pt-3 pb-1 text-caption text-ink-muted">
-          {filtered.length}건 중 {PREVIEW_COUNT}건 · 전체 목록은 준비 중이에요
-        </p>
+        <div className="border-t border-line px-3 pt-2 pb-1">
+          <Button variant="link" size="xs" asChild>
+            <Link
+              to={to.submissions(
+                filter === "ALL" ? undefined : groupOfStatus(filter).key,
+              )}
+            >
+              전체 {filtered.length}건 보기 →
+            </Link>
+          </Button>
+        </div>
       )}
     </Panel>
   );

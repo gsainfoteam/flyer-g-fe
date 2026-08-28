@@ -18,7 +18,12 @@ export const paths = {
 export const to = {
   dashboard: () => "/",
   studio: () => "/studio",
-  submissions: () => "/submissions",
+  studioEdit: (submissionId: string) =>
+    `/studio?submissionId=${encodeURIComponent(submissionId)}`,
+  submissions: (statusGroupKey?: string) =>
+    statusGroupKey && statusGroupKey !== "all"
+      ? `/submissions?status=${encodeURIComponent(statusGroupKey)}`
+      : "/submissions",
   submissionDetail: (submissionId: string) =>
     `/submissions/${encodeURIComponent(submissionId)}`,
   reviews: () => "/reviews",
