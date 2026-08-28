@@ -17,6 +17,8 @@ interface SinglePosterDisplayProps {
   deviceLabel: string;
   /** 편성 판정의 기준이 되는 서버 시각 */
   serverTime: Date;
+  clockTicking?: boolean;
+  onPosterError?: (posterId: string) => void;
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
@@ -34,6 +36,8 @@ export function SinglePosterDisplay({
   poster,
   deviceLabel,
   serverTime,
+  clockTicking = false,
+  onPosterError,
 }: SinglePosterDisplayProps) {
   return (
     <div className="flex h-full gap-[72px]">
@@ -81,9 +85,9 @@ export function SinglePosterDisplay({
       </div>
 
       <div className="flex shrink-0 flex-col items-end gap-7">
-        <LiveClock now={serverTime} className="text-[32px]" />
+        <LiveClock now={serverTime} ticking={clockTicking} className="text-[32px]" />
         <div className="aspect-3/4 h-full overflow-hidden rounded-[24px]">
-          <PosterArtwork poster={poster} fit="cover" />
+          <PosterArtwork poster={poster} fit="cover" onLoadError={onPosterError} />
         </div>
       </div>
     </div>

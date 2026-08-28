@@ -190,7 +190,9 @@ export function StudioPage() {
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2.5">
           <Button variant="secondary" size="sm" asChild>
-            <Link to={to.display("device-preview")}>TV 미리보기</Link>
+            <Link to={to.display("device-preview", { preview: true })}>
+              TV 미리보기
+            </Link>
           </Button>
           <Button
             size="sm"

@@ -28,6 +28,10 @@ interface DisplayStageProps {
   deviceLabel: string;
   /** 편성 판정의 기준이 되는 서버 시각 */
   serverTime: Date;
+  /** 시계를 서버 시각 기준으로 흐르게 한다. 운영 TV에서 켠다. */
+  clockTicking?: boolean;
+  /** 포스터 이미지를 불러오지 못했을 때. 플레이어가 항목을 건너뛰는 데 쓴다. */
+  onPosterError?: (posterId: string) => void;
 }
 
 export function DisplayStage({
@@ -36,6 +40,8 @@ export function DisplayStage({
   currentIndex = 0,
   deviceLabel,
   serverTime,
+  clockTicking = false,
+  onPosterError,
 }: DisplayStageProps) {
   if (posters.length === 0) return null;
 
@@ -47,10 +53,14 @@ export function DisplayStage({
           <span className="text-[26px] text-ink-subtle">
             {deviceLabel} · 게시 중 {posters.length}건
           </span>
-          <LiveClock now={serverTime} className="ml-auto text-[30px]" />
+          <LiveClock
+            now={serverTime}
+            ticking={clockTicking}
+            className="ml-auto text-[30px]"
+          />
         </div>
         <div className="min-h-0 flex-1">
-          <FourSplitDisplay posters={posters} />
+          <FourSplitDisplay posters={posters} onPosterError={onPosterError} />
         </div>
       </div>
     );
@@ -62,6 +72,8 @@ export function DisplayStage({
       poster={current}
       deviceLabel={deviceLabel}
       serverTime={serverTime}
+      clockTicking={clockTicking}
+      onPosterError={onPosterError}
     />
   );
 }

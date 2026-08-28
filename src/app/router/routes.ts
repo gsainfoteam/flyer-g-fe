@@ -30,7 +30,8 @@ export const to = {
   reviewDetail: (submissionId: string) =>
     `/reviews/${encodeURIComponent(submissionId)}`,
   displays: () => "/displays",
-  display: (deviceId: string) => `/display/${encodeURIComponent(deviceId)}`,
+  display: (deviceId: string, options?: { preview?: boolean }) =>
+    `/display/${encodeURIComponent(deviceId)}${options?.preview ? "?preview=1" : ""}`,
   login: (returnTo?: string) =>
     returnTo && returnTo !== "/"
       ? `/login?returnTo=${encodeURIComponent(returnTo)}`

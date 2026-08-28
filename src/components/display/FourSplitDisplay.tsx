@@ -15,9 +15,13 @@ import { QRCodeBox } from "../common/QRCodeBox";
  */
 interface FourSplitDisplayProps {
   posters: PosterRenderModel[];
+  onPosterError?: (posterId: string) => void;
 }
 
-export function FourSplitDisplay({ posters }: FourSplitDisplayProps) {
+export function FourSplitDisplay({
+  posters,
+  onPosterError,
+}: FourSplitDisplayProps) {
   const visible = posters.slice(0, FOUR_GRID_SLOT_COUNT);
   if (visible.length === 0) return null;
 
@@ -35,7 +39,7 @@ export function FourSplitDisplay({ posters }: FourSplitDisplayProps) {
           className="flex min-w-0 flex-col gap-5 overflow-hidden"
         >
           <div className="aspect-3/4 w-full shrink-0 overflow-hidden rounded-[20px]">
-            <PosterArtwork poster={poster} fit="cover" />
+            <PosterArtwork poster={poster} fit="cover" onLoadError={onPosterError} />
           </div>
 
           <div className="min-h-0">
