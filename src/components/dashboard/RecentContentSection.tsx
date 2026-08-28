@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { to } from "@/app/router/routes";
-import { getStatusSentence } from "@/entities/submission";
+import { getStatusSentence, groupOfStatus } from "@/entities/submission";
 import type { SubmissionStatus } from "@/entities/submission";
 import type { SubmissionView } from "@/entities/submission/model/types";
 import { EmptyState, Panel, StatusBadge } from "@/shared/components";
@@ -19,7 +19,7 @@ import { SubmissionRow } from "../common/SubmissionRow";
  * 각 행은 상태 배지와 함께 "지금 어떤 상황인지" 한 문장을 보여준다. 배지 색을
  * 구분하지 못해도 무엇을 해야 하는지 알 수 있어야 한다.
  *
- * 전체 접근을 위한 pagination과 URL 필터 동기화는 Phase 03 범위다.
+ * 대시보드용 미리보기라 최근 몇 건만 보여주고, 전체는 목록 페이지가 맡는다.
  */
 type FilterKey = "ALL" | SubmissionStatus;
 
@@ -78,7 +78,7 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
       <div
         role="tablist"
         aria-label="상태별 보기"
-        className="mb-1 flex gap-1 overflow-x-auto px-1 pb-1"
+        className="mb-1.5 flex gap-5 overflow-x-auto border-b border-line px-3"
       >
         {filterTabs.map((tab) => {
           const active = filter === tab.key;
@@ -91,18 +91,19 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
               aria-selected={active}
               onClick={() => setFilter(tab.key)}
               className={cn(
-                "shrink-0 rounded-pill px-3.5 py-2 text-label font-semibold transition",
+                "relative shrink-0 pt-1.5 pb-2.5 text-label transition-colors duration-150",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+                "after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-pill",
                 active
-                  ? "bg-ink text-ink-inverse"
-                  : "text-ink-muted hover:bg-surface-muted hover:text-ink",
+                  ? "font-semibold text-ink after:bg-ink"
+                  : "font-medium text-ink-muted after:bg-transparent hover:text-ink",
               )}
             >
               {tab.label}
               <span
                 className={cn(
                   "ml-1.5 tabular-nums",
-                  active ? "text-ink-inverse/70" : "text-ink-subtle",
+                  active ? "text-ink-muted" : "text-ink-subtle",
                 )}
               >
                 {count}
@@ -119,13 +120,14 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
           className="px-3"
         />
       ) : (
-        <ul className="flex flex-col">
-          {filtered.slice(0, PREVIEW_COUNT).map((submission, index) => (
+        // 구분선은 li에 그린다. rounded가 걸린 행 안쪽에 그리면 모서리를 따라 휜다.
+        <ul className="flex flex-col divide-y divide-line">
+          {filtered.slice(0, PREVIEW_COUNT).map((submission) => (
             <SubmissionRow
               key={submission.id}
               submission={submission}
               sentence={sentenceFor(submission)}
-              className={index > 0 ? "border-t border-line" : undefined}
+              href={to.submissionDetail(submission.id)}
               trailing={<StatusBadge status={submission.status} />}
             />
           ))}
@@ -133,9 +135,17 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
       )}
 
       {filtered.length > PREVIEW_COUNT && (
-        <p className="px-4 pt-3 pb-1 text-caption text-ink-muted">
-          {filtered.length}건 중 {PREVIEW_COUNT}건 · 전체 목록은 준비 중이에요
-        </p>
+        <div className="border-t border-line px-3 pt-2 pb-1">
+          <Button variant="link" size="xs" asChild>
+            <Link
+              to={to.submissions(
+                filter === "ALL" ? undefined : groupOfStatus(filter).key,
+              )}
+            >
+              전체 {filtered.length}건 보기 →
+            </Link>
+          </Button>
+        </div>
       )}
     </Panel>
   );

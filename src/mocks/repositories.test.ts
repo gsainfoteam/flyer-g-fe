@@ -47,6 +47,20 @@ describe("mock repositories", () => {
     }
   });
 
+  it("복수 상태 필터가 묶인 상태를 함께 준다", async () => {
+    // 목록 탭 하나가 상태 여러 개를 묶는다("승인/예약", "중단/취소").
+    const page = await repos.submissions.list({
+      statuses: ["SUSPENDED", "CANCELED"],
+      limit: 100,
+    });
+    expect(page.items.length).toBeGreaterThan(0);
+    for (const item of page.items) {
+      expect(["SUSPENDED", "CANCELED"]).toContain(
+        resolveEffectiveStatus(item, page.serverTime),
+      );
+    }
+  });
+
   it("승인 대기 목록은 오래 기다린 순으로 준다", async () => {
     const pending = await repos.reviews.listPending({ limit: 10 });
     const created = pending.items.map((item) => item.createdAt.getTime());

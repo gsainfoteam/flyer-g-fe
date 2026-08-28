@@ -3,13 +3,14 @@ import { ApiError } from "@/shared/api/error";
 import type { Clock } from "@/shared/lib/clock";
 import { systemClock } from "@/shared/lib/clock";
 import { ZIGGLE_ORIGIN } from "@/shared/lib/ziggle-url";
+import { withInjection } from "@/mocks/injection";
 import type { ZiggleNoticeAdapter } from "./notice-adapter";
 
 /**
  * 개발·테스트용 공지 목록.
  *
  * 실제 운영 데이터처럼 보이는 개인 정보를 넣지 않는다. 조직명과 행사는 모두
- * 가상이며, 실제 공지 ID 체계를 흉내 내지도 않는다.
+ * 지어낸 이름이며(실존 조직 아님), 실제 공지 ID 체계를 흉내 내지도 않는다.
  */
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -29,7 +30,7 @@ const SEEDS: readonly NoticeSeed[] = [
     id: "notice-1041",
     title: "겨울 정기 공연 〈한밤의 물리학〉",
     categoryId: "performance",
-    organizationName: "가상 공연동아리 페이드인",
+    organizationName: "공연동아리 페이드인",
     summary: "12월 셋째 주 금요일 저녁, 대강당",
     location: "대강당",
     publishedDaysAgo: 1,
@@ -38,7 +39,7 @@ const SEEDS: readonly NoticeSeed[] = [
     id: "notice-1038",
     title: "기숙사 분리배출 방식 변경 안내",
     categoryId: "notice",
-    organizationName: "가상 생활관운영팀",
+    organizationName: "생활관운영팀",
     summary: "1월부터 층별 분리배출 위치가 바뀝니다",
     location: null,
     publishedDaysAgo: 3,
@@ -47,7 +48,7 @@ const SEEDS: readonly NoticeSeed[] = [
     id: "notice-1032",
     title: "신입 부원 모집 · 로봇제작동아리",
     categoryId: "club",
-    organizationName: "가상 로봇동아리 기어박스",
+    organizationName: "로봇동아리 기어박스",
     summary: "전공 무관, 주 1회 정기 모임",
     location: "학생회관 302호",
     publishedDaysAgo: 6,
@@ -56,7 +57,7 @@ const SEEDS: readonly NoticeSeed[] = [
     id: "notice-1027",
     title: "겨울 계절학기 수강 신청 일정",
     categoryId: "department",
-    organizationName: "가상 학사지원팀",
+    organizationName: "학사지원팀",
     summary: null,
     location: null,
     publishedDaysAgo: 9,
@@ -95,7 +96,7 @@ export function createMockNoticeAdapter(
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
   };
 
-  return {
+  return withInjection<ZiggleNoticeAdapter>("notices", {
     async getById(noticeId, signal) {
       await settle(signal);
       const seed = SEEDS.find((item) => item.id === noticeId);
@@ -117,5 +118,5 @@ export function createMockNoticeAdapter(
       const now = clock.now();
       return SEEDS.map((seed) => toNotice(seed, now));
     },
-  };
+  });
 }

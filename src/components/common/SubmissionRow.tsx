@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 import { fromSubmissionView } from "@/entities/poster";
 import type { SubmissionView } from "@/entities/submission/model/types";
 import { cn } from "@/shared/lib/utils";
@@ -21,6 +22,8 @@ interface SubmissionRowProps {
   trailing?: ReactNode;
   /** 지금 처리해야 하는 건임을 알린다. */
   highlighted?: boolean;
+  /** 값이 있으면 행 전체가 이 경로로 가는 링크가 된다. */
+  href?: string;
   thumbSize?: "sm" | "md";
   className?: string;
 }
@@ -31,17 +34,12 @@ export function SubmissionRow({
   titleTag,
   trailing,
   highlighted = false,
+  href,
   thumbSize = "sm",
   className,
 }: SubmissionRowProps) {
-  return (
-    <li
-      className={cn(
-        "flex items-center gap-4 rounded-control px-3.5 py-3.5",
-        highlighted && "bg-attention-subtle",
-        className,
-      )}
-    >
+  const body = (
+    <>
       <PosterThumb poster={fromSubmissionView(submission)} size={thumbSize} />
 
       <div className="min-w-0 flex-1">
@@ -53,6 +51,32 @@ export function SubmissionRow({
       </div>
 
       {trailing}
-    </li>
+    </>
   );
+
+  const rowClassName = cn(
+    "flex items-center gap-4 rounded-control px-3.5 py-3.5",
+    highlighted && "bg-attention-subtle",
+    className,
+  );
+
+  if (href) {
+    return (
+      <li>
+        <Link
+          to={href}
+          className={cn(
+            rowClassName,
+            "transition hover:bg-surface-muted",
+            "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus",
+            highlighted && "hover:bg-attention-subtle",
+          )}
+        >
+          {body}
+        </Link>
+      </li>
+    );
+  }
+
+  return <li className={rowClassName}>{body}</li>;
 }

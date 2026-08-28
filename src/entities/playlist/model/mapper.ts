@@ -1,4 +1,4 @@
-import { parseIsoUtc } from "@/shared/lib/datetime";
+import { parseIsoUtc, toIsoUtc } from "@/shared/lib/datetime";
 import { clampRotationSeconds } from "./types";
 import type { Playlist, PlaylistDto, PlaylistItem, PlaylistItemDto } from "./types";
 
@@ -20,6 +20,21 @@ export function toPlaylist(dto: PlaylistDto): Playlist {
       rotationSeconds: clampRotationSeconds(dto.layout.rotationSeconds),
     },
     items: dto.items.map(toPlaylistItem),
+  };
+}
+
+/** 도메인 모델 → 전송 모델. 오프라인 캐시가 직렬화할 때 쓴다. */
+export function toPlaylistDto(playlist: Playlist): PlaylistDto {
+  return {
+    serverTime: toIsoUtc(playlist.serverTime),
+    playlistVersion: playlist.playlistVersion,
+    refreshAfterSeconds: playlist.refreshAfterSeconds,
+    layout: playlist.layout,
+    items: playlist.items.map((item) => ({
+      ...item,
+      startsAt: toIsoUtc(item.startsAt),
+      endsAt: toIsoUtc(item.endsAt),
+    })),
   };
 }
 

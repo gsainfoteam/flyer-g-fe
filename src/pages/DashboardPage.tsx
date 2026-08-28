@@ -107,10 +107,23 @@ export function DashboardPage() {
                 label: "승인 대기",
                 value: summary.data.pendingReview,
                 emphasis: isReviewer,
+                href: isReviewer ? to.reviews() : to.submissions("pending"),
               },
-              { label: "게시 중", value: summary.data.published },
-              { label: "예약됨", value: summary.data.scheduled },
-              { label: "종료됨", value: summary.data.ended },
+              {
+                label: "게시 중",
+                value: summary.data.published,
+                href: to.submissions("published"),
+              },
+              {
+                label: "예약됨",
+                value: summary.data.scheduled,
+                href: to.submissions("approved"),
+              },
+              {
+                label: "종료됨",
+                value: summary.data.ended,
+                href: to.submissions("ended"),
+              },
             ]}
             trailing={
               <Button variant="link" size="xs" asChild>
@@ -138,21 +151,28 @@ export function DashboardPage() {
                   <li className="flex items-center gap-2.5">
                     <span className="flex-1 font-semibold">A동 로비</span>
                     <span className="text-label text-ink-muted">12초 전</span>
-                    <span className="rounded-pill bg-surface-muted px-2.5 py-1 text-overline text-ink-muted">
+                    <span className="inline-flex items-center gap-1.5 rounded-pill bg-success-subtle px-2.5 py-1 text-overline text-success-strong">
+                      <span
+                        className="size-1.5 rounded-pill bg-success"
+                        aria-hidden="true"
+                      />
                       온라인
                     </span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <span className="flex-1 font-semibold">B동 로비</span>
                     <span className="text-label text-ink-muted">26분 전</span>
-                    <span className="rounded-pill bg-attention-subtle px-2.5 py-1 text-overline text-attention-strong">
+                    <span className="inline-flex items-center gap-1.5 rounded-pill bg-attention-subtle px-2.5 py-1 text-overline text-attention-strong">
+                      <span
+                        className="size-1.5 rounded-pill bg-attention"
+                        aria-hidden="true"
+                      />
                       오프라인
                     </span>
                   </li>
                 </ul>
                 <p className="mt-4 text-caption text-ink-subtle">
-                  오프라인 기기는 마지막 편성을 계속 재생하고 있어요. 기기 상태는
-                  Phase 06에서 실제 heartbeat로 연결합니다.
+                  오프라인 기기는 마지막으로 받은 편성을 계속 재생해요.
                 </p>
               </Panel>
 
@@ -189,7 +209,7 @@ function PublishedMini({ submissions }: { submissions: SubmissionView[] }) {
     <ul className="flex flex-col gap-3.5">
       {published.map((submission) => (
         <li key={submission.id} className="flex items-center gap-3">
-          <div className="aspect-3/4 w-[34px] shrink-0 overflow-hidden rounded-[6px] bg-canvas">
+          <div className="aspect-3/4 w-[34px] shrink-0 overflow-hidden rounded-[6px] bg-surface-muted">
             {submission.posterUrl && (
               <img
                 src={submission.posterUrl}

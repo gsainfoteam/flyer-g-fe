@@ -65,7 +65,7 @@ export function PosterDropzone({
         className={cn(
           "rounded-card border border-dashed transition",
           isDraggingOver
-            ? "border-brand bg-brand-subtle"
+            ? "border-accent bg-accent-100"
             : "border-line-strong bg-surface-muted/50",
           showsError && "border-danger",
         )}
@@ -125,7 +125,7 @@ export function PosterDropzone({
               aria-valuemax={100}
             >
               <div
-                className="h-full bg-brand transition-[width]"
+                className="h-full bg-accent transition-[width]"
                 style={{ width: `${Math.round(state.progress * 100)}%` }}
               />
             </div>

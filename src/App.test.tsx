@@ -32,17 +32,17 @@ describe("대시보드", () => {
     expect(screen.queryByText(/지난 7일 대비/)).not.toBeInTheDocument();
   });
 
-  it("서버에 반영되지 않는 승인 버튼을 두지 않는다", async () => {
+  it("대시보드에서 바로 승인하지 않고 검토 상세로 보낸다", async () => {
     renderRoute("/", { role: "REVIEWER" });
     await screen.findByRole("heading", { name: "오래 기다린 순" });
 
+    // 근거 없이 누르는 원클릭 승인 버튼은 두지 않는다. (명세 FR-REV-02)
     expect(
       screen.queryByRole("button", { name: "승인하기" }),
     ).not.toBeInTheDocument();
-    // Phase 04 전까지 검토 버튼은 눌러도 서버에 아무 일도 일어나지 않으므로 비활성이다.
-    for (const button of screen.getAllByRole("button", { name: "검토" })) {
-      expect(button).toBeDisabled();
-    }
+    const reviewLinks = screen.getAllByRole("link", { name: "검토" });
+    expect(reviewLinks.length).toBeGreaterThan(0);
+    expect(reviewLinks[0]!.getAttribute("href")).toMatch(/^\/reviews\//);
   });
 
   it("상태 배지 옆에 지금 상황을 설명하는 문장을 함께 둔다", async () => {

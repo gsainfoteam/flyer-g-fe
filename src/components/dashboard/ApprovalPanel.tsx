@@ -1,3 +1,5 @@
+import { Link } from "react-router";
+import { to } from "@/app/router/routes";
 import { getStatusSentence } from "@/entities/submission";
 import type { SubmissionView } from "@/entities/submission/model/types";
 import { EmptyState, Panel } from "@/shared/components";
@@ -9,8 +11,8 @@ import { SubmissionRow } from "../common/SubmissionRow";
  * 승인 대기 목록.
  *
  * 오래 기다린 순으로 놓고, 가장 오래 기다린 건 하나만 배경으로 띄운다.
- * 승인·반려 동작은 사유 입력, 버전 확인, 동시 처리 충돌 처리가 함께 필요해서
- * Phase 04에서 구현한다. 서버에 반영되지 않는 승인 버튼은 두지 않는다.
+ * 승인·반려는 근거를 봐야 하는 결정이라 여기서 바로 처리하지 않고 검토 상세로
+ * 보낸다. (명세 FR-REV-02)
  */
 interface ApprovalPanelProps {
   submissions: SubmissionView[];
@@ -73,8 +75,8 @@ export function ApprovalPanel({
                     >
                       {waited} 대기
                     </span>
-                    <Button variant="secondary" size="sm" disabled>
-                      검토
+                    <Button variant="secondary" size="sm" asChild>
+                      <Link to={to.reviewDetail(submission.id)}>검토</Link>
                     </Button>
                   </>
                 }

@@ -14,6 +14,25 @@ describe("isAllowedZiggleUrl", () => {
     expect(isAllowedZiggleUrl("javascript:alert(1)")).toBe(false);
     expect(isAllowedZiggleUrl("")).toBe(false);
   });
+
+  it("allowlist 우회 시도를 막는다 (명세 9.4)", () => {
+    // userinfo 트릭: 브라우저는 @ 뒤를 host로 읽는다.
+    expect(
+      isAllowedZiggleUrl("https://ziggle.gistory.me@evil.example.com/x"),
+    ).toBe(false);
+    // 하위 도메인 위장
+    expect(isAllowedZiggleUrl("https://evil.ziggle.gistory.me/x")).toBe(false);
+    expect(isAllowedZiggleUrl("https://ziggle.gistory.me.evil.com")).toBe(false);
+    // 스킴 변형. URL 파서가 같은 안전한 목적지로 정규화하는 형태는 허용된다.
+    expect(isAllowedZiggleUrl("HTTPS://ziggle.gistory.me/x")).toBe(true);
+    expect(isAllowedZiggleUrl("https:ziggle.gistory.me/x")).toBe(true);
+    expect(isAllowedZiggleUrl(" https://ziggle.gistory.me/x")).toBe(true);
+    // 스킴 상대·비HTTP 스킴은 막는다.
+    expect(isAllowedZiggleUrl("//ziggle.gistory.me/x")).toBe(false);
+    expect(isAllowedZiggleUrl("data:text/html,hi")).toBe(false);
+    // 포트가 붙어도 hostname은 같다 — 허용 여부를 명시적으로 고정한다.
+    expect(isAllowedZiggleUrl("https://ziggle.gistory.me:8443/x")).toBe(true);
+  });
 });
 
 describe("normalizeLegacyZiggleUrl", () => {

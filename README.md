@@ -17,10 +17,13 @@ bun run dev
 | 명령 | 하는 일 |
 |---|---|
 | `bun run dev` | 개발 서버 |
-| `bun run test` | 테스트 1회 실행 |
+| `bun run test` | 단위·통합 테스트 1회 실행 |
 | `bun run test:watch` | 테스트 감시 모드 |
+| `bun run test:e2e` | Playwright E2E (mock 기반, dev 서버 자동 기동) |
 | `bun run lint` | ESLint |
 | `bun run build` | 타입 검사 + production 빌드 |
+
+E2E는 처음 한 번 `bunx playwright install chromium`으로 브라우저를 받아야 한다.
 
 ## 화면
 
@@ -35,6 +38,23 @@ bun run dev
 
 개발 환경에서는 mock 세션으로 시작한다. 상단 오른쪽에서 게시자 · 하우스 관리자 ·
 시스템 운영자로 역할을 바꿔 가며 권한 경계를 확인할 수 있다.
+
+## Mock 동작
+
+개발 빌드의 데이터는 전부 브라우저 메모리 안의 mock이다. **새로고침하면 초기
+fixture로 돌아간다.** 서버가 없어도 전체 흐름(신청 → 검토 → 게시 → TV)이 돈다.
+
+오류·지연 재현: `/catalog`의 **Mock 제어** 패널에서 요청별로 401~500 오류와 지연을
+주입할 수 있다. 콘솔로도 된다.
+
+```bash
+# 브라우저 콘솔에서
+sessionStorage.setItem("flyerg:mock-fail", '{"submissions.create": 409}')
+sessionStorage.setItem("flyerg:mock-latency", "3000")
+```
+
+TV 플레이어는 편성·포스터를 IndexedDB에 캐시한다(last-known-good). 편성 조회를
+실패시켜 보면(`{"displays.getPlaylist": 500}`) 캐시 재생을 확인할 수 있다.
 
 ## 환경 변수
 

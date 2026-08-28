@@ -3,7 +3,7 @@ import { DisplayStage } from "@/components/display/DisplayStage";
 import { FOUR_GRID_SLOT_COUNT } from "@/entities/playlist/model/types";
 import type { LayoutType } from "@/entities/playlist/model/types";
 import type { PosterRenderModel } from "@/entities/poster";
-import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import { cn } from "@/shared/lib/utils";
 import { DisplayPreviewFrame } from "./DisplayPreviewFrame";
 
 /**
@@ -46,18 +46,30 @@ export function DisplayPreview({
 
   return (
     <div className="flex min-h-0 w-full flex-col items-center gap-4">
-      <Tabs
-        value={layout}
-        onValueChange={(value) => setLayout(value as LayoutType)}
+      {/* 전환할 패널이 따로 없는 토글이라 tab 대신 pressed 버튼을 쓴다. */}
+      <div
+        role="group"
+        aria-label="TV 레이아웃 미리보기 전환"
+        className="inline-flex rounded-lg bg-surface-muted p-[3px]"
       >
-        <TabsList aria-label="TV 레이아웃 미리보기 전환">
-          {(Object.keys(LAYOUT_LABELS) as LayoutType[]).map((type) => (
-            <TabsTrigger key={type} value={type}>
-              {LAYOUT_LABELS[type]}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+        {(Object.keys(LAYOUT_LABELS) as LayoutType[]).map((type) => (
+          <button
+            key={type}
+            type="button"
+            aria-pressed={layout === type}
+            onClick={() => setLayout(type)}
+            className={cn(
+              "rounded-[7px] px-3.5 py-1 text-label font-semibold transition",
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+              layout === type
+                ? "bg-surface text-ink shadow-card"
+                : "text-ink-muted hover:text-ink",
+            )}
+          >
+            {LAYOUT_LABELS[type]}
+          </button>
+        ))}
+      </div>
 
       <DisplayPreviewFrame className="max-w-[900px]">
         <DisplayStage

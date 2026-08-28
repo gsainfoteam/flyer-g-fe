@@ -15,8 +15,11 @@ import { createIdempotencyKey } from "./idempotency";
  * 새로 만들지 않고 이미 만든 신청을 제출한다. 그렇지 않으면 실패할 때마다 DRAFT가
  * 쌓인다.
  *
+ * 기존 신청을 넘기면(수정·재신청, 명세 FR-DASH-02) 생성 대신 수정 → 제출한다.
+ * REJECTED 건의 재제출도 같은 경로다.
+ *
  * 서버가 이 둘을 한 번의 호출로 받는다면 여기만 바꾸면 된다.
- * (`API-REQUIREMENTS.md` 3절)
+ * (`API-REQUIREMENTS.md` 5절)
  */
 export interface CreateSubmissionValues {
   ziggleNoticeId: string;
@@ -28,6 +31,8 @@ export interface CreateSubmissionValues {
   startAt: string;
   endAt: string;
   targetGroupIds?: string[];
+  /** 수정·재신청 대상. 있으면 create 대신 update한다. */
+  editing?: { submissionId: string; version: number };
 }
 
 export function useCreateSubmission() {
@@ -61,19 +66,25 @@ export function useCreateSubmission() {
 
       try {
         if (createdRef.current === null) {
-          createdRef.current = await submissions.create(
-            {
-              ziggleNoticeId: values.ziggleNoticeId,
-              title: values.title.trim(),
-              categoryId: values.categoryId,
-              assetId: values.assetId,
-              detailUrl: values.detailUrl.trim(),
-              startAt: fromSeoulInput(values.startAt),
-              endAt: fromSeoulInput(values.endAt),
-              targetGroupIds: values.targetGroupIds ?? [],
-            },
-            { idempotencyKey: key },
-          );
+          const fields = {
+            title: values.title.trim(),
+            categoryId: values.categoryId,
+            assetId: values.assetId,
+            detailUrl: values.detailUrl.trim(),
+            startAt: fromSeoulInput(values.startAt),
+            endAt: fromSeoulInput(values.endAt),
+            targetGroupIds: values.targetGroupIds ?? [],
+          };
+          createdRef.current = values.editing
+            ? await submissions.update(
+                values.editing.submissionId,
+                { ...fields, version: values.editing.version },
+                { idempotencyKey: key },
+              )
+            : await submissions.create(
+                { ...fields, ziggleNoticeId: values.ziggleNoticeId },
+                { idempotencyKey: key },
+              );
         }
 
         return await submissions.submit(createdRef.current.id, {

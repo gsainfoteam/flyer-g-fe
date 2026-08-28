@@ -1,5 +1,6 @@
 import type { ZiggleNotice } from "@/entities/notice";
 import { isKnownCategory } from "@/entities/submission";
+import type { SignageSubmissionExpanded } from "@/entities/submission";
 import { toSeoulDateTimeInputValue } from "@/shared/lib/datetime";
 
 /**
@@ -69,5 +70,23 @@ export function draftFromNotice(
     title: notice.title,
     categoryId: isKnownCategory(notice.categoryId) ? notice.categoryId : "",
     detailUrl: notice.detailUrl,
+  };
+}
+
+/**
+ * 기존 신청을 수정·재신청할 때의 초기값 (명세 FR-DASH-02).
+ * 카탈로그에 없는 카테고리는 비워서 사용자가 다시 고르게 한다.
+ */
+export function draftFromSubmission(
+  submission: SignageSubmissionExpanded,
+): SubmissionDraft {
+  return {
+    title: submission.title,
+    categoryId: isKnownCategory(submission.categoryId)
+      ? submission.categoryId
+      : "",
+    startAt: toSeoulDateTimeInputValue(submission.startAt),
+    endAt: toSeoulDateTimeInputValue(submission.endAt),
+    detailUrl: submission.detailUrl,
   };
 }

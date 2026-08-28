@@ -10,6 +10,8 @@ export const queryKeys = {
     all: () => ["submissions"] as const,
     list: (params: SubmissionListParams) =>
       ["submissions", "list", params] as const,
+    infinite: (params: Omit<SubmissionListParams, "cursor">) =>
+      ["submissions", "infinite", params] as const,
     detail: (id: string) => ["submissions", "detail", id] as const,
     summary: (scope: SubmissionListParams["scope"]) =>
       ["submissions", "summary", scope ?? "me"] as const,

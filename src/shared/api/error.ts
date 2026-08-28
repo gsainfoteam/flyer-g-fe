@@ -17,6 +17,11 @@ export interface ApiErrorBody {
   code: string;
   message: string;
   requestId: string | null;
+  /**
+   * 입력 필드별 오류. 서버 400/422 응답의 `fields`를 그대로 담는다.
+   * (`API-REQUIREMENTS.md` 1.2) 있으면 화면이 해당 입력 칸에 오류를 붙인다.
+   */
+  fields?: Record<string, string>;
 }
 
 export class ApiError extends Error {
@@ -24,6 +29,8 @@ export class ApiError extends Error {
   readonly code: string;
   readonly status: number | null;
   readonly requestId: string | null;
+  /** 입력 필드별 오류. 없으면 null. */
+  readonly fields: Record<string, string> | null;
 
   constructor(init: {
     kind: ApiErrorKind;
@@ -31,6 +38,7 @@ export class ApiError extends Error {
     message: string;
     status?: number | null;
     requestId?: string | null;
+    fields?: Record<string, string> | null;
   }) {
     super(init.message);
     this.name = "ApiError";
@@ -38,6 +46,7 @@ export class ApiError extends Error {
     this.code = init.code;
     this.status = init.status ?? null;
     this.requestId = init.requestId ?? null;
+    this.fields = init.fields ?? null;
   }
 }
 

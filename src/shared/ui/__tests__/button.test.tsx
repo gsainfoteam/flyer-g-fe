@@ -20,11 +20,12 @@ describe("Button", () => {
     expect(screen.getByRole("button")).toHaveAttribute("data-size", "lg");
   });
 
-  // 단색 체계라 destructive는 별도의 색을 쓰지 않는다. 확인 dialog의 실행
-  // 버튼이 곧 강조색이며, 위험은 문구와 확인 절차가 알린다.
-  it("destructive는 주 작업과 같은 강조색을 쓴다", () => {
+  // 주 작업과 destructive는 같은 브랜드 강조색을 쓴다. 이 체계에서 빨강은
+  // "지금 하는 작업"을 뜻하고, 위험은 문구와 확인 dialog가 알린다.
+  it("주 작업과 destructive가 같은 강조색을 쓴다", () => {
     const { rerender } = render(<Button>승인</Button>);
     const primary = screen.getByRole("button").className;
+    expect(primary).toContain("bg-accent");
 
     rerender(<Button variant="destructive">중단</Button>);
     expect(screen.getByRole("button").className).toBe(primary);

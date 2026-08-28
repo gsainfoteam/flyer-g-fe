@@ -4,8 +4,8 @@ import { cn } from "@/shared/lib/utils";
 /**
  * 흰 면 위의 내용 묶음.
  *
- * 화면의 구조는 회색 바닥과 흰 면의 대비가 만든다. 테두리를 겹쳐 그리지 않고
- * 아주 옅은 그림자로만 띄운다. 제목 줄이 필요하면 `title`을 넘긴다.
+ * 화면의 구조는 헤어라인 경계선이 만든다. 그림자는 면이 바닥에서 아주 살짝
+ * 떨어져 보이는 정도만 깐다. 제목 줄이 필요하면 `title`을 넘긴다.
  */
 interface PanelProps {
   title?: ReactNode;
@@ -29,20 +29,20 @@ export function Panel({
   return (
     <section
       className={cn(
-        "flex min-w-0 flex-col overflow-hidden rounded-card bg-surface shadow-card",
+        "flex min-w-0 flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card",
         className,
       )}
     >
       {title && (
-        <div className="flex items-center justify-between gap-4 border-b border-line px-6 py-3.5">
-          <h2 className="text-heading text-ink">{title}</h2>
+        <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-3">
+          <h2 className="text-subhead text-ink">{title}</h2>
           {action}
         </div>
       )}
       <div
         className={cn(
           "min-h-0 flex-1",
-          flush ? "p-3" : "px-6 py-5",
+          flush ? "p-2.5" : "px-5 py-4",
           bodyClassName,
         )}
       >

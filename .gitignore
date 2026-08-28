@@ -28,3 +28,7 @@ tmp/
 
 # docs
 docs/
+
+# Playwright
+test-results/
+playwright-report/

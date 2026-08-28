@@ -260,3 +260,51 @@ describe("게시 신청 스튜디오", () => {
     expect(createSpy).not.toHaveBeenCalled();
   });
 });
+
+describe("수정 모드 (명세 FR-DASH-02)", () => {
+  it("반려 건을 수정해 재제출하면 새로 만들지 않고 같은 신청이 승인 대기로 간다", async () => {
+    const user = userEvent.setup();
+    const { repositories, createSpy, submitSpy } = studioRepositories();
+    const updateSpy = vi.spyOn(repositories.submissions, "update");
+
+    renderRoute("/studio?submissionId=notice-901", {
+      role: "SUBMITTER",
+      repositories,
+      services: { assetUpload: uploadService() },
+    });
+
+    // 기존 값이 채워진다.
+    const title = await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
+    await user.clear(title);
+    await user.type(title, "슈퍼-피셜 겨울 모집");
+
+    // fixture 카테고리는 카탈로그에 없어 비워진다. 다시 고른다.
+    await user.click(screen.getByRole("combobox"));
+    await user.click(await screen.findByRole("option", { name: "동아리" }));
+
+    await user.click(screen.getByRole("button", { name: "제출하기" }));
+
+    expect(await screen.findByText("신청이 접수되었어요")).toBeInTheDocument();
+    expect(createSpy).not.toHaveBeenCalled();
+    expect(updateSpy).toHaveBeenCalledTimes(1);
+    expect(submitSpy).toHaveBeenCalledWith("notice-901", expect.anything());
+
+    const detail = await repositories.submissions.getById("notice-901");
+    expect(detail.status).toBe("PENDING_REVIEW");
+    expect(detail.title).toBe("슈퍼-피셜 겨울 모집");
+    // 새 포스터를 올리지 않았으니 기존 포스터가 유지된다.
+    expect(detail.posterUrl).not.toBe("");
+  });
+
+  it("제출 전 상태가 아니면 수정을 막는다", async () => {
+    renderRoute("/studio?submissionId=notice-903", {
+      role: "SUBMITTER",
+      services: { assetUpload: uploadService() },
+    });
+
+    expect(
+      await screen.findByText(/지금 상태에서는 수정할 수 없어요/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "제출하기" })).toBeDisabled();
+  });
+});

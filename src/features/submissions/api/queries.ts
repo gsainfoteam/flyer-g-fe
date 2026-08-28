@@ -1,7 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { toSubmissionView } from "@/entities/submission";
 import type {
   SubmissionListParams,
+  SubmissionStatus,
   SubmissionView,
 } from "@/entities/submission/model/types";
 import { useRepositories } from "@/app/providers/repositories-context";
@@ -40,5 +41,67 @@ export function useSubmissionViews(params: SubmissionListParams = {}) {
       totalCount: page.totalCount,
       serverTime: page.serverTime,
     }),
+  });
+}
+
+/** 목록 페이지의 기본 페이지 크기 */
+export const SUBMISSION_PAGE_SIZE = 10;
+
+/**
+ * 상태 그룹 탭 기준의 무한 목록.
+ *
+ * "더 보기"가 이전 페이지를 유지한 채 다음 cursor를 이어 붙인다.
+ * 필터가 바뀌면 query key가 바뀌어 처음부터 다시 쌓는다.
+ */
+export function useInfiniteSubmissionViews(
+  statuses: readonly SubmissionStatus[],
+  scope: SubmissionListParams["scope"] = "me",
+) {
+  const { submissions } = useRepositories();
+  const params = { statuses, scope, limit: SUBMISSION_PAGE_SIZE };
+
+  return useInfiniteQuery({
+    queryKey: queryKeys.submissions.infinite(params),
+    queryFn: ({ pageParam, signal }) =>
+      submissions.list({ ...params, cursor: pageParam }, signal),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    select: (data) => {
+      // 모든 페이지를 마지막 응답의 서버 시각으로 판정한다. 페이지마다 다른
+      // 시각을 쓰면 같은 화면 안에서 상태가 어긋난다. (명세 6.3)
+      const serverTime = data.pages.at(-1)?.serverTime ?? new Date(0);
+      return {
+        items: data.pages.flatMap((page) =>
+          page.items.map((item) => toSubmissionView(item, serverTime)),
+        ),
+        totalCount: data.pages.at(-1)?.totalCount ?? 0,
+        serverTime,
+      };
+    },
+  });
+}
+
+/**
+ * 신청 상세 하나.
+ *
+ * 표시 상태 판정에 서버 시각이 필요한데 단건 응답에는 없다. 상세는 화면이
+ * 요약과 함께 열리므로, 판정은 호출부가 요약·목록의 서버 시각으로 한다.
+ */
+export function useSubmissionDetail(submissionId: string) {
+  const { submissions } = useRepositories();
+
+  return useQuery({
+    queryKey: queryKeys.submissions.detail(submissionId),
+    queryFn: ({ signal }) => submissions.getById(submissionId, signal),
+  });
+}
+
+/** 신청 하나의 검토 이력. 상세 타임라인에 쓴다. */
+export function useReviewHistory(submissionId: string) {
+  const { reviews } = useRepositories();
+
+  return useQuery({
+    queryKey: queryKeys.reviews.history(submissionId),
+    queryFn: ({ signal }) => reviews.listHistory(submissionId, signal),
   });
 }

@@ -11,8 +11,9 @@ import { RoleSwitcher } from "./RoleSwitcher";
 /**
  * 관리 화면 내비게이션.
  *
- * 화면 위에 가로로 놓아 본문 폭을 넓게 쓴다. 현재 위치는 알약 배경으로 알리고,
- * 처리해야 할 건수만 강조색 배지로 붙인다.
+ * 화면 위에 가로로 놓아 본문 폭을 넓게 쓴다. 스크롤해도 따라오는 반투명
+ * 헤더다. 현재 위치는 옅은 배경으로 알리고, 처리해야 할 건수만 강조색 배지로
+ * 붙인다.
  *
  * 역할에 없는 메뉴는 그리지 않는다. 다만 이는 편의일 뿐 보안이 아니다 —
  * 직접 URL로 들어와도 route guard가 막고, 서버가 다시 검증한다.
@@ -50,7 +51,7 @@ export function TopNav({ user, pendingCount = 0 }: TopNavProps) {
   );
 
   return (
-    <header className="border-b border-line bg-surface">
+    <header className="sticky top-0 z-(--layer-header) border-b border-line bg-surface/90 backdrop-blur-sm">
       <div className="flex h-(--layout-header-height) items-center gap-4 px-4 sm:gap-8 sm:px-6 lg:px-10">
         <NavLink
           to={to.dashboard()}
@@ -71,11 +72,11 @@ export function TopNav({ user, pendingCount = 0 }: TopNavProps) {
               end={item.href === to.dashboard()}
               className={({ isActive }) =>
                 cn(
-                  "inline-flex shrink-0 items-center gap-1.5 rounded-pill px-3.5 py-2 text-label font-semibold transition",
+                  "inline-flex shrink-0 items-center gap-1.5 rounded-control px-3 py-1.5 text-label font-medium transition-colors duration-150",
                   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
                   isActive
-                    ? "bg-surface-muted text-ink"
-                    : "text-ink-muted hover:bg-surface-muted hover:text-ink",
+                    ? "bg-surface-muted font-semibold text-ink"
+                    : "text-ink-muted hover:bg-surface-muted/70 hover:text-ink",
                 )
               }
             >
@@ -95,7 +96,7 @@ export function TopNav({ user, pendingCount = 0 }: TopNavProps) {
             {user.displayName} · {getRoleLabel(getPrimaryRole(user))}
           </span>
           <span
-            className="grid size-[34px] place-items-center rounded-pill bg-surface-muted text-label font-bold text-ink"
+            className="grid size-8 place-items-center rounded-pill bg-ink text-caption font-bold text-ink-inverse"
             aria-hidden="true"
           >
             {user.displayName.slice(0, 1)}

@@ -26,11 +26,13 @@ import type {
   SubmissionRepository,
   SuspendInput,
   CreateSubmissionInput,
+  UpdateSubmissionInput,
 } from "@/shared/api/repositories";
 import type { Clock } from "@/shared/lib/clock";
 import { systemClock } from "@/shared/lib/clock";
 import { parseIsoUtc, toIsoUtc } from "@/shared/lib/datetime";
 import { createReviewFixtures, createSubmissionFixtures } from "./fixtures";
+import { withInjection } from "./injection";
 
 /**
  * 개발·테스트용 in-memory 구현. 실제 서버 대신 같은 repository 인터페이스를 만족한다.
@@ -59,13 +61,17 @@ function conflict(message: string): ApiError {
   });
 }
 
-function invalid(message: string): ApiError {
+function invalid(
+  message: string,
+  fields?: Record<string, string>,
+): ApiError {
   return new ApiError({
     kind: "http",
     code: "VALIDATION_FAILED",
     message,
     status: 422,
     requestId: "mock-request",
+    fields,
   });
 }
 
@@ -210,7 +216,10 @@ export function createMockRepositories(
     }
 
     if (input.endAt.getTime() <= input.startAt.getTime()) {
-      throw invalid("종료 시각은 시작 시각보다 뒤여야 합니다.");
+      // 실서버 계약처럼 필드 단위 오류를 담는다. (`API-REQUIREMENTS.md` 1.2)
+      throw invalid("종료 시각은 시작 시각보다 뒤여야 합니다.", {
+        endAt: "종료 시각은 시작 시각보다 뒤여야 합니다.",
+      });
     }
 
     const now = clock.now();
@@ -252,11 +261,18 @@ export function createMockRepositories(
       await settle(signal);
       const now = clock.now();
       const filtered = store.all().filter((item) => {
-        if (!params.status || params.status === "ALL") return true;
-        return (
-          resolveEffectiveStatus(toSignageSubmissionExpanded(item), now) ===
-          params.status
+        const effective = resolveEffectiveStatus(
+          toSignageSubmissionExpanded(item),
+          now,
         );
+        if (params.statuses && params.statuses.length > 0) {
+          return params.statuses.includes(effective);
+        }
+        if (!params.status || params.status === "ALL") {
+          // 보관은 운영 목록에서 숨긴다. 명시적으로 요청할 때만 보여준다. (명세 6.3)
+          return effective !== "ARCHIVED";
+        }
+        return effective === params.status;
       });
       return paginate(filtered, params, now);
     },
@@ -285,6 +301,44 @@ export function createMockRepositories(
       const running = runCreate(input, mutationOptions);
       if (key) store.rememberPendingCreate(key, running);
       return running;
+    },
+
+    async update(id, input: UpdateSubmissionInput, mutationOptions) {
+      await settle(mutationOptions?.signal);
+      const current = store.find(id);
+      // 제출 전 상태만 자유롭게 고칠 수 있다. 승인 후 변경의 재승인 정책은
+      // 서버 몫이며 mock은 흉내 내지 않는다. (명세 FR-INT-02)
+      if (current.status !== "DRAFT" && current.status !== "REJECTED") {
+        throw conflict("제출 전 상태에서만 수정할 수 있습니다.");
+      }
+      if (current.version !== input.version) {
+        throw conflict("다른 곳에서 먼저 수정했습니다. 새로 고침해 주세요.");
+      }
+
+      const startAt = input.startAt ?? parseIsoUtc(current.startAt);
+      const endAt = input.endAt ?? parseIsoUtc(current.endAt);
+      if (endAt.getTime() <= startAt.getTime()) {
+        throw invalid("종료 시각은 시작 시각보다 뒤여야 합니다.", {
+          endAt: "종료 시각은 시작 시각보다 뒤여야 합니다.",
+        });
+      }
+
+      const next = touch(current, clock.now(), {
+        title: input.title ?? current.title,
+        categoryId: input.categoryId ?? current.categoryId,
+        categoryName: input.categoryId
+          ? getCategoryName(input.categoryId)
+          : current.categoryName,
+        assetId: input.assetId ?? current.assetId,
+        posterUrl: input.assetId
+          ? (getMockAssetUrl(input.assetId) ?? current.posterUrl)
+          : current.posterUrl,
+        detailUrl: input.detailUrl ?? current.detailUrl,
+        startAt: toIsoUtc(startAt),
+        endAt: toIsoUtc(endAt),
+        targetGroupIds: input.targetGroupIds ?? current.targetGroupIds,
+      });
+      return toSignageSubmissionExpanded(store.replace(next));
     },
 
     async submit(id, mutationOptions) {
@@ -352,6 +406,7 @@ export function createMockRepositories(
         reasonCode: null,
         comment: null,
         reviewerId: "reviewer-mock",
+        reviewerName: "하우스 관리자",
         reviewedAt: toIsoUtc(now),
       });
       return toSignageSubmissionExpanded(
@@ -378,6 +433,7 @@ export function createMockRepositories(
         reasonCode: input.reasonCode,
         comment: input.comment,
         reviewerId: "reviewer-mock",
+        reviewerName: "하우스 관리자",
         reviewedAt: toIsoUtc(now),
       });
       return toSignageSubmissionExpanded(
@@ -395,8 +451,21 @@ export function createMockRepositories(
       if (!suspendable.includes(current.status)) {
         throw conflict("예약 또는 게시 중인 콘텐츠만 중단할 수 있습니다.");
       }
+      const now = clock.now();
+      // 중단 사유는 게시자에게 표시되어야 한다(FR-REV-05). 검토 이력에 남긴다.
+      store.addReview({
+        id: `review-${now.getTime()}`,
+        submissionId: current.id,
+        revision: current.version,
+        decision: "SUSPENDED",
+        reasonCode: null,
+        comment: input.reason,
+        reviewerId: "reviewer-mock",
+        reviewerName: "하우스 관리자",
+        reviewedAt: toIsoUtc(now),
+      });
       return toSignageSubmissionExpanded(
-        store.replace(touch(current, clock.now(), { status: "SUSPENDED" })),
+        store.replace(touch(current, now, { status: "SUSPENDED" })),
       );
     },
   };
@@ -438,5 +507,10 @@ export function createMockRepositories(
     },
   };
 
-  return { submissions, reviews, displays };
+  // 개발 중 오류·지연을 화면에서 재현할 수 있게 주입 검사를 끼운다.
+  return {
+    submissions: withInjection("submissions", submissions),
+    reviews: withInjection("reviews", reviews),
+    displays: withInjection("displays", displays),
+  };
 }

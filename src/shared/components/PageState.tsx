@@ -29,14 +29,14 @@ export function LoadingState({
       <span className="sr-only">{label}</span>
       {Array.from({ length: rows }, (_, index) => (
         <div key={index} className="flex items-center gap-4" aria-hidden="true">
-          <div className="aspect-3/4 w-10 shrink-0 rounded-thumb bg-canvas" />
+          <div className="aspect-3/4 w-10 shrink-0 rounded-thumb bg-surface-muted" />
           <div className="min-w-0 flex-1 space-y-2">
             <div
-              className="h-3.5 rounded-thumb bg-canvas"
+              className="h-3.5 rounded-thumb bg-surface-muted"
               style={{ width: `${64 - index * 8}%` }}
             />
             <div
-              className="h-3 rounded-thumb bg-canvas"
+              className="h-3 rounded-thumb bg-surface-muted"
               style={{ width: `${40 - index * 5}%` }}
             />
           </div>
