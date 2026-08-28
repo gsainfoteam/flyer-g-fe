@@ -11,6 +11,7 @@ import { LoginPage } from "@/pages/LoginPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { ReviewsPage } from "@/pages/ReviewsPage";
 import { StudioPage } from "@/pages/StudioPage";
+import { SubmissionDetailPage } from "@/pages/SubmissionDetailPage";
 import { SubmissionsPage } from "@/pages/SubmissionsPage";
 
 /**
@@ -43,15 +44,7 @@ export const routeTree = [
         children: [
           { path: paths.dashboard, element: <DashboardPage /> },
           { path: paths.submissions, element: <SubmissionsPage /> },
-          {
-            path: paths.submissionDetail,
-            element: (
-              <ComingSoonPage
-                title="신청 상세는 준비 중이에요"
-                description="상태 이력과 반려 사유, 취소·수정은 곧 여기에서 볼 수 있어요."
-              />
-            ),
-          },
+          { path: paths.submissionDetail, element: <SubmissionDetailPage /> },
           // 검토는 하우스 관리자와 운영자만 볼 수 있다.
           {
             element: <RequireRole allow={["REVIEWER", "SUPER_ADMIN"]} />,
