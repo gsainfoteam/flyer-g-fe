@@ -297,12 +297,24 @@
 /*
  * TV 플레이어 배경.
  *
- * 흰 면이다. 포스터가 화면의 주인공이고 배경은 아무 일도 하지 않는다.
- * 공공 화면이라 움직이지 않는다. Raspberry Pi에서 상시 애니메이션은
- * 불필요한 연산이다. (명세 9.2, 9.6)
+ * 어두운 면이다. 로비의 65인치 화면에서 흰 바탕은 조명처럼 빛나고, 포스터보다
+ * 바탕이 먼저 보인다. 어두운 바탕 위에서는 포스터 색이 화면의 주인공이 되고
+ * 밤에도 눈부시지 않다. 공공 화면이라 움직이지 않는다. Raspberry Pi에서 상시
+ * 애니메이션은 불필요한 연산이다. (명세 9.2, 9.6)
+ *
+ * 색 토큰만 이 스코프에서 재매핑한다. TV 컴포넌트는 관리자 화면과 같은
+ * 유틸리티(text-ink 등)를 쓰므로 여기서 값만 바뀐다.
  */
 .tv-surface {
-  background: var(--color-surface);
+  background: #101012;
+  --color-ink: #f6f6f7;
+  --color-ink-muted: #b4b4bb;
+  --color-ink-subtle: #8b8b93;
+  --color-canvas: #1c1c1f;
+  --color-surface: #242428;
+  --color-surface-muted: #2b2b30;
+  --color-line: #35353b;
+  --color-line-strong: #4a4a52;
 }
 
 @media (prefers-reduced-motion: reduce) {

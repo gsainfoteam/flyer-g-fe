@@ -15,10 +15,11 @@ import { SinglePosterDisplay } from "./SinglePosterDisplay";
  * 바깥 여백과 배경은 `DisplayStageSurface`가 맡는다. 여기서는 여백 안쪽만 그린다.
  * 치수는 1920x1080 기준 고정 px이며, 축소는 감싸는 쪽이 한다.
  */
-export const TV_STAGE_WIDTH = 1920;
-export const TV_STAGE_HEIGHT = 1080;
-/** 화면 가장자리 안전 여백. TV 오버스캔과 베젤을 감안한 값이다. */
-export const TV_STAGE_PADDING = 80;
+export {
+  TV_STAGE_WIDTH,
+  TV_STAGE_HEIGHT,
+  TV_STAGE_PADDING,
+} from "./stage-metrics";
 
 interface DisplayStageProps {
   layout: LayoutType;

@@ -13,7 +13,6 @@ import {
 } from "@/features/display-runtime";
 import { useRotation } from "@/features/display/model/use-rotation";
 import { computeBackoffMs } from "@/shared/network/backoff";
-import { LoadingState } from "@/shared/components";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 
@@ -110,8 +109,12 @@ export function DisplayPage() {
 
   if (feed.isPending) {
     return (
-      <div className="h-full" style={{ padding: TV_STAGE_PADDING }}>
-        <LoadingState rows={3} label="편성을 불러오는 중입니다." />
+      <div
+        className="flex h-full flex-col items-center justify-center gap-6"
+        style={{ padding: TV_STAGE_PADDING }}
+      >
+        <Logo size="tv" />
+        <p className="text-[30px] text-ink-subtle">편성을 불러오는 중</p>
       </div>
     );
   }
@@ -191,11 +194,9 @@ function EmptyDisplay({
         <span className="ml-2 text-[26px] text-ink-subtle">{deviceLabel}</span>
         <LiveClock now={serverTime} ticking className="ml-auto text-[32px]" />
       </div>
-      <div className="flex flex-1 flex-col items-start justify-center gap-6">
+      <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
         <h1 className="text-[72px] leading-tight font-extrabold text-ink">
-          지금 게시 중인
-          <br />
-          안내가 없습니다
+          지금 게시 중인 안내가 없습니다
         </h1>
         <p className="text-[32px] text-ink-muted">
           게시 신청은 Ziggle 공지에서 할 수 있어요 · ziggle.gistory.me

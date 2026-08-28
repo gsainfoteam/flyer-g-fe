@@ -36,9 +36,9 @@ export function FourSplitDisplay({
       {visible.map((poster) => (
         <article
           key={poster.id}
-          className="flex min-w-0 flex-col gap-5 overflow-hidden"
+          className="flex min-w-0 flex-col gap-5 overflow-hidden rounded-[24px] bg-white/[0.05] p-6 ring-1 ring-white/10"
         >
-          <div className="aspect-3/4 w-full shrink-0 overflow-hidden rounded-[20px]">
+          <div className="aspect-3/4 w-full shrink-0 overflow-hidden rounded-[16px] shadow-[0_16px_44px_rgba(0,0,0,0.5)]">
             <PosterArtwork poster={poster} fit="cover" onLoadError={onPosterError} />
           </div>
 

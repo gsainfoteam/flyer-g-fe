@@ -61,7 +61,7 @@ export class DisplayErrorBoundary extends Component<
           <Logo size="tv" />
           <LiveClock ticking className="ml-auto text-[32px]" />
         </div>
-        <div className="flex flex-1 flex-col items-start justify-center gap-6">
+        <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
           <h1 className="text-[72px] leading-tight font-extrabold text-ink">
             잠시 후 다시 시작합니다
           </h1>
