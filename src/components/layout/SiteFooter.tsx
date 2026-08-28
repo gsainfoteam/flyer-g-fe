@@ -17,7 +17,7 @@ export function SiteFooter() {
             href="https://ziggle.gistory.me"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-semibold text-accent-800 hover:text-accent"
+            className="font-medium text-ink underline-offset-2 hover:underline"
           >
             Ziggle
           </a>

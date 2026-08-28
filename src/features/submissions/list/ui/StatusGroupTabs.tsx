@@ -23,7 +23,10 @@ export function StatusGroupTabs({
     <div
       role="tablist"
       aria-label="상태별 보기"
-      className={cn("flex gap-1 overflow-x-auto pb-1", className)}
+      className={cn(
+        "flex gap-5 overflow-x-auto border-b border-line",
+        className,
+      )}
     >
       {STATUS_GROUPS.map((group) => {
         const active = group.key === activeKey;
@@ -35,11 +38,12 @@ export function StatusGroupTabs({
             aria-selected={active}
             onClick={() => onSelect(group.key)}
             className={cn(
-              "shrink-0 rounded-pill px-3.5 py-2 text-label font-semibold transition",
+              "relative shrink-0 pt-1 pb-2.5 text-label transition-colors duration-150",
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+              "after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-pill",
               active
-                ? "bg-ink text-ink-inverse"
-                : "text-ink-muted hover:bg-surface-muted hover:text-ink",
+                ? "font-semibold text-ink after:bg-ink"
+                : "font-medium text-ink-muted after:bg-transparent hover:text-ink",
             )}
           >
             {group.label}

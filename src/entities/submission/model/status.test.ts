@@ -27,11 +27,13 @@ describe("상태 표시 매핑", () => {
     expect(getStatusLabel("SUSPENDED")).toBe("게시 중단");
   });
 
-  it("게시자가 고쳐야 하는 상태만 강조 tone을 쓴다", () => {
+  it("tone이 상태의 의미 축을 따른다", () => {
     expect(getStatusMeta("REJECTED").tone).toBe("attention");
     expect(getStatusMeta("SUSPENDED").tone).toBe("attention");
-    expect(getStatusMeta("PUBLISHED").tone).toBe("neutral");
-    expect(getStatusMeta("PENDING_REVIEW").tone).toBe("neutral");
+    expect(getStatusMeta("PUBLISHED").tone).toBe("positive");
+    expect(getStatusMeta("SCHEDULED").tone).toBe("info");
+    expect(getStatusMeta("PENDING_REVIEW").tone).toBe("pending");
+    expect(getStatusMeta("ENDED").tone).toBe("neutral");
   });
 });
 

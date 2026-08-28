@@ -78,7 +78,7 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
       <div
         role="tablist"
         aria-label="상태별 보기"
-        className="mb-1 flex gap-1 overflow-x-auto px-1 pb-1"
+        className="mb-1.5 flex gap-5 overflow-x-auto border-b border-line px-3"
       >
         {filterTabs.map((tab) => {
           const active = filter === tab.key;
@@ -91,18 +91,19 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
               aria-selected={active}
               onClick={() => setFilter(tab.key)}
               className={cn(
-                "shrink-0 rounded-pill px-3.5 py-2 text-label font-semibold transition",
+                "relative shrink-0 pt-1.5 pb-2.5 text-label transition-colors duration-150",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+                "after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-pill",
                 active
-                  ? "bg-ink text-ink-inverse"
-                  : "text-ink-muted hover:bg-surface-muted hover:text-ink",
+                  ? "font-semibold text-ink after:bg-ink"
+                  : "font-medium text-ink-muted after:bg-transparent hover:text-ink",
               )}
             >
               {tab.label}
               <span
                 className={cn(
                   "ml-1.5 tabular-nums",
-                  active ? "text-ink-inverse/70" : "text-ink-subtle",
+                  active ? "text-ink-muted" : "text-ink-subtle",
                 )}
               >
                 {count}
@@ -119,14 +120,14 @@ export function RecentContentSection({ submissions }: RecentContentSectionProps)
           className="px-3"
         />
       ) : (
-        <ul className="flex flex-col">
-          {filtered.slice(0, PREVIEW_COUNT).map((submission, index) => (
+        // 구분선은 li에 그린다. rounded가 걸린 행 안쪽에 그리면 모서리를 따라 휜다.
+        <ul className="flex flex-col divide-y divide-line">
+          {filtered.slice(0, PREVIEW_COUNT).map((submission) => (
             <SubmissionRow
               key={submission.id}
               submission={submission}
               sentence={sentenceFor(submission)}
               href={to.submissionDetail(submission.id)}
-              className={index > 0 ? "border-t border-line" : undefined}
               trailing={<StatusBadge status={submission.status} />}
             />
           ))}

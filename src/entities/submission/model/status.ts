@@ -3,11 +3,11 @@ import type { SubmissionStatus } from "./types";
 /**
  * 상태 표현의 단일 원천. 화면에서 상태 문자열을 직접 한글로 바꾸지 않는다.
  *
- * tone은 두 가지뿐이다. 단색 체계라 상태마다 색을 나누지 않고, 게시자가
- * **고쳐야 하는 상태**만 강조색으로 띄운다. 나머지 구분은 label과 설명 문장이
- * 맡는다. (명세 9.6)
+ * tone은 상태의 의미 축이다 — attention(게시자가 고쳐야 함), positive(노출 중),
+ * info(예정됨), pending(누군가의 처리를 기다림), neutral(지난 것·비활성).
+ * 색은 보조 신호일 뿐이며 구분은 항상 label과 설명 문장이 맡는다. (명세 9.6)
  */
-export type StatusTone = "neutral" | "attention";
+export type StatusTone = "neutral" | "attention" | "positive" | "info" | "pending";
 
 export interface StatusMeta {
   /** UI 표시 문구. 명세 6.3 */
@@ -25,7 +25,7 @@ const STATUS_META: Record<SubmissionStatus, StatusMeta> = {
   },
   PENDING_REVIEW: {
     label: "승인 대기",
-    tone: "neutral",
+    tone: "pending",
     description: "관리자 검토를 기다리고 있습니다.",
   },
   REJECTED: {
@@ -35,17 +35,17 @@ const STATUS_META: Record<SubmissionStatus, StatusMeta> = {
   },
   APPROVED: {
     label: "승인됨",
-    tone: "neutral",
+    tone: "info",
     description: "승인이 완료되어 편성 계산을 기다립니다.",
   },
   SCHEDULED: {
     label: "예약됨",
-    tone: "neutral",
+    tone: "info",
     description: "게시 시작 시각을 기다리고 있습니다.",
   },
   PUBLISHED: {
     label: "게시 중",
-    tone: "neutral",
+    tone: "positive",
     description: "현재 디스플레이에 노출될 수 있습니다.",
   },
   ENDED: {

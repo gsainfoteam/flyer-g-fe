@@ -25,7 +25,7 @@ export function PosterThumb({
   return (
     <div
       className={cn(
-        "aspect-3/4 shrink-0 overflow-hidden rounded-thumb bg-canvas",
+        "aspect-3/4 shrink-0 overflow-hidden rounded-thumb bg-surface-muted",
         sizeClass[size],
         className,
       )}

@@ -75,8 +75,8 @@
   --text-metric--font-weight: 800;
 
   /* --- 강조색 -----------------------------------------------------------
-     단색 체계다. 빨강은 "지금 행동해야 하는 곳"에만 쓴다. 주 작업 버튼,
-     처리해야 할 건수, 반려·중단처럼 게시자가 고쳐야 하는 상태.
+     브랜드의 빨강이다. "지금 행동해야 하는 곳"에만 쓴다 — 주 작업 버튼,
+     처리해야 할 건수, 반려·중단처럼 게시자가 고쳐야 하는 상태, 브랜드 마크.
      장식이나 브랜딩 배경으로 깔지 않는다. */
   --color-accent: #ec3013;
   --color-accent-100: #fff2ef;
@@ -87,55 +87,58 @@
   --color-accent-800: #7c1405;
   --color-accent-on: #ffffff;
 
-  /* --- 표면과 글자 ------------------------------------------------------ */
-  --color-canvas: #f3f2f2;
+  /* --- 표면과 글자 ------------------------------------------------------
+     차가운 중성 회색. 면의 구분은 그림자 대신 아주 옅은 경계선(hairline)이
+     만든다. */
+  --color-canvas: #fafafa;
   --color-surface: #ffffff;
-  /* 칩 배경과 경계선이 같은 값이다. 면과 선을 한 톤으로 묶어 화면을 조용하게 둔다. */
-  --color-surface-muted: #eae7e7;
-  --color-line: #eae7e7;
-  --color-line-strong: #d7d3d3;
-  --color-ink: #201e1d;
-  --color-ink-muted: #605d5d;
-  --color-ink-subtle: #7d7979;
+  --color-surface-muted: #f4f4f5;
+  --color-line: #e8e8ea;
+  --color-line-strong: #d4d4d8;
+  --color-ink: #18181b;
+  --color-ink-muted: #52525b;
+  --color-ink-subtle: #71717a;
   --color-ink-inverse: #ffffff;
-  --color-focus: #ec3013;
+  --color-focus: #18181b;
 
   /* --- 상태 색 ----------------------------------------------------------
-     단색 체계라 상태를 색으로 나누지 않는다. 주의가 필요한 상태만 강조색을
-     쓰고 나머지는 중성으로 둔다. 구분은 항상 문구가 한다. (명세 9.6) */
+     절제된 semantic 색. 상태 칩과 알림에만 쓰고, 항상 문구를 함께 둔다 —
+     색만으로 상태를 구분하지 않는다는 절대 조건은 유지한다. (명세 9.6) */
   --color-attention: var(--color-accent);
   --color-attention-subtle: var(--color-accent-100);
   --color-attention-strong: var(--color-accent-800);
 
-  --color-info: #605d5d;
-  --color-info-subtle: #eae7e7;
-  --color-info-strong: #2d2b2b;
+  --color-info: #2563eb;
+  --color-info-subtle: #eff6ff;
+  --color-info-strong: #1d4ed8;
 
-  --color-success: #605d5d;
-  --color-success-subtle: #eae7e7;
-  --color-success-strong: #2d2b2b;
+  --color-success: #059669;
+  --color-success-subtle: #ecfdf5;
+  --color-success-strong: #047857;
 
-  --color-warning: var(--color-accent);
-  --color-warning-subtle: var(--color-accent-100);
-  --color-warning-strong: var(--color-accent-800);
+  --color-warning: #d97706;
+  --color-warning-subtle: #fffbeb;
+  --color-warning-strong: #b45309;
 
   --color-danger: var(--color-accent);
   --color-danger-subtle: var(--color-accent-100);
   --color-danger-strong: var(--color-accent-800);
 
   /* --- 모서리 -----------------------------------------------------------
-     카드는 넉넉히, 조작 요소는 그보다 작게, 칩과 배지는 알약으로. */
+     카드 16px, 조작 요소 10px, 칩과 배지는 알약. 과한 라운딩은 장난감처럼
+     보인다. */
   --radius-thumb: 0.5rem;
-  --radius-control: 0.875rem;
-  --radius-card: 1.25rem;
-  --radius-dialog: 1.25rem;
+  --radius-control: 0.625rem;
+  --radius-card: 1rem;
+  --radius-dialog: 1rem;
   --radius-pill: 9999px;
 
   /* --- 그림자 -----------------------------------------------------------
-     카드를 바닥에서 살짝 띄우는 정도. 위계는 흰 면과 회색 바닥의 차이가 만든다. */
-  --shadow-card: 0 1px 2px color-mix(in srgb, #2d2b2b 14%, transparent);
-  --shadow-floating: 0 3px 10px color-mix(in srgb, #2d2b2b 16%, transparent);
-  --shadow-dialog: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
+     면의 위계는 경계선이 만들고, 그림자는 거의 없다시피 깔거나(카드)
+     떠 있는 것(팝오버·다이얼로그)에만 쓴다. */
+  --shadow-card: 0 1px 2px color-mix(in srgb, #18181b 4%, transparent);
+  --shadow-floating: 0 4px 16px color-mix(in srgb, #18181b 10%, transparent);
+  --shadow-dialog: 0 16px 40px color-mix(in srgb, #18181b 18%, transparent);
 
   /* --- 모션 -------------------------------------------------------------
      duration은 Tailwind theme namespace가 없어 :root 변수로 함께 둔다. */
@@ -194,7 +197,7 @@
   --border: var(--color-line);
   --input: var(--color-line);
   --ring: var(--color-focus);
-  --radius: 0.875rem;
+  --radius: 0.625rem;
   --sidebar: var(--color-surface);
   --sidebar-foreground: var(--color-ink);
   --sidebar-primary: var(--color-accent);
