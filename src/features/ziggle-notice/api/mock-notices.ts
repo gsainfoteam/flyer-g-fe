@@ -3,6 +3,7 @@ import { ApiError } from "@/shared/api/error";
 import type { Clock } from "@/shared/lib/clock";
 import { systemClock } from "@/shared/lib/clock";
 import { ZIGGLE_ORIGIN } from "@/shared/lib/ziggle-url";
+import { withInjection } from "@/mocks/injection";
 import type { ZiggleNoticeAdapter } from "./notice-adapter";
 
 /**
@@ -95,7 +96,7 @@ export function createMockNoticeAdapter(
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
   };
 
-  return {
+  return withInjection<ZiggleNoticeAdapter>("notices", {
     async getById(noticeId, signal) {
       await settle(signal);
       const seed = SEEDS.find((item) => item.id === noticeId);
@@ -117,5 +118,5 @@ export function createMockNoticeAdapter(
       const now = clock.now();
       return SEEDS.map((seed) => toNotice(seed, now));
     },
-  };
+  });
 }

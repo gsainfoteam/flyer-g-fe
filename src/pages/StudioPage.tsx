@@ -21,6 +21,7 @@ import {
   summarizeErrors,
   validateSubmissionForm,
 } from "@/features/submissions/create/model/validate";
+import type { SubmissionFieldErrors } from "@/features/submissions/create/model/validate";
 import { NoticePanel } from "@/features/submissions/create/ui/NoticePanel";
 import { SubmissionForm } from "@/features/submissions/create/ui/SubmissionForm";
 import { SubmitSuccessDialog } from "@/features/submissions/create/ui/SubmitSuccessDialog";
@@ -75,6 +76,9 @@ export function StudioPage() {
     createEmptyDraft(new Date()),
   );
   const [showErrors, setShowErrors] = useState(false);
+  /** 서버가 422로 돌려준 필드 오류. 클라이언트 검증과 합쳐 입력 칸에 붙인다. */
+  const [serverFieldErrors, setServerFieldErrors] =
+    useState<SubmissionFieldErrors>({});
   const [isDirty, setIsDirty] = useState(false);
   const [created, setCreated] = useState<SignageSubmissionExpanded | null>(null);
 
@@ -106,7 +110,10 @@ export function StudioPage() {
       upload.state.asset?.assetId ??
       (editingSubmission ? editingSubmission.assetId : null),
   };
-  const errors = validateSubmissionForm(values, { now: serverTime });
+  const errors: SubmissionFieldErrors = {
+    ...validateSubmissionForm(values, { now: serverTime }),
+    ...serverFieldErrors,
+  };
   const summary = showErrors ? summarizeErrors(errors) : null;
 
   const isBusy =
@@ -133,6 +140,8 @@ export function StudioPage() {
   const patchDraft = (patch: Partial<SubmissionDraft>) => {
     setDraft((current) => ({ ...current, ...patch }));
     setIsDirty(true);
+    // 서버 필드 오류는 입력이 바뀌면 낡은 정보다. 다음 제출에서 다시 판정된다.
+    setServerFieldErrors({});
     // 입력이 바뀌면 다른 시도다. 앞선 시도의 idempotency key를 재사용하지 않는다.
     createSubmission.resetAttempt();
   };
@@ -167,6 +176,9 @@ export function StudioPage() {
         },
         onError: (error) => {
           // 입력과 업로드는 그대로 둔다. 사용자가 다시 채우지 않고 재시도할 수 있어야 한다.
+          if (error.fields) {
+            setServerFieldErrors(error.fields as SubmissionFieldErrors);
+          }
           toast.error("신청을 접수하지 못했어요", {
             description: toUserMessage(error),
           });

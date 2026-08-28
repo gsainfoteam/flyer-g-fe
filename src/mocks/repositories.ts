@@ -32,6 +32,7 @@ import type { Clock } from "@/shared/lib/clock";
 import { systemClock } from "@/shared/lib/clock";
 import { parseIsoUtc, toIsoUtc } from "@/shared/lib/datetime";
 import { createReviewFixtures, createSubmissionFixtures } from "./fixtures";
+import { withInjection } from "./injection";
 
 /**
  * 개발·테스트용 in-memory 구현. 실제 서버 대신 같은 repository 인터페이스를 만족한다.
@@ -60,13 +61,17 @@ function conflict(message: string): ApiError {
   });
 }
 
-function invalid(message: string): ApiError {
+function invalid(
+  message: string,
+  fields?: Record<string, string>,
+): ApiError {
   return new ApiError({
     kind: "http",
     code: "VALIDATION_FAILED",
     message,
     status: 422,
     requestId: "mock-request",
+    fields,
   });
 }
 
@@ -211,7 +216,10 @@ export function createMockRepositories(
     }
 
     if (input.endAt.getTime() <= input.startAt.getTime()) {
-      throw invalid("종료 시각은 시작 시각보다 뒤여야 합니다.");
+      // 실서버 계약처럼 필드 단위 오류를 담는다. (`API-REQUIREMENTS.md` 1.2)
+      throw invalid("종료 시각은 시작 시각보다 뒤여야 합니다.", {
+        endAt: "종료 시각은 시작 시각보다 뒤여야 합니다.",
+      });
     }
 
     const now = clock.now();
@@ -310,7 +318,9 @@ export function createMockRepositories(
       const startAt = input.startAt ?? parseIsoUtc(current.startAt);
       const endAt = input.endAt ?? parseIsoUtc(current.endAt);
       if (endAt.getTime() <= startAt.getTime()) {
-        throw invalid("종료 시각은 시작 시각보다 뒤여야 합니다.");
+        throw invalid("종료 시각은 시작 시각보다 뒤여야 합니다.", {
+          endAt: "종료 시각은 시작 시각보다 뒤여야 합니다.",
+        });
       }
 
       const next = touch(current, clock.now(), {
@@ -497,5 +507,10 @@ export function createMockRepositories(
     },
   };
 
-  return { submissions, reviews, displays };
+  // 개발 중 오류·지연을 화면에서 재현할 수 있게 주입 검사를 끼운다.
+  return {
+    submissions: withInjection("submissions", submissions),
+    reviews: withInjection("reviews", reviews),
+    displays: withInjection("displays", displays),
+  };
 }

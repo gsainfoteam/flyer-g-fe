@@ -2,6 +2,7 @@ import { CircleCheck, Info, MoreHorizontal, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { SUBMISSION_STATUSES } from "@/entities/submission";
+import { MockControlPanel } from "./MockControlPanel";
 import { ApiError } from "@/shared/api/error";
 import {
   ConfirmActionDialog,
@@ -185,6 +186,8 @@ export default function ComponentCatalog() {
           title="Flyer.G 컴포넌트 카탈로그"
           description="개발 전용 화면입니다. 새 화면을 만들기 전에 여기 있는 컴포넌트를 먼저 찾아 쓰세요."
         />
+
+        <MockControlPanel />
 
         <Section title="디자인 토큰" description="색, 타이포, 모서리, 그림자">
           <TokenSwatches />
