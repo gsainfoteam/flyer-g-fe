@@ -5,7 +5,7 @@ import type { ApiErrorBody } from "./error";
  * 공통 transport. 화면 컴포넌트는 이 계층을 직접 쓰지 않고 repository를 통해 접근한다.
  *
  * 경로는 호출자가 넘긴다. 명세 8장의 개념 endpoint는 아직 확정 계약이 아니므로
- * 이 파일에 실제 경로를 상수로 고정하지 않는다. 실제 연결은 Phase 07에서 한다.
+ * 이 파일에 실제 경로를 상수로 고정하지 않는다. 실제 연결은 Phase 08에서 한다.
  */
 export type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
