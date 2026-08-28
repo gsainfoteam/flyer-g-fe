@@ -45,29 +45,41 @@ export function LoginPage() {
 
   return (
     <Centered>
-      <Logo size="lg" />
-      <h1 className="mt-8 text-display text-ink">
-        Ziggle 계정으로 시작해요
-      </h1>
-      <p className="mt-2 text-body text-ink-muted">
-        전단지는 Ziggle의 연장 서비스예요. 따로 가입하지 않아도 됩니다.
-      </p>
+      <div className="flex flex-col items-center text-center">
+        <Logo size="lg" />
+        <h1 className="mt-9 text-display text-ink">
+          Ziggle 계정으로 시작해요
+        </h1>
+        <p className="mt-2.5 text-body text-ink-muted">
+          전단지는 Ziggle의 연장 서비스예요. 따로 가입하지 않아도 됩니다.
+        </p>
 
-      {state.status === "error" && (
-        <ErrorState
-          error={state.error}
-          title="로그인하지 못했어요"
-          className="mt-4"
-        />
-      )}
+        {state.status === "error" && (
+          <ErrorState
+            error={state.error}
+            title="로그인하지 못했어요"
+            className="mt-5 w-full max-w-xs text-left"
+          />
+        )}
 
-      <Button onClick={handleSignIn} disabled={isPending} className="mt-7">
-        {isPending ? "이동하는 중…" : "Ziggle 계정으로 로그인"}
-      </Button>
+        <Button
+          onClick={handleSignIn}
+          disabled={isPending}
+          size="lg"
+          className="mt-8 w-full max-w-xs"
+        >
+          {isPending ? "이동하는 중…" : "Ziggle 계정으로 로그인"}
+        </Button>
 
-      <p className="mt-4 text-caption text-ink-subtle">
-        로그인하면 <span className="font-semibold text-ink">{returnTo}</span> 로
-        돌아갑니다.
+        {returnTo !== "/" && (
+          <p className="mt-4 text-caption text-ink-subtle">
+            로그인하면 보고 있던 화면으로 돌아갑니다.
+          </p>
+        )}
+      </div>
+
+      <p className="mt-16 text-center text-caption text-ink-subtle">
+        GIST 학사기숙사 디지털 게시판
       </p>
     </Centered>
   );

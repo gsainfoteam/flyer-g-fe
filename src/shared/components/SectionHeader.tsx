@@ -24,7 +24,7 @@ export function SectionHeader({
       className={cn("flex items-start justify-between gap-4", className)}
     >
       <div className="min-w-0">
-        <Heading className="text-heading text-foreground">{title}</Heading>
+        <Heading className="text-heading text-ink">{title}</Heading>
         {description && (
           <p className="mt-1 text-label text-ink-muted">{description}</p>
         )}

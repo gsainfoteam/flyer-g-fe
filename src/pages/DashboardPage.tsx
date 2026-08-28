@@ -151,8 +151,7 @@ export function DashboardPage() {
                   </li>
                 </ul>
                 <p className="mt-4 text-caption text-ink-subtle">
-                  오프라인 기기는 마지막 편성을 계속 재생하고 있어요. 기기 상태는
-                  Phase 06에서 실제 heartbeat로 연결합니다.
+                  오프라인 기기는 마지막으로 받은 편성을 계속 재생해요.
                 </p>
               </Panel>
 

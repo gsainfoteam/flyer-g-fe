@@ -85,9 +85,10 @@ export function QRCodeBox({
       )}
       {label && (
         <span
-          className={`text-caption font-bold ${
-            inverse ? "text-white/80" : "text-ink-muted"
-          }`}
+          className={cn(
+            "text-caption font-bold",
+            inverse ? "text-white/80" : "text-ink-muted",
+          )}
         >
           {label}
         </span>
