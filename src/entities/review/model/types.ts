@@ -1,5 +1,11 @@
-/** 명세 6.4 Review, FR-REV-04 */
-export const REVIEW_DECISIONS = ["APPROVED", "REJECTED"] as const;
+/**
+ * 명세 6.4 Review, FR-REV-04.
+ *
+ * SUSPENDED는 명세 6.4의 decision enum(APPROVED/REJECTED)에 없지만, 중단 사유를
+ * 게시자에게 보여주려면(FR-REV-05) 어딘가에 저장되어야 한다. 프론트는 검토 이력의
+ * 한 항목으로 가정한다. 실제 저장 위치는 미확정이다. (`API-REQUIREMENTS.md` 6.5)
+ */
+export const REVIEW_DECISIONS = ["APPROVED", "REJECTED", "SUSPENDED"] as const;
 export type ReviewDecision = (typeof REVIEW_DECISIONS)[number];
 
 export const REJECTION_REASON_CODES = [
@@ -37,6 +43,8 @@ export interface ReviewDto {
   /** 게시자에게 공개되는 사유 */
   comment: string | null;
   reviewerId: string;
+  /** 검토자 표시 이름. ID만으로는 화면에 사람을 보여줄 수 없다. */
+  reviewerName: string;
   reviewedAt: string;
 }
 

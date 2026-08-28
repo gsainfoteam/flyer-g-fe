@@ -107,6 +107,11 @@ export interface SubmissionSummary {
 
 export interface SubmissionListParams {
   status?: SubmissionStatus | "ALL";
+  /**
+   * 복수 상태 필터. 목록 탭 하나가 상태 여러 개를 묶는다("승인/예약").
+   * `status`와 함께 오면 이쪽이 우선한다. 빈 배열은 필터 없음과 같다.
+   */
+  statuses?: readonly SubmissionStatus[];
   /** 본인 신청만 볼지 전체를 볼지. 명세 3.2 권한 매트릭스 */
   scope?: "me" | "all";
   cursor?: string | null;

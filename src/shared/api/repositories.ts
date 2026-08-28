@@ -25,6 +25,16 @@ export interface CreateSubmissionInput {
   targetGroupIds: string[];
 }
 
+/**
+ * 제출 전(DRAFT·REJECTED) 수정. 명세 FR-INT-02.
+ * 승인 후 변경의 재승인 여부는 서버 정책이며, 프론트는 응답 상태를 그대로 따른다.
+ */
+export interface UpdateSubmissionInput
+  extends Partial<Omit<CreateSubmissionInput, "ziggleNoticeId">> {
+  /** 화면이 본 버전. 서버는 이 값으로 동시 수정 충돌을 판정한다. */
+  version: number;
+}
+
 export interface MutationOptions {
   /** 명세 FR-SUB-04: 중복 생성 방지 */
   idempotencyKey?: string;
@@ -50,6 +60,12 @@ export interface SubmissionRepository {
 
   create(
     input: CreateSubmissionInput,
+    options?: MutationOptions,
+  ): Promise<SignageSubmissionExpanded>;
+
+  update(
+    id: string,
+    input: UpdateSubmissionInput,
     options?: MutationOptions,
   ): Promise<SignageSubmissionExpanded>;
 

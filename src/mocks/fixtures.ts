@@ -98,6 +98,7 @@ export function createReviewFixtures(now: Date): ReviewDto[] {
       reasonCode: "INFO_MISMATCH",
       comment: "포스터의 신청 마감일과 Ziggle 공지 본문의 마감일이 다릅니다.",
       reviewerId: "reviewer-house-a",
+      reviewerName: "하우스 관리자",
       reviewedAt: toIsoUtc(days(now, -2)),
     },
     {
@@ -108,7 +109,19 @@ export function createReviewFixtures(now: Date): ReviewDto[] {
       reasonCode: null,
       comment: null,
       reviewerId: "reviewer-house-a",
+      reviewerName: "하우스 관리자",
       reviewedAt: toIsoUtc(days(now, -6)),
+    },
+    {
+      id: "review-903",
+      submissionId: "notice-903",
+      revision: 2,
+      decision: "SUSPENDED",
+      reasonCode: null,
+      comment: "수강 신청 일정이 변경되어 안내를 잠시 내립니다.",
+      reviewerId: "reviewer-house-a",
+      reviewerName: "하우스 관리자",
+      reviewedAt: toIsoUtc(days(now, -1)),
     },
   ];
 }
