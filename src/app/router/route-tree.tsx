@@ -9,6 +9,7 @@ import { DashboardPage } from "@/pages/DashboardPage";
 import { DisplayPage } from "@/pages/DisplayPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import { ReviewDetailPage } from "@/pages/ReviewDetailPage";
 import { ReviewsPage } from "@/pages/ReviewsPage";
 import { StudioPage } from "@/pages/StudioPage";
 import { SubmissionDetailPage } from "@/pages/SubmissionDetailPage";
@@ -50,15 +51,7 @@ export const routeTree = [
             element: <RequireRole allow={["REVIEWER", "SUPER_ADMIN"]} />,
             children: [
               { path: paths.reviews, element: <ReviewsPage /> },
-              {
-                path: paths.reviewDetail,
-                element: (
-                  <ComingSoonPage
-                    title="검토 상세는 준비 중이에요"
-                    description="포스터 원본과 TV 미리보기를 함께 놓고 승인·반려하는 화면이 곧 열려요."
-                  />
-                ),
-              },
+              { path: paths.reviewDetail, element: <ReviewDetailPage /> },
             ],
           },
           // 기기 관리는 운영자만 볼 수 있다.
