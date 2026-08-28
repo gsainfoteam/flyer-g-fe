@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router";
-import { Logo } from "@/components/common/Logo";
-import { FourSplitDisplay } from "@/components/display/FourSplitDisplay";
-import { LiveClock } from "@/components/display/LiveClock";
-import { SinglePosterDisplay } from "@/components/display/SinglePosterDisplay";
+import {
+  DisplayStage,
+  TV_STAGE_PADDING,
+} from "@/components/display/DisplayStage";
 import { useDisplayPlaylist } from "@/features/display/api/queries";
 import { PageState } from "@/shared/components";
 
@@ -40,10 +40,11 @@ export function DisplayPage() {
     return () => window.clearInterval(id);
   }, [layout, posters.length, rotationMs]);
 
-  const current = posters[currentIndex % Math.max(posters.length, 1)];
-
   return (
-    <div className="h-full overflow-hidden p-[80px]">
+    <div
+      className="h-full overflow-hidden"
+      style={{ padding: TV_STAGE_PADDING }}
+    >
       <PageState
         isLoading={playlist.isPending}
         error={playlist.error}
@@ -54,27 +55,13 @@ export function DisplayPage() {
           description: "게시 신청은 Ziggle 공지에서 할 수 있어요.",
         }}
       >
-        {current && layout === "SINGLE" && (
-          <SinglePosterDisplay
-            poster={current}
-            deviceLabel={deviceLabel}
-            serverTime={serverTime}
-          />
-        )}
-        {current && layout === "FOUR_GRID" && (
-          <div className="flex h-full flex-col">
-            <div className="flex shrink-0 items-center gap-4 pb-8">
-              <Logo size="lg" />
-              <span className="text-[26px] text-ink-subtle">
-                {deviceLabel} · 게시 중 {posters.length}건
-              </span>
-              <LiveClock now={serverTime} className="ml-auto text-[30px]" />
-            </div>
-            <div className="min-h-0 flex-1">
-              <FourSplitDisplay posters={posters} />
-            </div>
-          </div>
-        )}
+        <DisplayStage
+          layout={layout}
+          posters={posters}
+          currentIndex={currentIndex}
+          deviceLabel={deviceLabel}
+          serverTime={serverTime}
+        />
       </PageState>
     </div>
   );

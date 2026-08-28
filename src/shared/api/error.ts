@@ -110,6 +110,8 @@ export function toUserMessage(error: ApiError): string {
       return "네트워크에 연결할 수 없습니다. 연결을 확인한 뒤 다시 시도해 주세요.";
     case "REQUEST_CANCELED":
       return "요청이 취소되었습니다.";
+    case "UPLOAD_FAILED":
+      return "포스터를 올리지 못했습니다. 다시 시도해 주세요.";
     default:
       return error.status !== null && error.status >= 500
         ? "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."

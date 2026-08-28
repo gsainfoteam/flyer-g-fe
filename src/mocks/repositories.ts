@@ -1,8 +1,10 @@
 import {
+  getCategoryName,
   resolveEffectiveStatus,
   summarizeSubmissions,
   toSignageSubmissionExpanded,
 } from "@/entities/submission";
+import { getMockAssetUrl } from "@/features/media-upload/api/fake-upload-service";
 import type {
   Page,
   SignageSubmissionExpanded,
@@ -71,6 +73,10 @@ class MockStore {
   private submissions: SignageSubmissionExpandedDto[];
   private reviews: ReviewDto[];
   private readonly seenIdempotencyKeys = new Map<string, string>();
+  private readonly inFlightCreates = new Map<
+    string,
+    Promise<SignageSubmissionExpanded>
+  >();
 
   constructor(now: Date) {
     this.submissions = createSubmissionFixtures(now);
@@ -115,6 +121,24 @@ class MockStore {
   resolveIdempotency(key: string | undefined): string | null {
     if (!key) return null;
     return this.seenIdempotencyKeys.get(key) ?? null;
+  }
+
+  /**
+   * 아직 끝나지 않은 같은 key의 생성 요청.
+   *
+   * 완료된 요청만 기억하면 더블 클릭처럼 겹쳐 들어온 두 요청이 모두 통과한다.
+   * 실제 서버도 key 단위로 직렬화해야 하는 지점이다.
+   */
+  pendingCreate(key: string): Promise<SignageSubmissionExpanded> | null {
+    return this.inFlightCreates.get(key) ?? null;
+  }
+
+  rememberPendingCreate(
+    key: string,
+    running: Promise<SignageSubmissionExpanded>,
+  ): void {
+    this.inFlightCreates.set(key, running);
+    void running.finally(() => this.inFlightCreates.delete(key));
   }
 }
 
@@ -175,6 +199,54 @@ export function createMockRepositories(
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
   };
 
+  const runCreate = async (
+    input: CreateSubmissionInput,
+    mutationOptions?: MutationOptions,
+  ): Promise<SignageSubmissionExpanded> => {
+    await settle(mutationOptions?.signal);
+    const existingId = store.resolveIdempotency(mutationOptions?.idempotencyKey);
+    if (existingId) {
+      return toSignageSubmissionExpanded(store.find(existingId));
+    }
+
+    if (input.endAt.getTime() <= input.startAt.getTime()) {
+      throw invalid("종료 시각은 시작 시각보다 뒤여야 합니다.");
+    }
+
+    const now = clock.now();
+    const id = `submission-${store.all().length + 1}-${now.getTime()}`;
+    const created: SignageSubmissionExpandedDto = {
+      id,
+      ziggleNoticeId: input.ziggleNoticeId,
+      requesterId: "requester-mock",
+      organizationId: null,
+      type: "POSTER",
+      title: input.title,
+      categoryId: input.categoryId,
+      assetId: input.assetId,
+      detailUrl: input.detailUrl,
+      startAt: toIsoUtc(input.startAt),
+      endAt: toIsoUtc(input.endAt),
+      status: "DRAFT",
+      priority: 0,
+      targetGroupIds: input.targetGroupIds,
+      createdAt: toIsoUtc(now),
+      updatedAt: toIsoUtc(now),
+      version: 1,
+      categoryName: getCategoryName(input.categoryId),
+      // 실제 서버는 세션 사용자의 조직을 채운다. mock은 그 값을 모른다.
+      organizationName: "내 조직",
+      // 실제 서버는 assetId로 저장소 URL을 돌려준다. mock은 방금 올린 미리보기를 쓴다.
+      posterUrl: getMockAssetUrl(input.assetId) ?? "",
+      subtitle: null,
+      location: null,
+      description: null,
+    };
+    store.insert(created);
+    store.rememberIdempotency(mutationOptions?.idempotencyKey, id);
+    return toSignageSubmissionExpanded(created);
+  };
+
   const submissions: SubmissionRepository = {
     async list(params, signal) {
       await settle(signal);
@@ -204,48 +276,15 @@ export function createMockRepositories(
     },
 
     async create(input: CreateSubmissionInput, mutationOptions?: MutationOptions) {
-      await settle(mutationOptions?.signal);
-      const existingId = store.resolveIdempotency(
-        mutationOptions?.idempotencyKey,
-      );
-      if (existingId) {
-        return toSignageSubmissionExpanded(store.find(existingId));
+      const key = mutationOptions?.idempotencyKey;
+      if (key) {
+        const pending = store.pendingCreate(key);
+        if (pending) return pending;
       }
 
-      if (input.endAt.getTime() <= input.startAt.getTime()) {
-        throw invalid("종료 시각은 시작 시각보다 뒤여야 합니다.");
-      }
-
-      const now = clock.now();
-      const id = `submission-${store.all().length + 1}-${now.getTime()}`;
-      const created: SignageSubmissionExpandedDto = {
-        id,
-        ziggleNoticeId: input.ziggleNoticeId,
-        requesterId: "requester-mock",
-        organizationId: null,
-        type: "POSTER",
-        title: input.title,
-        categoryId: input.categoryId,
-        assetId: input.assetId,
-        detailUrl: input.detailUrl,
-        startAt: toIsoUtc(input.startAt),
-        endAt: toIsoUtc(input.endAt),
-        status: "DRAFT",
-        priority: 0,
-        targetGroupIds: input.targetGroupIds,
-        createdAt: toIsoUtc(now),
-        updatedAt: toIsoUtc(now),
-        version: 1,
-        categoryName: input.categoryId,
-        organizationName: "미지정",
-        posterUrl: "",
-        subtitle: null,
-        location: null,
-        description: null,
-      };
-      store.insert(created);
-      store.rememberIdempotency(mutationOptions?.idempotencyKey, id);
-      return toSignageSubmissionExpanded(created);
+      const running = runCreate(input, mutationOptions);
+      if (key) store.rememberPendingCreate(key, running);
+      return running;
     },
 
     async submit(id, mutationOptions) {

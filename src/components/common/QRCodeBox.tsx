@@ -1,15 +1,28 @@
+import { useMemo } from "react";
+import { cn } from "@/shared/lib/utils";
+import {
+  DEFAULT_QR_ERROR_CORRECTION,
+  encodeQrMatrix,
+  qrViewBoxSize,
+  toQrPathData,
+} from "@/shared/lib/qr";
+import type { QrErrorCorrectionLevel } from "@/shared/lib/qr";
+
 /**
- * 주의: 실제 QR이 아니라 시드 기반 패턴 자리표시자다. 스캔되지 않는다.
- * 실제 QR 생성은 Phase 02(미리보기)와 Phase 05(플레이어)에서 도입한다.
- * (명세 FR-PLY-05, 12.2)
+ * 실제로 스캔되는 QR.
  *
  * `value`에는 반드시 신청의 `detailUrl`을 넘긴다. QR 값의 단일 원천이다.
+ * (명세 FR-PLY-05, 12.2)
+ *
+ * 값이 아직 없거나 인코딩할 수 없으면 가짜 무늬 대신 빈 자리를 밝힌다.
+ * 스캔되지 않는 그림을 QR처럼 보여주면 TV 앞에서 확인할 방법이 없다.
  */
 interface QRCodeBoxProps {
   value: string;
   label?: string;
   size?: keyof typeof sizeClassName;
   inverse?: boolean;
+  errorCorrectionLevel?: QrErrorCorrectionLevel;
 }
 
 const sizeClassName = {
@@ -21,73 +34,55 @@ const sizeClassName = {
   tv: "size-[216px]",
 };
 
-const GRID = 25;
-
-function isFinder(row: number, col: number) {
-  const inBox = (r0: number, c0: number) =>
-    row >= r0 &&
-    row < r0 + 7 &&
-    col >= c0 &&
-    col < c0 + 7 &&
-    (row === r0 ||
-      row === r0 + 6 ||
-      col === c0 ||
-      col === c0 + 6 ||
-      (row >= r0 + 2 && row <= r0 + 4 && col >= c0 + 2 && col <= c0 + 4));
-  return inBox(0, 0) || inBox(0, GRID - 7) || inBox(GRID - 7, 0);
-}
-
-function isFinderArea(row: number, col: number) {
-  const inArea = (r0: number, c0: number) =>
-    row >= r0 && row < r0 + 8 && col >= c0 && col < c0 + 8;
-  return (
-    inArea(0, 0) || inArea(0, GRID - 8) || inArea(GRID - 8, 0)
-  );
-}
-
 export function QRCodeBox({
   value,
   label,
   size = "md",
   inverse = false,
+  errorCorrectionLevel = DEFAULT_QR_ERROR_CORRECTION,
 }: QRCodeBoxProps) {
-  let seed = 0;
-  for (let i = 0; i < value.length; i++) {
-    seed = (seed * 31 + value.charCodeAt(i)) % 2147483647;
-  }
-
-  const cells: boolean[] = [];
-  for (let row = 0; row < GRID; row++) {
-    for (let col = 0; col < GRID; col++) {
-      if (isFinder(row, col)) {
-        cells.push(true);
-      } else if (isFinderArea(row, col)) {
-        cells.push(false);
-      } else {
-        seed = (seed * 1103515245 + 12345) % 2147483647;
-        cells.push(((seed >> 8) & 1) === 1);
-      }
+  const code = useMemo(() => {
+    if (value.length === 0) return null;
+    try {
+      const matrix = encodeQrMatrix(value, errorCorrectionLevel);
+      return {
+        pathData: toQrPathData(matrix),
+        viewBoxSize: qrViewBoxSize(matrix),
+      };
+    } catch {
+      return null;
     }
-  }
+  }, [value, errorCorrectionLevel]);
 
   return (
     <div className="inline-flex flex-col items-center gap-2">
-      <div
-        className={`${sizeClassName[size]} rounded-sm bg-white p-1.5 ring-1 ring-line`}
-        aria-label={`QR 코드 자리표시자: ${value}`}
-      >
-        <div
-          className="grid h-full w-full"
-          style={{ gridTemplateColumns: `repeat(${GRID}, 1fr)` }}
+      {code ? (
+        <svg
+          className={cn(sizeClassName[size], "rounded-sm bg-white ring-1 ring-line")}
+          viewBox={`0 0 ${code.viewBoxSize} ${code.viewBoxSize}`}
+          role="img"
+          aria-label={`QR 코드: ${value}`}
+          shapeRendering="crispEdges"
         >
-          {cells.map((filled, index) => (
-            <span
-              key={index}
-              className={filled ? "bg-ink" : "bg-transparent"}
-            />
-          ))}
+          {/* QR은 디자인 토큰이 아니라 스캔 대비를 따른다. 순수 흑백을 유지한다. */}
+          <path d={code.pathData} fill="#000000" />
+        </svg>
+      ) : (
+        <div
+          className={cn(
+            sizeClassName[size],
+            "grid place-items-center rounded-sm border border-dashed border-line-strong bg-surface-muted text-center",
+          )}
+          role="img"
+          aria-label="QR 코드 없음. 상세 링크를 입력하면 생성됩니다."
+        >
+          <span className="px-1 text-[10px] leading-tight text-ink-subtle">
+            링크 입력 후
+            <br />
+            생성
+          </span>
         </div>
-      </div>
+      )}
       {label && (
         <span
           className={`text-caption font-bold ${
