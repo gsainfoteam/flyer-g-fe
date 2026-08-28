@@ -1,10 +1,10 @@
 import { Logo } from "../common/Logo";
+import { APP_VERSION } from "@/shared/config/app-version";
 
 /**
  * 화면 바닥의 안내. 이 서비스가 Ziggle의 연장이라는 점과, 표시 시각의 기준을 밝힌다.
  * 버전 표시는 기기 장애를 확인할 때 필요하다. (명세 9.7)
  */
-const APP_VERSION = "v0.4.2";
 
 export function SiteFooter() {
   return (
