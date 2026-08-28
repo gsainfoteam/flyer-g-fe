@@ -91,14 +91,14 @@ export function SubmissionsPage() {
                 className="px-3"
               />
             ) : (
-              <ul className="flex flex-col">
-                {items.map((submission, index) => (
+              // 구분선은 li에 그린다. rounded가 걸린 행 안쪽에 그리면 모서리를 따라 휜다.
+              <ul className="flex flex-col divide-y divide-line">
+                {items.map((submission) => (
                   <SubmissionRow
                     key={submission.id}
                     submission={submission}
                     sentence={sentenceFor(submission)}
                     href={to.submissionDetail(submission.id)}
-                    className={index > 0 ? "border-t border-line" : undefined}
                     trailing={<StatusBadge status={submission.status} />}
                   />
                 ))}

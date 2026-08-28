@@ -126,7 +126,7 @@ export function ReviewsPage() {
                 className="px-3"
               />
             ) : (
-              <ul className="flex flex-col">
+              <ul className="flex flex-col divide-y divide-line">
                 {filtered.map((submission, index) => {
                   const waited = formatElapsed(submission.createdAt, now);
                   const urgent = !isFiltered && index === 0;
@@ -136,7 +136,6 @@ export function ReviewsPage() {
                       submission={submission}
                       highlighted={urgent}
                       thumbSize="md"
-                      className={index > 0 ? "border-t border-line" : undefined}
                       sentence={`${submission.organizationName} · ${
                         submission.categoryName
                       } · ${getStatusSentence({
