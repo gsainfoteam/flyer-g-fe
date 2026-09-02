@@ -2,6 +2,9 @@
  * 런타임 환경 변수 파싱과 검증.
  * production에서 mock이 켜지는 사고를 빌드가 아니라 시작 시점에 막는다.
  * 명세 Phase 07 인수 조건 "production build에서 mock API/auth가 사용되지 않는다"
+ *
+ * 유일한 예외가 `VITE_DEMO_MODE=true` 데모 빌드다. 백엔드 없이 UI mock을
+ * 그대로 배포해 보여주기 위한 것으로, 실수로 켜질 수 없게 명시적 opt-in만 받는다.
  */
 export interface AppEnv {
   /** 실제 API base URL. mock 모드에서는 null일 수 있다. */
@@ -9,6 +12,8 @@ export interface AppEnv {
   useMockApi: boolean;
   /** 개발용 mock 세션 사용 여부. 역할 전환 UI도 이 값에 따라 노출된다. */
   useMockAuth: boolean;
+  /** mock을 그대로 배포하는 데모 빌드. production mock 금지 규칙의 유일한 예외. */
+  isDemo: boolean;
   isProduction: boolean;
 }
 
@@ -23,6 +28,7 @@ export interface RawEnv {
   VITE_API_BASE_URL?: string;
   VITE_USE_MOCK_API?: string;
   VITE_USE_MOCK_AUTH?: string;
+  VITE_DEMO_MODE?: string;
   PROD?: boolean;
 }
 
@@ -54,18 +60,23 @@ function parseBaseUrl(value: string | undefined): string | null {
 
 export function readAppEnv(raw: RawEnv): AppEnv {
   const isProduction = raw.PROD === true;
-  const useMockApi = parseBoolean(raw.VITE_USE_MOCK_API, !isProduction);
-  const useMockAuth = parseBoolean(raw.VITE_USE_MOCK_AUTH, !isProduction);
+  const isDemo = parseBoolean(raw.VITE_DEMO_MODE, false);
+  // 데모 빌드는 백엔드 없이 배포하는 것이 목적이므로 mock이 기본이다.
+  const useMockApi = parseBoolean(raw.VITE_USE_MOCK_API, !isProduction || isDemo);
+  const useMockAuth = parseBoolean(
+    raw.VITE_USE_MOCK_AUTH,
+    !isProduction || isDemo,
+  );
   const apiBaseUrl = parseBaseUrl(raw.VITE_API_BASE_URL);
 
-  if (isProduction && useMockApi) {
+  if (isProduction && useMockApi && !isDemo) {
     throw new EnvConfigError(
-      "production 빌드에서는 mock API를 사용할 수 없습니다. VITE_USE_MOCK_API를 false로 두세요.",
+      "production 빌드에서는 mock API를 사용할 수 없습니다. VITE_USE_MOCK_API를 false로 두거나, 데모 배포라면 VITE_DEMO_MODE=true를 명시하세요.",
     );
   }
-  if (isProduction && useMockAuth) {
+  if (isProduction && useMockAuth && !isDemo) {
     throw new EnvConfigError(
-      "production 빌드에서는 mock 세션을 사용할 수 없습니다. VITE_USE_MOCK_AUTH를 false로 두세요.",
+      "production 빌드에서는 mock 세션을 사용할 수 없습니다. VITE_USE_MOCK_AUTH를 false로 두거나, 데모 배포라면 VITE_DEMO_MODE=true를 명시하세요.",
     );
   }
   if (!useMockApi && apiBaseUrl === null) {
@@ -74,7 +85,7 @@ export function readAppEnv(raw: RawEnv): AppEnv {
     );
   }
 
-  return { apiBaseUrl, useMockApi, useMockAuth, isProduction };
+  return { apiBaseUrl, useMockApi, useMockAuth, isDemo, isProduction };
 }
 
 let cached: AppEnv | null = null;

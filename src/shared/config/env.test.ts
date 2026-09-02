@@ -7,6 +7,7 @@ describe("readAppEnv", () => {
       apiBaseUrl: null,
       useMockApi: true,
       useMockAuth: true,
+      isDemo: false,
       isProduction: false,
     });
   });
@@ -25,6 +26,22 @@ describe("readAppEnv", () => {
         VITE_API_BASE_URL: "https://api.example.com",
       }),
     ).toThrow(EnvConfigError);
+  });
+
+  it("데모 빌드는 production에서도 mock을 허용하고 mock을 기본값으로 쓴다", () => {
+    // 백엔드 없이 UI를 보여주는 배포(Cloudflare Pages 등)를 위한 명시적 opt-in.
+    expect(readAppEnv({ PROD: true, VITE_DEMO_MODE: "true" })).toEqual({
+      apiBaseUrl: null,
+      useMockApi: true,
+      useMockAuth: true,
+      isDemo: true,
+      isProduction: true,
+    });
+  });
+
+  it("데모 플래그가 없으면 production 기본값은 여전히 실제 API 모드다", () => {
+    // 기본값이 mock=false라 base URL 검증에 걸린다. 조용히 mock으로 새지 않는다.
+    expect(() => readAppEnv({ PROD: true })).toThrow(EnvConfigError);
   });
 
   it("실제 API 모드에는 base URL이 반드시 필요하다", () => {

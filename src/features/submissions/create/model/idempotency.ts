@@ -4,7 +4,7 @@
  * 더블 클릭이나 네트워크 재시도로 신청이 두 건 만들어지지 않게 한다. 같은 시도의
  * 재시도에는 반드시 같은 key를 다시 쓴다. 값이 바뀌면 그때가 새 시도다.
  *
- * 서버가 이 값을 어떤 헤더로 받을지는 미확정이다. (`API-REQUIREMENTS.md` 3절)
+ * 서버가 이 값을 어떤 헤더로 받을지는 미확정이다. (`API-REQUIREMENTS.md` 1.3)
  */
 export function createIdempotencyKey(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
