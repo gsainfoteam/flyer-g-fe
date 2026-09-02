@@ -7,20 +7,26 @@ describe("readAppEnv", () => {
       apiBaseUrl: null,
       useMockApi: true,
       useMockAuth: true,
-      isDemo: false,
+      // TODO(Phase 08): 데모 기본값을 false로 되돌리면 이 값도 바뀐다.
+      isDemo: true,
       isProduction: false,
     });
   });
 
-  it("production에서 mock을 켜면 시작 시점에 막는다", () => {
+  it("데모가 아닌 production에서 mock을 켜면 시작 시점에 막는다", () => {
     expect(() =>
-      readAppEnv({ PROD: true, VITE_USE_MOCK_API: "true" }),
+      readAppEnv({
+        PROD: true,
+        VITE_DEMO_MODE: "false",
+        VITE_USE_MOCK_API: "true",
+      }),
     ).toThrow(EnvConfigError);
 
     // mock 세션도 마찬가지다. 개발용 역할 전환이 운영에 새어 나가면 안 된다.
     expect(() =>
       readAppEnv({
         PROD: true,
+        VITE_DEMO_MODE: "false",
         VITE_USE_MOCK_API: "false",
         VITE_USE_MOCK_AUTH: "true",
         VITE_API_BASE_URL: "https://api.example.com",
@@ -39,9 +45,20 @@ describe("readAppEnv", () => {
     });
   });
 
-  it("데모 플래그가 없으면 production 기본값은 여전히 실제 API 모드다", () => {
-    // 기본값이 mock=false라 base URL 검증에 걸린다. 조용히 mock으로 새지 않는다.
-    expect(() => readAppEnv({ PROD: true })).toThrow(EnvConfigError);
+  it("백엔드 연동 전에는 production 기본값도 데모 빌드다", () => {
+    // TODO(Phase 08): 기본값을 실제 API 모드로 되돌리면서 이 테스트도 뒤집는다.
+    expect(readAppEnv({ PROD: true }).isDemo).toBe(true);
+    expect(readAppEnv({ PROD: true }).useMockApi).toBe(true);
+  });
+
+  it("데모를 끄면 production mock 금지 검증이 그대로 동작한다", () => {
+    expect(() =>
+      readAppEnv({
+        PROD: true,
+        VITE_DEMO_MODE: "false",
+        VITE_USE_MOCK_API: "true",
+      }),
+    ).toThrow(EnvConfigError);
   });
 
   it("실제 API 모드에는 base URL이 반드시 필요하다", () => {
