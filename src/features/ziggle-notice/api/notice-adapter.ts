@@ -5,7 +5,7 @@ import type { ZiggleNotice } from "@/entities/notice";
  *
  * 공지 조회 API가 존재하는지, 응답이 어떤 모양인지 아직 확정되지 않았다
  * (명세 15장 14번). 화면은 이 인터페이스만 알고, 계약이 확정되면 구현체만 바꾼다.
- * 요구사항은 `API-REQUIREMENTS.md` 1절에 적어 두었다.
+ * 요구사항은 `API-REQUIREMENTS.md` 3절에 적어 두었다.
  */
 export interface ZiggleNoticeAdapter {
   /** 공지 하나. 없거나 권한이 없으면 ApiError를 던진다. */
