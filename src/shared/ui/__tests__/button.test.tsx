@@ -69,6 +69,31 @@ describe("Button", () => {
     expect(screen.getByRole("button", { name: "더 보기" })).toBeInTheDocument();
   });
 
+  it("form 안에서 type을 명시하지 않은 버튼은 제출하지 않는다", async () => {
+    const onSubmit = vi.fn((event: { preventDefault: () => void }) => event.preventDefault());
+    render(
+      <form onSubmit={onSubmit}>
+        <Button>공지 바꾸기</Button>
+        <Button type="submit">제출하기</Button>
+      </form>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "공지 바꾸기" }));
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "제출하기" }));
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
+
+  it("asChild면 type을 붙이지 않는다", () => {
+    render(
+      <Button asChild>
+        <a href="/studio">새 신청</a>
+      </Button>,
+    );
+    expect(screen.getByRole("link")).not.toHaveAttribute("type");
+  });
+
   it("키보드로 포커스하고 실행할 수 있다", async () => {
     const onClick = vi.fn();
     render(<Button onClick={onClick}>승인</Button>);

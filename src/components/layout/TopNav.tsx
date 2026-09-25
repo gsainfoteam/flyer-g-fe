@@ -43,7 +43,8 @@ export function TopNav({ user, pendingCount = 0 }: TopNavProps) {
       allow: ["REVIEWER", "SUPER_ADMIN"],
       count: pendingCount,
     },
-    { label: "기기", href: to.displays(), allow: ["SUPER_ADMIN"] },
+    // "기기" 메뉴는 기기 관리 화면이 생기면 SUPER_ADMIN에게 연다. 지금은
+    // 준비 중 화면으로만 이어져서 메뉴에 두지 않는다.
   ];
 
   const visible = items.filter(

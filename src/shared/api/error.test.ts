@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ApiError,
   codeForStatus,
+  isRetryableError,
   normalizeApiError,
   toTraceLabel,
   toUserMessage,
@@ -63,6 +64,28 @@ describe("toUserMessage", () => {
       status: 500,
     });
     expect(toUserMessage(error)).not.toContain("ReviewService");
+  });
+});
+
+describe("isRetryableError", () => {
+  const http = (status: number) =>
+    new ApiError({ kind: "http", code: codeForStatus(status), message: "m", status });
+
+  it("네트워크 오류와 5xx·408·429는 재시도한다", () => {
+    expect(isRetryableError(new TypeError("Failed to fetch"))).toBe(true);
+    expect(isRetryableError(http(500))).toBe(true);
+    expect(isRetryableError(http(503))).toBe(true);
+    expect(isRetryableError(http(408))).toBe(true);
+    expect(isRetryableError(http(429))).toBe(true);
+  });
+
+  it("다시 보내도 결과가 같은 4xx와 취소는 재시도하지 않는다", () => {
+    for (const status of [400, 401, 403, 404, 409, 422]) {
+      expect(isRetryableError(http(status))).toBe(false);
+    }
+    expect(
+      isRetryableError(new DOMException("aborted", "AbortError")),
+    ).toBe(false);
   });
 });
 

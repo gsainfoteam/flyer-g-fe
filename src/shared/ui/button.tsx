@@ -59,6 +59,9 @@ function Button({
 
   return (
     <Comp
+      // form 안의 보조 버튼이 의도치 않게 제출하지 않도록 기본값을 button으로 둔다.
+      // 제출 버튼은 type="submit"을 명시한다. asChild면 자식 요소의 속성을 따른다.
+      type={asChild ? undefined : "button"}
       data-slot="button"
       data-variant={variant}
       data-size={size}

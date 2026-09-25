@@ -27,15 +27,18 @@ export function DashboardPage() {
 
   const summary = useSubmissionSummary(isReviewer ? "all" : "me");
   const list = useSubmissionViews({ limit: 12 });
-  const pending = usePendingReviews(5);
+  // 승인 대기는 관리자 전용 API다. 게시자 세션에서는 조회하지 않고,
+  // 로딩·오류 판정에서도 뺀다.
+  const pending = usePendingReviews(5, { enabled: isReviewer });
 
-  const isLoading = summary.isPending || list.isPending || pending.isPending;
-  const error = summary.error ?? list.error ?? pending.error;
+  const isLoading =
+    summary.isPending || list.isPending || (isReviewer && pending.isPending);
+  const error = summary.error ?? list.error ?? (isReviewer ? pending.error : null);
 
   const retry = () => {
     void summary.refetch();
     void list.refetch();
-    void pending.refetch();
+    if (isReviewer) void pending.refetch();
   };
 
   const now = summary.data?.calculatedAt ?? new Date();
@@ -55,7 +58,7 @@ export function DashboardPage() {
       onRetry={retry}
       loadingRows={5}
     >
-      {summary.data && list.data && pending.data && (
+      {summary.data && list.data && (!isReviewer || pending.data) && (
         <>
           <div className="flex flex-wrap items-end gap-6">
             <div className="min-w-0 flex-1">
@@ -180,7 +183,9 @@ export function DashboardPage() {
                 title="지금 TV에 걸린 것"
                 action={
                   <Button variant="link" size="xs" asChild>
-                    <Link to={to.display("device-preview")}>미리보기 →</Link>
+                    <Link to={to.display("device-preview", { preview: true })}>
+                      미리보기 →
+                    </Link>
                   </Button>
                 }
               >

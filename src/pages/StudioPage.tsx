@@ -59,7 +59,7 @@ export function StudioPage() {
   const editingId = searchParams.get(EDIT_PARAM);
 
   const notice = useZiggleNotice(editingId ? null : noticeId);
-  const editing = useSubmissionDetail(editingId ?? "");
+  const editing = useSubmissionDetail(editingId);
   const editingSubmission = editingId ? (editing.data ?? null) : null;
   const upload = usePosterUpload();
   const createSubmission = useCreateSubmission();

@@ -1,4 +1,3 @@
-import { Lock } from "lucide-react";
 import { QRCodeBox } from "@/components/common/QRCodeBox";
 import { SUBMISSION_CATEGORIES } from "@/entities/submission";
 import { FormField } from "@/shared/components";
@@ -10,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
-import { Textarea } from "@/shared/ui/textarea";
 import type { SubmissionDraft } from "../model/draft";
 import { TITLE_MAX_LENGTH } from "../model/validate";
 import type { SubmissionFieldErrors } from "../model/validate";
@@ -22,8 +20,8 @@ import type { SubmissionFieldErrors } from "../model/validate";
  * 하며, 자유 입력을 허용하면 승인된 포스터가 임의의 주소로 사람을 보낼 수 있다.
  * (명세 9.4 피싱 링크 방지)
  *
- * 대상 위치와 게시자 메모는 아직 서버 계약이 없다. 숨기지 않고 비활성으로 두어
- * 곧 생길 항목임을 알린다. (`API-REQUIREMENTS.md` 3절 12번)
+ * 대상 위치와 게시자 메모는 아직 서버 계약이 없어 입력받지 않는다. 계약이
+ * 정해지면 이 폼에 추가한다. (`API-REQUIREMENTS.md` 3절 12번)
  */
 interface SubmissionFormProps {
   draft: SubmissionDraft;
@@ -140,36 +138,6 @@ export function SubmissionForm({
         <p className="text-caption leading-relaxed text-ink-muted">
           TV에 이 QR이 그대로 나갑니다. 스캔하면 Ziggle 공지 원문으로 갑니다.
         </p>
-      </div>
-
-      <div className="space-y-3 rounded-card border border-dashed border-line px-3 py-3">
-        <p className="flex items-center gap-1.5 text-caption text-ink-subtle">
-          <Lock className="size-3.5" aria-hidden="true" />
-          아래 항목은 서버 준비 후 열립니다
-        </p>
-
-        <FormField label="대상 위치" description="기기별 게시 대상 지정">
-          {(control) => (
-            <Input
-              {...control}
-              disabled
-              value=""
-              placeholder="전체 기기에 게시됩니다"
-            />
-          )}
-        </FormField>
-
-        <FormField label="게시자 메모" description="검토자에게 전달할 메모">
-          {(control) => (
-            <Textarea
-              {...control}
-              disabled
-              value=""
-              rows={2}
-              placeholder="준비 중입니다"
-            />
-          )}
-        </FormField>
       </div>
     </div>
   );
