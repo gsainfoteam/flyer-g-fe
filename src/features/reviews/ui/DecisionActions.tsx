@@ -14,7 +14,7 @@ import type {
   SignageSubmissionExpanded,
   SubmissionStatus,
 } from "@/entities/submission";
-import { useTargetGroupLabel } from "@/features/devices/api/queries";
+import { useTargetGroupLabel } from "@/entities/device/api/queries";
 import { ConfirmActionDialog, FormField } from "@/shared/components";
 import { isApiError, toUserMessage } from "@/shared/api/error";
 import { formatSeoulDateTime } from "@/shared/lib/datetime";

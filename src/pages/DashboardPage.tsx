@@ -1,13 +1,13 @@
 import { Link } from "react-router";
-import { to } from "@/app/router/routes";
-import { PosterThumb } from "@/components/common/PosterThumb";
-import { ApprovalPanel } from "@/components/dashboard/ApprovalPanel";
-import { RecentContentSection } from "@/components/dashboard/RecentContentSection";
-import { DeviceStatusPanel } from "@/components/dashboard/DeviceStatusPanel";
-import { StatusCountBar } from "@/components/dashboard/StatusCountBar";
+import { to } from "@/shared/config/routes";
+import { PosterThumb } from "@/entities/poster/ui/PosterThumb";
+import { ApprovalPanel } from "@/widgets/dashboard/ApprovalPanel";
+import { RecentContentSection } from "@/widgets/dashboard/RecentContentSection";
+import { DeviceStatusPanel } from "@/widgets/dashboard/DeviceStatusPanel";
+import { StatusCountBar } from "@/widgets/dashboard/StatusCountBar";
 import { useSessionUser } from "@/features/auth/model/auth-context";
 import { hasAnyRole } from "@/features/auth/model/types";
-import { useTargetGroups } from "@/features/devices/api/queries";
+import { useTargetGroups } from "@/entities/device/api/queries";
 import { usePendingReviews } from "@/features/reviews/api/queries";
 import {
   useSubmissionSummary,

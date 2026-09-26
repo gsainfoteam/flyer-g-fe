@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { to } from "@/app/router/routes";
+import { to } from "@/shared/config/routes";
 import { Button } from "@/shared/ui/button";
 
 export function NotFoundPage() {

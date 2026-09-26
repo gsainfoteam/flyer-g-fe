@@ -32,7 +32,7 @@ import type { Playlist } from "@/entities/playlist/model/types";
 import { hasAnyRole } from "@/features/auth/model/types";
 import type { SessionUser } from "@/features/auth/model/types";
 import { getMockAssetUrl } from "@/features/media-upload/api/fake-upload-service";
-import { findMockNoticeDetails } from "@/features/ziggle-notice/api/mock-notices";
+import { findMockNoticeDetails } from "@/entities/notice/api/mock-notices";
 import { ApiError, codeForStatus } from "@/shared/api/error";
 import type {
   ApproveInput,

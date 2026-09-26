@@ -10,7 +10,7 @@ import type { Role, SessionUser } from "../model/types";
  *
  * production 빌드에서는 이 adapter가 선택되지 않는다. `createAuthAdapter()` 참고.
  */
-const STORAGE_KEY = "flyer-g:mock-role";
+const STORAGE_KEY = "flyerg:mock-role";
 
 function readStoredRole(): Role | null {
   try {

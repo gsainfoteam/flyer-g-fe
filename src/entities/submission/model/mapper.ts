@@ -1,45 +1,14 @@
-import { parseIsoUtc, toIsoUtc } from "@/shared/lib/datetime";
+import { parseIsoUtc } from "@/shared/lib/datetime";
 import { resolveEffectiveStatus } from "./schedule";
 import { SUBMISSION_STATUSES } from "./types";
 import type {
   SignageSubmission,
-  SignageSubmissionDto,
   SignageSubmissionExpanded,
   SignageSubmissionExpandedDto,
   SubmissionStatus,
   SubmissionSummary,
   SubmissionView,
 } from "./types";
-
-/** 전송 모델 → 도메인 모델. 날짜 해석은 이 경계에서만 한다. */
-export function toSignageSubmission(
-  dto: SignageSubmissionDto,
-): SignageSubmission {
-  return {
-    ...dto,
-    startAt: parseIsoUtc(dto.startAt),
-    endAt: parseIsoUtc(dto.endAt),
-    createdAt: parseIsoUtc(dto.createdAt),
-    updatedAt: parseIsoUtc(dto.updatedAt),
-    submittedAt: dto.submittedAt ? parseIsoUtc(dto.submittedAt) : null,
-  };
-}
-
-/** 도메인 모델 → 전송 모델. */
-export function toSignageSubmissionDto(
-  submission: SignageSubmission,
-): SignageSubmissionDto {
-  return {
-    ...submission,
-    startAt: toIsoUtc(submission.startAt),
-    endAt: toIsoUtc(submission.endAt),
-    createdAt: toIsoUtc(submission.createdAt),
-    updatedAt: toIsoUtc(submission.updatedAt),
-    submittedAt: submission.submittedAt
-      ? toIsoUtc(submission.submittedAt)
-      : null,
-  };
-}
 
 /**
  * 운영 요약 통계 (명세 FR-DASH-01).

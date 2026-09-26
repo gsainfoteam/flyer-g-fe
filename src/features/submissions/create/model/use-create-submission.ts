@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef } from "react";
-import { useRepositories } from "@/app/providers/repositories-context";
+import { useRepositories } from "@/shared/api/repositories-context";
 import type { SignageSubmissionExpanded } from "@/entities/submission";
 import { queryKeys } from "@/shared/api/query-keys";
 import { normalizeApiError } from "@/shared/api/error";

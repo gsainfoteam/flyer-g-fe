@@ -1,4 +1,4 @@
-import { QRCodeBox } from "@/components/common/QRCodeBox";
+import { QRCodeBox } from "@/shared/components/QRCodeBox";
 import { SUBMISSION_CATEGORIES } from "@/entities/submission";
 import { FormField } from "@/shared/components";
 import { Input } from "@/shared/ui/input";

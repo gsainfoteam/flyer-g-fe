@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
-import { to } from "@/app/router/routes";
-import { PosterArtwork } from "@/components/common/PosterArtwork";
+import { to } from "@/shared/config/routes";
+import { PosterArtwork } from "@/entities/poster/ui/PosterArtwork";
 import { fromSubmissionView } from "@/entities/poster";
 import { getStatusSentence, toSubmissionView } from "@/entities/submission";
-import { useTargetGroupLabel } from "@/features/devices/api/queries";
+import { useTargetGroupLabel } from "@/entities/device/api/queries";
 import { DisplayPreview } from "@/features/display-preview";
 import { useNextPendingReview } from "@/features/reviews/api/queries";
 import { DecisionActions } from "@/features/reviews/ui/DecisionActions";
@@ -17,7 +17,8 @@ import {
   useSubmissionViews,
 } from "@/features/submissions/api/queries";
 import { SubmissionHistory } from "@/features/submissions/detail/ui/SubmissionHistory";
-import { PageState, Panel, StatusBadge } from "@/shared/components";
+import { PageState, Panel } from "@/shared/components";
+import { StatusBadge } from "@/entities/submission/ui/StatusBadge";
 import { formatSeoulDateTime } from "@/shared/lib/datetime";
 import { Button } from "@/shared/ui/button";
 

@@ -33,7 +33,7 @@ export interface HttpClient {
 
 export interface HttpClientOptions {
   baseUrl: string;
-  /** 인증 헤더 주입. Phase 01의 auth adapter가 채운다. */
+  /** 인증 헤더 주입. 실제 연동 때 auth adapter가 채운다. */
   getAuthHeaders?: () => Promise<Record<string, string>>;
   fetchImpl?: typeof fetch;
   /** 요청 하나를 기다리는 최대 시간. 업로드처럼 긴 요청은 호출부가 늘린다. */

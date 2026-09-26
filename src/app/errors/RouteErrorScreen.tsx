@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { Link, useRouteError } from "react-router";
-import { to } from "@/app/router/routes";
-import { Logo } from "@/components/common/Logo";
-import { LiveClock } from "@/components/display/LiveClock";
-import { ScaledStage } from "@/components/display/ScaledStage";
+import { to } from "@/shared/config/routes";
+import { Logo } from "@/shared/components/Logo";
+import { LiveClock } from "@/shared/components/LiveClock";
+import { ScaledStage } from "@/entities/poster/ui/ScaledStage";
 import { ZIGGLE_HOST } from "@/shared/lib/ziggle-url";
 import { Button } from "@/shared/ui/button";
 import { isStaleChunkError, reloadOnceForStaleChunk } from "./stale-chunk";

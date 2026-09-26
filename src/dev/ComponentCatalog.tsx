@@ -4,19 +4,10 @@ import type { ReactNode } from "react";
 import { SUBMISSION_STATUSES } from "@/entities/submission";
 import { MockControlPanel } from "./MockControlPanel";
 import { ApiError } from "@/shared/api/error";
-import {
-  ConfirmActionDialog,
-  EmptyState,
-  ErrorState,
-  FormField,
-  LoadingState,
-  SectionHeader,
-  StatusBadge,
-} from "@/shared/components";
+import { ConfirmActionDialog, EmptyState, ErrorState, FormField, LoadingState, Panel, SectionHeader } from "@/shared/components";
+import { StatusBadge } from "@/entities/submission/ui/StatusBadge";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
-import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,23 +16,13 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { Input } from "@/shared/ui/input";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/shared/ui/pagination";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
-import { Skeleton } from "@/shared/ui/skeleton";
 import { Spinner } from "@/shared/ui/spinner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Textarea } from "@/shared/ui/textarea";
 import { Toaster } from "@/shared/ui/sonner";
 import { toast } from "sonner";
@@ -49,8 +30,8 @@ import { toast } from "sonner";
 /**
  * 개발 전용 컴포넌트 카탈로그.
  *
- * 이후 Phase의 사람과 Agent가 "이미 있는 컴포넌트"를 찾는 기준 화면이다.
- * 새 화면을 만들기 전에 여기서 필요한 조합이 있는지 먼저 확인한다.
+ * "이미 있는 컴포넌트"를 찾는 기준 화면이다. 새 화면을 만들기 전에 여기서
+ * 필요한 조합이 있는지 먼저 확인한다.
  *
  * production 번들에는 포함되지 않는다. App에서 `import.meta.env.DEV`로 분기한다.
  */
@@ -76,9 +57,7 @@ function Section({ title, description, children }: {
   return (
     <section className="space-y-3">
       <SectionHeader title={title} description={description} />
-      <Card>
-        <CardContent className="pt-0">{children}</CardContent>
-      </Card>
+      <Panel bodyClassName="py-0">{children}</Panel>
     </section>
   );
 }
@@ -113,7 +92,8 @@ function TokenSwatches() {
       <dl className="divide-y divide-line">
         {[
           ["display", "32 / 800", "화면 제목 (h1)", "text-display"],
-          ["metric", "18 / 800", "상태별 건수", "text-metric tabular-nums"],
+          ["stat", "26 / 800", "대시보드 상태별 건수", "text-stat tabular-nums"],
+          ["metric", "18 / 800", "작은 수치", "text-metric tabular-nums"],
           ["title", "24 / 800", "카드 제목, 빈 상태 제목", "text-title"],
           ["heading", "19 / 800", "섹션 제목 (h2)", "text-heading"],
           ["body", "15 / 400", "본문", "text-body"],
@@ -238,12 +218,6 @@ export default function ComponentCatalog() {
               게시자가 고쳐야 하는 상태만 강조색을 쓴다
             </span>
           </Row>
-          <Row label="shadcn Badge">
-            <Badge>기본</Badge>
-            <Badge variant="secondary">보조</Badge>
-            <Badge variant="outline">외곽선</Badge>
-            <Badge variant="destructive">위험</Badge>
-          </Row>
         </Section>
 
         <Section title="FormField" description="label, 설명, 오류의 접근성 연결">
@@ -324,25 +298,8 @@ export default function ComponentCatalog() {
           </div>
         </Section>
 
-        <Section title="Tabs / DropdownMenu / Pagination">
-          <div className="space-y-4 py-3">
-            <Tabs defaultValue="all">
-              <TabsList>
-                <TabsTrigger value="all">전체</TabsTrigger>
-                <TabsTrigger value="pending">승인 대기</TabsTrigger>
-                <TabsTrigger value="published">게시 중</TabsTrigger>
-              </TabsList>
-              <TabsContent value="all" className="text-body text-ink-muted">
-                전체 탭 내용
-              </TabsContent>
-              <TabsContent value="pending" className="text-body text-ink-muted">
-                승인 대기 탭 내용
-              </TabsContent>
-              <TabsContent value="published" className="text-body text-ink-muted">
-                게시 중 탭 내용
-              </TabsContent>
-            </Tabs>
-
+        <Section title="DropdownMenu">
+          <div className="py-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">작업 선택</Button>
@@ -355,66 +312,36 @@ export default function ComponentCatalog() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious href="#" />
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationLink href="#" isActive>
-                    1
-                  </PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationLink href="#">2</PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext href="#" />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
           </div>
         </Section>
 
         <Section title="페이지 상태" description="로딩, 빈 상태, 오류">
           <div className="grid gap-4 py-3 md:grid-cols-3">
-            <Card>
-              <CardContent>
-                <LoadingState />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent>
-                <EmptyState
-                  title="아직 신청한 콘텐츠가 없습니다."
-                  description="포스터를 올려 첫 게시를 신청해 보세요."
-                  action={<Button size="sm">콘텐츠 등록</Button>}
-                />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent>
-                <ErrorState
-                  error={
-                    new ApiError({
-                      kind: "http",
-                      code: "SERVER_ERROR",
-                      message: "internal detail should not be shown",
-                      status: 500,
-                      requestId: "req-example-1",
-                    })
-                  }
-                  onRetry={() => toast.info("다시 시도했습니다.")}
-                />
-              </CardContent>
-            </Card>
+            <Panel>
+              <LoadingState />
+            </Panel>
+            <Panel>
+              <EmptyState
+                title="아직 신청한 콘텐츠가 없습니다."
+                description="포스터를 올려 첫 게시를 신청해 보세요."
+                action={<Button size="sm">콘텐츠 등록</Button>}
+              />
+            </Panel>
+            <Panel>
+              <ErrorState
+                error={
+                  new ApiError({
+                    kind: "http",
+                    code: "SERVER_ERROR",
+                    message: "internal detail should not be shown",
+                    status: 500,
+                    requestId: "req-example-1",
+                  })
+                }
+                onRetry={() => toast.info("다시 시도했습니다.")}
+              />
+            </Panel>
           </div>
-          <Row label="Skeleton">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="size-12 rounded-card" />
-          </Row>
         </Section>
 
         <Section title="ConfirmActionDialog / Toast">
@@ -463,18 +390,6 @@ export default function ComponentCatalog() {
           </ConfirmActionDialog>
         </Section>
 
-        <Section title="Card" description="섹션 헤더 조합">
-          <div className="py-3">
-            <Card>
-              <CardHeader>
-                <CardTitle>{LONG_KO}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-body text-ink-muted">
-                카드 본문입니다. 좁은 폭에서도 넘치지 않는지 확인하세요.
-              </CardContent>
-            </Card>
-          </div>
-        </Section>
       </div>
     </div>
   );

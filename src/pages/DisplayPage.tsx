@@ -1,16 +1,16 @@
 import { useCallback, useMemo, useState } from "react";
 import { Pause, Play, SkipForward } from "lucide-react";
 import { useParams, useSearchParams } from "react-router";
-import { Logo } from "@/components/common/Logo";
-import { DisplayStage } from "@/components/display/DisplayStage";
-import { LiveClock } from "@/components/display/LiveClock";
-import { ScaledStage } from "@/components/display/ScaledStage";
+import { Logo } from "@/shared/components/Logo";
+import { DisplayStage } from "@/entities/poster/ui/DisplayStage";
+import { LiveClock } from "@/shared/components/LiveClock";
+import { ScaledStage } from "@/entities/poster/ui/ScaledStage";
 import {
   useDeviceTelemetry,
   useOfflinePlaylist,
   usePlaybackReporting,
   usePrefetchImages,
-} from "@/features/display-runtime";
+} from "@/features/display";
 import { useRotation } from "@/features/display/model/use-rotation";
 import { ZIGGLE_HOST } from "@/shared/lib/ziggle-url";
 import { Button } from "@/shared/ui/button";

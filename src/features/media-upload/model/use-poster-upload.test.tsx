@@ -1,11 +1,9 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { ServicesContext } from "@/app/providers/services-context";
-import type { AppServices } from "@/app/providers/services-context";
+import { AssetUploadContext } from "../api/asset-upload-context";
 import { createFakeUploadService } from "../api/fake-upload-service";
 import type { AssetUploadService } from "../api/asset-upload-service";
-import { createMockNoticeAdapter } from "@/features/ziggle-notice/api/mock-notices";
 import { installObjectUrlMock } from "@/test/object-url";
 import type { ObjectUrlMock } from "@/test/object-url";
 import { usePosterUpload } from "./use-poster-upload";
@@ -21,15 +19,11 @@ function makeFile(name = "poster.jpg", head = JPEG_HEAD): File {
 const decodeOk = async () => ({ width: 1200, height: 1600 });
 
 function wrapper(assetUpload: AssetUploadService) {
-  const services: AppServices = {
-    assetUpload,
-    notices: createMockNoticeAdapter(),
-  };
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <ServicesContext.Provider value={services}>
+      <AssetUploadContext.Provider value={assetUpload}>
         {children}
-      </ServicesContext.Provider>
+      </AssetUploadContext.Provider>
     );
   };
 }

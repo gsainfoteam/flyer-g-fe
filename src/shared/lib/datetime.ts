@@ -6,7 +6,6 @@
  * Asia/Seoul은 1988년 이후 일광절약시간을 쓰지 않으므로 고정 +09:00으로 다룬다.
  * 이 가정이 깨지면 `SEOUL_UTC_OFFSET`만 바꾸지 말고 Intl 기반 변환으로 교체해야 한다.
  */
-export const SEOUL_TIME_ZONE = "Asia/Seoul";
 export const SEOUL_UTC_OFFSET = "+09:00";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
@@ -141,9 +140,4 @@ export function formatTimeAgo(since: Date, now: Date): string {
 export function formatSeoulShortDate(date: Date): string {
   const { month, day } = getSeoulParts(date);
   return `${pad(month)}. ${pad(day)}.`;
-}
-
-/** "2026. 08. 21. ~ 09. 03." — 시작은 연도까지, 종료는 월일만. */
-export function formatSeoulPeriodCompact(startAt: Date, endAt: Date): string {
-  return `${formatSeoulDate(startAt)} ~ ${formatSeoulShortDate(endAt)}`;
 }

@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
-import { ScaledStage } from "@/components/display/ScaledStage";
+import { ScaledStage } from "@/entities/poster/ui/ScaledStage";
 import {
   TV_STAGE_HEIGHT,
   TV_STAGE_WIDTH,
-} from "@/components/display/stage-metrics";
+} from "@/entities/poster/ui/stage-metrics";
 import { cn } from "@/shared/lib/utils";
 
 /**

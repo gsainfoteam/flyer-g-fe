@@ -1,8 +1,8 @@
 import { Outlet, useSearchParams } from "react-router";
 import { useDocumentTitle } from "@/app/router/use-document-title";
-import { useNewBuildReload } from "@/features/display-runtime/model/use-new-build-reload";
-import { useScreenWakeLock } from "@/features/display-runtime/model/use-screen-wake-lock";
-import { DisplayErrorBoundary } from "@/features/display-runtime/ui/DisplayErrorBoundary";
+import { useNewBuildReload } from "@/features/display/model/use-new-build-reload";
+import { useScreenWakeLock } from "@/features/display/model/use-screen-wake-lock";
+import { DisplayErrorBoundary } from "@/features/display/ui/DisplayErrorBoundary";
 import { cn } from "@/shared/lib/utils";
 
 /**

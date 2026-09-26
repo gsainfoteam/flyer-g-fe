@@ -1,9 +1,9 @@
 import { AlertTriangle, ExternalLink, FileText } from "lucide-react";
 import { Link } from "react-router";
-import { to } from "@/app/router/routes";
+import { to } from "@/shared/config/routes";
 import type { ZiggleNotice } from "@/entities/notice";
 import { getCategoryName } from "@/entities/submission";
-import { useSubmittableNotices } from "@/features/ziggle-notice/api/queries";
+import { useSubmittableNotices } from "@/entities/notice/api/queries";
 import { ErrorState, PageState } from "@/shared/components";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
