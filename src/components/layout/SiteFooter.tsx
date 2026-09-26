@@ -11,7 +11,7 @@ import { cn } from "@/shared/lib/utils";
 /**
  * 관리 화면 바닥.
  *
- * 운영 주체, 정책 문서, 문의처를 둔다.
+ * 윗줄은 서비스 설명과 외부·정책 링크, 아랫줄은 운영 주체와 문의처다.
  */
 export function SiteFooter() {
   return (
@@ -41,18 +41,21 @@ export function SiteFooter() {
                   개인정보처리방침
                 </FooterLink>
               </li>
-              <li>
-                <FooterLink href={SERVICE_LINKS.contact}>
-                  문의 {SERVICE_CONTACT_EMAIL}
-                </FooterLink>
-              </li>
             </ul>
           </nav>
         </div>
 
-        <p className="mt-6 border-t border-line pt-5 text-caption text-ink-subtle">
-          © {new Date().getFullYear()} {SERVICE_OPERATOR}
-        </p>
+        <div className="mt-6 flex flex-col gap-1 border-t border-line pt-5 text-caption text-ink-subtle sm:flex-row sm:justify-between">
+          <p>
+            © {new Date().getFullYear()} {SERVICE_OPERATOR}
+          </p>
+          <p>
+            문의{" "}
+            <FooterLink href={SERVICE_LINKS.contact}>
+              {SERVICE_CONTACT_EMAIL}
+            </FooterLink>
+          </p>
+        </div>
       </div>
     </footer>
   );
