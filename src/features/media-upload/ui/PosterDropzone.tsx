@@ -39,9 +39,13 @@ export function PosterDropzone({
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   const busy = state.status === "validating" || state.status === "uploading";
-  const message = error ?? state.errorMessage;
+  // 실제 원인(형식·용량·연결)이 폼 요약 문구("포스터를 올려 주세요")보다 구체적이다.
+  const message = state.errorMessage ?? error;
   const showsError =
-    state.status === "invalid" || state.status === "failed" || Boolean(error);
+    state.status === "invalid" ||
+    state.status === "failed" ||
+    state.invalidCode !== null ||
+    Boolean(error);
 
   const handleFiles = (files: FileList | null) => {
     const file = files?.[0];
@@ -55,7 +59,12 @@ export function PosterDropzone({
           event.preventDefault();
           setIsDraggingOver(true);
         }}
-        onDragLeave={() => setIsDraggingOver(false)}
+        onDragLeave={(event) => {
+          // 안쪽 요소 위로 옮겨 가도 dragleave가 난다. 영역을 벗어날 때만 끈다.
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            setIsDraggingOver(false);
+          }
+        }}
         onDrop={(event) => {
           event.preventDefault();
           setIsDraggingOver(false);
@@ -83,6 +92,7 @@ export function PosterDropzone({
             accept={ACCEPT}
             className="sr-only"
             disabled={busy}
+            aria-invalid={showsError || undefined}
             onChange={(event) => {
               handleFiles(event.target.files);
               // 같은 파일을 다시 골라도 change가 나도록 비운다.

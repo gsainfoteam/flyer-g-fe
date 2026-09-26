@@ -1,17 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { to } from "@/app/router/routes";
 import { Logo } from "@/components/common/Logo";
 import { fromSubmissionView } from "@/entities/poster";
 import type { SignageSubmissionExpanded } from "@/entities/submission";
-import { DisplayPreview, draftToPosterRenderModel } from "@/features/display-preview";
+import {
+  DisplayPreview,
+  draftToPosterRenderModel,
+  previewSourceFromNotice,
+} from "@/features/display-preview";
+import type { PreviewSource } from "@/features/display-preview";
 import { PosterDropzone, usePosterUpload } from "@/features/media-upload";
 import {
   createEmptyDraft,
   draftFromNotice,
   draftFromSubmission,
+  isEditableStatus,
 } from "@/features/submissions/create/model/draft";
 import type { SubmissionDraft } from "@/features/submissions/create/model/draft";
 import { useCreateSubmission } from "@/features/submissions/create/model/use-create-submission";
@@ -19,6 +25,7 @@ import { useUnsavedChangesWarning } from "@/features/submissions/create/model/us
 import {
   hasFieldErrors,
   summarizeErrors,
+  toFormFieldErrors,
   validateSubmissionForm,
 } from "@/features/submissions/create/model/validate";
 import type { SubmissionFieldErrors } from "@/features/submissions/create/model/validate";
@@ -32,6 +39,7 @@ import {
 import { useZiggleNotice } from "@/features/ziggle-notice/api/queries";
 import { ConfirmActionDialog, PageState } from "@/shared/components";
 import { toUserMessage } from "@/shared/api/error";
+import { useServerNow } from "@/shared/lib/use-server-now";
 import { Alert, AlertDescription } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
 import { Spinner } from "@/shared/ui/spinner";
@@ -39,9 +47,11 @@ import { Spinner } from "@/shared/ui/spinner";
 /**
  * 게시 신청 (명세 FR-SUB-01 ~ FR-SUB-04).
  *
- * 왼쪽에서 공지를 연결하고 포스터를 올리고, 오른쪽에서 게시 정보를 입력하면
- * 가운데 미리보기가 즉시 따라온다. 미리보기는 TV 플레이어와 같은 컴포넌트라
- * 여기서 보이는 것이 실제 결과다.
+ * 공지를 연결하고 포스터를 올리고 게시 정보를 입력하면 미리보기가 즉시 따라온다.
+ * 미리보기는 TV 플레이어와 같은 컴포넌트라 여기서 보이는 것이 실제 결과다.
+ *
+ * 넓은 화면은 세 칸(공지·포스터 / 미리보기 / 게시 정보)이고, 좁은 화면은 입력 →
+ * 미리보기 순으로 쌓인다. 휴대폰으로 공지를 쓰고 바로 신청하는 경우가 많다.
  *
  * `?submissionId=`가 있으면 수정 모드다. DRAFT는 이어서 작성, REJECTED는 수정 후
  * 재신청이며 둘 다 update → submit 경로를 쓴다. 공지는 이미 신청에 연결되어 있어
@@ -51,9 +61,8 @@ const NOTICE_PARAM = "noticeId";
 const EDIT_PARAM = "submissionId";
 const FORM_ID = "submission-create-form";
 
-const EDITABLE_STATUSES = ["DRAFT", "REJECTED"] as const;
-
 export function StudioPage() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const noticeId = searchParams.get(NOTICE_PARAM);
   const editingId = searchParams.get(EDIT_PARAM);
@@ -64,9 +73,12 @@ export function StudioPage() {
   const upload = usePosterUpload();
   const createSubmission = useCreateSubmission();
 
-  // 4분할 미리보기를 채울 실제 게시 중 포스터와, 판정 기준이 되는 서버 시각.
+  // 4분할 미리보기의 나머지 칸을 채울 내 게시 중 포스터와, 판정 기준이 되는 서버 시각.
   const published = useSubmissionViews({ status: "PUBLISHED", limit: 4 });
-  const serverTime = published.data?.serverTime ?? new Date();
+  const serverNow = useServerNow(
+    published.data?.serverTime,
+    published.dataUpdatedAt,
+  );
   const companions = useMemo(
     () => (published.data?.items ?? []).map(fromSubmissionView),
     [published.data],
@@ -77,10 +89,17 @@ export function StudioPage() {
   );
   const [showErrors, setShowErrors] = useState(false);
   /** 서버가 422로 돌려준 필드 오류. 클라이언트 검증과 합쳐 입력 칸에 붙인다. */
-  const [serverFieldErrors, setServerFieldErrors] =
-    useState<SubmissionFieldErrors>({});
+  const [serverErrors, setServerErrors] = useState<{
+    fieldErrors: SubmissionFieldErrors;
+    other: string[];
+  }>({ fieldErrors: {}, other: [] });
   const [isDirty, setIsDirty] = useState(false);
-  const [created, setCreated] = useState<SignageSubmissionExpanded | null>(null);
+  const [submitted, setSubmitted] = useState<SignageSubmissionExpanded | null>(
+    null,
+  );
+  const [focusRequest, setFocusRequest] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
+  const summaryRef = useRef<HTMLDivElement>(null);
 
   // 공지·기존 신청이 도착하면 한 번만 채운다. 사용자가 고친 제목을 덮어쓰지 않는다.
   const filledNoticeIdRef = useRef<string | null>(null);
@@ -105,50 +124,96 @@ export function StudioPage() {
     ziggleNoticeId: editingSubmission
       ? editingSubmission.ziggleNoticeId
       : (notice.data?.id ?? null),
-    // 수정 모드에서 새 포스터를 올리지 않으면 기존 포스터를 그대로 쓴다.
+    // 수정 모드에서 새 포스터를 고르지 않았을 때만 기존 포스터를 쓴다. 새 포스터가
+    // 올라가는 중이거나 실패했으면 비워서, 미리보기와 다른 포스터로 제출되지 않게 한다.
     assetId:
-      upload.state.asset?.assetId ??
-      (editingSubmission ? editingSubmission.assetId : null),
+      upload.state.status === "idle"
+        ? (editingSubmission?.assetId ?? null)
+        : (upload.state.asset?.assetId ?? null),
   };
   const errors: SubmissionFieldErrors = {
-    ...validateSubmissionForm(values, { now: serverTime }),
-    ...serverFieldErrors,
+    ...validateSubmissionForm(values, { now: serverNow }),
+    ...serverErrors.fieldErrors,
   };
-  const summary = showErrors ? summarizeErrors(errors) : null;
+  const summary = showErrors
+    ? [summarizeErrors(errors), ...serverErrors.other].filter(Boolean).join(" ")
+    : "";
 
   const isBusy =
-    createSubmission.isSubmitting || upload.state.status === "uploading";
+    createSubmission.isSubmitting ||
+    upload.state.status === "uploading" ||
+    upload.state.status === "validating";
   /** 접수된 뒤에는 같은 내용을 다시 보낼 수 없다. (명세 FR-SUB-04) */
-  const isSubmitted = created !== null;
+  const isSubmitted = submitted !== null;
   /** 수정 대상이 제출 전 상태가 아니면 제출 자체를 막는다. */
   const editBlocked =
-    editingId !== null &&
-    editingSubmission !== null &&
-    !EDITABLE_STATUSES.includes(
-      editingSubmission.status as (typeof EDITABLE_STATUSES)[number],
-    );
-  const blocker = useUnsavedChangesWarning(isDirty && created === null);
+    editingSubmission !== null && !isEditableStatus(editingSubmission.status);
+  const isResubmission = editingSubmission?.status === "REJECTED";
+  const blocker = useUnsavedChangesWarning(isDirty && submitted === null);
 
+  const previewSource: PreviewSource | null = editingSubmission
+    ? {
+        id: editingSubmission.id,
+        organizationName: editingSubmission.organizationName,
+        subtitle: editingSubmission.subtitle,
+        location: editingSubmission.location,
+      }
+    : notice.data
+      ? previewSourceFromNotice(notice.data)
+      : null;
   const previewPoster = draftToPosterRenderModel({
     draft,
-    notice: notice.data ?? null,
+    source: previewSource,
     posterUrl:
       upload.state.previewUrl ?? editingSubmission?.posterUrl ?? null,
-    now: serverTime,
+    now: serverNow,
   });
+
+  // 제출이 막히면 첫 문제 칸으로 옮긴다. 제출 버튼은 머리에 있고 오류는 아래에
+  // 있어서, 그대로 두면 무엇이 문제인지 찾아 헤매야 한다.
+  useEffect(() => {
+    if (focusRequest === 0) return;
+    const firstInvalid = formRef.current?.querySelector<HTMLElement>(
+      '[aria-invalid="true"]',
+    );
+    (firstInvalid ?? summaryRef.current)?.focus();
+    (firstInvalid ?? summaryRef.current)?.scrollIntoView({
+      block: "center",
+    });
+  }, [focusRequest]);
+
+  const markChanged = () => {
+    setIsDirty(true);
+    // 서버 필드 오류는 입력이 바뀌면 낡은 정보다. 다음 제출에서 다시 판정된다.
+    setServerErrors({ fieldErrors: {}, other: [] });
+    createSubmission.markInputChanged();
+  };
 
   const patchDraft = (patch: Partial<SubmissionDraft>) => {
     setDraft((current) => ({ ...current, ...patch }));
-    setIsDirty(true);
-    // 서버 필드 오류는 입력이 바뀌면 낡은 정보다. 다음 제출에서 다시 판정된다.
-    setServerFieldErrors({});
-    // 입력이 바뀌면 다른 시도다. 앞선 시도의 idempotency key를 재사용하지 않는다.
-    createSubmission.resetAttempt();
+    markChanged();
+  };
+
+  /** 다른 공지로 새 신청을 시작한다. 올린 포스터와 입력은 비운다. */
+  const startNew = () => {
+    filledNoticeIdRef.current = null;
+    setSubmitted(null);
+    setShowErrors(false);
+    setIsDirty(false);
+    setServerErrors({ fieldErrors: {}, other: [] });
+    upload.clear();
+    createSubmission.startOver();
+    setDraft(createEmptyDraft(new Date()));
+    setSearchParams({});
   };
 
   const handleSubmit = () => {
     setShowErrors(true);
-    if (hasFieldErrors(errors) || isBusy || isSubmitted || editBlocked) return;
+    if (isBusy || isSubmitted || editBlocked) return;
+    if (hasFieldErrors(errors)) {
+      setFocusRequest((count) => count + 1);
+      return;
+    }
 
     createSubmission.submit(
       {
@@ -168,16 +233,14 @@ export function StudioPage() {
       },
       {
         onSuccess: (submission) => {
-          setCreated(submission);
+          setSubmitted(submission);
           setIsDirty(false);
-          toast.success("게시 신청이 접수되었어요", {
-            description: `신청 ID ${submission.id}`,
-          });
         },
         onError: (error) => {
           // 입력과 업로드는 그대로 둔다. 사용자가 다시 채우지 않고 재시도할 수 있어야 한다.
           if (error.fields) {
-            setServerFieldErrors(error.fields as SubmissionFieldErrors);
+            setServerErrors(toFormFieldErrors(error.fields));
+            setFocusRequest((count) => count + 1);
           }
           toast.error("신청을 접수하지 못했어요", {
             description: toUserMessage(error),
@@ -187,47 +250,44 @@ export function StudioPage() {
     );
   };
 
+  const submitLabel = isResubmission ? "다시 신청하기" : "제출하기";
+
   return (
     <>
-      <header className="flex h-(--layout-header-height) shrink-0 items-center gap-4 border-b border-line bg-surface px-4 sm:px-6">
+      <header className="sticky top-0 z-(--layer-header) flex h-(--layout-header-height) shrink-0 items-center gap-3 border-b border-line bg-surface px-4 sm:gap-4 sm:px-6">
         <Link to={to.dashboard()} className="flex shrink-0">
           <Logo size="md" />
         </Link>
         <div className="hidden h-7 w-px bg-line sm:block" />
         <div className="min-w-0">
-          <h1 className="text-heading text-ink">게시 신청</h1>
+          <h1 className="text-heading whitespace-nowrap text-ink">게시 신청</h1>
           <p className="hidden text-caption text-ink-muted sm:block">
             포스터를 올리고 TV 게시판에 게시를 신청합니다
           </p>
         </div>
-        <div className="ml-auto flex shrink-0 items-center gap-2.5">
-          <Button variant="secondary" size="sm" asChild>
-            <Link to={to.display("device-preview", { preview: true })}>
-              TV 미리보기
-            </Link>
-          </Button>
-          <Button
-            size="sm"
-            type="submit"
-            form={FORM_ID}
-            disabled={isBusy || isSubmitted || editBlocked}
-          >
-            {createSubmission.isSubmitting && <Spinner aria-hidden="true" />}
-            제출하기
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          type="submit"
+          form={FORM_ID}
+          disabled={isBusy || isSubmitted || editBlocked}
+          className="ml-auto shrink-0"
+        >
+          {createSubmission.isSubmitting && <Spinner aria-hidden="true" />}
+          {submitLabel}
+        </Button>
       </header>
 
       <form
+        ref={formRef}
         id={FORM_ID}
-        className="flex min-h-0 flex-1"
+        className="flex flex-col lg:min-h-0 lg:flex-1 lg:flex-row"
         onSubmit={(event) => {
           event.preventDefault();
           handleSubmit();
         }}
         noValidate
       >
-        <aside className="flex h-full w-[300px] shrink-0 flex-col gap-4 overflow-y-auto border-r border-line bg-surface p-4">
+        <aside className="order-1 flex flex-col gap-4 border-b border-line bg-surface p-4 lg:h-full lg:w-75 lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-b-0">
           {editingId ? (
             <PageState
               isLoading={editing.isPending}
@@ -235,21 +295,18 @@ export function StudioPage() {
               onRetry={() => void editing.refetch()}
             >
               {editingSubmission &&
-                (EDITABLE_STATUSES.includes(
-                  editingSubmission.status as (typeof EDITABLE_STATUSES)[number],
-                ) ? (
+                (isEditableStatus(editingSubmission.status) ? (
                   <div className="rounded-card border border-line bg-surface-muted p-3">
                     <p className="text-caption text-ink-subtle">
-                      {editingSubmission.status === "REJECTED"
+                      {isResubmission
                         ? "반려된 신청 수정"
                         : "작성 중인 신청 이어서 쓰기"}
                     </p>
                     <p className="mt-0.5 truncate text-label text-ink">
                       {editingSubmission.title}
                     </p>
-                    <p className="mt-0.5 truncate text-caption text-ink-muted">
-                      v{editingSubmission.version} · 제출하면 다시 검토를
-                      받아요
+                    <p className="mt-0.5 text-caption text-ink-muted">
+                      제출하면 다시 검토를 받아요
                     </p>
                   </div>
                 ) : (
@@ -278,12 +335,8 @@ export function StudioPage() {
               onSelectNotice={(id) => {
                 setSearchParams({ [NOTICE_PARAM]: id });
               }}
-              onClearNotice={() => {
-                filledNoticeIdRef.current = null;
-                setSearchParams({});
-                setDraft(createEmptyDraft(new Date()));
-                createSubmission.resetAttempt();
-              }}
+              onClearNotice={startNew}
+              onRetry={() => void notice.refetch()}
             />
           )}
 
@@ -311,13 +364,12 @@ export function StudioPage() {
             <PosterDropzone
               state={upload.state}
               onSelectFile={(file) => {
-                setIsDirty(true);
-                createSubmission.resetAttempt();
+                markChanged();
                 void upload.selectFile(file);
               }}
               onRetry={upload.retry}
               onClear={() => {
-                createSubmission.resetAttempt();
+                markChanged();
                 upload.clear();
               }}
               error={showErrors ? errors.asset : null}
@@ -325,38 +377,25 @@ export function StudioPage() {
           </div>
         </aside>
 
-        <main className="flex min-w-0 flex-1 flex-col bg-canvas">
-          <div className="border-b border-line bg-surface/60 px-4 py-3 backdrop-blur">
-            <p className="text-center text-caption text-ink-muted">
-              TV 표시 미리보기 · 입력하는 대로 바로 반영됩니다
-            </p>
-          </div>
-          <div className="flex flex-1 items-center justify-center overflow-y-auto p-6">
-            <DisplayPreview
-              poster={previewPoster}
-              companions={companions}
-              serverTime={serverTime}
-            />
-          </div>
-        </main>
-
-        <aside className="flex h-full w-[300px] shrink-0 flex-col overflow-y-auto border-l border-line bg-surface">
+        <aside className="order-2 flex flex-col border-b border-line bg-surface lg:order-3 lg:h-full lg:w-75 lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-l">
           <div className="border-b border-line px-4 py-3.5">
             <h2 className="text-heading text-ink">게시 정보</h2>
             <p className="mt-0.5 text-caption text-ink-muted">
-              제목, 기간, 링크를 입력하세요
+              제목, 카테고리, 게시 기간을 정하세요
             </p>
           </div>
 
           <div className="space-y-4 p-4">
             {summary && (
-              <Alert variant="destructive">
-                <AlertTriangle aria-hidden="true" />
-                <AlertDescription>
-                  {summary}
-                  {errors.notice && ` ${errors.notice}`}
-                </AlertDescription>
-              </Alert>
+              <div ref={summaryRef} tabIndex={-1} className="outline-none">
+                <Alert variant="destructive">
+                  <AlertTriangle aria-hidden="true" />
+                  <AlertDescription>
+                    {summary}
+                    {errors.notice && ` ${errors.notice}`}
+                  </AlertDescription>
+                </Alert>
+              </div>
             )}
 
             <SubmissionForm
@@ -368,20 +407,32 @@ export function StudioPage() {
             />
           </div>
         </aside>
+
+        <main className="order-3 flex min-w-0 flex-col bg-canvas lg:order-2 lg:flex-1">
+          <div className="border-b border-line bg-surface/60 px-4 py-3 backdrop-blur">
+            <p className="text-center text-caption text-ink-muted">
+              TV 표시 미리보기 · 입력하는 대로 바로 반영됩니다
+            </p>
+          </div>
+          <div className="flex flex-1 items-center justify-center p-4 sm:p-6 lg:overflow-y-auto">
+            <DisplayPreview
+              poster={previewPoster}
+              companions={companions}
+              serverTime={serverNow}
+            />
+          </div>
+        </main>
       </form>
 
       <SubmitSuccessDialog
-        submission={created}
-        onClose={() => {
-          // 접수된 내용을 그대로 두면 같은 신청을 한 번 더 보내게 된다. 비우고 시작한다.
-          setCreated(null);
-          setShowErrors(false);
-          upload.clear();
-          setDraft(
-            notice.data
-              ? draftFromNotice(notice.data, new Date())
-              : createEmptyDraft(new Date()),
-          );
+        submission={submitted}
+        isResubmission={editingSubmission !== null}
+        onStartNew={startNew}
+        onOpenDetail={() => {
+          if (!submitted) return;
+          const id = submitted.id;
+          setSubmitted(null);
+          void navigate(to.submissionDetail(id), { replace: true });
         }}
       />
 

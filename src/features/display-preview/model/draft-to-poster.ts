@@ -23,30 +23,53 @@ function parseOr(value: string, fallback: Date): Date {
   }
 }
 
+/**
+ * 폼에 없지만 TV에 나오는 값(주최·부제·장소)의 출처. 새 신청은 연결한 공지,
+ * 수정은 이미 저장된 신청에서 온다. 어느 쪽이든 서버가 채우는 값이라 사용자가
+ * 고치지 않는다.
+ */
+export interface PreviewSource {
+  id: string;
+  organizationName: string | null;
+  subtitle: string | null;
+  location: string | null;
+}
+
+export function previewSourceFromNotice(notice: ZiggleNotice): PreviewSource {
+  return {
+    id: notice.id,
+    organizationName: notice.organizationName,
+    subtitle: notice.summary,
+    location: notice.location,
+  };
+}
+
 export interface DraftPreviewInput {
   draft: SubmissionDraft;
-  notice: ZiggleNotice | null;
+  source: PreviewSource | null;
   /** 업로드 전 로컬 blob URL이어도 된다. 없으면 포스터 자리를 비운다. */
   posterUrl: string | null;
-  now: Date;
+  /** 날짜를 읽지 못했을 때 대신 쓸 시각. 모르면 null. */
+  now: Date | null;
 }
 
 export function draftToPosterRenderModel({
   draft,
-  notice,
+  source,
   posterUrl,
   now,
 }: DraftPreviewInput): PosterRenderModel {
-  const startAt = parseOr(draft.startAt, now);
+  // TV는 게시 기간을 그리지 않는다. 날짜는 표시 모델을 채우는 데만 쓴다.
+  const startAt = parseOr(draft.startAt, now ?? new Date(0));
   const endAt = parseOr(draft.endAt, startAt);
 
   return {
-    id: notice?.id ?? "preview",
+    id: source?.id ?? "preview",
     title: draft.title.trim() || PREVIEW_PLACEHOLDER_TITLE,
-    subtitle: notice?.summary ?? null,
+    subtitle: source?.subtitle ?? null,
     categoryName: draft.categoryId ? getCategoryName(draft.categoryId) : "미분류",
-    organizationName: notice?.organizationName ?? "",
-    location: notice?.location ?? null,
+    organizationName: source?.organizationName ?? "",
+    location: source?.location ?? null,
     posterUrl: posterUrl ?? "",
     detailUrl: draft.detailUrl.trim(),
     startAt,

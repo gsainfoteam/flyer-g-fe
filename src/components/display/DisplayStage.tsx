@@ -25,8 +25,8 @@ interface DisplayStageProps {
   currentIndex?: number;
   /** TV 머리의 기기 이름. 모르면 비운다. */
   deviceLabel: string | null;
-  /** 편성 판정의 기준이 되는 서버 시각 */
-  serverTime: Date;
+  /** 편성 판정의 기준이 되는 서버 시각. 모르면 시계는 기기 시각으로 흐른다. */
+  serverTime: Date | null;
   /** 시계를 서버 시각 기준으로 흐르게 한다. 운영 TV에서 켠다. */
   clockTicking?: boolean;
   /** 포스터 이미지를 불러오지 못했을 때. 플레이어가 항목을 건너뛰는 데 쓴다. */
@@ -57,8 +57,8 @@ export function DisplayStage({
             {deviceLabel && `${deviceLabel} · `}게시 중 {totalCount}건
           </span>
           <LiveClock
-            now={serverTime}
-            ticking={clockTicking}
+            now={serverTime ?? undefined}
+            ticking={clockTicking || serverTime === null}
             className="ml-auto text-[30px]"
           />
         </div>

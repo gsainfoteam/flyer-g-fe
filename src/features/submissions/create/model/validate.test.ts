@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { fromSeoulInput } from "@/shared/lib/datetime";
 import { createEmptyDraft, draftFromNotice } from "./draft";
-import { summarizeErrors, validateSubmissionForm } from "./validate";
+import {
+  summarizeErrors,
+  toFormFieldErrors,
+  validateSubmissionForm,
+} from "./validate";
 import type { SubmissionFormValues } from "./validate";
 
 /** 2026-06-08 12:00 Asia/Seoul */
@@ -99,10 +103,31 @@ describe("validateSubmissionForm", () => {
 
     it("시작이 과거여도 종료가 미래면 통과한다", () => {
       const errors = validateSubmissionForm(
-        validValues({ startAt: "2026-06-01T09:00", endAt: "2026-06-30T18:00" }),
+        validValues({ startAt: "2026-06-01T09:00", endAt: "2026-06-12T18:00" }),
         { now: NOW },
       );
       expect(errors.startAt).toBeUndefined();
+      expect(errors.endAt).toBeUndefined();
+    });
+
+    it("게시 기간은 14일을 넘을 수 없다 (명세 10.2)", () => {
+      const fourteenDays = validateSubmissionForm(
+        validValues({ startAt: "2026-06-09T09:00", endAt: "2026-06-23T09:00" }),
+        { now: NOW },
+      );
+      const tooLong = validateSubmissionForm(
+        validValues({ startAt: "2026-06-09T09:00", endAt: "2026-06-23T09:01" }),
+        { now: NOW },
+      );
+      expect(fourteenDays.endAt).toBeUndefined();
+      expect(tooLong.endAt).toMatch(/최대 14일/);
+    });
+
+    it("서버 시각을 아직 모르면 과거 판정을 서버에 맡긴다", () => {
+      const errors = validateSubmissionForm(
+        validValues({ startAt: "2020-01-01T09:00", endAt: "2020-01-02T09:00" }),
+        { now: null },
+      );
       expect(errors.endAt).toBeUndefined();
     });
 
@@ -220,5 +245,36 @@ describe("createEmptyDraft / draftFromNotice", () => {
       NOW,
     );
     expect(draft.categoryId).toBe("");
+  });
+});
+
+describe("공지가 없을 때", () => {
+  it("상세 링크 오류를 따로 세지 않는다", () => {
+    const errors = validateSubmissionForm(
+      validValues({ ziggleNoticeId: null, detailUrl: "" }),
+      { now: NOW },
+    );
+    expect(errors.notice).toBeDefined();
+    expect(errors.detailUrl).toBeUndefined();
+  });
+});
+
+describe("toFormFieldErrors", () => {
+  it("서버 필드 이름을 폼 항목으로 옮기고 모르는 항목은 따로 모은다", () => {
+    expect(
+      toFormFieldErrors({
+        assetId: "포스터가 손상되었어요.",
+        ziggleNoticeId: "공지를 찾을 수 없어요.",
+        endAt: "기간이 너무 길어요.",
+        priority: "우선순위를 정할 수 없어요.",
+      }),
+    ).toEqual({
+      fieldErrors: {
+        asset: "포스터가 손상되었어요.",
+        notice: "공지를 찾을 수 없어요.",
+        endAt: "기간이 너무 길어요.",
+      },
+      other: ["우선순위를 정할 수 없어요."],
+    });
   });
 });

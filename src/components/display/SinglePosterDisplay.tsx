@@ -27,8 +27,8 @@ import { TV_STAGE_PADDING } from "./stage-metrics";
 interface SinglePosterDisplayProps {
   poster: PosterRenderModel;
   deviceLabel: string | null;
-  /** 편성 판정의 기준이 되는 서버 시각 */
-  serverTime: Date;
+  /** 편성 판정의 기준이 되는 서버 시각. 모르면 시계는 기기 시각으로 흐른다. */
+  serverTime: Date | null;
   clockTicking?: boolean;
   onPosterError?: (posterId: string) => void;
   onPosterLoad?: (posterId: string) => void;
@@ -134,7 +134,11 @@ export function SinglePosterDisplay({
       </div>
 
       <div className="flex shrink-0 flex-col items-end gap-7">
-        <LiveClock now={serverTime} ticking={clockTicking} className="text-[32px]" />
+        <LiveClock
+          now={serverTime ?? undefined}
+          ticking={clockTicking || serverTime === null}
+          className="text-[32px]"
+        />
         <div className="aspect-3/4 min-h-0 flex-1 overflow-hidden rounded-tv-card shadow-poster-lg ring-1 ring-white/10">
           <PosterArtwork
             poster={poster}

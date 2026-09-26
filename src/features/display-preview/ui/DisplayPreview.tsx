@@ -24,7 +24,8 @@ interface DisplayPreviewProps {
    * 지어 넣지 않고 미리보기임을 밝힌다.
    */
   deviceLabel?: string;
-  serverTime: Date;
+  /** 모르면 시계는 기기 시각으로 흐른다. 미리보기의 시계는 모양만 보여준다. */
+  serverTime: Date | null;
 }
 
 const LAYOUT_LABELS: Record<LayoutType, string> = {
@@ -54,7 +55,7 @@ export function DisplayPreview({
       <div
         role="group"
         aria-label="TV 레이아웃 미리보기 전환"
-        className="inline-flex rounded-lg bg-surface-muted p-[3px]"
+        className="inline-flex rounded-lg bg-surface-muted p-0.75"
       >
         {(Object.keys(LAYOUT_LABELS) as LayoutType[]).map((type) => (
           <button
@@ -63,7 +64,7 @@ export function DisplayPreview({
             aria-pressed={layout === type}
             onClick={() => setLayout(type)}
             className={cn(
-              "rounded-[7px] px-3.5 py-1 text-label font-semibold transition",
+              "rounded-md px-3.5 py-1 text-label font-semibold transition",
               "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
               layout === type
                 ? "bg-surface text-ink shadow-card"

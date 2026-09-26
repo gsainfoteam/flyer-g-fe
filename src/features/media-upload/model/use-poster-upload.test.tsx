@@ -146,6 +146,26 @@ describe("usePosterUpload", () => {
     expect(result.current.state.previewUrl).toBe("blob:mock/2");
   });
 
+  it("잘못된 파일로 바꾸려 하면 올려 둔 포스터를 그대로 두고 이유만 알린다", async () => {
+    const { result } = renderUpload(instantUploadService());
+    await act(async () => {
+      await result.current.selectFile(makeFile());
+    });
+    await waitFor(() => expect(result.current.state.status).toBe("uploaded"));
+    const uploaded = result.current.state.asset;
+
+    const svgBytes = [...'<svg xmlns="'].map((char) => char.charCodeAt(0));
+    await act(async () => {
+      await result.current.selectFile(makeFile("wrong.jpg", svgBytes));
+    });
+
+    expect(result.current.state.status).toBe("uploaded");
+    expect(result.current.state.asset).toBe(uploaded);
+    expect(result.current.state.previewUrl).toBe("blob:mock/1");
+    expect(result.current.state.invalidCode).toBe("SIGNATURE_MISMATCH");
+    expect(objectUrls.revoked).toHaveLength(0);
+  });
+
   it("지우면 blob URL을 해제하고 처음 상태로 돌아간다", async () => {
     const { result } = renderUpload(instantUploadService());
 

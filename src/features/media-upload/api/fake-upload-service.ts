@@ -19,7 +19,7 @@ export interface FakeUploadOptions {
   tickMs?: number;
   tickCount?: number;
   /**
-   * 실패를 흉내 낼 조건. 기본값은 파일명에 `fail`이 들어간 경우다.
+   * 실패를 흉내 낼 조건. 기본값은 파일명에 `fail`이 들어간 파일의 첫 시도다.
    * 재시도 흐름을 개발 중에 눌러 보기 위한 장치다.
    */
   shouldFail?: (file: File, attempt: number) => boolean;
@@ -27,8 +27,9 @@ export interface FakeUploadOptions {
   createObjectUrl?: (file: File) => string;
 }
 
-const defaultShouldFail = (file: File) =>
-  file.name.toLowerCase().includes("fail");
+// 첫 시도만 실패시킨다. 계속 실패하면 "다시 시도" 뒤의 성공 흐름을 볼 수 없다.
+const defaultShouldFail = (file: File, attempt: number) =>
+  attempt === 1 && file.name.toLowerCase().includes("fail");
 
 /**
  * assetId → 미리보기 URL.

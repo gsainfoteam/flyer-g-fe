@@ -242,9 +242,24 @@ export interface MockRepositoryOptions {
   heartbeats?: HeartbeatLog;
 }
 
+/**
+ * mock 저장소끼리 잇는 통로. 실제 서버에서는 한 DB라 저절로 맞는 것을 흉내 낸다.
+ * 화면 코드는 쓰지 않는다.
+ */
+export interface MockRepositories extends Repositories {
+  /** 이 공지에 끝나지 않은 신청이 있는가. mock 공지 adapter가 "이미 신청함"을 판단한다. */
+  isNoticeInUse(noticeId: string): boolean;
+}
+
+export function isMockRepositories(
+  repositories: Repositories,
+): repositories is MockRepositories {
+  return "isNoticeInUse" in repositories;
+}
+
 export function createMockRepositories(
   options: MockRepositoryOptions = {},
-): Repositories {
+): MockRepositories {
   const clock = options.clock ?? systemClock;
   const latencyMs = options.latencyMs ?? 0;
   const heartbeats = options.heartbeats ?? createStorageHeartbeatLog();
@@ -309,6 +324,19 @@ export function createMockRepositories(
       : store.all();
   };
 
+  const isNoticeInUse = (noticeId: string): boolean => {
+    const now = clock.now();
+    return store
+      .all()
+      .some(
+        (item) =>
+          item.ziggleNoticeId === noticeId &&
+          !CLOSED_STATUSES.includes(
+            resolveEffectiveStatus(toSignageSubmissionExpanded(item), now),
+          ),
+      );
+  };
+
   const runCreate = async (
     input: CreateSubmissionInput,
     mutationOptions?: MutationOptions,
@@ -333,17 +361,14 @@ export function createMockRepositories(
     const now = clock.now();
     // 공지 하나에는 진행 중인 신청 하나만 있다. 반려된 건은 새로 만들지 않고
     // 고쳐서 다시 제출한다. (명세 FR-INT-01)
-    const duplicate = store
-      .all()
-      .find(
-        (item) =>
-          item.ziggleNoticeId === input.ziggleNoticeId &&
-          !CLOSED_STATUSES.includes(
-            resolveEffectiveStatus(toSignageSubmissionExpanded(item), now),
-          ),
-      );
-    if (duplicate) {
-      throw conflict("이 공지로 진행 중인 신청이 이미 있습니다.");
+    if (isNoticeInUse(input.ziggleNoticeId)) {
+      throw new ApiError({
+        kind: "http",
+        code: "ALREADY_SUBMITTED",
+        message: "이 공지로 진행 중인 신청이 이미 있습니다.",
+        status: 409,
+        requestId: "mock-request",
+      });
     }
 
     // 조직·부제·장소는 연결한 공지에서 서버가 채운다.
@@ -706,5 +731,6 @@ export function createMockRepositories(
     reviews: withInjection("reviews", reviews),
     displays: withInjection("displays", displays),
     devices: withInjection("devices", devices),
+    isNoticeInUse,
   };
 }

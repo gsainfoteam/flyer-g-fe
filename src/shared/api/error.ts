@@ -124,6 +124,8 @@ export function toUserMessage(error: ApiError): string {
       return "요청한 내용을 찾을 수 없습니다.";
     case "CONFLICT":
       return "다른 사용자가 먼저 처리했습니다. 최신 상태를 다시 불러와 주세요.";
+    case "ALREADY_SUBMITTED":
+      return "이 공지로 진행 중인 신청이 이미 있어요. 내 신청에서 확인해 주세요.";
     case "PAYLOAD_TOO_LARGE":
       return "파일 용량이 허용 범위를 넘었습니다.";
     case "RATE_LIMITED":

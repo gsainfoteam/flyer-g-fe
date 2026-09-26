@@ -95,8 +95,12 @@ test("반려 → 게시자가 사유 확인 후 수정 재신청", async ({ page
   await expect(page.getByText("반려된 신청 수정")).toBeVisible();
 
   // 그대로 다시 제출하면 승인 대기로 돌아간다.
-  await page.getByRole("button", { name: "제출하기" }).click();
+  await page.getByRole("button", { name: "다시 신청하기" }).click();
   await expect(
-    page.getByRole("heading", { name: "신청이 접수되었어요" }),
+    page.getByRole("heading", { name: "다시 신청했어요" }),
   ).toBeVisible();
+
+  // 닫으면 수정 화면에 남지 않고 그 신청의 상세로 간다.
+  await page.getByRole("button", { name: "신청 상세 보기" }).click();
+  await expect(page.getByText("관리자 검토를 기다리고 있어요")).toBeVisible();
 });

@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/shared/ui/select";
 import type { SubmissionDraft } from "../model/draft";
-import { TITLE_MAX_LENGTH } from "../model/validate";
+import { MAX_PERIOD_DAYS, TITLE_MAX_LENGTH } from "../model/validate";
 import type { SubmissionFieldErrors } from "../model/validate";
 
 /**
@@ -23,6 +23,12 @@ import type { SubmissionFieldErrors } from "../model/validate";
  * 대상 위치와 게시자 메모는 아직 서버 계약이 없어 입력받지 않는다. 계약이
  * 정해지면 이 폼에 추가한다. (`API-REQUIREMENTS.md` 3절 12번)
  */
+/**
+ * 입력 칸이 받는 최대 글자 수. 제목 상한보다 넉넉하게 둔다. 상한에서 잘라 버리면
+ * 붙여 넣은 긴 제목이 말없이 잘리고, 몇 자를 줄여야 하는지 알 수 없다.
+ */
+const TITLE_INPUT_LIMIT = TITLE_MAX_LENGTH * 2;
+
 interface SubmissionFormProps {
   draft: SubmissionDraft;
   errors: SubmissionFieldErrors;
@@ -57,7 +63,7 @@ export function SubmissionForm({
             {...control}
             value={draft.title}
             disabled={disabled}
-            maxLength={TITLE_MAX_LENGTH * 2}
+            maxLength={TITLE_INPUT_LIMIT}
             onChange={(event) => onChange({ title: event.target.value })}
           />
         )}
@@ -94,7 +100,12 @@ export function SubmissionForm({
         )}
       </FormField>
 
-      <FormField label="게시 시작" required error={errorOf("startAt")}>
+      <FormField
+        label="게시 시작"
+        required
+        error={errorOf("startAt")}
+        description="한국 시간(KST) 기준이에요."
+      >
         {(control) => (
           <Input
             {...control}
@@ -110,7 +121,7 @@ export function SubmissionForm({
         label="게시 종료"
         required
         error={errorOf("endAt")}
-        description="종료 시각이 지나면 자동으로 내려갑니다."
+        description={`종료 시각이 지나면 자동으로 내려갑니다. 최대 ${MAX_PERIOD_DAYS}일까지 걸 수 있어요.`}
       >
         {(control) => (
           <Input
