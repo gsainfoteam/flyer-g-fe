@@ -5,13 +5,14 @@ import { PosterArtwork } from "@/components/common/PosterArtwork";
 import { QRCodeBox } from "@/components/common/QRCodeBox";
 import { fromSubmissionView } from "@/entities/poster";
 import { getStatusSentence, toSubmissionView } from "@/entities/submission";
+import { useSessionUser } from "@/features/auth/model/auth-context";
 import { useTargetGroupLabel } from "@/features/devices/api/queries";
 import {
   useReviewHistory,
   useSubmissionDetail,
   useSubmissionSummary,
 } from "@/features/submissions/api/queries";
-import { ReviewTimeline } from "@/features/submissions/detail/ui/ReviewTimeline";
+import { SubmissionHistory } from "@/features/submissions/detail/ui/SubmissionHistory";
 import { SubmitterActions } from "@/features/submissions/detail/ui/SubmitterActions";
 import { PageState, Panel, StatusBadge } from "@/shared/components";
 import {
@@ -31,6 +32,7 @@ import { Button } from "@/shared/ui/button";
  */
 export function SubmissionDetailPage() {
   const { submissionId = "" } = useParams();
+  const user = useSessionUser();
 
   const detail = useSubmissionDetail(submissionId);
   const history = useReviewHistory(submissionId);
@@ -76,7 +78,14 @@ export function SubmissionDetailPage() {
             </div>
 
             <div className="mt-4">
-              <SubmitterActions submission={view} />
+              {view.requesterId === user.id ? (
+                <SubmitterActions submission={view} />
+              ) : (
+                // 관리자가 남의 신청을 연 경우. 결정·중단은 검토 화면에서 한다.
+                <Button size="sm" asChild>
+                  <Link to={to.reviewDetail(view.id)}>검토 화면에서 보기</Link>
+                </Button>
+              )}
             </div>
           </div>
 
@@ -124,18 +133,11 @@ export function SubmissionDetailPage() {
                   <MetaItem label="대상 위치">
                     {targetLabel ?? "확인하는 중"}
                   </MetaItem>
-                  <MetaItem label="신청 버전">v{detail.data.version}</MetaItem>
-                  <MetaItem label="신청 ID">
-                    <span className="font-mono text-caption">{view.id}</span>
-                  </MetaItem>
                 </dl>
               </Panel>
 
               <Panel title="처리 이력">
-                <ReviewTimeline
-                  reviews={history.data ?? []}
-                  createdAt={view.createdAt}
-                />
+                <SubmissionHistory events={history.data ?? []} />
               </Panel>
             </div>
           </div>

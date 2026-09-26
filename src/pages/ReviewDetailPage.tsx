@@ -1,12 +1,13 @@
 import { useMemo } from "react";
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { to } from "@/app/router/routes";
 import { PosterArtwork } from "@/components/common/PosterArtwork";
 import { fromSubmissionView } from "@/entities/poster";
 import { getStatusSentence, toSubmissionView } from "@/entities/submission";
 import { useTargetGroupLabel } from "@/features/devices/api/queries";
 import { DisplayPreview } from "@/features/display-preview";
+import { useNextPendingReview } from "@/features/reviews/api/queries";
 import { DecisionActions } from "@/features/reviews/ui/DecisionActions";
 import { ReviewWarnings } from "@/features/reviews/ui/ReviewWarnings";
 import {
@@ -15,7 +16,7 @@ import {
   useSubmissionSummary,
   useSubmissionViews,
 } from "@/features/submissions/api/queries";
-import { ReviewTimeline } from "@/features/submissions/detail/ui/ReviewTimeline";
+import { SubmissionHistory } from "@/features/submissions/detail/ui/SubmissionHistory";
 import { PageState, Panel, StatusBadge } from "@/shared/components";
 import { formatSeoulDateTime } from "@/shared/lib/datetime";
 import { Button } from "@/shared/ui/button";
@@ -29,6 +30,8 @@ import { Button } from "@/shared/ui/button";
  */
 export function ReviewDetailPage() {
   const { submissionId = "" } = useParams();
+  const navigate = useNavigate();
+  const nextPending = useNextPendingReview();
 
   const detail = useSubmissionDetail(submissionId);
   const history = useReviewHistory(submissionId);
@@ -62,10 +65,17 @@ export function ReviewDetailPage() {
         <>
           <div>
             <Button variant="ghost" size="sm" asChild className="-ml-2.5">
-              <Link to={to.reviews()}>
-                <ArrowLeft aria-hidden="true" />
-                승인 대기 목록으로
-              </Link>
+              {view.status === "PENDING_REVIEW" ? (
+                <Link to={to.reviews()}>
+                  <ArrowLeft aria-hidden="true" />
+                  승인 대기 목록으로
+                </Link>
+              ) : (
+                <Link to={to.submissions(undefined, { scope: "all" })}>
+                  <ArrowLeft aria-hidden="true" />
+                  전체 신청으로
+                </Link>
+              )}
             </Button>
 
             <div className="mt-2 flex flex-wrap items-start gap-x-4 gap-y-2">
@@ -81,7 +91,19 @@ export function ReviewDetailPage() {
             </div>
 
             <div className="mt-4">
-              <DecisionActions submission={detail.data} />
+              <DecisionActions
+                submission={detail.data}
+                status={view.status}
+                onDecided={async (kind) => {
+                  // 승인·반려는 대기열을 처리하는 흐름이다. 다음 건으로 넘긴다.
+                  // 중단은 대기열과 무관해 이 화면에 머문다.
+                  if (kind === "suspend") return;
+                  const nextId = await nextPending(submissionId);
+                  void navigate(
+                    nextId ? to.reviewDetail(nextId) : to.reviews(),
+                  );
+                }}
+              />
             </div>
           </div>
 
@@ -135,10 +157,7 @@ export function ReviewDetailPage() {
               </Panel>
 
               <Panel title="처리 이력">
-                <ReviewTimeline
-                  reviews={history.data ?? []}
-                  createdAt={view.createdAt}
-                />
+                <SubmissionHistory events={history.data ?? []} />
               </Panel>
             </div>
 

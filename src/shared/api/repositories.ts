@@ -1,6 +1,9 @@
 import type { DeviceList, TargetGroup } from "@/entities/device/model/types";
 import type { Playlist } from "@/entities/playlist/model/types";
-import type { Review, RejectionReasonCode } from "@/entities/review/model/types";
+import type {
+  RejectionReasonCode,
+  SubmissionEvent,
+} from "@/entities/review/model/types";
 import type {
   Page,
   SignageSubmissionExpanded,
@@ -115,7 +118,11 @@ export interface ReviewRepository {
     signal?: AbortSignal,
   ): Promise<Page<SignageSubmissionExpanded>>;
 
-  listHistory(submissionId: string, signal?: AbortSignal): Promise<Review[]>;
+  /** 신청의 처리 이력. 제출·재제출·검토 결정·취소를 시간 순으로 준다. */
+  listHistory(
+    submissionId: string,
+    signal?: AbortSignal,
+  ): Promise<SubmissionEvent[]>;
 
   approve(
     input: ApproveInput,

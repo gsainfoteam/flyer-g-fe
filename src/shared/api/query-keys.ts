@@ -25,6 +25,8 @@ export const queryKeys = {
     all: () => ["reviews"] as const,
     pending: (params: Omit<SubmissionListParams, "status" | "scope">) =>
       ["reviews", "pending", params] as const,
+    pendingInfinite: (limit: number) =>
+      ["reviews", "pending-infinite", limit] as const,
     history: (submissionId: string) =>
       ["reviews", "history", submissionId] as const,
   },

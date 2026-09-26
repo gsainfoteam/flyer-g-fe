@@ -112,8 +112,9 @@ export function fromSeoulInput(value: string): Date {
  * 관리자 목록에서 오래 기다린 건을 먼저 알아보게 하기 위한 것이다.
  */
 export function formatElapsed(since: Date, now: Date): string {
+  // 1분이 안 됐어도 "1분"으로 읽는다. "0분째 기다리고 있어요"는 말이 되지 않는다.
   const minutes = Math.max(
-    0,
+    1,
     Math.floor((now.getTime() - since.getTime()) / 60000),
   );
   if (minutes < 60) return `${minutes}분`;

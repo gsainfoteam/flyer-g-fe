@@ -28,7 +28,6 @@ export const STATUS_GROUPS: readonly StatusGroup[] = [
   { key: "stopped", label: "중단/취소", statuses: ["SUSPENDED", "CANCELED"] },
 ] as const;
 
-export const DEFAULT_STATUS_GROUP_KEY = "all";
 
 /** 알 수 없는 key(오래된 링크, 오타)는 전체 탭으로 조용히 돌아간다. */
 export function findStatusGroup(key: string | null | undefined): StatusGroup {
@@ -42,5 +41,24 @@ export function groupOfStatus(status: SubmissionStatus): StatusGroup {
   return (
     STATUS_GROUPS.find((group) => group.statuses.includes(status)) ??
     STATUS_GROUPS[0]!
+  );
+}
+
+/**
+ * 요약의 상태별 건수를 탭별 건수로 묶는다. "전체"는 보관을 뺀 모든 상태다.
+ * 화면이 불러온 페이지로 세지 않는다 — pagination 때문에 틀린 숫자가 된다.
+ */
+export function countByStatusGroup(
+  byStatus: Record<SubmissionStatus, number>,
+): Record<string, number> {
+  return Object.fromEntries(
+    STATUS_GROUPS.map((group) => [
+      group.key,
+      group.statuses.length === 0
+        ? Object.entries(byStatus)
+            .filter(([status]) => status !== "ARCHIVED")
+            .reduce((sum, [, count]) => sum + count, 0)
+        : group.statuses.reduce((sum, status) => sum + byStatus[status], 0),
+    ]),
   );
 }

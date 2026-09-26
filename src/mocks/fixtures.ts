@@ -2,7 +2,7 @@ import type {
   DisplayDeviceDto,
   TargetGroup,
 } from "@/entities/device/model/types";
-import type { ReviewDto } from "@/entities/review/model/types";
+import type { SubmissionEventDto } from "@/entities/review/model/types";
 import { getCategoryName } from "@/entities/submission/model/categories";
 import type {
   SignageSubmissionExpandedDto,
@@ -277,6 +277,8 @@ function toDto(seed: SubmissionSeed, now: Date): SignageSubmissionExpandedDto {
     targetGroupIds: seed.targetGroupIds ?? [],
     createdAt,
     updatedAt: createdAt,
+    // 초안을 만든 날 바로 냈다고 친다. 작성 중인 건은 아직 내지 않았다.
+    submittedAt: seed.status === "DRAFT" ? null : createdAt,
     version: versionOf(seed.status),
     categoryName: getCategoryName(seed.categoryId),
     organizationName: seed.organization.name,
@@ -293,52 +295,84 @@ export function createSubmissionFixtures(
   return SEEDS.map((seed) => toDto(seed, now));
 }
 
-const REVIEWER = {
-  reviewerId: MOCK_USERS.REVIEWER.id,
-  reviewerName: MOCK_USERS.REVIEWER.displayName,
+const SUBMITTER_OF: Record<string, { actorId: string; actorName: string }> = {
+  [MOCK_USERS.SUBMITTER.id]: {
+    actorId: MOCK_USERS.SUBMITTER.id,
+    actorName: MOCK_USERS.SUBMITTER.displayName,
+  },
+  [MOCK_USERS.REVIEWER.id]: {
+    actorId: MOCK_USERS.REVIEWER.id,
+    actorName: MOCK_USERS.REVIEWER.displayName,
+  },
 };
 
-export function createReviewFixtures(now: Date): ReviewDto[] {
-  // 승인을 거친 신청에는 시작 하루 전 승인 기록을 남긴다.
-  const approvals: ReviewDto[] = SEEDS.filter((seed) =>
-    APPROVED_ONCE.includes(seed.status),
-  ).map((seed) => {
+const REVIEWER = {
+  actorId: MOCK_USERS.REVIEWER.id,
+  actorName: MOCK_USERS.REVIEWER.displayName,
+};
+
+/** 신청마다 거쳐 온 이력: 제출 → (승인) → (반려·중단) */
+export function createEventFixtures(now: Date): SubmissionEventDto[] {
+  const events: SubmissionEventDto[] = [];
+
+  for (const seed of SEEDS) {
+    if (seed.status === "DRAFT") continue;
     const [startOffset] = PERIOD_BY_STATUS[seed.status] ?? [0, 0];
-    return {
-      id: `review-approve-${seed.id}`,
+    const submitter = SUBMITTER_OF[seed.requesterId] ?? {
+      actorId: seed.requesterId,
+      actorName: seed.organization.name,
+    };
+
+    events.push({
+      id: `event-submit-${seed.id}`,
       submissionId: seed.id,
       revision: 1,
-      decision: "APPROVED",
+      type: "SUBMITTED",
       reasonCode: null,
       comment: null,
-      ...REVIEWER,
-      reviewedAt: toIsoUtc(days(now, startOffset - 1)),
-    };
-  });
+      ...submitter,
+      occurredAt: toIsoUtc(days(now, startOffset - 7)),
+    });
 
-  return [
-    ...approvals,
+    // 승인을 거친 신청에는 시작 하루 전 승인 기록을 남긴다.
+    if (APPROVED_ONCE.includes(seed.status)) {
+      events.push({
+        id: `event-approve-${seed.id}`,
+        submissionId: seed.id,
+        revision: 1,
+        type: "APPROVED",
+        reasonCode: null,
+        comment: null,
+        ...REVIEWER,
+        occurredAt: toIsoUtc(days(now, startOffset - 1)),
+      });
+    }
+  }
+
+  events.push(
     {
-      id: "review-reject-notice-901",
+      id: "event-reject-notice-901",
       submissionId: "notice-901",
       revision: 1,
-      decision: "REJECTED",
+      type: "REJECTED",
       reasonCode: "INFO_MISMATCH",
       comment: "포스터의 신청 마감일과 Ziggle 공지 본문의 마감일이 다릅니다.",
       ...REVIEWER,
-      reviewedAt: toIsoUtc(days(now, -2)),
+      occurredAt: toIsoUtc(days(now, -2)),
     },
     {
-      id: "review-suspend-notice-903",
+      id: "event-suspend-notice-903",
       submissionId: "notice-903",
       revision: 2,
-      decision: "SUSPENDED",
+      type: "SUSPENDED",
       reasonCode: null,
       comment: "장소 대관이 취소되어 안내를 잠시 내립니다.",
       ...REVIEWER,
-      reviewedAt: toIsoUtc(days(now, -1)),
+      occurredAt: toIsoUtc(days(now, -1)),
     },
-  ];
+  );
+
+  return events;
 }
 
 /**

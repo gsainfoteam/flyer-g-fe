@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { renderRoute } from "@/test/render-route";
+import { currentPath, renderRoute } from "@/test/render-route";
 
 /** 승인 대기 목록 (명세 FR-REV-01) */
 describe("승인 대기 목록", () => {
@@ -70,4 +70,19 @@ describe("승인 대기 목록", () => {
     expect(screen.getByText(/필터를 넓혀 보세요/)).toBeInTheDocument();
     void orgName;
   });
+
+  it("필터를 URL에 남겨 새로고침해도 유지한다", async () => {
+    const user = userEvent.setup();
+    const { router } = renderRoute("/reviews", { role: "REVIEWER" });
+    await screen.findByText(/승인 대기 \d+건/);
+
+    await user.click(screen.getByRole("combobox", { name: "조직 필터" }));
+    await user.click(await screen.findByRole("option", { name: "지스트신문" }));
+
+    expect(currentPath(router)).toBe(
+      `/reviews?organization=${encodeURIComponent("지스트신문")}`,
+    );
+    expect(screen.getAllByRole("link", { name: "검토" })).toHaveLength(1);
+  });
 });
+

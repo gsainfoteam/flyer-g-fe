@@ -49,7 +49,8 @@ test("관리자 승인 → 미래 시작 건은 예약되고 TV에 나오지 않
     .getByRole("button", { name: "승인" })
     .click();
   await expect(page.getByText("승인했어요")).toBeVisible();
-  await expect(page.getByText("예약됨").first()).toBeVisible();
+  // 결정하면 다음으로 오래 기다린 건의 검토 화면으로 넘어간다.
+  await expect(page).toHaveURL(/\/reviews\/notice-005$/);
 
   // 같은 mock 상태로 TV를 열면(앱 내 이동) 예약 건은 노출되지 않는다.
   await gotoInApp(page, "/display/house-a-lobby");

@@ -1,4 +1,8 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+} from "@tanstack/react-query";
 import { toSubmissionView } from "@/entities/submission";
 import type {
   SubmissionListParams,
@@ -11,8 +15,8 @@ import { queryKeys } from "@/shared/api/query-keys";
 /**
  * 신청 목록·요약 조회.
  *
- * 필터, pagination, 캐시 무효화 규칙은 Phase 03에서 확장한다.
- * 여기서는 화면이 fixture 대신 repository를 통해 읽게 하는 최소 경계만 만든다.
+ * 요약은 서버가 목록과 같은 기준 시각으로 센 값이다. 화면은 건수를 직접 세지
+ * 않고 이 값을 쓴다. (`API-REQUIREMENTS.md` 7.1)
  */
 export function useSubmissionSummary(
   scope: SubmissionListParams["scope"] = "me",
@@ -27,11 +31,16 @@ export function useSubmissionSummary(
   });
 }
 
-export function useSubmissionViews(params: SubmissionListParams = {}) {
+export function useSubmissionViews(
+  params: SubmissionListParams = {},
+  { keepPrevious = false }: { keepPrevious?: boolean } = {},
+) {
   const { submissions } = useRepositories();
 
   return useQuery({
     queryKey: queryKeys.submissions.list(params),
+    // 탭을 바꿀 때 목록이 비었다가 다시 차는 대신 앞 목록을 두고 바꾼다.
+    placeholderData: keepPrevious ? keepPreviousData : undefined,
     queryFn: async ({ signal }) => {
       const page = await submissions.list(params, signal);
       return page;
@@ -66,6 +75,8 @@ export function useInfiniteSubmissionViews(
 
   return useInfiniteQuery({
     queryKey: queryKeys.submissions.infinite(params),
+    // 탭을 바꿔도 화면 전체가 로딩으로 바뀌지 않게 앞 목록을 둔다.
+    placeholderData: keepPreviousData,
     queryFn: ({ pageParam, signal }) =>
       submissions.list({ ...params, cursor: pageParam }, signal),
     initialPageParam: null as string | null,

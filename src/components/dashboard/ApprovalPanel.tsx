@@ -53,7 +53,11 @@ export function ApprovalPanel({
       ) : (
         <ul className="flex flex-col gap-0.5">
           {submissions.map((submission, index) => {
-            const waited = formatElapsed(submission.createdAt, now);
+            // 초안을 만든 때가 아니라 마지막으로 낸 때부터 센다.
+            const waited = formatElapsed(
+              submission.submittedAt ?? submission.createdAt,
+              now,
+            );
             const urgent = index === 0;
             return (
               <SubmissionRow

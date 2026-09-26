@@ -4,6 +4,10 @@ import type {
 } from "@/entities/device/model/types";
 import { toDisplayDevice } from "@/entities/device/model/types";
 import {
+  canReviewerDecide,
+  canReviewerSuspend,
+  canSubmitterCancel,
+  canSubmitterEdit,
   getCategoryName,
   resolveEffectiveStatus,
   summarizeSubmissions,
@@ -17,7 +21,12 @@ import type {
   SubmissionStatus,
   SubmissionSummary,
 } from "@/entities/submission/model/types";
-import type { Review, ReviewDto } from "@/entities/review/model/types";
+import { toSubmissionEvent } from "@/entities/review/model/types";
+import type {
+  SubmissionEvent,
+  SubmissionEventDto,
+  SubmissionEventType,
+} from "@/entities/review/model/types";
 import { toPlaylist } from "@/entities/playlist";
 import type { Playlist } from "@/entities/playlist/model/types";
 import { hasAnyRole } from "@/features/auth/model/types";
@@ -45,7 +54,7 @@ import { parseIsoUtc, toIsoUtc } from "@/shared/lib/datetime";
 import {
   DEVICE_FIXTURES,
   TARGET_GROUP_FIXTURES,
-  createReviewFixtures,
+  createEventFixtures,
   createSubmissionFixtures,
 } from "./fixtures";
 import { createStorageHeartbeatLog } from "./heartbeats";
@@ -99,7 +108,7 @@ const unauthenticated = () => httpError(401, "로그인이 필요합니다.");
 
 class MockStore {
   private submissions: SignageSubmissionExpandedDto[];
-  private reviews: ReviewDto[];
+  private events: SubmissionEventDto[];
   private readonly seenIdempotencyKeys = new Map<string, string>();
   private readonly inFlightCreates = new Map<
     string,
@@ -108,7 +117,7 @@ class MockStore {
 
   constructor(now: Date) {
     this.submissions = createSubmissionFixtures(now);
-    this.reviews = createReviewFixtures(now);
+    this.events = createEventFixtures(now);
   }
 
   all(): SignageSubmissionExpandedDto[] {
@@ -133,12 +142,14 @@ class MockStore {
     return next;
   }
 
-  reviewsOf(submissionId: string): ReviewDto[] {
-    return this.reviews.filter((item) => item.submissionId === submissionId);
+  eventsOf(submissionId: string): SubmissionEventDto[] {
+    return this.events
+      .filter((item) => item.submissionId === submissionId)
+      .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
   }
 
-  addReview(review: ReviewDto): void {
-    this.reviews = [...this.reviews, review];
+  addEvent(event: SubmissionEventDto): void {
+    this.events = [...this.events, event];
   }
 
   /**
@@ -206,8 +217,29 @@ function touch(
   };
 }
 
-function toReview(dto: ReviewDto): Review {
-  return { ...dto, reviewedAt: parseIsoUtc(dto.reviewedAt) };
+let eventSequence = 0;
+
+function eventOf(
+  submission: SignageSubmissionExpandedDto,
+  type: SubmissionEventType,
+  actor: SessionUser,
+  now: Date,
+  detail: Pick<SubmissionEventDto, "reasonCode" | "comment"> = {
+    reasonCode: null,
+    comment: null,
+  },
+): SubmissionEventDto {
+  eventSequence += 1;
+  return {
+    id: `event-${now.getTime()}-${eventSequence}`,
+    submissionId: submission.id,
+    revision: submission.version,
+    type,
+    ...detail,
+    actorId: actor.id,
+    actorName: actor.displayName,
+    occurredAt: toIsoUtc(now),
+  };
 }
 
 /** 편성 내용이 같으면 같은 값이 나온다. 개수만 보면 교체를 놓친다. */
@@ -273,6 +305,10 @@ export function createMockRepositories(
     }
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
   };
+
+  /** 저장된 값이 아니라 지금 서버 시각 기준 실제 상태로 전이를 판단한다. */
+  const effectiveOf = (dto: SignageSubmissionExpandedDto): SubmissionStatus =>
+    resolveEffectiveStatus(toSignageSubmissionExpanded(dto), clock.now());
 
   /** 요청한 사람. 세션을 연결하지 않았으면 null이며 권한을 검사하지 않는다. */
   const actor = (): SessionUser | null => {
@@ -391,6 +427,7 @@ export function createMockRepositories(
       targetGroupIds: input.targetGroupIds,
       createdAt: toIsoUtc(now),
       updatedAt: toIsoUtc(now),
+      submittedAt: null,
       version: 1,
       categoryName: getCategoryName(input.categoryId),
       organizationName: notice?.organizationName ?? user.displayName,
@@ -455,10 +492,10 @@ export function createMockRepositories(
     async update(id, input: UpdateSubmissionInput, mutationOptions) {
       await settle(mutationOptions?.signal);
       const current = findOwned(id);
-      // 제출 전 상태만 자유롭게 고칠 수 있다. 승인 후 변경의 재승인 정책은
-      // 서버 몫이며 mock은 흉내 내지 않는다. (명세 FR-INT-02)
-      if (current.status !== "DRAFT" && current.status !== "REJECTED") {
-        throw conflict("제출 전 상태에서만 수정할 수 있습니다.");
+      // 다시 검토에 낼 수 있는 상태(작성 중·반려·중단)만 고칠 수 있다. 승인 후
+      // 변경의 재승인 정책은 서버 몫이며 mock은 흉내 내지 않는다. (명세 FR-INT-02)
+      if (!canSubmitterEdit(effectiveOf(current))) {
+        throw conflict("지금 상태에서는 수정할 수 없습니다.");
       }
       if (current.version !== input.version) {
         throw conflict("다른 곳에서 먼저 수정했습니다. 새로 고침해 주세요.");
@@ -497,11 +534,23 @@ export function createMockRepositories(
       if (store.resolveIdempotency("submit", mutationOptions?.idempotencyKey) === id) {
         return toSignageSubmissionExpanded(current);
       }
-      if (current.status !== "DRAFT" && current.status !== "REJECTED") {
+      if (!canSubmitterEdit(effectiveOf(current))) {
         throw conflict("제출할 수 있는 상태가 아닙니다.");
       }
+      const now = clock.now();
       const submitted = store.replace(
-        touch(current, clock.now(), { status: "PENDING_REVIEW" }),
+        touch(current, now, {
+          status: "PENDING_REVIEW",
+          submittedAt: toIsoUtc(now),
+        }),
+      );
+      store.addEvent(
+        eventOf(
+          submitted,
+          current.submittedAt === null ? "SUBMITTED" : "RESUBMITTED",
+          actor() ?? MOCK_USERS.SUBMITTER,
+          now,
+        ),
       );
       store.rememberIdempotency("submit", mutationOptions?.idempotencyKey, id);
       return toSignageSubmissionExpanded(submitted);
@@ -510,47 +559,51 @@ export function createMockRepositories(
     async cancel(id, input: CancelSubmissionInput, mutationOptions) {
       await settle(mutationOptions?.signal);
       const current = findOwned(id);
-      const cancelable = ["PENDING_REVIEW", "REJECTED", "SCHEDULED"];
-      if (!cancelable.includes(current.status)) {
+      if (!canSubmitterCancel(effectiveOf(current))) {
         throw conflict("이미 게시가 시작되어 취소할 수 없습니다.");
       }
       if (current.version !== input.version) {
         throw conflict("다른 곳에서 먼저 바뀌었습니다. 새로 고침해 주세요.");
       }
-      return toSignageSubmissionExpanded(
-        store.replace(touch(current, clock.now(), { status: "CANCELED" })),
+      const now = clock.now();
+      const canceled = store.replace(
+        touch(current, now, { status: "CANCELED" }),
       );
+      store.addEvent(
+        eventOf(canceled, "CANCELED", actor() ?? MOCK_USERS.SUBMITTER, now),
+      );
+      return toSignageSubmissionExpanded(canceled);
     },
   };
-
-  const reviewerOf = (user: SessionUser) => ({
-    reviewerId: user.id,
-    reviewerName: user.displayName,
-  });
 
   const reviews: ReviewRepository = {
     async listPending(params, signal) {
       await settle(signal);
       requireReviewer();
       // 오래 기다린 순. 관리자가 먼저 처리해야 하는 건이 위로 온다.
+      // 초안을 만든 시각이 아니라 마지막으로 낸 시각으로 센다.
+      const waitingSince = (item: SignageSubmissionExpandedDto) =>
+        item.submittedAt ?? item.createdAt;
       const pending = store
         .all()
         .filter((item) => item.status === "PENDING_REVIEW")
-        .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+        .sort((a, b) => waitingSince(a).localeCompare(waitingSince(b)));
       return paginate(pending, params, clock.now());
     },
 
     async listHistory(submissionId, signal) {
       await settle(signal);
       findVisible(submissionId);
-      return store.reviewsOf(submissionId).map(toReview);
+      return store.eventsOf(submissionId).map(
+        (event): SubmissionEvent => toSubmissionEvent(event),
+      );
     },
 
     async approve(input: ApproveInput, mutationOptions?: MutationOptions) {
       await settle(mutationOptions?.signal);
       const reviewer = requireReviewer();
       const current = store.find(input.submissionId);
-      if (current.status !== "PENDING_REVIEW") {
+      if (!canReviewerDecide(effectiveOf(current))) {
         throw conflict("다른 관리자가 이미 처리했습니다.");
       }
       if (current.version !== input.revision) {
@@ -562,16 +615,7 @@ export function createMockRepositories(
         parseIsoUtc(current.startAt).getTime() > now.getTime()
           ? "SCHEDULED"
           : "PUBLISHED";
-      store.addReview({
-        id: `review-${now.getTime()}`,
-        submissionId: current.id,
-        revision: current.version,
-        decision: "APPROVED",
-        reasonCode: null,
-        comment: null,
-        ...reviewerOf(reviewer),
-        reviewedAt: toIsoUtc(now),
-      });
+      store.addEvent(eventOf(current, "APPROVED", reviewer, now));
       return toSignageSubmissionExpanded(
         store.replace(touch(current, now, { status })),
       );
@@ -586,7 +630,7 @@ export function createMockRepositories(
         });
       }
       const current = store.find(input.submissionId);
-      if (current.status !== "PENDING_REVIEW") {
+      if (!canReviewerDecide(effectiveOf(current))) {
         throw conflict("다른 관리자가 이미 처리했습니다.");
       }
       if (current.version !== input.revision) {
@@ -594,16 +638,12 @@ export function createMockRepositories(
       }
 
       const now = clock.now();
-      store.addReview({
-        id: `review-${now.getTime()}`,
-        submissionId: current.id,
-        revision: current.version,
-        decision: "REJECTED",
-        reasonCode: input.reasonCode,
-        comment: input.comment,
-        ...reviewerOf(reviewer),
-        reviewedAt: toIsoUtc(now),
-      });
+      store.addEvent(
+        eventOf(current, "REJECTED", reviewer, now, {
+          reasonCode: input.reasonCode,
+          comment: input.comment,
+        }),
+      );
       return toSignageSubmissionExpanded(
         store.replace(touch(current, now, { status: "REJECTED" })),
       );
@@ -618,22 +658,17 @@ export function createMockRepositories(
         });
       }
       const current = store.find(input.submissionId);
-      const suspendable = ["APPROVED", "SCHEDULED", "PUBLISHED"];
-      if (!suspendable.includes(current.status)) {
-        throw conflict("예약 또는 게시 중인 콘텐츠만 중단할 수 있습니다.");
+      if (!canReviewerSuspend(effectiveOf(current))) {
+        throw conflict("예약 또는 게시 중인 신청만 중단할 수 있습니다.");
       }
       const now = clock.now();
-      // 중단 사유는 게시자에게 표시되어야 한다(FR-REV-05). 검토 이력에 남긴다.
-      store.addReview({
-        id: `review-${now.getTime()}`,
-        submissionId: current.id,
-        revision: current.version,
-        decision: "SUSPENDED",
-        reasonCode: null,
-        comment: input.reason,
-        ...reviewerOf(reviewer),
-        reviewedAt: toIsoUtc(now),
-      });
+      // 중단 사유는 게시자에게 표시되어야 한다(FR-REV-05). 처리 이력에 남긴다.
+      store.addEvent(
+        eventOf(current, "SUSPENDED", reviewer, now, {
+          reasonCode: null,
+          comment: input.reason,
+        }),
+      );
       return toSignageSubmissionExpanded(
         store.replace(touch(current, now, { status: "SUSPENDED" })),
       );

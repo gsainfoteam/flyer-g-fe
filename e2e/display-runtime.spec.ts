@@ -7,7 +7,7 @@ import { gotoInApp, login } from "./helpers";
 test("게시 중단하면 다음 편성에서 TV에서 사라진다", async ({ page }) => {
   await login(page, "/reviews/notice-001");
 
-  await page.getByRole("button", { name: "게시 중단" }).click();
+  await page.getByRole("button", { name: "게시 중단하기" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("textbox").fill("행사가 취소되어 내립니다.");
   await dialog.getByRole("button", { name: "게시 중단" }).click();

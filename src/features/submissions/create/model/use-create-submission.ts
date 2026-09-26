@@ -6,7 +6,7 @@ import { queryKeys } from "@/shared/api/query-keys";
 import { normalizeApiError } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
 import { fromSeoulInput } from "@/shared/lib/datetime";
-import { createIdempotencyKey } from "./idempotency";
+import { createIdempotencyKey } from "@/shared/lib/idempotency";
 
 /**
  * 게시 신청 생성 → 제출 (명세 FR-SUB-04).

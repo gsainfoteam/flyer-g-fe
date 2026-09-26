@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   InvalidDateError,
+  formatElapsed,
   formatSeoulDate,
   formatSeoulDateTime,
   formatSeoulDateWithWeekday,
@@ -103,3 +104,18 @@ describe("formatTimeAgo", () => {
     expect(formatTimeAgo(new Date(now.getTime() + 5_000), now)).toBe("방금");
   });
 });
+
+describe("formatElapsed", () => {
+  const now = parseIsoUtc("2026-06-08T03:00:00.000Z");
+
+  it("1분이 안 돼도 0분이라고 하지 않는다", () => {
+    expect(formatElapsed(new Date(now.getTime() - 20_000), now)).toBe("1분");
+  });
+
+  it("분·시간·일 단위로 읽는다", () => {
+    expect(formatElapsed(new Date(now.getTime() - 5 * 60_000), now)).toBe("5분");
+    expect(formatElapsed(new Date(now.getTime() - 3 * 3_600_000), now)).toBe("3시간");
+    expect(formatElapsed(new Date(now.getTime() - 2 * 86_400_000), now)).toBe("2일");
+  });
+});
+

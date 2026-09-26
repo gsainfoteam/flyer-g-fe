@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { to } from "@/app/router/routes";
 import { Logo } from "@/components/common/Logo";
 import { fromSubmissionView } from "@/entities/poster";
+import { canSubmitterEdit } from "@/entities/submission";
 import type { SignageSubmissionExpanded } from "@/entities/submission";
 import {
   DisplayPreview,
@@ -17,7 +18,6 @@ import {
   createEmptyDraft,
   draftFromNotice,
   draftFromSubmission,
-  isEditableStatus,
 } from "@/features/submissions/create/model/draft";
 import type { SubmissionDraft } from "@/features/submissions/create/model/draft";
 import { useCreateSubmission } from "@/features/submissions/create/model/use-create-submission";
@@ -147,8 +147,11 @@ export function StudioPage() {
   const isSubmitted = submitted !== null;
   /** 수정 대상이 제출 전 상태가 아니면 제출 자체를 막는다. */
   const editBlocked =
-    editingSubmission !== null && !isEditableStatus(editingSubmission.status);
-  const isResubmission = editingSubmission?.status === "REJECTED";
+    editingSubmission !== null && !canSubmitterEdit(editingSubmission.status);
+  /** 반려·중단된 신청을 고쳐 다시 내는 것. 작성 중이던 초안은 처음 내는 것이다. */
+  const isResubmission =
+    editingSubmission?.status === "REJECTED" ||
+    editingSubmission?.status === "SUSPENDED";
   const blocker = useUnsavedChangesWarning(isDirty && submitted === null);
 
   const previewSource: PreviewSource | null = editingSubmission
@@ -295,12 +298,14 @@ export function StudioPage() {
               onRetry={() => void editing.refetch()}
             >
               {editingSubmission &&
-                (isEditableStatus(editingSubmission.status) ? (
+                (canSubmitterEdit(editingSubmission.status) ? (
                   <div className="rounded-card border border-line bg-surface-muted p-3">
                     <p className="text-caption text-ink-subtle">
-                      {isResubmission
-                        ? "반려된 신청 수정"
-                        : "작성 중인 신청 이어서 쓰기"}
+                      {editingSubmission.status === "DRAFT"
+                        ? "작성 중인 신청 이어서 쓰기"
+                        : editingSubmission.status === "SUSPENDED"
+                          ? "게시 중단된 신청 수정"
+                          : "반려된 신청 수정"}
                     </p>
                     <p className="mt-0.5 truncate text-label text-ink">
                       {editingSubmission.title}
@@ -314,8 +319,8 @@ export function StudioPage() {
                     <AlertTriangle aria-hidden="true" />
                     <AlertDescription className="space-y-2">
                       <span>
-                        지금 상태에서는 수정할 수 없어요. 제출 전(작성 중·반려)
-                        신청만 고칠 수 있습니다.
+                        지금 상태에서는 수정할 수 없어요. 작성 중이거나 반려·게시
+                        중단된 신청만 고칠 수 있습니다.
                       </span>
                       <Button variant="secondary" size="sm" asChild>
                         <Link to={to.submissionDetail(editingSubmission.id)}>

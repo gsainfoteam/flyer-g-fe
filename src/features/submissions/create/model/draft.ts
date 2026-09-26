@@ -1,9 +1,6 @@
 import type { ZiggleNotice } from "@/entities/notice";
 import { isKnownCategory } from "@/entities/submission";
-import type {
-  SignageSubmissionExpanded,
-  SubmissionStatus,
-} from "@/entities/submission";
+import type { SignageSubmissionExpanded } from "@/entities/submission";
 import { toSeoulDateTimeInputValue } from "@/shared/lib/datetime";
 
 /**
@@ -19,13 +16,6 @@ export interface SubmissionDraft {
   startAt: string;
   endAt: string;
   detailUrl: string;
-}
-
-/** 제출 전이라 게시자가 고쳐서 (다시) 제출할 수 있는 상태 (명세 FR-DASH-02) */
-const EDITABLE_STATUSES: readonly SubmissionStatus[] = ["DRAFT", "REJECTED"];
-
-export function isEditableStatus(status: SubmissionStatus): boolean {
-  return EDITABLE_STATUSES.includes(status);
 }
 
 const HOUR_MS = 60 * 60 * 1000;
