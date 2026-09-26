@@ -1,3 +1,5 @@
+import { createStorageHeartbeatLog } from "@/mocks/heartbeats";
+import type { HeartbeatLog } from "@/mocks/heartbeats";
 import type { AppEnv } from "@/shared/config/env";
 
 /**
@@ -37,10 +39,21 @@ export interface DeviceTelemetryAdapter {
   sendPlayEvents(deviceId: string, events: PlayEvent[]): Promise<void>;
 }
 
-/** 개발용. 아무 데도 보내지 않고 성공한 것으로 친다. */
-export function createMockTelemetryAdapter(): DeviceTelemetryAdapter {
+/**
+ * 개발용. heartbeat는 mock 기기 목록이 읽는 기록에 남겨, TV 탭을 열어 둔 기기가
+ * 관리 화면에서 온라인으로 보이게 한다. 노출 이벤트는 보내지 않고 성공으로 친다.
+ */
+export function createMockTelemetryAdapter(
+  heartbeats: HeartbeatLog = createStorageHeartbeatLog(),
+): DeviceTelemetryAdapter {
   return {
-    async sendHeartbeat() {},
+    async sendHeartbeat(deviceId, payload) {
+      heartbeats.record(deviceId, {
+        at: new Date().toISOString(),
+        appVersion: payload.appVersion,
+        resolution: payload.resolution,
+      });
+    },
     async sendPlayEvents() {},
   };
 }

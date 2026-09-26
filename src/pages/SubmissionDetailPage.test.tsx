@@ -25,7 +25,7 @@ describe("신청 상세", () => {
     renderRoute("/submissions/notice-901", { role: "SUBMITTER" });
 
     await screen.findByText("처리 이력");
-    expect(screen.getByText(/반려 · 하우스 관리자/)).toBeInTheDocument();
+    expect(screen.getByText(/반려 · 이수현/)).toBeInTheDocument();
     expect(screen.getByText(/정보 불일치/)).toBeInTheDocument();
     expect(
       screen.getByText(/마감일이 다릅니다/),
@@ -36,7 +36,7 @@ describe("신청 상세", () => {
     renderRoute("/submissions/notice-903", { role: "SUBMITTER" });
 
     await screen.findByText("처리 이력");
-    expect(screen.getByText(/게시 중단 · 하우스 관리자/)).toBeInTheDocument();
+    expect(screen.getByText(/게시 중단 · 이수현/)).toBeInTheDocument();
     expect(screen.getByText(/안내를 잠시 내립니다/)).toBeInTheDocument();
   });
 

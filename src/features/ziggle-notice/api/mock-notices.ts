@@ -64,6 +64,23 @@ const SEEDS: readonly NoticeSeed[] = [
   },
 ];
 
+/**
+ * 공지에 적힌 조직·요약·장소. mock 신청 생성이 실제 서버처럼 공지에서 이 값을
+ * 채우는 데 쓴다. 모르는 공지면 null.
+ */
+export function findMockNoticeDetails(
+  noticeId: string,
+): Pick<NoticeSeed, "organizationName" | "summary" | "location"> | null {
+  const seed = SEEDS.find((item) => item.id === noticeId);
+  return seed
+    ? {
+        organizationName: seed.organizationName,
+        summary: seed.summary,
+        location: seed.location,
+      }
+    : null;
+}
+
 function toNotice(seed: NoticeSeed, now: Date): ZiggleNotice {
   return {
     id: seed.id,

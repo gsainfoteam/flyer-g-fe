@@ -123,6 +123,20 @@ export function formatElapsed(since: Date, now: Date): string {
 }
 
 /** "08. 21." — 기간을 좁은 칸에 넣을 때 쓴다. */
+/**
+ * 지난 시각을 "방금", "12분 전"처럼 읽는다. 기기의 마지막 연결처럼 짧은 간격을
+ * 보여줄 때 쓴다. 기준 시각보다 미래면 "방금"으로 본다.
+ */
+export function formatTimeAgo(since: Date, now: Date): string {
+  const seconds = Math.floor((now.getTime() - since.getTime()) / 1000);
+  if (seconds < 60) return "방금";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}분 전`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  return `${Math.floor(hours / 24)}일 전`;
+}
+
 export function formatSeoulShortDate(date: Date): string {
   const { month, day } = getSeoulParts(date);
   return `${pad(month)}. ${pad(day)}.`;

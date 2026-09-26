@@ -1,7 +1,33 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { currentPath, renderRoute } from "@/test/render-route";
+import { createMemoryHeartbeatLog } from "@/mocks/heartbeats";
+import { createMockRepositories } from "@/mocks/repositories";
+import { MOCK_USERS } from "@/mocks/users";
+import { createFixedClock } from "@/shared/lib/clock";
+import { TEST_NOW, currentPath, renderRoute } from "@/test/render-route";
+
+/** 게시자 한 명의 신청을 한 페이지(10건)보다 많게 만든다. */
+async function repositoriesWithManySubmissions() {
+  const repositories = createMockRepositories({
+    clock: createFixedClock(TEST_NOW),
+    session: () => MOCK_USERS.SUBMITTER,
+    heartbeats: createMemoryHeartbeatLog(),
+  });
+  for (let index = 0; index < 6; index += 1) {
+    await repositories.submissions.create({
+      ziggleNoticeId: `notice-extra-${index}`,
+      title: `추가 신청 ${index + 1}`,
+      categoryId: "club",
+      assetId: `asset-extra-${index}`,
+      detailUrl: `https://ziggle.gistory.me/notice/extra-${index}`,
+      startAt: new Date(TEST_NOW.getTime() + 86_400_000),
+      endAt: new Date(TEST_NOW.getTime() + 7 * 86_400_000),
+      targetGroupIds: [],
+    });
+  }
+  return repositories;
+}
 
 /**
  * 신청 목록 (명세 FR-SUB-05, FR-DASH-02).
@@ -10,7 +36,8 @@ import { currentPath, renderRoute } from "@/test/render-route";
 describe("신청 목록", () => {
   it("전체 신청이 pagination으로 접근 가능하다", async () => {
     const user = userEvent.setup();
-    renderRoute("/submissions", { role: "SUBMITTER" });
+    const repositories = await repositoriesWithManySubmissions();
+    renderRoute("/submissions", { role: "SUBMITTER", repositories });
 
     const heading = await screen.findByRole("heading", { level: 1 });
     const total = Number(/(\d+)건/.exec(heading.textContent ?? "")?.[1]);
@@ -26,6 +53,15 @@ describe("신청 목록", () => {
     await screen.findByText(`신청 ${total}건`);
     expect(listItems()).toHaveLength(total);
     expect(screen.queryByRole("button", { name: /더 보기/ })).toBeNull();
+  });
+
+  it("다른 사람의 신청은 내 신청 목록에 나오지 않는다", async () => {
+    renderRoute("/submissions", { role: "SUBMITTER" });
+
+    await screen.findByRole("heading", { level: 1 });
+    // fixture의 지스트신문 신청은 다른 학생이 올렸다.
+    expect(screen.queryByText("지스트신문 22기 기자단 모집")).toBeNull();
+    expect(screen.getByText("슈퍼-피셜 신입 부원 모집")).toBeInTheDocument();
   });
 
   it("상태 탭이 URL에 반영되고 직접 접근해도 같은 화면이 나온다", async () => {

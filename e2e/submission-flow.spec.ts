@@ -62,9 +62,11 @@ test("관리자 승인 → 미래 시작 건은 예약되고 TV에 나오지 않
 test("반려 → 게시자가 사유 확인 후 수정 재신청", async ({ page }) => {
   await login(page, "/reviews");
 
+  // fixture notice-905는 게시자(정하윤)가 올린 승인 대기 신청이다.
+  // 반려된 신청은 신청한 본인만 고칠 수 있다.
   await page
     .getByRole("listitem")
-    .filter({ hasText: "지스트신문 22기 기자단 모집" })
+    .filter({ hasText: "슈퍼-피셜 가을 전시" })
     .getByRole("link", { name: "검토" })
     .click();
 
@@ -83,7 +85,7 @@ test("반려 → 게시자가 사유 확인 후 수정 재신청", async ({ page
   await gotoInApp(page, "/submissions?status=rejected");
   await page
     .getByRole("link")
-    .filter({ hasText: "지스트신문 22기 기자단 모집" })
+    .filter({ hasText: "슈퍼-피셜 가을 전시" })
     .click();
   await expect(
     page.getByText("포스터 마감일이 공지 본문과 다릅니다."),
@@ -92,9 +94,7 @@ test("반려 → 게시자가 사유 확인 후 수정 재신청", async ({ page
   await page.getByRole("link", { name: "수정해서 다시 신청" }).click();
   await expect(page.getByText("반려된 신청 수정")).toBeVisible();
 
-  // 카테고리를 고르고 재제출하면 다시 승인 대기가 된다.
-  await page.getByRole("combobox").first().click();
-  await page.getByRole("option", { name: "공지" }).click();
+  // 그대로 다시 제출하면 승인 대기로 돌아간다.
   await page.getByRole("button", { name: "제출하기" }).click();
   await expect(
     page.getByRole("heading", { name: "신청이 접수되었어요" }),

@@ -6,6 +6,11 @@ export interface AuthContextValue {
   /** 로그인을 시작한다. 성공하면 `returnTo`로 이동하는 것은 호출부 책임이다. */
   signIn: (returnTo: string) => Promise<SessionUser | null>;
   signOut: () => Promise<void>;
+  /**
+   * 서버가 401을 주면 부른다. 세션을 정리하고 로그인 화면이 만료를 안내하게 한다.
+   * guard가 지금 경로를 `returnTo`로 붙여 로그인으로 보낸다.
+   */
+  expireSession: () => void;
   /** 개발용 역할 전환. mock 세션이 아닐 때는 null이다. */
   switchRole: ((role: Role) => void) | null;
   availableRoles: readonly Role[];

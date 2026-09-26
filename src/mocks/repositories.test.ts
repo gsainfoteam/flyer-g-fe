@@ -209,7 +209,7 @@ describe("mock repositories", () => {
     if (!published) return;
 
     const error = await repos.submissions
-      .cancel(published.submissionId)
+      .cancel(published.submissionId, { version: published.revision })
       .catch((cause) => cause);
     expect(error.status).toBe(409);
   });

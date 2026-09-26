@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { createAuthAdapter } from "@/features/auth/api/create-auth-adapter";
+import { isMockAuthAdapter } from "@/features/auth/api/mock-auth";
 import { createAssetUploadService } from "@/features/media-upload/api/create-asset-upload-service";
 import { createNoticeAdapter } from "@/features/ziggle-notice/api/create-notice-adapter";
 import type { AuthAdapter } from "@/features/auth/api/auth-adapter";
@@ -13,6 +14,7 @@ import { getAppEnv } from "@/shared/config/env";
 import { Toaster } from "@/shared/ui/sonner";
 import { RepositoriesContext } from "./repositories-context";
 import { ServicesContext } from "./services-context";
+import { SessionSync } from "./SessionSync";
 import type { AppServices } from "./services-context";
 
 function createQueryClient(): QueryClient {
@@ -46,10 +48,16 @@ export function AppProviders({
   queryClient,
 }: AppProvidersProps) {
   const [client] = useState(() => queryClient ?? createQueryClient());
-  const [repos] = useState(
-    () => repositories ?? createRepositories(getAppEnv(), { latencyMs: 200 }),
-  );
   const [auth] = useState(() => authAdapter ?? createAuthAdapter(getAppEnv()));
+  const [repos] = useState(
+    () =>
+      repositories ??
+      createRepositories(getAppEnv(), {
+        latencyMs: 200,
+        // mock 서버가 "누가 요청했는지" 알게 한다. 실제 서버는 쿠키로 안다.
+        session: isMockAuthAdapter(auth) ? () => auth.peekUser() : undefined,
+      }),
+  );
   const [externalServices] = useState<AppServices>(
     () =>
       services ?? {
@@ -63,6 +71,7 @@ export function AppProviders({
       <RepositoriesContext.Provider value={repos}>
         <ServicesContext.Provider value={externalServices}>
           <AuthProvider adapter={auth}>
+            <SessionSync />
             {children}
             <Toaster position="top-right" />
           </AuthProvider>

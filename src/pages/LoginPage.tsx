@@ -1,3 +1,4 @@
+import { Info } from "lucide-react";
 import { useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { RETURN_TO_PARAM, safeReturnTo } from "@/app/router/routes";
@@ -5,6 +6,7 @@ import { Logo } from "@/components/common/Logo";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { ErrorState, LoadingState } from "@/shared/components";
 import { SERVICE_OPERATOR } from "@/shared/config/service-info";
+import { Alert, AlertTitle } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
 
 /**
@@ -54,6 +56,14 @@ export function LoginPage() {
         <p className="mt-2.5 text-body text-ink-muted">
           Ziggle에서 쓰던 계정으로 바로 로그인할 수 있어요.
         </p>
+
+        {state.status === "unauthenticated" && state.reason === "expired" && (
+          <Alert variant="info" className="mt-5 w-full max-w-xs">
+            <Info aria-hidden="true" />
+            {/* 돌아갈 화면 안내는 버튼 아래 문구가 맡는다. */}
+            <AlertTitle>로그인이 만료되었어요</AlertTitle>
+          </Alert>
+        )}
 
         {state.status === "error" && (
           <ErrorState

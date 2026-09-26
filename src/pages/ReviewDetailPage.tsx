@@ -5,6 +5,7 @@ import { to } from "@/app/router/routes";
 import { PosterArtwork } from "@/components/common/PosterArtwork";
 import { fromSubmissionView } from "@/entities/poster";
 import { getStatusSentence, toSubmissionView } from "@/entities/submission";
+import { useTargetGroupLabel } from "@/features/devices/api/queries";
 import { DisplayPreview } from "@/features/display-preview";
 import { DecisionActions } from "@/features/reviews/ui/DecisionActions";
 import { ReviewWarnings } from "@/features/reviews/ui/ReviewWarnings";
@@ -32,7 +33,11 @@ export function ReviewDetailPage() {
   const detail = useSubmissionDetail(submissionId);
   const history = useReviewHistory(submissionId);
   const summary = useSubmissionSummary("all");
-  const published = useSubmissionViews({ status: "PUBLISHED", limit: 4 });
+  const published = useSubmissionViews({
+    status: "PUBLISHED",
+    scope: "all",
+    limit: 4,
+  });
 
   const isLoading = detail.isPending || history.isPending || summary.isPending;
   const error = detail.error ?? history.error ?? summary.error;
@@ -45,6 +50,7 @@ export function ReviewDetailPage() {
 
   const serverNow = summary.data?.calculatedAt ?? new Date();
   const view = detail.data ? toSubmissionView(detail.data, serverNow) : null;
+  const targetLabel = useTargetGroupLabel(view?.targetGroupIds ?? []);
   const companions = useMemo(
     () => (published.data?.items ?? []).map(fromSubmissionView),
     [published.data],
@@ -106,7 +112,9 @@ export function ReviewDetailPage() {
                   </div>
                   <div>
                     <dt className="text-caption text-ink-subtle">대상 위치</dt>
-                    <dd className="mt-0.5 text-body text-ink">전체 기기</dd>
+                    <dd className="mt-0.5 text-body text-ink">
+                      {targetLabel ?? "확인하는 중"}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-caption text-ink-subtle">Ziggle 원문</dt>

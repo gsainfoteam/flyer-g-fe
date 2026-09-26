@@ -5,6 +5,7 @@ import {
   formatSeoulDateTime,
   formatSeoulDateWithWeekday,
   formatSeoulPeriod,
+  formatTimeAgo,
   fromSeoulInput,
   getSeoulParts,
   parseIsoUtc,
@@ -84,5 +85,21 @@ describe("fromSeoulInput", () => {
     expect(toIsoUtc(fromSeoulInput(toSeoulDateTimeInputValue(original)))).toBe(
       toIsoUtc(original),
     );
+  });
+});
+
+describe("formatTimeAgo", () => {
+  const now = parseIsoUtc("2026-06-08T03:00:00.000Z");
+  const ago = (ms: number) => new Date(now.getTime() - ms);
+
+  it("1분 안은 방금, 그 뒤로는 분·시간·일 단위로 읽는다", () => {
+    expect(formatTimeAgo(ago(12_000), now)).toBe("방금");
+    expect(formatTimeAgo(ago(26 * 60_000), now)).toBe("26분 전");
+    expect(formatTimeAgo(ago(3 * 3_600_000), now)).toBe("3시간 전");
+    expect(formatTimeAgo(ago(2 * 86_400_000), now)).toBe("2일 전");
+  });
+
+  it("기준보다 미래 시각도 방금으로 본다", () => {
+    expect(formatTimeAgo(new Date(now.getTime() + 5_000), now)).toBe("방금");
   });
 });

@@ -93,6 +93,10 @@ export interface SubmissionView {
   detailUrl: string;
   location: string | null;
   description: string | null;
+  /** 게시할 위치 묶음. 비어 있으면 모든 위치다. */
+  targetGroupIds: string[];
+  /** 화면이 본 버전. 취소·검토 요청에 실어 동시 수정 충돌을 판정한다. */
+  version: number;
 }
 
 export interface SubmissionSummary {

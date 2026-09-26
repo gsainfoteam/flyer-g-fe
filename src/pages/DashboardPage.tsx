@@ -2,9 +2,11 @@ import { Link } from "react-router";
 import { to } from "@/app/router/routes";
 import { ApprovalPanel } from "@/components/dashboard/ApprovalPanel";
 import { RecentContentSection } from "@/components/dashboard/RecentContentSection";
+import { DeviceStatusPanel } from "@/components/dashboard/DeviceStatusPanel";
 import { StatusCountBar } from "@/components/dashboard/StatusCountBar";
 import { useSessionUser } from "@/features/auth/model/auth-context";
 import { hasAnyRole } from "@/features/auth/model/types";
+import { useTargetGroups } from "@/features/devices/api/queries";
 import { usePendingReviews } from "@/features/reviews/api/queries";
 import {
   useSubmissionSummary,
@@ -19,25 +21,42 @@ import {
 } from "@/shared/lib/datetime";
 import { Button } from "@/shared/ui/button";
 
-const HOUSE_LABEL = "학사기숙사 A동, B동";
-
 export function DashboardPage() {
   const user = useSessionUser();
   const isReviewer = hasAnyRole(user, ["REVIEWER", "SUPER_ADMIN"]);
 
   const summary = useSubmissionSummary(isReviewer ? "all" : "me");
   const list = useSubmissionViews({ limit: 12 });
+  // TV에 걸린 것은 내 신청 목록에서 고르지 않고 따로 조회한다. 관리자에게는
+  // 전체, 게시자에게는 본인 것이 걸려 있는지가 궁금한 것이다.
+  const published = useSubmissionViews({
+    statuses: ["PUBLISHED"],
+    scope: isReviewer ? "all" : "me",
+    limit: 3,
+  });
   // 승인 대기는 관리자 전용 API다. 게시자 세션에서는 조회하지 않고,
   // 로딩·오류 판정에서도 뺀다.
   const pending = usePendingReviews(5, { enabled: isReviewer });
+  const targetGroups = useTargetGroups();
+  const locationLabel = targetGroups.data
+    ?.map((group) => group.name)
+    .join(", ");
 
   const isLoading =
-    summary.isPending || list.isPending || (isReviewer && pending.isPending);
-  const error = summary.error ?? list.error ?? (isReviewer ? pending.error : null);
+    summary.isPending ||
+    list.isPending ||
+    published.isPending ||
+    (isReviewer && pending.isPending);
+  const error =
+    summary.error ??
+    list.error ??
+    published.error ??
+    (isReviewer ? pending.error : null);
 
   const retry = () => {
     void summary.refetch();
     void list.refetch();
+    void published.refetch();
     if (isReviewer) void pending.refetch();
   };
 
@@ -58,12 +77,16 @@ export function DashboardPage() {
       onRetry={retry}
       loadingRows={5}
     >
-      {summary.data && list.data && (!isReviewer || pending.data) && (
+      {summary.data &&
+        list.data &&
+        published.data &&
+        (!isReviewer || pending.data) && (
         <>
           <div className="flex flex-wrap items-end gap-6">
             <div className="min-w-0 flex-1">
               <p className="text-label text-ink-muted">
-                {formatSeoulDateTime(now)} · 서버 시각 기준 · {HOUSE_LABEL}
+                {formatSeoulDateTime(now)} · 서버 시각 기준
+                {locationLabel && <> · {locationLabel}</>}
               </p>
               <h1 className="mt-1.5 text-display text-ink">
                 {isReviewer ? (
@@ -149,35 +172,7 @@ export function DashboardPage() {
             )}
 
             <div className="flex min-w-0 flex-col gap-5">
-              <Panel title="디스플레이 2대">
-                <ul className="flex flex-col gap-3.5 text-body">
-                  <li className="flex items-center gap-2.5">
-                    <span className="flex-1 font-semibold">A동 로비</span>
-                    <span className="text-label text-ink-muted">12초 전</span>
-                    <span className="inline-flex items-center gap-1.5 rounded-pill bg-success-subtle px-2.5 py-1 text-overline text-success-strong">
-                      <span
-                        className="size-1.5 rounded-pill bg-success"
-                        aria-hidden="true"
-                      />
-                      온라인
-                    </span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <span className="flex-1 font-semibold">B동 로비</span>
-                    <span className="text-label text-ink-muted">26분 전</span>
-                    <span className="inline-flex items-center gap-1.5 rounded-pill bg-attention-subtle px-2.5 py-1 text-overline text-attention-strong">
-                      <span
-                        className="size-1.5 rounded-pill bg-attention"
-                        aria-hidden="true"
-                      />
-                      오프라인
-                    </span>
-                  </li>
-                </ul>
-                <p className="mt-4 text-caption text-ink-subtle">
-                  오프라인 기기는 마지막으로 받은 편성을 계속 재생해요.
-                </p>
-              </Panel>
+              {isReviewer && <DeviceStatusPanel />}
 
               <Panel
                 title="지금 TV에 걸린 것"
@@ -189,7 +184,7 @@ export function DashboardPage() {
                   </Button>
                 }
               >
-                <PublishedMini submissions={list.data.items} />
+                <PublishedMini submissions={published.data.items} />
               </Panel>
             </div>
           </div>
@@ -202,17 +197,13 @@ export function DashboardPage() {
 }
 
 function PublishedMini({ submissions }: { submissions: SubmissionView[] }) {
-  const published = submissions
-    .filter((submission) => submission.status === "PUBLISHED")
-    .slice(0, 3);
-
-  if (published.length === 0) {
+  if (submissions.length === 0) {
     return <EmptyState title="지금 걸린 콘텐츠가 없어요" className="py-2" />;
   }
 
   return (
     <ul className="flex flex-col gap-3.5">
-      {published.map((submission) => (
+      {submissions.map((submission) => (
         <li key={submission.id} className="flex items-center gap-3">
           <div className="aspect-3/4 w-[34px] shrink-0 overflow-hidden rounded-[6px] bg-surface-muted">
             {submission.posterUrl && (

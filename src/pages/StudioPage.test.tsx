@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeUploadService } from "@/features/media-upload/api/fake-upload-service";
@@ -297,9 +297,8 @@ describe("수정 모드 (명세 FR-DASH-02)", () => {
     await user.clear(title);
     await user.type(title, "슈퍼-피셜 겨울 모집");
 
-    // fixture 카테고리는 카탈로그에 없어 비워진다. 다시 고른다.
-    await user.click(screen.getByRole("combobox"));
-    await user.click(await screen.findByRole("option", { name: "동아리" }));
+    // 기존 카테고리가 그대로 채워진다.
+    expect(screen.getByRole("combobox")).toHaveTextContent("동아리");
 
     await user.click(screen.getByRole("button", { name: "제출하기" }));
 
@@ -313,6 +312,21 @@ describe("수정 모드 (명세 FR-DASH-02)", () => {
     expect(detail.title).toBe("슈퍼-피셜 겨울 모집");
     // 새 포스터를 올리지 않았으니 기존 포스터가 유지된다.
     expect(detail.posterUrl).not.toBe("");
+  });
+
+  it("상세에서 넘어와 이미 받은 신청으로 열어도 카테고리가 유지된다", async () => {
+    const { router } = renderRoute("/submissions/notice-901", {
+      role: "SUBMITTER",
+      services: { assetUpload: uploadService() },
+    });
+    await screen.findByRole("heading", { name: "슈퍼-피셜 신입 부원 모집" });
+
+    await act(() => router.navigate("/studio?submissionId=notice-901"));
+
+    await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
+    await waitFor(() => {
+      expect(screen.getByRole("combobox")).toHaveTextContent("동아리");
+    });
   });
 
   it("제출 전 상태가 아니면 수정을 막는다", async () => {
