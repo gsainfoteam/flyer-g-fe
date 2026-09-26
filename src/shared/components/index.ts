@@ -1,4 +1,3 @@
-export { StatusBadge } from "./StatusBadge";
 export { SectionHeader } from "./SectionHeader";
 export { Panel } from "./Panel";
 export { FormField } from "./FormField";
@@ -11,3 +10,6 @@ export {
 } from "./PageState";
 export { ConfirmActionDialog } from "./ConfirmActionDialog";
 export type { ConfirmTone } from "./ConfirmActionDialog";
+export { Logo, LogoMark } from "./Logo";
+export { QRCodeBox } from "./QRCodeBox";
+export { LiveClock } from "./LiveClock";

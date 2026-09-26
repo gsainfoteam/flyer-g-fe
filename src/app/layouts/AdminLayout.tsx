@@ -1,6 +1,6 @@
 import { Outlet } from "react-router";
-import { SiteFooter } from "@/components/layout/SiteFooter";
-import { TopNav } from "@/components/layout/TopNav";
+import { SiteFooter } from "@/widgets/layout/SiteFooter";
+import { TopNav } from "@/widgets/layout/TopNav";
 import { useSessionUser } from "@/features/auth/model/auth-context";
 import { hasAnyRole } from "@/features/auth/model/types";
 import { useSubmissionSummary } from "@/features/submissions/api/queries";

@@ -74,6 +74,12 @@
   --text-metric--line-height: 1.2;
   --text-metric--font-weight: 800;
 
+  /* 대시보드 상태별 건수처럼 한눈에 읽어야 하는 큰 수치 */
+  --text-stat: 1.625rem;
+  --text-stat--line-height: 1;
+  --text-stat--font-weight: 800;
+  --text-stat--letter-spacing: -0.025em;
+
   /* --- 강조색 -----------------------------------------------------------
      브랜드의 빨강이다. "지금 행동해야 하는 곳"에만 쓴다 — 주 작업 버튼,
      처리해야 할 건수, 반려·중단처럼 게시자가 고쳐야 하는 상태, 브랜드 마크.
@@ -211,14 +217,6 @@
   --input: var(--color-line);
   --ring: var(--color-focus);
   --radius: 0.625rem;
-  --sidebar: var(--color-surface);
-  --sidebar-foreground: var(--color-ink);
-  --sidebar-primary: var(--color-accent);
-  --sidebar-primary-foreground: var(--color-accent-on);
-  --sidebar-accent: var(--color-surface-muted);
-  --sidebar-accent-foreground: var(--color-ink);
-  --sidebar-border: var(--color-line);
-  --sidebar-ring: var(--color-focus);
 
   color-scheme: light;
   font-synthesis: none;
@@ -248,14 +246,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);

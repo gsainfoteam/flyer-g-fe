@@ -1,4 +1,4 @@
-import { Logo } from "@/components/common/Logo";
+import { Logo } from "@/shared/components/Logo";
 import { SERVICE_CONTACT_EMAIL } from "@/shared/config/service-info";
 
 /**

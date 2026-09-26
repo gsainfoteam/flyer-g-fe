@@ -22,6 +22,7 @@ const twMerge = extendTailwindMerge({
         "text-title",
         "text-display",
         "text-metric",
+        "text-stat",
       ],
     },
   },

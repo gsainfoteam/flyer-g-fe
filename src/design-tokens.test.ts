@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { cn } from "@/shared/lib/utils";
 
 /**
  * 토큰 시트의 규칙을 정적으로 지킨다.
@@ -49,21 +50,22 @@ describe("디자인 토큰 시트", () => {
     }
   });
 
+  const typeSteps = [
+    ...themeBlock("@theme {").matchAll(/--text-([a-z]+):/g),
+  ].map(([, step]) => step);
+
   it("타입 스케일의 모든 단계가 크기와 굵기를 함께 정의한다", () => {
     const theme = themeBlock("@theme {");
-    for (const step of [
-      "overline",
-      "caption",
-      "label",
-      "body",
-      "subhead",
-      "heading",
-      "title",
-      "display",
-      "metric",
-    ]) {
-      expect(theme).toContain(`--text-${step}:`);
+    expect(typeSteps.length).toBeGreaterThan(0);
+    for (const step of typeSteps) {
       expect(theme).toContain(`--text-${step}--font-weight:`);
+    }
+  });
+
+  it("cn이 타입 스케일을 글자색과 충돌하는 class로 보고 지우지 않는다", () => {
+    // tailwind-merge는 모르는 text-* 를 색으로 본다. utils.ts에 등록해야 한다.
+    for (const step of typeSteps) {
+      expect(cn(`text-${step}`, "text-ink")).toBe(`text-${step} text-ink`);
     }
   });
 });

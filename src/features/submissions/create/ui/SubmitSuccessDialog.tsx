@@ -1,5 +1,5 @@
 import type { SignageSubmissionExpanded } from "@/entities/submission";
-import { StatusBadge } from "@/shared/components";
+import { StatusBadge } from "@/entities/submission/ui/StatusBadge";
 import { Button } from "@/shared/ui/button";
 import {
   Dialog,

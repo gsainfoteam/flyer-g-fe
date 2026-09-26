@@ -2,17 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { to } from "@/app/router/routes";
-import { Logo } from "@/components/common/Logo";
+import { to } from "@/shared/config/routes";
+import { Logo } from "@/shared/components/Logo";
 import { fromSubmissionView } from "@/entities/poster";
 import { canSubmitterEdit } from "@/entities/submission";
 import type { SignageSubmissionExpanded } from "@/entities/submission";
+import { DisplayPreview } from "@/features/display-preview";
 import {
-  DisplayPreview,
   draftToPosterRenderModel,
   previewSourceFromNotice,
-} from "@/features/display-preview";
-import type { PreviewSource } from "@/features/display-preview";
+} from "@/features/submissions/create/model/draft-to-poster";
+import type { PreviewSource } from "@/features/submissions/create/model/draft-to-poster";
 import { PosterDropzone, usePosterUpload } from "@/features/media-upload";
 import {
   createEmptyDraft,
@@ -36,7 +36,7 @@ import {
   useSubmissionDetail,
   useSubmissionViews,
 } from "@/features/submissions/api/queries";
-import { useZiggleNotice } from "@/features/ziggle-notice/api/queries";
+import { useZiggleNotice } from "@/entities/notice/api/queries";
 import { ConfirmActionDialog, PageState } from "@/shared/components";
 import { toUserMessage } from "@/shared/api/error";
 import { useServerNow } from "@/shared/lib/use-server-now";

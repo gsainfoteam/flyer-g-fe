@@ -4,7 +4,7 @@ import { createMockRepositories } from "@/mocks/repositories";
 import { createFixedClock } from "@/shared/lib/clock";
 import { parseIsoUtc } from "@/shared/lib/datetime";
 import { AppProviders } from "./AppProviders";
-import { useRepositories } from "./repositories-context";
+import { useRepositories } from "@/shared/api/repositories-context";
 
 function Probe() {
   const repositories = useRepositories();

@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from "react-router";
-import { to } from "@/app/router/routes";
-import { SubmissionRow } from "@/components/common/SubmissionRow";
+import { to } from "@/shared/config/routes";
+import { SubmissionRow } from "@/entities/submission/ui/SubmissionRow";
 import {
   countByStatusGroup,
   findStatusGroup,
@@ -14,7 +14,8 @@ import {
   useSubmissionSummary,
 } from "@/features/submissions/api/queries";
 import { StatusGroupTabs } from "@/features/submissions/list/ui/StatusGroupTabs";
-import { EmptyState, PageState, Panel, StatusBadge } from "@/shared/components";
+import { EmptyState, PageState, Panel } from "@/shared/components";
+import { StatusBadge } from "@/entities/submission/ui/StatusBadge";
 import {
   formatSeoulDateTime,
   formatSeoulShortDate,

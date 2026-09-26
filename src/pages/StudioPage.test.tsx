@@ -2,7 +2,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeUploadService } from "@/features/media-upload/api/fake-upload-service";
-import { createMockNoticeAdapter } from "@/features/ziggle-notice/api/mock-notices";
+import { createMockNoticeAdapter } from "@/entities/notice/api/mock-notices";
 import { createMockRepositories } from "@/mocks/repositories";
 import { ApiError } from "@/shared/api/error";
 import type { AssetUploadService } from "@/features/media-upload/api/asset-upload-service";

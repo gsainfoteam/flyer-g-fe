@@ -9,7 +9,7 @@ import type {
   SubmissionStatus,
   SubmissionView,
 } from "@/entities/submission/model/types";
-import { useRepositories } from "@/app/providers/repositories-context";
+import { useRepositories } from "@/shared/api/repositories-context";
 import { queryKeys } from "@/shared/api/query-keys";
 
 /**

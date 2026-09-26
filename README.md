@@ -79,6 +79,24 @@ TV 플레이어는 편성·포스터를 IndexedDB에 캐시한다(last-known-goo
 
 앱 버전은 `package.json`의 `version`과 빌드 시각으로 만든다. TV가 상태 보고에 싣는다.
 
+## 구조
+
+```text
+src/
+├─ app/        provider·의존성 조립, 라우터, 레이아웃, 오류 화면
+├─ pages/      경로 하나에 화면 하나
+├─ widgets/    여러 도메인을 묶는 화면 블록 (대시보드, 셸)
+├─ features/   사용자 동작 단위 (auth, submissions, reviews, display, ...)
+├─ entities/   도메인 타입·규칙·도메인 UI (submission, notice, poster, ...)
+├─ shared/     도메인을 모르는 공용 코드 (api, config, lib, ui, components)
+├─ mocks/      개발·테스트용 in-memory repository와 fixture
+└─ dev/        개발 전용 컴포넌트 카탈로그 (`/catalog`)
+```
+
+import는 `app → pages → widgets → features → entities → shared` 방향으로만 한다.
+feature끼리는 서로 import하지 않고, 같이 쓰는 것은 entity나 shared로 내린다.
+`eslint.config.js`가 이 규칙을 검사하므로 어기면 `bun run lint`가 실패한다.
+
 ## 문서
 
 제품 명세와 설계 문서는 저장소에 두지 않는다. 코드 주석에서 인용하는 `명세 6.3`,

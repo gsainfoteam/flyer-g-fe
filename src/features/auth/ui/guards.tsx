@@ -1,5 +1,5 @@
 import { Link, Navigate, Outlet, useLocation } from "react-router";
-import { RETURN_TO_PARAM, to } from "@/app/router/routes";
+import { RETURN_TO_PARAM, to } from "@/shared/config/routes";
 import { ErrorState, LoadingState } from "@/shared/components";
 import { Button } from "@/shared/ui/button";
 import { useAuth } from "../model/auth-context";

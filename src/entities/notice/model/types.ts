@@ -22,19 +22,3 @@ export interface ZiggleNotice {
   location: string | null;
   publishedAt: Date;
 }
-
-export interface ZiggleNoticeDto
-  extends Omit<ZiggleNotice, "publishedAt"> {
-  publishedAt: string;
-}
-
-/**
- * 공지를 신청에 쓸 수 없는 이유.
- *
- * 존재하지 않거나 권한이 없는 공지로는 신청할 수 없다(명세 FR-INT-01 인수 조건).
- * 서버가 최종 판단하며, 화면은 사용자가 왜 막혔는지 알 수 있을 만큼만 구분한다.
- */
-export type NoticeUnavailableReason =
-  | "NOT_FOUND"
-  | "FORBIDDEN"
-  | "ALREADY_SUBMITTED";

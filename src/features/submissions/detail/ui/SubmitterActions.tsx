@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
-import { to } from "@/app/router/routes";
+import { to } from "@/shared/config/routes";
 import type { SubmissionView } from "@/entities/submission/model/types";
 import { ConfirmActionDialog } from "@/shared/components";
 import { toUserMessage } from "@/shared/api/error";

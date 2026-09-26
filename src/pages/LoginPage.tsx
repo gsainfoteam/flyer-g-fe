@@ -1,8 +1,8 @@
 import { Info } from "lucide-react";
 import { useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
-import { RETURN_TO_PARAM, safeReturnTo } from "@/app/router/routes";
-import { Logo } from "@/components/common/Logo";
+import { RETURN_TO_PARAM, safeReturnTo } from "@/shared/config/routes";
+import { Logo } from "@/shared/components/Logo";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { ErrorState, LoadingState } from "@/shared/components";
 import { SERVICE_OPERATOR } from "@/shared/config/service-info";
@@ -99,7 +99,7 @@ export function LoginPage() {
 function Centered({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen items-center bg-canvas px-6 text-ink lg:px-10">
-      <div className="mx-auto w-full max-w-[var(--container-form)]">
+      <div className="mx-auto w-full max-w-form">
         {children}
       </div>
     </div>

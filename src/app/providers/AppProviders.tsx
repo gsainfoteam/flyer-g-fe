@@ -2,16 +2,17 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import type { AuthAdapter } from "@/features/auth/api/auth-adapter";
+import { NoticeAdapterContext } from "@/entities/notice/api/notice-adapter-context";
 import { AuthProvider } from "@/features/auth/ui/AuthProvider";
+import { AssetUploadContext } from "@/features/media-upload/api/asset-upload-context";
 import { isRetryableError } from "@/shared/api/error";
 import type { Repositories } from "@/shared/api/repositories";
 import { getAppEnv } from "@/shared/config/env";
 import { Toaster } from "@/shared/ui/sonner";
-import { RepositoriesContext } from "./repositories-context";
-import { ServicesContext } from "./services-context";
+import { RepositoriesContext } from "@/shared/api/repositories-context";
 import { createAppDependencies } from "./create-app-dependencies";
 import { SessionSync } from "./SessionSync";
-import type { AppServices } from "./services-context";
+import type { AppServices } from "./services";
 
 function createQueryClient(): QueryClient {
   return new QueryClient({
@@ -60,13 +61,15 @@ export function AppProviders({
   return (
     <QueryClientProvider client={client}>
       <RepositoriesContext.Provider value={dependencies.repositories}>
-        <ServicesContext.Provider value={dependencies.services}>
+        <AssetUploadContext.Provider value={dependencies.services.assetUpload}>
+          <NoticeAdapterContext.Provider value={dependencies.services.notices}>
           <AuthProvider adapter={dependencies.authAdapter}>
             <SessionSync />
             {children}
             <Toaster position="top-right" />
           </AuthProvider>
-        </ServicesContext.Provider>
+          </NoticeAdapterContext.Provider>
+        </AssetUploadContext.Provider>
       </RepositoriesContext.Provider>
     </QueryClientProvider>
   );

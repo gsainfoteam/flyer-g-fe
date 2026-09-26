@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAppServices } from "@/app/providers/services-context";
+import { useAssetUploadService } from "../api/asset-upload-context";
 import { normalizeApiError, toUserMessage } from "@/shared/api/error";
 import type { UploadedAsset } from "../api/asset-upload-service";
 import { validateImageFile } from "./validate-image";
@@ -56,7 +56,7 @@ export interface UsePosterUploadOptions {
 }
 
 export function usePosterUpload(options: UsePosterUploadOptions = {}) {
-  const { assetUpload } = useAppServices();
+  const assetUpload = useAssetUploadService();
   const [state, setState] = useState<PosterUploadState>(IDLE_STATE);
   /** 이벤트 처리 중에 지금 상태를 읽는다. 렌더 뒤에 맞춰진다. */
   const stateRef = useRef(state);

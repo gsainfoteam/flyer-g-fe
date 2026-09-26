@@ -1,12 +1,12 @@
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { Link, useParams } from "react-router";
-import { to } from "@/app/router/routes";
-import { PosterArtwork } from "@/components/common/PosterArtwork";
-import { QRCodeBox } from "@/components/common/QRCodeBox";
+import { to } from "@/shared/config/routes";
+import { PosterArtwork } from "@/entities/poster/ui/PosterArtwork";
+import { QRCodeBox } from "@/shared/components/QRCodeBox";
 import { fromSubmissionView } from "@/entities/poster";
 import { getStatusSentence, toSubmissionView } from "@/entities/submission";
 import { useSessionUser } from "@/features/auth/model/auth-context";
-import { useTargetGroupLabel } from "@/features/devices/api/queries";
+import { useTargetGroupLabel } from "@/entities/device/api/queries";
 import {
   useReviewHistory,
   useSubmissionDetail,
@@ -14,7 +14,8 @@ import {
 } from "@/features/submissions/api/queries";
 import { SubmissionHistory } from "@/features/submissions/detail/ui/SubmissionHistory";
 import { SubmitterActions } from "@/features/submissions/detail/ui/SubmitterActions";
-import { PageState, Panel, StatusBadge } from "@/shared/components";
+import { PageState, Panel } from "@/shared/components";
+import { StatusBadge } from "@/entities/submission/ui/StatusBadge";
 import {
   formatSeoulDateTime,
   formatSeoulShortDate,

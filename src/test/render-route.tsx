@@ -11,8 +11,8 @@ import {
   isMockRepositories,
 } from "@/mocks/repositories";
 import { createFakeUploadService } from "@/features/media-upload/api/fake-upload-service";
-import { createMockNoticeAdapter } from "@/features/ziggle-notice/api/mock-notices";
-import type { AppServices } from "@/app/providers/services-context";
+import { createMockNoticeAdapter } from "@/entities/notice/api/mock-notices";
+import type { AppServices } from "@/app/providers/services";
 import type { Repositories } from "@/shared/api/repositories";
 import { createFixedClock } from "@/shared/lib/clock";
 import { parseIsoUtc } from "@/shared/lib/datetime";

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DisplayStage } from "@/components/display/DisplayStage";
+import { DisplayStage } from "@/entities/poster/ui/DisplayStage";
 import { FOUR_GRID_SLOT_COUNT } from "@/entities/playlist/model/types";
 import type { LayoutType } from "@/entities/playlist/model/types";
 import type { PosterRenderModel } from "@/entities/poster";

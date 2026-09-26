@@ -8,7 +8,7 @@ import { AdminLayout } from "@/app/layouts/AdminLayout";
 import { AppShell } from "@/app/layouts/AppShell";
 import { DisplayLayout } from "@/app/layouts/DisplayLayout";
 import { StudioLayout } from "@/app/layouts/StudioLayout";
-import { paths } from "@/app/router/routes";
+import { paths } from "@/shared/config/routes";
 import type { RouteHandle } from "@/app/router/use-document-title";
 import { RequireRole, RequireSession } from "@/features/auth/ui/guards";
 import { ComingSoonPage } from "@/pages/ComingSoonPage";
