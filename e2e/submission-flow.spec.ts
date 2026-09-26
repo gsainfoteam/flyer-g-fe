@@ -52,8 +52,8 @@ test("관리자 승인 → 미래 시작 건은 예약되고 TV에 나오지 않
   await expect(page.getByText("예약됨").first()).toBeVisible();
 
   // 같은 mock 상태로 TV를 열면(앱 내 이동) 예약 건은 노출되지 않는다.
-  await gotoInApp(page, "/display/device-preview");
-  await expect(page.getByText("학사기숙사 A동 로비")).toBeVisible();
+  await gotoInApp(page, "/display/house-a-lobby");
+  await expect(page.getByText("A동 로비")).toBeVisible();
   await expect(
     page.getByText("지스트신문 22기 기자단 모집"),
   ).not.toBeVisible();

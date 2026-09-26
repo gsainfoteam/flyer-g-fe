@@ -6,8 +6,6 @@ import type { SubmissionView } from "@/entities/submission/model/types";
  *
  * 관리자 웹의 카드·미리보기와 TV 플레이어가 같은 렌더러를 쓰게 하기 위한 계약이다.
  * (명세 FR-SUB-03 "미리보기 전용 구현과 플레이어 구현의 스타일 분기를 최소화한다")
- *
- * 실제 렌더러 컴포넌트는 Phase 02와 05에서 완성한다. 여기서는 props 계약만 고정한다.
  */
 export interface PosterRenderModel {
   id: string;
@@ -21,6 +19,8 @@ export interface PosterRenderModel {
   detailUrl: string;
   startAt: Date;
   endAt: Date;
+  /** 편성에 실린 신청 버전. 노출 이벤트가 어느 버전을 보여줬는지 남긴다. */
+  revision?: number | null;
 }
 
 export function fromSubmissionView(view: SubmissionView): PosterRenderModel {
@@ -35,6 +35,7 @@ export function fromSubmissionView(view: SubmissionView): PosterRenderModel {
     detailUrl: view.detailUrl,
     startAt: view.startAt,
     endAt: view.endAt,
+    revision: view.version,
   };
 }
 
@@ -50,5 +51,6 @@ export function fromPlaylistItem(item: PlaylistItem): PosterRenderModel {
     detailUrl: item.detailUrl,
     startAt: item.startsAt,
     endAt: item.endsAt,
+    revision: item.revision,
   };
 }

@@ -29,8 +29,16 @@ function openDatabase(databaseName: string): Promise<IDBDatabase> {
 
 export function createIndexedDbStore(databaseName: string): KeyValueStore {
   // 첫 사용 시점에 연다. 실패하면 호출부의 catch로 전파되고 화면은 캐시 없이 돈다.
+  // 실패한 시도는 기억하지 않는다. 다른 탭의 잠금처럼 잠깐의 실패로 몇 주 동안
+  // 캐시 없이 도는 일이 없도록 다음 사용 때 다시 연다.
   let databasePromise: Promise<IDBDatabase> | null = null;
-  const database = () => (databasePromise ??= openDatabase(databaseName));
+  const database = () => {
+    databasePromise ??= openDatabase(databaseName).catch((error: unknown) => {
+      databasePromise = null;
+      throw error;
+    });
+    return databasePromise;
+  };
 
   const withStore = async <T>(
     mode: IDBTransactionMode,

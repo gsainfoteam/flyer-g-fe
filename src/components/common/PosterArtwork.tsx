@@ -22,6 +22,8 @@ interface PosterArtworkProps {
   className?: string;
   /** 이미지 로드에 실패했을 때 호출한다. 플레이어가 항목을 건너뛸 때 쓴다. */
   onLoadError?: (posterId: string) => void;
+  /** 이미지가 실제로 그려졌을 때 호출한다. 플레이어의 정상 렌더링 보고에 쓴다. */
+  onLoad?: (posterId: string) => void;
 }
 
 export function PosterArtwork({
@@ -29,6 +31,7 @@ export function PosterArtwork({
   fit = "contain",
   className,
   onLoadError,
+  onLoad,
 }: PosterArtworkProps) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const imageFailed = failedUrl !== null && failedUrl === poster.posterUrl;
@@ -43,6 +46,7 @@ export function PosterArtwork({
           fit === "cover" ? "object-cover" : "object-contain",
           className,
         )}
+        onLoad={() => onLoad?.(poster.id)}
         onError={() => {
           setFailedUrl(poster.posterUrl);
           onLoadError?.(poster.id);

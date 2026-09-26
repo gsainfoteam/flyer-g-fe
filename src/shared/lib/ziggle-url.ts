@@ -5,6 +5,8 @@
  * 공식 상세 URL 형식은 아직 미결정(명세 15장 15번)이므로 host 수준만 검증한다.
  */
 export const ZIGGLE_ORIGIN = "https://ziggle.gistory.me";
+/** 화면에 주소로 적을 때 쓴다. 예: TV의 "ziggle.gistory.me" */
+export const ZIGGLE_HOST = new URL(ZIGGLE_ORIGIN).host;
 
 export const ALLOWED_ZIGGLE_HOSTS: readonly string[] = ["ziggle.gistory.me"];
 

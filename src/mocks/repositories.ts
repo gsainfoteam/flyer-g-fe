@@ -636,6 +636,7 @@ export function createMockRepositories(
 
       return toPlaylist({
         serverTime: toIsoUtc(now),
+        deviceName: device?.name ?? null,
         playlistVersion: hashPlaylist(playable),
         refreshAfterSeconds: 60,
         layout: { type: "SINGLE", rotationSeconds: 10 },

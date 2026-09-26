@@ -128,6 +128,9 @@
   --color-danger-subtle: var(--color-accent-100);
   --color-danger-strong: var(--color-accent-800);
 
+  /* TV 스테이지 바탕. 화면 밖 letterbox와 포스터 앰비언트의 기준색이다. */
+  --color-stage: #101012;
+
   /* --- 모서리 -----------------------------------------------------------
      카드 16px, 조작 요소 10px, 칩과 배지는 알약. 과한 라운딩은 장난감처럼
      보인다. */
@@ -136,6 +139,9 @@
   --radius-card: 1rem;
   --radius-dialog: 1rem;
   --radius-pill: 9999px;
+  /* TV 스테이지(1920x1080 실측) 전용. 관리 화면 기준으로는 보이지 않을 만큼 작다. */
+  --radius-tv-card: 1.5rem;
+  --radius-tv-poster: 1rem;
 
   /* --- 그림자 -----------------------------------------------------------
      면의 위계는 경계선이 만들고, 그림자는 거의 없다시피 깔거나(카드)
@@ -143,6 +149,9 @@
   --shadow-card: 0 1px 2px color-mix(in srgb, #18181b 4%, transparent);
   --shadow-floating: 0 4px 16px color-mix(in srgb, #18181b 10%, transparent);
   --shadow-dialog: 0 16px 40px color-mix(in srgb, #18181b 18%, transparent);
+  /* TV의 어두운 스테이지 위 포스터. 바탕에서 떠 보여야 포스터가 주인공이 된다. */
+  --shadow-poster: 0 16px 44px rgb(0 0 0 / 0.5);
+  --shadow-poster-lg: 0 32px 90px rgb(0 0 0 / 0.6);
 
   /* --- 모션 -------------------------------------------------------------
      duration은 Tailwind theme namespace가 없어 :root 변수로 함께 둔다. */
@@ -313,7 +322,7 @@
  * 유틸리티(text-ink 등)를 쓰므로 여기서 값만 바뀐다.
  */
 .tv-surface {
-  background: #101012;
+  background: var(--color-stage);
   --color-ink: #f6f6f7;
   --color-ink-muted: #b4b4bb;
   --color-ink-subtle: #8b8b93;

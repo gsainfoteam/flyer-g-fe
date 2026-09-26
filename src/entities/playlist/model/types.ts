@@ -35,6 +35,11 @@ export interface PlaylistItemDto {
 
 export interface PlaylistDto {
   serverTime: string;
+  /**
+   * 이 편성을 받는 기기의 표시 이름("A동 로비"). TV 머리에 나온다. 기기는 기기 목록
+   * API를 볼 수 없어서 편성 응답에 함께 받는다. (`API-REQUIREMENTS.md` 8절)
+   */
+  deviceName?: string | null;
   playlistVersion: string;
   refreshAfterSeconds: number;
   layout: { type: LayoutType; rotationSeconds: number };
@@ -50,6 +55,7 @@ export interface PlaylistItem
 export interface Playlist {
   /** 편성 판정의 기준 시각. 클라이언트 시계를 쓰지 않는다. */
   serverTime: Date;
+  deviceName: string | null;
   playlistVersion: string;
   refreshAfterSeconds: number;
   layout: { type: LayoutType; rotationSeconds: number };

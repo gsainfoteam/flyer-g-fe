@@ -139,7 +139,11 @@ export function SubmissionForm({
       </FormField>
 
       <div className="flex items-center gap-3 rounded-card border border-line bg-surface-muted p-3">
-        <QRCodeBox value={draft.detailUrl.trim()} size="md" />
+        <QRCodeBox
+          value={draft.detailUrl.trim()}
+          size="md"
+          emptyLabel="공지를 연결하면 생겨요"
+        />
         <p className="text-caption leading-relaxed text-ink-muted">
           TV에 이 QR이 그대로 나갑니다. 스캔하면 Ziggle 공지 원문으로 갑니다.
         </p>

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { RepositoriesContext } from "@/app/providers/repositories-context";
@@ -190,4 +190,64 @@ describe("useOfflinePlaylist", () => {
     expect(result.current.playlist).toBeNull();
     expect(result.current.error).not.toBeNull();
   });
+
+  it("조회가 계속 실패해도 polling을 멈추지 않는다", async () => {
+    vi.useFakeTimers();
+    try {
+      const store = createMemoryStore();
+      const getPlaylist = vi.fn(async () => {
+        throw new Error("network down");
+      });
+      const repositories = repositoriesWith(getPlaylist);
+
+      // 대기 시간에 jitter가 섞여도(호출마다 다른 값) timer가 다시 걸리지 않아야 한다.
+      const backoffMs = (_base: number, failures: number) =>
+        failures === 0 ? 60_000 : 1_000 * failures + Math.random() * 100;
+
+      const { rerender } = renderHook(
+        () => useOfflinePlaylist("device-1", { store, backoffMs }),
+        { wrapper: makeWrapper(repositories) },
+      );
+
+      // 전환 간격처럼 화면이 계속 다시 그려진다.
+      for (let step = 0; step < 20; step += 1) {
+        await vi.advanceTimersByTimeAsync(500);
+        rerender();
+      }
+
+      // 첫 조회 + 1초 뒤 + 그 뒤 2초 뒤 + 3초 뒤 ...
+      expect(getPlaylist.mock.calls.length).toBeGreaterThanOrEqual(4);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("종료 시각이 지나면 편성을 다시 받지 않아도 그 포스터를 내린다", async () => {
+    vi.useFakeTimers();
+    try {
+      const store = createMemoryStore();
+      const playlist = playlistFixture(["long", "short"]);
+      // short는 서버 시각 기준 2초 뒤에 끝난다.
+      playlist.items[1]!.endsAt = new Date(NOW.getTime() + 2_000);
+      const repositories = repositoriesWith(async () => playlist);
+
+      const { result } = renderHook(
+        () => useOfflinePlaylist("device-1", { store, preload: instantPreload }),
+        { wrapper: makeWrapper(repositories) },
+      );
+
+      await vi.waitFor(() => expect(result.current.playlist?.posters).toHaveLength(2));
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2_500);
+      });
+
+      expect(result.current.playlist?.posters.map((poster) => poster.id)).toEqual([
+        "long",
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
+
