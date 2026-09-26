@@ -110,5 +110,7 @@ export function toSubmissionView(
     detailUrl: submission.detailUrl,
     location: submission.location,
     description: submission.description,
+    targetGroupIds: submission.targetGroupIds,
+    version: submission.version,
   };
 }

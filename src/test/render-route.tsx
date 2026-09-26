@@ -5,6 +5,7 @@ import { AppProviders } from "@/app/providers/AppProviders";
 import { routeTree } from "@/app/router/route-tree";
 import { createMockAuthAdapter } from "@/features/auth/api/mock-auth";
 import type { Role } from "@/features/auth/model/types";
+import { createMemoryHeartbeatLog } from "@/mocks/heartbeats";
 import { createMockRepositories } from "@/mocks/repositories";
 import { createFakeUploadService } from "@/features/media-upload/api/fake-upload-service";
 import { createMockNoticeAdapter } from "@/features/ziggle-notice/api/mock-notices";
@@ -54,7 +55,12 @@ export function renderRoute(
       services={resolvedServices}
       repositories={
         repositories ??
-        createMockRepositories({ clock })
+        createMockRepositories({
+          clock,
+          // 실제 서버처럼 로그인한 역할로 조회 범위와 권한을 판단한다.
+          session: () => authAdapter.peekUser(),
+          heartbeats: createMemoryHeartbeatLog(),
+        })
       }
       authAdapter={authAdapter}
       queryClient={queryClient}

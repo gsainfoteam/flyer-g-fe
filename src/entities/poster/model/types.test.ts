@@ -18,6 +18,8 @@ const view: SubmissionView = {
   detailUrl: "https://ziggle.gistory.me/notices/1",
   location: "제1학생회관",
   description: "업사이클링 워크숍",
+  targetGroupIds: [],
+  version: 1,
 };
 
 describe("fromSubmissionView", () => {

@@ -32,4 +32,9 @@ export const queryKeys = {
     all: () => ["displays"] as const,
     playlist: (deviceId: string) => ["displays", "playlist", deviceId] as const,
   },
+  devices: {
+    all: () => ["devices"] as const,
+    list: () => ["devices", "list"] as const,
+    targetGroups: () => ["devices", "target-groups"] as const,
+  },
 } as const;

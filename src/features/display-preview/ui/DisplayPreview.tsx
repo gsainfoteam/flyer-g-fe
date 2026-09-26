@@ -19,6 +19,10 @@ interface DisplayPreviewProps {
   poster: PosterRenderModel;
   /** 4분할의 나머지 칸을 채울 실제 게시 중 포스터 */
   companions?: PosterRenderModel[];
+  /**
+   * TV 머리에 나오는 기기 이름 자리. 신청은 여러 기기에 나가므로 특정 기기 이름을
+   * 지어 넣지 않고 미리보기임을 밝힌다.
+   */
   deviceLabel?: string;
   serverTime: Date;
 }
@@ -31,7 +35,7 @@ const LAYOUT_LABELS: Record<LayoutType, string> = {
 export function DisplayPreview({
   poster,
   companions = [],
-  deviceLabel = "학사기숙사 A동 로비",
+  deviceLabel = "미리보기",
   serverTime,
 }: DisplayPreviewProps) {
   const [layout, setLayout] = useState<LayoutType>("SINGLE");

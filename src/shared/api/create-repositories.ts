@@ -1,3 +1,4 @@
+import type { SessionUser } from "@/features/auth/model/types";
 import { createMockRepositories } from "@/mocks/repositories";
 import type { AppEnv } from "@/shared/config/env";
 import type { Clock } from "@/shared/lib/clock";
@@ -11,7 +12,12 @@ import type { Repositories } from "./repositories";
  */
 export function createRepositories(
   env: AppEnv,
-  options: { clock?: Clock; latencyMs?: number } = {},
+  options: {
+    clock?: Clock;
+    latencyMs?: number;
+    /** mock 전용. 실제 서버처럼 요청자를 알기 위해 mock 세션을 연결한다. */
+    session?: () => SessionUser | null;
+  } = {},
 ): Repositories {
   if (env.useMockApi) {
     return createMockRepositories(options);

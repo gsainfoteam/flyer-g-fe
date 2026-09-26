@@ -68,7 +68,12 @@ export function SubmissionForm({
           <Select
             value={draft.categoryId}
             disabled={disabled}
-            onValueChange={(categoryId) => onChange({ categoryId })}
+            // 사용자는 카테고리를 비울 수 없다. 빈 값은 Radix Select가 마운트 직후
+            // 항목이 등록되기 전에 value가 바뀌면 보내는 것이라, 받으면 방금 채운
+            // 카테고리가 지워진다(캐시된 신청으로 수정 화면을 열 때).
+            onValueChange={(categoryId) => {
+              if (categoryId) onChange({ categoryId });
+            }}
           >
             <SelectTrigger
               id={control.id}

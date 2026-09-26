@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { normalizeApiError } from "@/shared/api/error";
 import type { AuthAdapter } from "../api/auth-adapter";
-import type { MockAuthAdapter } from "../api/mock-auth";
+import { isMockAuthAdapter } from "../api/mock-auth";
 import { AuthContext } from "../model/auth-context";
 import type { AuthContextValue } from "../model/auth-context";
 import type { AuthState, Role } from "../model/types";
@@ -14,10 +14,6 @@ import type { AuthState, Role } from "../model/types";
  * 로그인 화면으로 보내지 않는다. 로그인한 사용자에게 로그인 화면이 스쳐 보이는
  * 것을 막기 위한 것이다.
  */
-function isMockAdapter(adapter: AuthAdapter): adapter is MockAuthAdapter {
-  return "switchRole" in adapter;
-}
-
 interface AuthProviderProps {
   adapter: AuthAdapter;
   children: ReactNode;
@@ -76,21 +72,27 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
     setState({ status: "unauthenticated" });
   }, [adapter]);
 
+  const expireSession = useCallback(() => {
+    // 서버 세션은 이미 끝났다. 남은 로컬 흔적만 지우며, 실패해도 화면은 넘어간다.
+    void adapter.signOut().catch(() => undefined);
+    setState({ status: "unauthenticated", reason: "expired" });
+  }, [adapter]);
+
   const switchRole = useMemo(() => {
-    if (!isMockAdapter(adapter)) return null;
+    if (!isMockAuthAdapter(adapter)) return null;
     return (role: Role) => {
       setState({ status: "authenticated", user: adapter.switchRole(role) });
     };
   }, [adapter]);
 
   const availableRoles = useMemo(
-    () => (isMockAdapter(adapter) ? adapter.getAvailableRoles() : []),
+    () => (isMockAuthAdapter(adapter) ? adapter.getAvailableRoles() : []),
     [adapter],
   );
 
   const value = useMemo<AuthContextValue>(
-    () => ({ state, signIn, signOut, switchRole, availableRoles }),
-    [state, signIn, signOut, switchRole, availableRoles],
+    () => ({ state, signIn, signOut, expireSession, switchRole, availableRoles }),
+    [state, signIn, signOut, expireSession, switchRole, availableRoles],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

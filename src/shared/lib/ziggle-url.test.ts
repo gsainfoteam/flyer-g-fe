@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAllowedZiggleUrl, normalizeLegacyZiggleUrl } from "./ziggle-url";
+import { isAllowedZiggleUrl } from "./ziggle-url";
 
 describe("isAllowedZiggleUrl", () => {
   it("공식 Ziggle HTTPS 주소만 허용한다", () => {
@@ -32,20 +32,5 @@ describe("isAllowedZiggleUrl", () => {
     expect(isAllowedZiggleUrl("data:text/html,hi")).toBe(false);
     // 포트가 붙어도 hostname은 같다 — 허용 여부를 명시적으로 고정한다.
     expect(isAllowedZiggleUrl("https://ziggle.gistory.me:8443/x")).toBe(true);
-  });
-});
-
-describe("normalizeLegacyZiggleUrl", () => {
-  it("구 host만 공식 host로 바꾼다", () => {
-    expect(normalizeLegacyZiggleUrl("https://ziggle.gist.ac.kr/notices/a")).toBe(
-      "https://ziggle.gistory.me/notices/a",
-    );
-  });
-
-  it("이미 공식 주소이거나 대상이 아니면 그대로 둔다", () => {
-    expect(normalizeLegacyZiggleUrl("https://ziggle.gistory.me/x")).toBe(
-      "https://ziggle.gistory.me/x",
-    );
-    expect(normalizeLegacyZiggleUrl("not-a-url")).toBe("not-a-url");
   });
 });

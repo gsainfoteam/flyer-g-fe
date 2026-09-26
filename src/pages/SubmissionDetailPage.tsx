@@ -5,6 +5,7 @@ import { PosterArtwork } from "@/components/common/PosterArtwork";
 import { QRCodeBox } from "@/components/common/QRCodeBox";
 import { fromSubmissionView } from "@/entities/poster";
 import { getStatusSentence, toSubmissionView } from "@/entities/submission";
+import { useTargetGroupLabel } from "@/features/devices/api/queries";
 import {
   useReviewHistory,
   useSubmissionDetail,
@@ -34,6 +35,7 @@ export function SubmissionDetailPage() {
   const detail = useSubmissionDetail(submissionId);
   const history = useReviewHistory(submissionId);
   const summary = useSubmissionSummary("me");
+  const targetLabel = useTargetGroupLabel(detail.data?.targetGroupIds ?? []);
 
   const isLoading = detail.isPending || history.isPending || summary.isPending;
   const error = detail.error ?? history.error ?? summary.error;
@@ -119,7 +121,9 @@ export function SubmissionDetailPage() {
                   <MetaItem label="주최">
                     {view.organizationName || "미지정"}
                   </MetaItem>
-                  <MetaItem label="대상 위치">전체 기기</MetaItem>
+                  <MetaItem label="대상 위치">
+                    {targetLabel ?? "확인하는 중"}
+                  </MetaItem>
                   <MetaItem label="신청 버전">v{detail.data.version}</MetaItem>
                   <MetaItem label="신청 ID">
                     <span className="font-mono text-caption">{view.id}</span>

@@ -73,7 +73,7 @@ export function SubmitterActions({ submission }: SubmitterActionsProps) {
         cancelLabel="계속 두기"
         tone="destructive"
         onConfirm={async () => {
-          await cancel.mutateAsync();
+          await cancel.mutateAsync({ version: submission.version });
           toast.success("신청을 취소했어요");
         }}
         onError={(error) => {

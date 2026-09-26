@@ -1,3 +1,4 @@
+import { MOCK_USERS } from "@/mocks/users";
 import type { AuthAdapter } from "./auth-adapter";
 import type { Role, SessionUser } from "../model/types";
 
@@ -10,27 +11,6 @@ import type { Role, SessionUser } from "../model/types";
  * production 빌드에서는 이 adapter가 선택되지 않는다. `createAuthAdapter()` 참고.
  */
 const STORAGE_KEY = "flyer-g:mock-role";
-
-const MOCK_USERS: Record<Role, SessionUser> = {
-  SUBMITTER: {
-    id: "user-submitter",
-    displayName: "정하윤",
-    roles: ["SUBMITTER"],
-    organizationIds: ["org-superficial"],
-  },
-  REVIEWER: {
-    id: "user-reviewer",
-    displayName: "이수현",
-    roles: ["SUBMITTER", "REVIEWER"],
-    organizationIds: ["org-house-office"],
-  },
-  SUPER_ADMIN: {
-    id: "user-operator",
-    displayName: "김도윤",
-    roles: ["SUBMITTER", "REVIEWER", "SUPER_ADMIN"],
-    organizationIds: ["org-infoteam"],
-  },
-};
 
 function readStoredRole(): Role | null {
   try {
@@ -55,6 +35,17 @@ export interface MockAuthAdapter extends AuthAdapter {
   /** 개발 전용 역할 전환. production 화면에서 호출되지 않는다. */
   switchRole(role: Role): SessionUser;
   getAvailableRoles(): readonly Role[];
+  /**
+   * 지금 세션의 사용자. mock repository가 실제 서버처럼 "누가 요청했는지"를
+   * 알기 위해 쓴다. 실제 서버는 쿠키로 판단하므로 실제 adapter에는 없다.
+   */
+  peekUser(): SessionUser | null;
+}
+
+export function isMockAuthAdapter(
+  adapter: AuthAdapter,
+): adapter is MockAuthAdapter {
+  return "switchRole" in adapter && "peekUser" in adapter;
 }
 
 export function createMockAuthAdapter(
@@ -89,6 +80,10 @@ export function createMockAuthAdapter(
 
     getAvailableRoles() {
       return Object.keys(MOCK_USERS) as Role[];
+    },
+
+    peekUser() {
+      return current ? MOCK_USERS[current] : null;
     },
   };
 }

@@ -17,12 +17,15 @@ export function useCancelSubmission(submissionId: string) {
   const { submissions } = useRepositories();
   const queryClient = useQueryClient();
 
-  return useMutation<SignageSubmissionExpanded, ApiError>({
-    mutationFn: async () => {
+  return useMutation<SignageSubmissionExpanded, ApiError, { version: number }>({
+    // version은 화면이 본 신청의 버전이다. 그사이 바뀌었으면 서버가 409를 준다.
+    mutationFn: async ({ version }) => {
       try {
-        return await submissions.cancel(submissionId, {
-          idempotencyKey: createIdempotencyKey(),
-        });
+        return await submissions.cancel(
+          submissionId,
+          { version },
+          { idempotencyKey: createIdempotencyKey() },
+        );
       } catch (cause) {
         throw normalizeApiError(cause);
       }

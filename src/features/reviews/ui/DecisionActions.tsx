@@ -7,6 +7,7 @@ import {
 import type { RejectionReasonCode } from "@/entities/review";
 import type { SignageSubmissionExpanded } from "@/entities/submission";
 import { getStatusLabel } from "@/entities/submission";
+import { useTargetGroupLabel } from "@/features/devices/api/queries";
 import { ConfirmActionDialog, FormField } from "@/shared/components";
 import { isApiError, toUserMessage } from "@/shared/api/error";
 import { formatSeoulDateTime } from "@/shared/lib/datetime";
@@ -50,6 +51,7 @@ export function DecisionActions({ submission }: DecisionActionsProps) {
   const approve = useApproveSubmission(submission.id);
   const reject = useRejectSubmission(submission.id);
   const suspend = useSuspendSubmission(submission.id);
+  const targetLabel = useTargetGroupLabel(submission.targetGroupIds);
 
   const canDecide = submission.status === "PENDING_REVIEW";
   const canSuspend = ["APPROVED", "SCHEDULED", "PUBLISHED"].includes(
@@ -104,8 +106,9 @@ export function DecisionActions({ submission }: DecisionActionsProps) {
         description={
           <>
             게시 기간 {formatSeoulDateTime(submission.startAt)} ~{" "}
-            {formatSeoulDateTime(submission.endAt)} · 전체 기기 ·{" "}
-            검토 버전 v{submission.version}
+            {formatSeoulDateTime(submission.endAt)}
+            {targetLabel && <> · {targetLabel}</>} · 검토 버전 v
+            {submission.version}
           </>
         }
         confirmLabel="승인"

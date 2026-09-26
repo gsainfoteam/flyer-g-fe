@@ -87,7 +87,7 @@ describe("검토 상세", () => {
     });
 
     // 반려 사유가 처리 이력에 나타난다.
-    expect(await screen.findByText(/반려 · 하우스 관리자/)).toBeInTheDocument();
+    expect(await screen.findByText(/반려 · 이수현/)).toBeInTheDocument();
     expect(
       screen.getByText(/포스터 마감일이 공지와 다릅니다/),
     ).toBeInTheDocument();
@@ -155,5 +155,12 @@ describe("검토 상세", () => {
       await screen.findByText("이 화면을 볼 권한이 없어요"),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "승인" })).toBeNull();
+  });
+
+  it("대상 위치를 신청에 지정된 위치 이름으로 보여준다", async () => {
+    renderRoute(`/reviews/${PENDING_ID}`, { role: "REVIEWER" });
+
+    const label = await screen.findByText("대상 위치");
+    expect(label.nextElementSibling).toHaveTextContent("학사기숙사 A동");
   });
 });

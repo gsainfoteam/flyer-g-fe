@@ -35,7 +35,11 @@ export interface SessionUser {
 export type AuthState =
   | { status: "initializing" }
   | { status: "authenticated"; user: SessionUser }
-  | { status: "unauthenticated" }
+  | {
+      status: "unauthenticated";
+      /** 로그인한 상태였는데 서버가 세션을 거절했다(401). 로그인 화면이 안내한다. */
+      reason?: "expired";
+    }
   | { status: "error"; error: ApiError };
 
 /** 가장 높은 역할 하나를 고른다. 화면에 역할을 한 줄로 보여줄 때 쓴다. */
