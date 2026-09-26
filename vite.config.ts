@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import { readFileSync } from "node:fs";
 import { fileURLToPath, URL } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
@@ -11,6 +12,13 @@ import type { Plugin } from "vite";
  * (`src/features/display-runtime/model/use-new-build-reload.ts`)
  */
 const BUILD_ID = new Date().toISOString();
+
+/** 앱 버전의 단일 원천은 package.json이다. 화면·heartbeat가 같은 값을 쓴다. */
+const APP_VERSION = (
+  JSON.parse(
+    readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+  ) as { version: string }
+).version;
 
 function emitBuildVersion(): Plugin {
   return {
@@ -31,6 +39,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), emitBuildVersion()],
   define: {
     __APP_BUILD_ID__: JSON.stringify(BUILD_ID),
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
   },
   server: {
     // 실행 환경이 PORT를 지정하면 그 포트를 쓴다. (미리보기 도구, 컨테이너 등)

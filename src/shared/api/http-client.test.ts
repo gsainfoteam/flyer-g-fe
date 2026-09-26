@@ -91,12 +91,94 @@ describe("createHttpClient", () => {
     await expect(client.request({ path: "/x" })).resolves.toBeUndefined();
   });
 
-  it("AbortSignal을 그대로 전달한다", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({}));
+  it("호출자가 취소하면 요청도 취소되고 canceled로 알린다", async () => {
+    // 실제 fetch처럼 이미 끊긴 signal이면 바로, 아니면 끊기는 순간 실패한다.
+    const fetchImpl = vi.fn(
+      (_url: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          const abort = () => reject(new DOMException("Aborted", "AbortError"));
+          if (init?.signal?.aborted) abort();
+          else init?.signal?.addEventListener("abort", abort);
+        }),
+    );
     const client = createHttpClient({ baseUrl: "https://api.example.com", fetchImpl });
     const controller = new AbortController();
 
-    await client.request({ path: "/x", signal: controller.signal });
-    expect(fetchImpl.mock.calls[0]![1].signal).toBe(controller.signal);
+    const pending = client.request({ path: "/x", signal: controller.signal });
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ kind: "canceled" });
+  });
+
+  it("제한 시간 안에 응답이 없으면 timeout으로 끊는다", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi.fn(
+        (_url: RequestInfo | URL, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () =>
+              reject(new DOMException("Aborted", "AbortError")),
+            );
+          }),
+      );
+      const client = createHttpClient({
+        baseUrl: "https://api.example.com",
+        fetchImpl,
+        timeoutMs: 1_000,
+      });
+
+      const pending = client.request({ path: "/slow" });
+      const assertion = expect(pending).rejects.toMatchObject({
+        kind: "timeout",
+        code: "TIMEOUT",
+      });
+      await vi.advanceTimersByTimeAsync(1_000);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("응답 없이 실패한 fetch는 네트워크 오류다", async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    const client = createHttpClient({ baseUrl: "https://api.example.com", fetchImpl });
+
+    await expect(client.request({ path: "/x" })).rejects.toMatchObject({
+      kind: "network",
+      code: "NETWORK_ERROR",
+    });
+  });
+
+  it("서버 422의 필드 오류를 그대로 전달한다", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(
+        {
+          code: "VALIDATION_FAILED",
+          message: "invalid",
+          fields: { endAt: "기간이 너무 길어요.", ignored: 3 },
+        },
+        { status: 422 },
+      ),
+    );
+    const client = createHttpClient({ baseUrl: "https://api.example.com", fetchImpl });
+
+    await expect(client.request({ path: "/x" })).rejects.toMatchObject({
+      status: 422,
+      fields: { endAt: "기간이 너무 길어요." },
+    });
+  });
+
+  it("인증 헤더를 준비하지 못해도 ApiError로 알린다", async () => {
+    const client = createHttpClient({
+      baseUrl: "https://api.example.com",
+      fetchImpl: vi.fn(),
+      getAuthHeaders: async () => {
+        throw new Error("token refresh failed");
+      },
+    });
+
+    const error = await client.request({ path: "/x" }).catch((cause) => cause);
+    expect(isApiError(error)).toBe(true);
+    expect((error as ApiError).message).not.toContain("token");
   });
 });

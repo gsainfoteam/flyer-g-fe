@@ -21,8 +21,8 @@ export async function switchRole(
   page: Page,
   roleLabel: "게시자" | "하우스 관리자" | "시스템 운영자",
 ): Promise<void> {
-  await page.getByLabel("개발용 역할 전환").click();
-  await page.getByRole("option", { name: roleLabel }).click();
+  await page.getByRole("button", { name: "계정 메뉴" }).click();
+  await page.getByRole("menuitemradio", { name: roleLabel }).click();
 }
 
 /**

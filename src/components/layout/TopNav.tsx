@@ -1,12 +1,10 @@
 import { NavLink } from "react-router";
 import { to } from "@/app/router/routes";
-import { useAuth } from "@/features/auth/model/auth-context";
-import { getPrimaryRole, getRoleLabel, hasAnyRole } from "@/features/auth/model/types";
+import { hasAnyRole } from "@/features/auth/model/types";
 import type { Role, SessionUser } from "@/features/auth/model/types";
 import { cn } from "@/shared/lib/utils";
-import { Button } from "@/shared/ui/button";
 import { Logo } from "../common/Logo";
-import { RoleSwitcher } from "./RoleSwitcher";
+import { AccountMenu } from "./AccountMenu";
 
 /**
  * 관리 화면 내비게이션.
@@ -32,11 +30,12 @@ interface TopNavProps {
 }
 
 export function TopNav({ user, pendingCount = 0 }: TopNavProps) {
-  const { signOut } = useAuth();
+  const isReviewer = hasAnyRole(user, ["REVIEWER", "SUPER_ADMIN"]);
 
   const items: NavItem[] = [
     { label: "홈", href: to.dashboard() },
-    { label: "내 신청", href: to.submissions() },
+    // 관리자에게 이 목록은 내 신청과 전체 신청을 오가는 곳이다.
+    { label: isReviewer ? "신청 목록" : "내 신청", href: to.submissions() },
     {
       label: "승인 대기",
       href: to.reviews(),
@@ -58,13 +57,14 @@ export function TopNav({ user, pendingCount = 0 }: TopNavProps) {
           to={to.dashboard()}
           className="flex shrink-0 rounded-control focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
         >
-          <Logo size="md" />
+          <Logo size="md" compact />
         </NavLink>
 
-        {/* 좁은 화면에서는 가로로 밀어서 모든 메뉴에 닿을 수 있게 둔다. */}
+        {/* 좁은 화면에서는 가로로 밀어서 모든 메뉴에 닿을 수 있게 둔다. 스크롤바는
+            숨긴다 — 헤더 높이 안에서 막대가 메뉴를 가린다. */}
         <nav
           aria-label="주요 메뉴"
-          className="-mx-1 flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto px-1"
+          className="-mx-1 flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {visible.map((item) => (
             <NavLink
@@ -83,7 +83,7 @@ export function TopNav({ user, pendingCount = 0 }: TopNavProps) {
             >
               <span className="truncate">{item.label}</span>
               {item.count !== undefined && item.count > 0 && (
-                <span className="rounded-pill bg-accent px-[7px] py-px text-overline tabular-nums text-accent-on">
+                <span className="rounded-pill bg-accent px-1.75 py-px text-overline tabular-nums text-accent-on">
                   {item.count}
                 </span>
               )}
@@ -91,26 +91,7 @@ export function TopNav({ user, pendingCount = 0 }: TopNavProps) {
           ))}
         </nav>
 
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <RoleSwitcher />
-          <span className="hidden text-label text-ink-muted lg:block">
-            {user.displayName} · {getRoleLabel(getPrimaryRole(user))}
-          </span>
-          <span
-            className="grid size-8 place-items-center rounded-pill bg-ink text-caption font-bold text-ink-inverse"
-            aria-hidden="true"
-          >
-            {user.displayName.slice(0, 1)}
-          </span>
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={() => void signOut()}
-            className="hidden sm:inline-flex"
-          >
-            로그아웃
-          </Button>
-        </div>
+        <AccountMenu user={user} />
       </div>
     </header>
   );

@@ -47,8 +47,10 @@ describe("세션 동기화", () => {
       await main().findByText(/2026학년도 2학기 기숙사 디지털 게시판/),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("combobox", { name: "개발용 역할 전환" }));
-    await user.click(await screen.findByRole("option", { name: "게시자" }));
+    await user.click(screen.getByRole("button", { name: "계정 메뉴" }));
+    await user.click(
+      await screen.findByRole("menuitemradio", { name: "게시자" }),
+    );
 
     expect(
       await main().findByText("슈퍼-피셜 신입 부원 모집"),

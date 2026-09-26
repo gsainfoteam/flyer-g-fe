@@ -20,10 +20,12 @@ describe("normalizeApiError", () => {
     expect(error.code).toBe("REQUEST_CANCELED");
   });
 
-  it("fetch의 TypeError를 네트워크 오류로 정규화한다", () => {
-    expect(normalizeApiError(new TypeError("Failed to fetch")).code).toBe(
-      "NETWORK_ERROR",
-    );
+  // 연결 실패는 http-client가 fetch 자리에서 network로 만든다. 여기서 모든
+  // TypeError를 network로 보면 코드 버그(null 참조 등)가 연결 문제로 보인다.
+  it("TypeError를 네트워크 오류로 뭉뚱그리지 않는다", () => {
+    expect(
+      normalizeApiError(new TypeError("Cannot read properties of null")).code,
+    ).toBe("UNKNOWN_ERROR");
   });
 
   it("알 수 없는 값도 ApiError로 좁힌다", () => {

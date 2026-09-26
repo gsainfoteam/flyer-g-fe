@@ -36,8 +36,8 @@ E2E는 처음 한 번 `bunx playwright install chromium`으로 브라우저를 �
 | `/display/:deviceId` | TV 플레이어 (로그인 불요) |
 | `/catalog` | 컴포넌트 카탈로그 (개발 빌드 전용) |
 
-개발 환경에서는 mock 세션으로 시작한다. 상단 오른쪽에서 게시자 · 하우스 관리자 ·
-시스템 운영자로 역할을 바꿔 가며 권한 경계를 확인할 수 있다.
+개발 환경에서는 mock 세션으로 시작한다. 오른쪽 위 계정 메뉴에서 게시자 · 하우스
+관리자 · 시스템 운영자로 역할을 바꿔 가며 권한 경계를 확인할 수 있다.
 
 ## Mock 동작
 
@@ -65,9 +65,19 @@ TV 플레이어는 편성·포스터를 IndexedDB에 캐시한다(last-known-goo
 
 ## 환경 변수
 
-`.env.example`을 복사해 `.env.local`을 만든다. 비워 두면 개발 빌드는 mock으로,
-production 빌드는 실제 API로 동작하며, production에서 mock을 켜면 앱이 시작 시점에
-실패한다.
+`.env.example`을 복사해 `.env.local`을 만든다.
+
+| 빌드 | 비워 두었을 때 | 비고 |
+|---|---|---|
+| 개발(`bun run dev`) | mock API, mock 세션 | |
+| production(`bun run build`) | **데모 배포**: mock API, mock 세션 | `VITE_DEMO_MODE`의 기본값이 지금은 `true`다 |
+| production + `VITE_DEMO_MODE=false` | 실제 API | `VITE_API_BASE_URL`이 없거나 mock을 켜면 시작 화면에서 설정 오류를 알린다 |
+
+실제 API가 아직 없어 지금은 데모가 유일한 배포 형태다. 데모 배포 화면 위에는
+"새로고침하면 처음 상태로 돌아가요" 안내 띠가 붙는다. 실제 API를 연결하면
+`VITE_DEMO_MODE`의 기본값을 `false`로 되돌린다(`src/shared/config/env.ts`의 TODO).
+
+앱 버전은 `package.json`의 `version`과 빌드 시각으로 만든다. TV가 상태 보고에 싣는다.
 
 ## 문서
 

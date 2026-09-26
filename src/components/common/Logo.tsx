@@ -11,6 +11,8 @@ import { cn } from "@/shared/lib/utils";
 interface LogoProps {
   size?: "sm" | "md" | "lg" | "tv";
   subtitle?: string | null;
+  /** 좁은 화면에서는 마크만 보이고 이름은 보조기기에만 남긴다. 메뉴 자리를 번다. */
+  compact?: boolean;
   className?: string;
 }
 
@@ -21,13 +23,24 @@ const sizeMap = {
   tv: { mark: "size-14", name: "text-[36px]", gap: "gap-4" },
 } as const;
 
-export function Logo({ size = "md", subtitle = null, className }: LogoProps) {
+export function Logo({
+  size = "md",
+  subtitle = null,
+  compact = false,
+  className,
+}: LogoProps) {
   const s = sizeMap[size];
 
   return (
     <span className={cn("inline-flex items-center", s.gap, className)}>
       <LogoMark className={cn("shrink-0", s.mark)} />
-      <span className={cn("font-extrabold tracking-tight text-ink", s.name)}>
+      <span
+        className={cn(
+          "font-extrabold tracking-tight text-ink",
+          s.name,
+          compact && "max-sm:sr-only",
+        )}
+      >
         전단지
       </span>
       {subtitle && (

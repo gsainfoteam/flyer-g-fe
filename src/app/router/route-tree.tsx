@@ -1,9 +1,15 @@
 import { lazy, Suspense } from "react";
 import type { ComponentType, ReactNode } from "react";
+import {
+  DisplayRouteErrorScreen,
+  RouteErrorScreen,
+} from "@/app/errors/RouteErrorScreen";
 import { AdminLayout } from "@/app/layouts/AdminLayout";
+import { AppShell } from "@/app/layouts/AppShell";
 import { DisplayLayout } from "@/app/layouts/DisplayLayout";
 import { StudioLayout } from "@/app/layouts/StudioLayout";
 import { paths } from "@/app/router/routes";
+import type { RouteHandle } from "@/app/router/use-document-title";
 import { RequireRole, RequireSession } from "@/features/auth/ui/guards";
 import { ComingSoonPage } from "@/pages/ComingSoonPage";
 import { LoginPage } from "@/pages/LoginPage";
@@ -66,69 +72,105 @@ const ComponentCatalog = import.meta.env.DEV
   ? lazy(() => import("@/dev/ComponentCatalog"))
   : null;
 
+const title = (value: string): RouteHandle => ({ title: value });
+
 export const routeTree = [
   // TV 플레이어. 사용자 세션을 요구하지 않는다.
   {
     element: <DisplayLayout />,
-    children: [{ path: paths.display, element: displayPage }],
+    // 화면 조각을 못 받는 등 route 단계의 오류. TV에는 버튼 대신 자동 새로고침.
+    errorElement: <DisplayRouteErrorScreen />,
+    children: [
+      { path: paths.display, element: displayPage, handle: title("TV") },
+    ],
   },
 
-  { path: paths.login, element: <LoginPage /> },
-
-  // 세션이 있어야 볼 수 있는 화면
   {
-    element: <RequireSession />,
+    element: <AppShell />,
+    errorElement: <RouteErrorScreen />,
     children: [
+      { path: paths.login, element: <LoginPage />, handle: title("로그인") },
+
+      // 세션이 있어야 볼 수 있는 화면
       {
-        element: <StudioLayout />,
-        children: [{ path: paths.studio, element: studioPage }],
-      },
-      {
-        element: <AdminLayout />,
+        element: <RequireSession />,
         children: [
-          { path: paths.dashboard, element: dashboardPage },
-          { path: paths.submissions, element: submissionsPage },
-          { path: paths.submissionDetail, element: submissionDetailPage },
-          // 검토는 하우스 관리자와 운영자만 볼 수 있다.
           {
-            element: <RequireRole allow={["REVIEWER", "SUPER_ADMIN"]} />,
-            children: [
-              { path: paths.reviews, element: reviewsPage },
-              { path: paths.reviewDetail, element: reviewDetailPage },
-            ],
-          },
-          // 기기 관리는 운영자만 볼 수 있다.
-          {
-            element: <RequireRole allow={["SUPER_ADMIN"]} />,
+            element: <StudioLayout />,
             children: [
               {
-                path: paths.displays,
-                element: (
-                  <ComingSoonPage
-                    title="기기 관리는 준비 중이에요"
-                    description="위치별 디스플레이 상태와 편성 설정이 곧 여기에 들어와요."
-                  />
-                ),
+                path: paths.studio,
+                element: studioPage,
+                handle: title("게시 신청"),
+              },
+            ],
+          },
+          {
+            element: <AdminLayout />,
+            children: [
+              { path: paths.dashboard, element: dashboardPage },
+              {
+                path: paths.submissions,
+                element: submissionsPage,
+                handle: title("신청 목록"),
+              },
+              {
+                path: paths.submissionDetail,
+                element: submissionDetailPage,
+                handle: title("신청 상세"),
+              },
+              // 검토는 하우스 관리자와 운영자만 볼 수 있다.
+              {
+                element: <RequireRole allow={["REVIEWER", "SUPER_ADMIN"]} />,
+                children: [
+                  {
+                    path: paths.reviews,
+                    element: reviewsPage,
+                    handle: title("승인 대기"),
+                  },
+                  {
+                    path: paths.reviewDetail,
+                    element: reviewDetailPage,
+                    handle: title("검토"),
+                  },
+                ],
+              },
+              // 기기 관리는 운영자만 볼 수 있다.
+              {
+                element: <RequireRole allow={["SUPER_ADMIN"]} />,
+                children: [
+                  {
+                    path: paths.displays,
+                    handle: title("기기 관리"),
+                    element: (
+                      <ComingSoonPage
+                        title="기기 관리는 준비 중이에요"
+                        description="위치별 디스플레이 상태와 편성 설정이 곧 여기에 들어와요."
+                      />
+                    ),
+                  },
+                ],
               },
             ],
           },
         ],
       },
+
+      ...(ComponentCatalog
+        ? [
+            {
+              path: "/catalog",
+              handle: title("컴포넌트 카탈로그"),
+              element: (
+                <Suspense fallback={null}>
+                  <ComponentCatalog />
+                </Suspense>
+              ),
+            },
+          ]
+        : []),
+
+      { path: "*", element: <NotFoundPage />, handle: title("찾을 수 없음") },
     ],
   },
-
-  ...(ComponentCatalog
-    ? [
-        {
-          path: "/catalog",
-          element: (
-            <Suspense fallback={null}>
-              <ComponentCatalog />
-            </Suspense>
-          ),
-        },
-      ]
-    : []),
-
-  { path: "*", element: <NotFoundPage /> },
 ];
