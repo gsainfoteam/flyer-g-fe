@@ -128,8 +128,29 @@ describe("세션 종료", () => {
     const { router } = renderRoute("/", { role: "REVIEWER" });
     await screen.findByRole("navigation", { name: "주요 메뉴" });
 
-    await userEvent.click(screen.getByRole("button", { name: "로그아웃" }));
+    await userEvent.click(screen.getByRole("button", { name: "계정 메뉴" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "로그아웃" }),
+    );
 
     await waitFor(() => expect(currentPath(router)).toContain("/login"));
+  });
+});
+
+describe("탭 제목", () => {
+  it("화면마다 탭 제목이 다르다", async () => {
+    renderRoute("/reviews", { role: "REVIEWER" });
+
+    await waitFor(() => expect(document.title).toBe("승인 대기 · 전단지"));
+  });
+});
+
+describe("권한 없음", () => {
+  it("화면을 볼 수 있는 역할을 그 화면에 맞게 알린다", async () => {
+    renderRoute("/displays", { role: "REVIEWER" });
+
+    expect(
+      await screen.findByText(/시스템 운영자에게만 열려 있는 화면이에요/),
+    ).toBeInTheDocument();
   });
 });

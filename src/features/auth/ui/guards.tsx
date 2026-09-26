@@ -3,7 +3,8 @@ import { RETURN_TO_PARAM, to } from "@/app/router/routes";
 import { ErrorState, LoadingState } from "@/shared/components";
 import { Button } from "@/shared/ui/button";
 import { useAuth } from "../model/auth-context";
-import { hasAnyRole } from "../model/types";
+import { SERVICE_OPERATOR } from "@/shared/config/service-info";
+import { ROLES, getRoleLabel, hasAnyRole } from "../model/types";
 import type { Role } from "../model/types";
 
 /**
@@ -55,18 +56,29 @@ export function RequireRole({ allow }: { allow: readonly Role[] }) {
   }
 
   if (!hasAnyRole(state.user, allow)) {
-    return <ForbiddenView />;
+    return <ForbiddenView allow={allow} />;
   }
 
   return <Outlet />;
 }
 
-export function ForbiddenView() {
+/** 이 화면을 볼 수 있는 역할을 사람이 읽을 수 있게. 가장 낮은 역할부터 적는다. */
+function describeAllowed(allow: readonly Role[]): string {
+  const labels = ROLES.filter((role) => allow.includes(role)).map(getRoleLabel);
+  return labels.length === 1 ? `${labels[0]}에게만` : `${labels.join("와 ")}에게`;
+}
+
+export function ForbiddenView({ allow }: { allow: readonly Role[] }) {
+  // 시스템 운영자 권한은 운영 주체가, 하우스 관리자 권한은 하우스오피스가 준다.
+  const grantor = allow.includes("REVIEWER")
+    ? "학사기숙사 하우스오피스"
+    : SERVICE_OPERATOR;
+
   return (
     <div className="flex flex-col items-start gap-3 py-10">
       <h1 className="text-title text-ink">이 화면을 볼 권한이 없어요</h1>
       <p className="text-body text-ink-muted">
-        하우스 관리자에게만 열려 있는 화면입니다. 권한이 필요하면 하우스오피스에
+        {describeAllowed(allow)} 열려 있는 화면이에요. 권한이 필요하면 {grantor}에
         문의해 주세요.
       </p>
       <Button variant="secondary" size="sm" asChild className="mt-1">

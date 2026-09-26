@@ -82,13 +82,8 @@ export function normalizeApiError(cause: unknown): ApiError {
     });
   }
 
-  if (cause instanceof TypeError) {
-    return new ApiError({
-      kind: "network",
-      code: "NETWORK_ERROR",
-      message: "네트워크에 연결할 수 없습니다.",
-    });
-  }
+  // TypeError를 연결 문제로 보지 않는다. 연결 실패는 http-client가 fetch 자리에서
+  // 직접 network로 만든다. 여기서 뭉뚱그리면 코드 버그가 "네트워크 오류"로 보인다.
 
   return new ApiError({
     kind: "unknown",
@@ -132,6 +127,8 @@ export function toUserMessage(error: ApiError): string {
       return "요청이 많습니다. 잠시 후 다시 시도해 주세요.";
     case "NETWORK_ERROR":
       return "네트워크에 연결할 수 없습니다. 연결을 확인한 뒤 다시 시도해 주세요.";
+    case "TIMEOUT":
+      return "서버가 응답하지 않아요. 잠시 후 다시 시도해 주세요.";
     case "REQUEST_CANCELED":
       return "요청이 취소되었습니다.";
     case "UPLOAD_FAILED":

@@ -1,4 +1,5 @@
 import { Outlet, useSearchParams } from "react-router";
+import { useDocumentTitle } from "@/app/router/use-document-title";
 import { useNewBuildReload } from "@/features/display-runtime/model/use-new-build-reload";
 import { useScreenWakeLock } from "@/features/display-runtime/model/use-screen-wake-lock";
 import { DisplayErrorBoundary } from "@/features/display-runtime/ui/DisplayErrorBoundary";
@@ -18,6 +19,7 @@ export function DisplayLayout() {
   const [searchParams] = useSearchParams();
   const isKiosk = searchParams.get("preview") !== "1";
 
+  useDocumentTitle();
   useScreenWakeLock(isKiosk);
   useNewBuildReload({ enabled: isKiosk && import.meta.env.PROD });
 

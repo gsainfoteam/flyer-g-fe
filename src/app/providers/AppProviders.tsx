@@ -1,20 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { createAuthAdapter } from "@/features/auth/api/create-auth-adapter";
-import { isMockAuthAdapter } from "@/features/auth/api/mock-auth";
-import { isMockRepositories } from "@/mocks/repositories";
-import { createAssetUploadService } from "@/features/media-upload/api/create-asset-upload-service";
-import { createNoticeAdapter } from "@/features/ziggle-notice/api/create-notice-adapter";
 import type { AuthAdapter } from "@/features/auth/api/auth-adapter";
 import { AuthProvider } from "@/features/auth/ui/AuthProvider";
-import { createRepositories } from "@/shared/api/create-repositories";
 import { isRetryableError } from "@/shared/api/error";
 import type { Repositories } from "@/shared/api/repositories";
 import { getAppEnv } from "@/shared/config/env";
 import { Toaster } from "@/shared/ui/sonner";
 import { RepositoriesContext } from "./repositories-context";
 import { ServicesContext } from "./services-context";
+import { createAppDependencies } from "./create-app-dependencies";
 import { SessionSync } from "./SessionSync";
 import type { AppServices } from "./services-context";
 
@@ -49,35 +44,24 @@ export function AppProviders({
   queryClient,
 }: AppProvidersProps) {
   const [client] = useState(() => queryClient ?? createQueryClient());
-  const [auth] = useState(() => authAdapter ?? createAuthAdapter(getAppEnv()));
-  const [repos] = useState(
-    () =>
-      repositories ??
-      createRepositories(getAppEnv(), {
-        latencyMs: 200,
-        // mock 서버가 "누가 요청했는지" 알게 한다. 실제 서버는 쿠키로 안다.
-        session: isMockAuthAdapter(auth) ? () => auth.peekUser() : undefined,
-      }),
-  );
-  const [externalServices] = useState<AppServices>(
-    () =>
-      services ?? {
-        assetUpload: createAssetUploadService(getAppEnv()),
-        notices: createNoticeAdapter(getAppEnv(), {
-          latencyMs: 200,
-          // mock끼리 이어서 이미 신청한 공지를 실제 서버처럼 막는다.
-          isNoticeInUse: isMockRepositories(repos)
-            ? repos.isNoticeInUse
-            : undefined,
-        }),
-      },
-  );
+  // 주입받지 않은 경계만 환경에 맞게 만든다. 앱은 main.tsx가 모두 넘긴다.
+  const [dependencies] = useState(() => {
+    if (repositories && services && authAdapter) {
+      return { repositories, services, authAdapter };
+    }
+    const created = createAppDependencies(getAppEnv());
+    return {
+      authAdapter: authAdapter ?? created.authAdapter,
+      repositories: repositories ?? created.repositories,
+      services: services ?? created.services,
+    };
+  });
 
   return (
     <QueryClientProvider client={client}>
-      <RepositoriesContext.Provider value={repos}>
-        <ServicesContext.Provider value={externalServices}>
-          <AuthProvider adapter={auth}>
+      <RepositoriesContext.Provider value={dependencies.repositories}>
+        <ServicesContext.Provider value={dependencies.services}>
+          <AuthProvider adapter={dependencies.authAdapter}>
             <SessionSync />
             {children}
             <Toaster position="top-right" />
