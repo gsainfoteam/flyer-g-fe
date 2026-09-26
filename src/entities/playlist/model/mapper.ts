@@ -13,6 +13,7 @@ function toPlaylistItem(dto: PlaylistItemDto): PlaylistItem {
 export function toPlaylist(dto: PlaylistDto): Playlist {
   return {
     serverTime: parseIsoUtc(dto.serverTime),
+    deviceName: dto.deviceName ?? null,
     playlistVersion: dto.playlistVersion,
     refreshAfterSeconds: dto.refreshAfterSeconds,
     layout: {
@@ -27,6 +28,7 @@ export function toPlaylist(dto: PlaylistDto): Playlist {
 export function toPlaylistDto(playlist: Playlist): PlaylistDto {
   return {
     serverTime: toIsoUtc(playlist.serverTime),
+    deviceName: playlist.deviceName,
     playlistVersion: playlist.playlistVersion,
     refreshAfterSeconds: playlist.refreshAfterSeconds,
     layout: playlist.layout,

@@ -17,9 +17,10 @@ describe("직접 URL 접근", () => {
     ).toBeInTheDocument();
   });
 
-  it("기기 경로는 deviceId를 읽는다", async () => {
-    renderRoute("/display/device-preview");
-    expect(await screen.findByText(/학사기숙사 A동 로비/)).toBeInTheDocument();
+  it("기기 경로는 deviceId로 그 기기의 편성을 받는다", async () => {
+    renderRoute("/display/house-a-lobby");
+    // 편성 응답에 실려 온 기기 이름이 TV 머리에 나온다.
+    expect(await screen.findByText("A동 로비")).toBeInTheDocument();
   });
 });
 
@@ -94,8 +95,8 @@ describe("역할 기반 접근", () => {
 
 describe("셸 분리", () => {
   it("TV 경로에는 관리 내비게이션이 없다", async () => {
-    renderRoute("/display/device-preview");
-    await screen.findByText(/학사기숙사 A동 로비/);
+    renderRoute("/display/house-a-lobby");
+    await screen.findByText("A동 로비");
 
     expect(
       screen.queryByRole("navigation", { name: "주요 메뉴" }),

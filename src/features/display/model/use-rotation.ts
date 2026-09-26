@@ -14,10 +14,6 @@ import type { PosterRenderModel } from "@/entities/poster";
  * - 탭이 가려진 동안 setInterval은 브라우저가 늦출 수 있다. 다시 보이면 즉시
  *   다음 페이지로 넘겨 오래 멈춘 화면을 정리한다.
  */
-export interface RotationPage {
-  posters: PosterRenderModel[];
-}
-
 export function chunkIntoPages(
   posters: PosterRenderModel[],
   layout: LayoutType,

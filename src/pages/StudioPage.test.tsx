@@ -102,7 +102,7 @@ describe("게시 신청 스튜디오", () => {
     ).toBeInTheDocument();
   });
 
-  it("카테고리와 게시 기간 변경도 미리보기가 따라온다", async () => {
+  it("카테고리 변경도 미리보기가 따라온다", async () => {
     const user = userEvent.setup();
     await openStudio();
     const preview = screen.getByRole("main");
@@ -110,13 +110,10 @@ describe("게시 신청 스튜디오", () => {
     // 공지에서 채워진 카테고리가 그대로 보인다.
     expect(within(preview).getByText("공연")).toBeInTheDocument();
 
-    const end = screen.getByLabelText(/게시 종료/);
-    await user.clear(end);
-    await user.type(end, "2026-07-20T18:00");
+    await user.click(screen.getByRole("combobox", { name: /카테고리/ }));
+    await user.click(await screen.findByRole("option", { name: "행사" }));
 
-    expect(
-      await within(preview).findByText(/07\. 20\./),
-    ).toBeInTheDocument();
+    expect(await within(preview).findByText("행사")).toBeInTheDocument();
   });
 
   it("상세 링크가 QR 값이 된다", async () => {

@@ -37,12 +37,19 @@ export interface LoadedPlaylistCache {
 
 export interface PlaylistCache {
   load(): Promise<LoadedPlaylistCache | null>;
+  /** checksum으로 이미 저장한 미디어를 찾는다. 새 편성에서 다시 받지 않기 위해 쓴다. */
+  findMedia(checksum: string): Promise<Blob | undefined>;
   /** blob이 전부 갖춰졌을 때만 부른다. 참조가 끊긴 미디어는 정리한다. */
   save(playlist: Playlist, media: ReadonlyMap<string, Blob>): Promise<void>;
 }
 
 export function createPlaylistCache(store: KeyValueStore): PlaylistCache {
   return {
+    async findMedia(checksum) {
+      const blob = await store.get<Blob>(mediaKey(checksum));
+      return blob instanceof Blob ? blob : undefined;
+    },
+
     async load() {
       const record = await store.get<CachedPlaylistRecord>(PLAYLIST_KEY);
       if (!record) return null;

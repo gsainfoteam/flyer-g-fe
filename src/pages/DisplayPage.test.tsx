@@ -118,6 +118,30 @@ describe("TV 플레이어", () => {
     ).toBeNull();
   });
 
+  it("이미지 실패로 뺀 항목은 편성이 바뀌면 다시 시도한다", async () => {
+    const first = playlistWith([
+      { id: "flaky", title: "잠깐 실패한 포스터" },
+      { id: "ok", title: "정상 포스터" },
+    ]);
+    const next = { ...first, playlistVersion: "test:2" };
+    const repositories = createMockRepositories({
+      clock: createFixedClock(TEST_NOW),
+    });
+    vi.spyOn(repositories.displays, "getPlaylist")
+      .mockResolvedValueOnce(first)
+      .mockResolvedValue(next);
+    renderRoute("/display/device-preview?preview=1", { repositories });
+
+    fireEvent.error(await screen.findByAltText("잠깐 실패한 포스터 포스터"));
+    await screen.findByRole("heading", { name: "정상 포스터" });
+    expect(screen.getByText("1 / 1")).toBeInTheDocument();
+
+    // 화면이 다시 보이면 편성을 새로 받는다. 버전이 바뀌었으니 다시 시도한다.
+    fireEvent(window, new Event("visibilitychange"));
+
+    expect(await screen.findByText(/\/ 2$/)).toBeInTheDocument();
+  });
+
   it("만료된 항목은 서버가 보냈어도 방어적으로 거른다", async () => {
     const playlist = playlistWith([{ id: "p1", title: "살아있는 포스터" }]);
     const expired = toPlaylist({

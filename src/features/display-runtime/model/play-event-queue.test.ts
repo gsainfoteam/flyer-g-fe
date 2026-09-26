@@ -110,4 +110,38 @@ describe("createPlayEventQueue", () => {
     ]);
     expect(send).toHaveBeenCalledTimes(1);
   });
+
+  it("동시에 들어온 이벤트를 하나도 잃지 않는다", async () => {
+    const queue = createPlayEventQueue(createMemoryStore());
+
+    // 4분할은 한 페이지의 이벤트 4건을 동시에 기록한다.
+    await Promise.all(["a", "b", "c", "d"].map((id) => queue.enqueue(event(id))));
+
+    expect(await queue.size()).toBe(4);
+  });
+
+  it("전송하는 동안 들어온 이벤트는 지우지 않는다", async () => {
+    const queue = createPlayEventQueue(createMemoryStore());
+    await queue.enqueue(event("a"));
+
+    let release!: () => void;
+    const sendPlayEvents = vi.fn(
+      () => new Promise<void>((resolve) => (release = resolve)),
+    );
+    const flushing = queue.flush({ sendHeartbeat: vi.fn(), sendPlayEvents }, "device-1");
+    await vi.waitFor(() => expect(sendPlayEvents).toHaveBeenCalledTimes(1));
+
+    await queue.enqueue(event("b"));
+    release();
+    await vi.waitFor(() => expect(sendPlayEvents).toHaveBeenCalledTimes(2));
+    release();
+    await flushing;
+
+    const sent = sendPlayEvents.mock.calls.flatMap(
+      (call) => (call as unknown as [string, PlayEvent[]])[1],
+    );
+    expect(sent.map((item) => item.eventId)).toEqual(["a", "b"]);
+    expect(await queue.size()).toBe(0);
+  });
 });
+

@@ -20,23 +20,32 @@ import type { QrErrorCorrectionLevel } from "@/shared/lib/qr";
 interface QRCodeBoxProps {
   value: string;
   label?: string;
+  /** 값이 없을 때 빈 자리에 적을 말. 화면마다 사정이 달라 호출부가 정한다. */
+  emptyLabel?: string;
   size?: keyof typeof sizeClassName;
   inverse?: boolean;
   errorCorrectionLevel?: QrErrorCorrectionLevel;
 }
 
+/**
+ * TV 크기는 1920x1080 스테이지 기준 px다. 55인치 1080p TV에서 1px은 약 0.63mm라
+ * 단일 240px은 약 15cm, 4분할 132px은 약 8cm가 된다. 휴대폰 카메라는 대략 코드
+ * 한 변의 10배 거리까지 읽으므로 단일은 1.5m, 4분할은 80cm 안팎에서 스캔된다.
+ * 지나가며 보는 거리(2~5m)가 아니라 다가와서 찍는 거리를 기준으로 잡았다.
+ */
 const sizeClassName = {
   sm: "size-12",
   md: "size-20",
   /** TV 4분할 슬롯 */
-  lg: "size-[108px]",
-  /** TV 단일 레이아웃. 5m 거리에서 스캔 가능한 크기 */
-  tv: "size-[216px]",
+  lg: "size-[132px]",
+  /** TV 단일 레이아웃 */
+  tv: "size-[240px]",
 };
 
 export function QRCodeBox({
   value,
   label,
+  emptyLabel = "QR 없음",
   size = "md",
   inverse = false,
   errorCorrectionLevel = DEFAULT_QR_ERROR_CORRECTION,
@@ -74,12 +83,10 @@ export function QRCodeBox({
             "grid place-items-center rounded-sm border border-dashed border-line-strong bg-surface-muted text-center",
           )}
           role="img"
-          aria-label="QR 코드 없음. 상세 링크를 입력하면 생성됩니다."
+          aria-label={`QR 코드 없음. ${emptyLabel}`}
         >
-          <span className="px-1 text-[10px] leading-tight text-ink-subtle">
-            링크 입력 후
-            <br />
-            생성
+          <span className="px-1 text-[11px] leading-tight text-ink-subtle">
+            {emptyLabel}
           </span>
         </div>
       )}

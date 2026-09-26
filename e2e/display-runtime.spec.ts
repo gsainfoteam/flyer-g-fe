@@ -25,8 +25,8 @@ test("게시 중단하면 다음 편성에서 TV에서 사라진다", async ({ p
 
 test("편성 조회가 죽어도 last-known-good 캐시로 재생한다", async ({ page }) => {
   // 1차 방문: 정상 편성 → 미디어 검증 → IndexedDB 승격을 기다린다.
-  await page.goto("/display/device-preview");
-  await expect(page.getByText("학사기숙사 A동 로비")).toBeVisible();
+  await page.goto("/display/house-a-lobby");
+  await expect(page.getByText("A동 로비")).toBeVisible();
   await page.waitForFunction(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open("flyer-g-display", 1);
@@ -49,7 +49,7 @@ test("편성 조회가 죽어도 last-known-good 캐시로 재생한다", async 
       JSON.stringify({ "displays.getPlaylist": 500 }),
     );
   });
-  await page.goto("/display/device-preview?preview=1");
+  await page.goto("/display/house-a-lobby?preview=1");
 
   // 캐시(blob URL)로 계속 재생하고, 미리보기에는 오프라인 표시가 붙는다.
   await expect(page.getByText("오프라인 편성")).toBeVisible();
@@ -65,9 +65,9 @@ test("깨진 이미지는 건너뛰고 다음 콘텐츠를 재생한다", async 
   await page.route("**/posters/vesper.webp", (route) => route.abort());
 
   await login(page, "/");
-  await gotoInApp(page, "/display/device-preview");
+  await gotoInApp(page, "/display/house-a-lobby");
 
-  await expect(page.getByText("학사기숙사 A동 로비")).toBeVisible();
+  await expect(page.getByText("A동 로비")).toBeVisible();
   // 깨진 항목이 빠지고 다른 게시 중 콘텐츠가 나온다.
   await expect(
     page.getByRole("heading", { name: "연구보조 학생 모집" }),

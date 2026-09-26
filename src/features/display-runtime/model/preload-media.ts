@@ -6,6 +6,9 @@ import type { Playlist } from "@/entities/playlist/model/types";
  * decode까지 확인한다. 내려받았지만 그릴 수 없는 blob을 캐시하면 오프라인에서
  * 깨진 화면이 나온다. 하나라도 실패하면 전체를 실패로 본다 — 부분 캐시는
  * 승격하지 않기 때문이다.
+ *
+ * 이미 캐시에 있는 checksum은 다시 받지 않는다. 편성은 1분마다 바뀔 수 있고,
+ * 포스터 하나가 추가될 때마다 전부 다시 받으면 기기 회선과 CDN을 낭비한다.
  */
 export type MediaFetcher = (url: string) => Promise<Blob>;
 
@@ -27,6 +30,8 @@ export const decodeWithBrowser: MediaDecoder = async (blob) => {
 export interface PreloadOptions {
   fetcher?: MediaFetcher;
   decoder?: MediaDecoder;
+  /** 이미 검증해 저장해 둔 미디어. 있으면 내려받지 않는다. */
+  reuse?: (checksum: string) => Promise<Blob | undefined>;
 }
 
 /** checksum → Blob. 같은 checksum은 한 번만 받는다. */
@@ -45,6 +50,11 @@ export async function preloadPlaylistMedia(
   const media = new Map<string, Blob>();
   await Promise.all(
     [...targets].map(async ([checksum, assetUrl]) => {
+      const stored = await options.reuse?.(checksum).catch(() => undefined);
+      if (stored) {
+        media.set(checksum, stored);
+        return;
+      }
       const blob = await fetcher(assetUrl);
       await decoder(blob);
       media.set(checksum, blob);

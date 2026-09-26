@@ -10,6 +10,9 @@ import type { DeviceTelemetryAdapter, PlayEvent } from "../api/telemetry-adapter
  *
  * 상한이 있다. 몇 주 오프라인이던 기기가 저장 공간을 이벤트로 채우면 정작
  * 미디어 캐시가 밀려난다. 오래된 것부터 버린다.
+ *
+ * 저장소 읽기·쓰기는 한 번에 하나씩 한다. 4분할은 이벤트 4건이 동시에 들어오고,
+ * 전송 중에도 새 이벤트가 쌓인다. 각자 읽고 덮어쓰면 마지막 쓰기만 남는다.
  */
 const QUEUE_KEY = "play-events:queue";
 
@@ -35,6 +38,14 @@ export function createPlayEventQueue(
   const batchSize = options.batchSize ?? 50;
 
   let flushing = false;
+  let lock: Promise<unknown> = Promise.resolve();
+
+  /** 저장소를 다루는 작업을 차례로 실행한다. 앞 작업이 실패해도 뒤는 돈다. */
+  const exclusive = <T>(task: () => Promise<T>): Promise<T> => {
+    const run = lock.then(task, task);
+    lock = run.catch(() => undefined);
+    return run;
+  };
 
   const read = async (): Promise<PlayEvent[]> =>
     (await store.get<PlayEvent[]>(QUEUE_KEY)) ?? [];
@@ -50,8 +61,9 @@ export function createPlayEventQueue(
   return {
     async enqueue(event) {
       try {
-        const events = trim([...(await read()), event]);
-        await store.set(QUEUE_KEY, events);
+        await exclusive(async () => {
+          await store.set(QUEUE_KEY, trim([...(await read()), event]));
+        });
       } catch {
         // 저장 실패로 화면을 멈추지 않는다. 이 이벤트는 잃는다.
       }
@@ -61,13 +73,21 @@ export function createPlayEventQueue(
       if (flushing) return;
       flushing = true;
       try {
-        let events = trim(await read());
-        while (events.length > 0) {
-          const batch = events.slice(0, batchSize);
+        for (;;) {
+          const batch = await exclusive(async () =>
+            trim(await read()).slice(0, batchSize),
+          );
+          if (batch.length === 0) break;
+          // 전송은 잠그지 않는다. 느린 네트워크가 새 이벤트 기록을 막으면 안 된다.
           await adapter.sendPlayEvents(deviceId, batch);
           const sent = new Set(batch.map((event) => event.eventId));
-          events = events.filter((event) => !sent.has(event.eventId));
-          await store.set(QUEUE_KEY, events);
+          // 전송하는 동안 들어온 이벤트가 있으니 다시 읽고 보낸 것만 지운다.
+          await exclusive(async () => {
+            const remaining = (await read()).filter(
+              (event) => !sent.has(event.eventId),
+            );
+            await store.set(QUEUE_KEY, remaining);
+          });
         }
       } catch {
         // 남은 이벤트는 다음 flush에 다시 보낸다.
@@ -77,7 +97,7 @@ export function createPlayEventQueue(
     },
 
     async size() {
-      return (await read()).length;
+      return exclusive(async () => (await read()).length);
     },
   };
 }

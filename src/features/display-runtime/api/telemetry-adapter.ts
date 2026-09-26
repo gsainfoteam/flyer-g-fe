@@ -58,12 +58,18 @@ export function createMockTelemetryAdapter(
   };
 }
 
+/**
+ * 상태 보고는 재생에 필요한 기능이 아니다. 수신 서버가 없는 환경에서도 플레이어는
+ * 떠야 하므로 던지지 않고 아무것도 보내지 않는 구현으로 대신한다.
+ */
 export function createTelemetryAdapter(env: AppEnv): DeviceTelemetryAdapter {
   if (env.useMockApi) {
     return createMockTelemetryAdapter();
   }
-
-  throw new Error(
-    "실제 기기 상태 보고가 아직 연결되지 않았습니다. 계약 확정 후 Phase 08에서 구현합니다.",
-  );
+  // TODO(Phase 08): API-REQUIREMENTS.md 9절 계약이 정해지면 실제 전송으로 바꾼다.
+  console.warn("기기 상태 보고 서버가 아직 연결되지 않아 보고를 건너뜁니다.");
+  return {
+    async sendHeartbeat() {},
+    async sendPlayEvents() {},
+  };
 }
