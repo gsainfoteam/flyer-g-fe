@@ -59,7 +59,7 @@ export function StudioPage() {
   const editingId = searchParams.get(EDIT_PARAM);
 
   const notice = useZiggleNotice(editingId ? null : noticeId);
-  const editing = useSubmissionDetail(editingId ?? "");
+  const editing = useSubmissionDetail(editingId);
   const editingSubmission = editingId ? (editing.data ?? null) : null;
   const upload = usePosterUpload();
   const createSubmission = useCreateSubmission();
@@ -190,7 +190,7 @@ export function StudioPage() {
   return (
     <>
       <header className="flex h-(--layout-header-height) shrink-0 items-center gap-4 border-b border-line bg-surface px-4 sm:px-6">
-        <Link to={to.dashboard()} className="shrink-0">
+        <Link to={to.dashboard()} className="flex shrink-0">
           <Logo size="md" />
         </Link>
         <div className="hidden h-7 w-px bg-line sm:block" />

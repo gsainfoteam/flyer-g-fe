@@ -11,7 +11,9 @@ import { cn } from "@/shared/lib/utils";
  * 대체 화면은 조용하다. 자리표시자가 실제 포스터보다 눈에 띄면 화면의 정보
  * 위계가 무너진다. 오류 코드는 절대 띄우지 않는다.
  *
- * 실패 항목을 편성에서 건너뛰는 처리는 플레이어 몫이라 Phase 05에서 다룬다.
+ * 실패는 URL 단위로 기억한다. 같은 자리에서 다음 포스터로 넘어가거나 이미지를
+ * 새로 올리면 다시 시도해야 하기 때문이다. 실패 항목을 편성에서 건너뛰는 처리는
+ * 플레이어 몫이다.
  */
 interface PosterArtworkProps {
   poster: PosterRenderModel;
@@ -28,7 +30,8 @@ export function PosterArtwork({
   className,
   onLoadError,
 }: PosterArtworkProps) {
-  const [imageFailed, setImageFailed] = useState(false);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const imageFailed = failedUrl !== null && failedUrl === poster.posterUrl;
 
   if (poster.posterUrl && !imageFailed) {
     return (
@@ -41,7 +44,7 @@ export function PosterArtwork({
           className,
         )}
         onError={() => {
-          setImageFailed(true);
+          setFailedUrl(poster.posterUrl);
           onLoadError?.(poster.id);
         }}
       />

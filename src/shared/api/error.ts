@@ -98,6 +98,19 @@ export function normalizeApiError(cause: unknown): ApiError {
 }
 
 /**
+ * 다시 요청하면 결과가 달라질 수 있는 오류인가.
+ *
+ * 네트워크·5xx·408·429만 재시도한다. 401/403/404/409/422 같은 4xx는 다시 보내도
+ * 같은 답이 오므로, 재시도하면 오류 표시만 늦어진다. 취소는 사용자가 원한 것이다.
+ */
+export function isRetryableError(error: unknown): boolean {
+  const apiError = normalizeApiError(error);
+  if (apiError.kind === "canceled") return false;
+  if (apiError.status === null) return apiError.kind !== "parse";
+  return apiError.status >= 500 || apiError.status === 408 || apiError.status === 429;
+}
+
+/**
  * 화면에 보여줄 문구. API 오류 모델과 UI 표시를 분리하기 위한 유일한 통로다.
  * 서버 message를 그대로 쓰지 않고 상황별 안내 문구를 우선한다.
  */

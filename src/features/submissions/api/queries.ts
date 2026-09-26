@@ -14,11 +14,15 @@ import { queryKeys } from "@/shared/api/query-keys";
  * 필터, pagination, 캐시 무효화 규칙은 Phase 03에서 확장한다.
  * 여기서는 화면이 fixture 대신 repository를 통해 읽게 하는 최소 경계만 만든다.
  */
-export function useSubmissionSummary(scope: SubmissionListParams["scope"] = "me") {
+export function useSubmissionSummary(
+  scope: SubmissionListParams["scope"] = "me",
+  { enabled = true }: { enabled?: boolean } = {},
+) {
   const { submissions } = useRepositories();
 
   return useQuery({
     queryKey: queryKeys.submissions.summary(scope),
+    enabled,
     queryFn: ({ signal }) => submissions.getSummary({ scope }, signal),
   });
 }
@@ -86,13 +90,17 @@ export function useInfiniteSubmissionViews(
  *
  * 표시 상태 판정에 서버 시각이 필요한데 단건 응답에는 없다. 상세는 화면이
  * 요약과 함께 열리므로, 판정은 호출부가 요약·목록의 서버 시각으로 한다.
+ *
+ * id가 없으면 조회하지 않는다. 새 신청 작성처럼 편집 대상이 없는 화면에서
+ * 빈 id로 `GET /submissions/`를 보내지 않기 위해서다.
  */
-export function useSubmissionDetail(submissionId: string) {
+export function useSubmissionDetail(submissionId: string | null | undefined) {
   const { submissions } = useRepositories();
 
   return useQuery({
-    queryKey: queryKeys.submissions.detail(submissionId),
-    queryFn: ({ signal }) => submissions.getById(submissionId, signal),
+    queryKey: queryKeys.submissions.detail(submissionId ?? ""),
+    enabled: Boolean(submissionId),
+    queryFn: ({ signal }) => submissions.getById(submissionId!, signal),
   });
 }
 

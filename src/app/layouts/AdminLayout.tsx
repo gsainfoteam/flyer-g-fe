@@ -16,7 +16,7 @@ export function AdminLayout() {
   const isReviewer = hasAnyRole(user, ["REVIEWER", "SUPER_ADMIN"]);
 
   // 관리자에게만 필요한 수치라 게시자 세션에서는 조회하지 않는다.
-  const summary = useSubmissionSummary(isReviewer ? "all" : "me");
+  const summary = useSubmissionSummary("all", { enabled: isReviewer });
   const pendingCount = isReviewer ? (summary.data?.pendingReview ?? 0) : 0;
 
   return (

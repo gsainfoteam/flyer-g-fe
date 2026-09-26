@@ -7,6 +7,7 @@ import { createNoticeAdapter } from "@/features/ziggle-notice/api/create-notice-
 import type { AuthAdapter } from "@/features/auth/api/auth-adapter";
 import { AuthProvider } from "@/features/auth/ui/AuthProvider";
 import { createRepositories } from "@/shared/api/create-repositories";
+import { isRetryableError } from "@/shared/api/error";
 import type { Repositories } from "@/shared/api/repositories";
 import { getAppEnv } from "@/shared/config/env";
 import { Toaster } from "@/shared/ui/sonner";
@@ -19,7 +20,8 @@ function createQueryClient(): QueryClient {
     defaultOptions: {
       queries: {
         staleTime: 30_000,
-        retry: 1,
+        retry: (failureCount, error) =>
+          failureCount < 1 && isRetryableError(error),
         refetchOnWindowFocus: false,
       },
       mutations: { retry: 0 },

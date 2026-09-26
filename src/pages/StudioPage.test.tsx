@@ -129,6 +129,25 @@ describe("게시 신청 스튜디오", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("새 신청을 작성할 때는 편집 대상을 조회하지 않는다", async () => {
+    const { repositories } = studioRepositories();
+    const getByIdSpy = vi.spyOn(repositories.submissions, "getById");
+    await openStudio(repositories);
+
+    expect(getByIdSpy).not.toHaveBeenCalled();
+  });
+
+  it("공지 바꾸기는 폼을 제출하지 않는다", async () => {
+    const user = userEvent.setup();
+    const { repositories, createSpy } = studioRepositories();
+    await openStudio(repositories);
+
+    await user.click(screen.getByRole("button", { name: "공지 바꾸기" }));
+
+    expect(screen.queryByText(/포스터 이미지를 올려/)).not.toBeInTheDocument();
+    expect(createSpy).not.toHaveBeenCalled();
+  });
+
   it("포스터 없이 제출하면 오류를 보여주고 신청을 만들지 않는다", async () => {
     const user = userEvent.setup();
     const { repositories, createSpy } = studioRepositories();
