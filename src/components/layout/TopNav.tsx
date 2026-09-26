@@ -56,7 +56,7 @@ export function TopNav({ user, pendingCount = 0 }: TopNavProps) {
       <div className="flex h-(--layout-header-height) items-center gap-4 px-4 sm:gap-8 sm:px-6 lg:px-10">
         <NavLink
           to={to.dashboard()}
-          className="shrink-0 rounded-control focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
+          className="flex shrink-0 rounded-control focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
         >
           <Logo size="md" />
         </NavLink>

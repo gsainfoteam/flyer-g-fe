@@ -4,6 +4,7 @@ import { RETURN_TO_PARAM, safeReturnTo } from "@/app/router/routes";
 import { Logo } from "@/components/common/Logo";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { ErrorState, LoadingState } from "@/shared/components";
+import { SERVICE_OPERATOR } from "@/shared/config/service-info";
 import { Button } from "@/shared/ui/button";
 
 /**
@@ -51,7 +52,7 @@ export function LoginPage() {
           Ziggle 계정으로 시작해요
         </h1>
         <p className="mt-2.5 text-body text-ink-muted">
-          전단지는 Ziggle의 연장 서비스예요. 따로 가입하지 않아도 됩니다.
+          Ziggle에서 쓰던 계정으로 바로 로그인할 수 있어요.
         </p>
 
         {state.status === "error" && (
@@ -79,7 +80,7 @@ export function LoginPage() {
       </div>
 
       <p className="mt-16 text-center text-caption text-ink-subtle">
-        GIST 학사기숙사 디지털 게시판
+        GIST 학사기숙사 로비 TV 게시판 · {SERVICE_OPERATOR}
       </p>
     </Centered>
   );

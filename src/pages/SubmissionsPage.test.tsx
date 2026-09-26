@@ -17,7 +17,9 @@ describe("신청 목록", () => {
     expect(total).toBeGreaterThan(10);
 
     // 첫 페이지는 10건, 더 보기를 누르면 나머지가 이어 붙는다.
-    const listItems = () => screen.getAllByRole("listitem");
+    // 푸터 같은 셸의 목록은 세지 않는다.
+    const listItems = () =>
+      within(screen.getByRole("main")).getAllByRole("listitem");
     expect(listItems()).toHaveLength(10);
 
     await user.click(screen.getByRole("button", { name: /더 보기/ }));
@@ -37,7 +39,7 @@ describe("신청 목록", () => {
     expect(await screen.findByText(/반려 \d+건/)).toBeInTheDocument();
 
     // 반려 탭에는 반려 건만 있다.
-    const rows = screen.getAllByRole("listitem");
+    const rows = within(screen.getByRole("main")).getAllByRole("listitem");
     for (const row of rows) {
       expect(within(row).getByText("반려됨")).toBeInTheDocument();
     }
