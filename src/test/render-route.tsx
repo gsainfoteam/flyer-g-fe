@@ -6,7 +6,10 @@ import { routeTree } from "@/app/router/route-tree";
 import { createMockAuthAdapter } from "@/features/auth/api/mock-auth";
 import type { Role } from "@/features/auth/model/types";
 import { createMemoryHeartbeatLog } from "@/mocks/heartbeats";
-import { createMockRepositories } from "@/mocks/repositories";
+import {
+  createMockRepositories,
+  isMockRepositories,
+} from "@/mocks/repositories";
 import { createFakeUploadService } from "@/features/media-upload/api/fake-upload-service";
 import { createMockNoticeAdapter } from "@/features/ziggle-notice/api/mock-notices";
 import type { AppServices } from "@/app/providers/services-context";
@@ -43,25 +46,30 @@ export function renderRoute(
   });
 
   const clock = createFixedClock(TEST_NOW);
+  const resolvedRepositories =
+    repositories ??
+    createMockRepositories({
+      clock,
+      // 실제 서버처럼 로그인한 역할로 조회 범위와 권한을 판단한다.
+      session: () => authAdapter.peekUser(),
+      heartbeats: createMemoryHeartbeatLog(),
+    });
   const resolvedServices: AppServices = {
     // 업로드는 즉시 끝난다. 진행률 애니메이션을 기다리지 않는다.
     assetUpload: createFakeUploadService({ tickMs: 0, tickCount: 2 }),
-    notices: createMockNoticeAdapter({ clock }),
+    notices: createMockNoticeAdapter({
+      clock,
+      isNoticeInUse: isMockRepositories(resolvedRepositories)
+        ? resolvedRepositories.isNoticeInUse
+        : undefined,
+    }),
     ...services,
   };
 
   const result = render(
     <AppProviders
       services={resolvedServices}
-      repositories={
-        repositories ??
-        createMockRepositories({
-          clock,
-          // 실제 서버처럼 로그인한 역할로 조회 범위와 권한을 판단한다.
-          session: () => authAdapter.peekUser(),
-          heartbeats: createMemoryHeartbeatLog(),
-        })
-      }
+      repositories={resolvedRepositories}
       authAdapter={authAdapter}
       queryClient={queryClient}
     >

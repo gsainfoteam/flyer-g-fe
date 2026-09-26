@@ -97,6 +97,11 @@ function toNotice(seed: NoticeSeed, now: Date): ZiggleNotice {
 export interface MockNoticeOptions {
   clock?: Clock;
   latencyMs?: number;
+  /**
+   * 이 공지에 끝나지 않은 신청이 있는가. mock 신청 저장소와 이으면 실제 서버처럼
+   * 이미 신청한 공지를 409로 막고 목록에서 뺀다. 없으면 모두 신청할 수 있다.
+   */
+  isNoticeInUse?: (noticeId: string) => boolean;
 }
 
 export function createMockNoticeAdapter(
@@ -104,6 +109,7 @@ export function createMockNoticeAdapter(
 ): ZiggleNoticeAdapter {
   const clock = options.clock ?? systemClock;
   const latencyMs = options.latencyMs ?? 0;
+  const isNoticeInUse = options.isNoticeInUse ?? (() => false);
 
   const settle = async (signal?: AbortSignal) => {
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
@@ -127,13 +133,25 @@ export function createMockNoticeAdapter(
           requestId: "mock-request",
         });
       }
+      if (isNoticeInUse(noticeId)) {
+        throw new ApiError({
+          kind: "http",
+          code: "ALREADY_SUBMITTED",
+          message: `이미 신청한 공지입니다: ${noticeId}`,
+          status: 409,
+          requestId: "mock-request",
+        });
+      }
       return toNotice(seed, clock.now());
     },
 
     async listSubmittable(signal) {
       await settle(signal);
       const now = clock.now();
-      return SEEDS.map((seed) => toNotice(seed, now));
+      // 이미 신청한 공지는 고를 수 없으니 목록에서 뺀다. (API-REQUIREMENTS.md 3.2)
+      return SEEDS.filter((seed) => !isNoticeInUse(seed.id)).map((seed) =>
+        toNotice(seed, now),
+      );
     },
   });
 }

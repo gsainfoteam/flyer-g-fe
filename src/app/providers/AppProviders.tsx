@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { createAuthAdapter } from "@/features/auth/api/create-auth-adapter";
 import { isMockAuthAdapter } from "@/features/auth/api/mock-auth";
+import { isMockRepositories } from "@/mocks/repositories";
 import { createAssetUploadService } from "@/features/media-upload/api/create-asset-upload-service";
 import { createNoticeAdapter } from "@/features/ziggle-notice/api/create-notice-adapter";
 import type { AuthAdapter } from "@/features/auth/api/auth-adapter";
@@ -62,7 +63,13 @@ export function AppProviders({
     () =>
       services ?? {
         assetUpload: createAssetUploadService(getAppEnv()),
-        notices: createNoticeAdapter(getAppEnv(), { latencyMs: 200 }),
+        notices: createNoticeAdapter(getAppEnv(), {
+          latencyMs: 200,
+          // mock끼리 이어서 이미 신청한 공지를 실제 서버처럼 막는다.
+          isNoticeInUse: isMockRepositories(repos)
+            ? repos.isNoticeInUse
+            : undefined,
+        }),
       },
   );
 

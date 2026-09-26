@@ -13,6 +13,9 @@ import type { ImageValidationCode, ValidateImageFileOptions } from "./validate-i
  *
  * 업로드가 실패해도 파일 선택은 유지한다. 사용자가 다시 고르지 않고 재시도할 수
  * 있어야 한다. (명세 FR-SUB-01 인수 조건)
+ *
+ * 이미 올린 포스터가 있을 때 새 파일을 고르면, 새 파일이 검증을 통과한 뒤에야
+ * 바꾼다. 형식이 틀린 파일을 잘못 고른 것만으로 멀쩡히 올린 포스터를 잃으면 안 된다.
  */
 export type PosterUploadStatus =
   | "idle"
@@ -55,6 +58,11 @@ export interface UsePosterUploadOptions {
 export function usePosterUpload(options: UsePosterUploadOptions = {}) {
   const { assetUpload } = useAppServices();
   const [state, setState] = useState<PosterUploadState>(IDLE_STATE);
+  /** 이벤트 처리 중에 지금 상태를 읽는다. 렌더 뒤에 맞춰진다. */
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const previewUrlRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -135,25 +143,39 @@ export function usePosterUpload(options: UsePosterUploadOptions = {}) {
     async (file: File) => {
       const selection = selectionRef.current + 1;
       selectionRef.current = selection;
-      abortRef.current?.abort();
-      releasePreview();
 
-      setState({ ...IDLE_STATE, status: "validating", file });
+      // 올려 둔 포스터는 새 파일이 통과할 때까지 그대로 둔다.
+      const kept =
+        stateRef.current.status === "uploaded" ? stateRef.current : null;
+      if (kept) {
+        setState({ ...kept, errorMessage: null, invalidCode: null });
+      } else {
+        abortRef.current?.abort();
+        releasePreview();
+        setState({ ...IDLE_STATE, status: "validating", file });
+      }
 
       const result = await validateImageFile(file, validationOptions);
       if (selectionRef.current !== selection) return;
 
       if (!result.ok) {
-        setState({
-          ...IDLE_STATE,
-          status: "invalid",
-          file,
-          errorMessage: result.message,
-          invalidCode: result.code,
-        });
+        setState(
+          kept
+            ? // 기존 포스터를 쓰면서 새 파일이 왜 안 됐는지만 알린다.
+              { ...kept, errorMessage: result.message, invalidCode: result.code }
+            : {
+                ...IDLE_STATE,
+                status: "invalid",
+                file,
+                errorMessage: result.message,
+                invalidCode: result.code,
+              },
+        );
         return;
       }
 
+      abortRef.current?.abort();
+      releasePreview();
       const previewUrl = URL.createObjectURL(file);
       previewUrlRef.current = previewUrl;
 
