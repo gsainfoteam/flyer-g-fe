@@ -35,10 +35,10 @@ describe("검토 상세", () => {
     expect(original.getAttribute("rel")).toContain("noreferrer");
   });
 
-  it("승인하면 서버 응답 상태가 화면에 반영된다", async () => {
+  it("승인하면 서버가 정한 상태로 바뀌고 다음 대기 건으로 넘어간다", async () => {
     const user = userEvent.setup();
     const repositories = reviewRepositories();
-    renderRoute(`/reviews/${PENDING_ID}`, {
+    const { router } = renderRoute(`/reviews/${PENDING_ID}`, {
       role: "REVIEWER",
       repositories,
     });
@@ -53,7 +53,10 @@ describe("검토 상세", () => {
       // 시작 시각이 미래(2일 뒤)라 서버가 SCHEDULED로 정한다.
       expect(detail.status).toBe("SCHEDULED");
     });
-    expect(await screen.findByText("예약됨")).toBeInTheDocument();
+    // 가장 오래 기다린 다음 건(fixture notice-005)으로 이어진다.
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/reviews/notice-005"),
+    );
   });
 
   it("반려는 분류와 사유 없이 실행되지 않는다", async () => {
@@ -86,11 +89,13 @@ describe("검토 상세", () => {
       expect(detail.status).toBe("REJECTED");
     });
 
-    // 반려 사유가 처리 이력에 나타난다.
-    expect(await screen.findByText(/반려 · 이수현/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/포스터 마감일이 공지와 다릅니다/),
-    ).toBeInTheDocument();
+    // 반려 사유가 처리 이력에 남는다.
+    const history = await repositories.reviews.listHistory(PENDING_ID);
+    expect(history.at(-1)).toMatchObject({
+      type: "REJECTED",
+      actorName: "이수현",
+      comment: "포스터 마감일이 공지와 다릅니다.",
+    });
   });
 
   it("다른 관리자가 먼저 처리한 409에서 성공을 표시하지 않는다", async () => {
@@ -114,13 +119,18 @@ describe("검토 상세", () => {
     const dialog = await screen.findByRole("dialog");
     await user.click(within(dialog).getByRole("button", { name: "승인" }));
 
-    // 실패를 알리고 dialog는 성공한 것처럼 닫히지 않는다.
+    // 성공처럼 보이지 않게 실패를 알리고, 같은 409를 반복하지 않게 닫는다.
     expect(await screen.findByText("승인하지 못했어요")).toBeInTheDocument();
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(
+      screen.getByText(/다른 관리자가 먼저 처리했어요/),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
-    // 서버 상태는 먼저 처리한 결정이 유지된다.
-    const detail = await repositories.submissions.getById(PENDING_ID);
-    expect(detail.status).not.toBe("PENDING_REVIEW");
+    // 화면이 최신 상태로 바뀌어 더는 승인 버튼이 없다.
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "승인" })).toBeNull(),
+    );
+    expect(screen.getAllByText("예약됨").length).toBeGreaterThan(0);
   });
 
   it("게시 중인 건은 사유와 함께 중단할 수 있다", async () => {
@@ -130,7 +140,7 @@ describe("검토 상세", () => {
     renderRoute("/reviews/notice-001", { role: "REVIEWER", repositories });
 
     await user.click(
-      await screen.findByRole("button", { name: "게시 중단" }),
+      await screen.findByRole("button", { name: "게시 중단하기" }),
     );
     const dialog = await screen.findByRole("dialog");
     const confirm = within(dialog).getByRole("button", { name: "게시 중단" });
@@ -163,4 +173,30 @@ describe("검토 상세", () => {
     const label = await screen.findByText("대상 위치");
     expect(label.nextElementSibling).toHaveTextContent("학사기숙사 A동");
   });
+
+  it("기타로 반려하려면 무엇이 문제인지 10자 이상 적어야 한다", async () => {
+    const user = userEvent.setup();
+    renderRoute(`/reviews/${PENDING_ID}`, { role: "REVIEWER" });
+
+    await user.click(await screen.findByRole("button", { name: "반려" }));
+    const dialog = await screen.findByRole("dialog");
+    const confirm = within(dialog).getByRole("button", { name: "반려" });
+
+    await user.click(within(dialog).getByRole("combobox"));
+    await user.click(await screen.findByRole("option", { name: "기타" }));
+    await user.type(within(dialog).getByRole("textbox"), "별로예요");
+    expect(confirm).toBeDisabled();
+
+    await user.type(within(dialog).getByRole("textbox"), " 포스터 글씨가 안 보여요");
+    expect(confirm).toBeEnabled();
+  });
+
+  it("승인 대기가 아닌 건에서는 전체 신청 목록으로 돌아간다", async () => {
+    renderRoute("/reviews/notice-001", { role: "REVIEWER" });
+
+    expect(
+      await screen.findByRole("link", { name: /전체 신청으로/ }),
+    ).toHaveAttribute("href", "/submissions?scope=all");
+  });
 });
+

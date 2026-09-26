@@ -106,6 +106,32 @@ export function getAllowedTransitions(
   return ALLOWED_TRANSITIONS[from];
 }
 
+/*
+ * 화면이 버튼을 보여줄지와 mock이 요청을 받아 줄지를 같은 전이표로 판단한다.
+ * 규칙을 화면마다 목록으로 따로 적으면 서로 어긋난다. 넘기는 상태는 저장된
+ * 값이 아니라 서버 시각 기준 실제 상태다 — 기간이 끝난 "게시 중"은 이미 종료다.
+ */
+
+/** 게시자가 고쳐서 (다시) 검토에 낼 수 있다: 작성 중, 반려됨, 게시 중단 */
+export function canSubmitterEdit(status: SubmissionStatus): boolean {
+  return canTransition(status, "PENDING_REVIEW");
+}
+
+/** 게시자가 시작 전에 취소할 수 있다: 승인 대기, 반려됨, 예약됨 */
+export function canSubmitterCancel(status: SubmissionStatus): boolean {
+  return canTransition(status, "CANCELED");
+}
+
+/** 관리자가 승인·반려를 결정할 수 있다: 승인 대기 */
+export function canReviewerDecide(status: SubmissionStatus): boolean {
+  return canTransition(status, "APPROVED") && canTransition(status, "REJECTED");
+}
+
+/** 관리자가 게시를 중단할 수 있다: 승인됨, 예약됨, 게시 중 */
+export function canReviewerSuspend(status: SubmissionStatus): boolean {
+  return canTransition(status, "SUSPENDED");
+}
+
 /**
  * 상태를 한 문장으로 설명한다.
  *

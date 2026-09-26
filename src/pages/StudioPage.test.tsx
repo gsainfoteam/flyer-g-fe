@@ -329,8 +329,8 @@ describe("수정 모드 (명세 FR-DASH-02)", () => {
     });
   });
 
-  it("제출 전 상태가 아니면 수정을 막는다", async () => {
-    renderRoute("/studio?submissionId=notice-903", {
+  it("게시 중인 신청은 수정을 막는다", async () => {
+    renderRoute("/studio?submissionId=notice-001", {
       role: "SUBMITTER",
       services: { assetUpload: uploadService() },
     });

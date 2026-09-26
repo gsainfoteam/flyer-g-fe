@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { to } from "@/app/router/routes";
+import { PosterThumb } from "@/components/common/PosterThumb";
 import { ApprovalPanel } from "@/components/dashboard/ApprovalPanel";
 import { RecentContentSection } from "@/components/dashboard/RecentContentSection";
 import { DeviceStatusPanel } from "@/components/dashboard/DeviceStatusPanel";
@@ -12,6 +13,7 @@ import {
   useSubmissionSummary,
   useSubmissionViews,
 } from "@/features/submissions/api/queries";
+import { fromSubmissionView } from "@/entities/poster";
 import type { SubmissionView } from "@/entities/submission/model/types";
 import { EmptyState, PageState, Panel } from "@/shared/components";
 import {
@@ -25,8 +27,8 @@ export function DashboardPage() {
   const user = useSessionUser();
   const isReviewer = hasAnyRole(user, ["REVIEWER", "SUPER_ADMIN"]);
 
-  const summary = useSubmissionSummary(isReviewer ? "all" : "me");
-  const list = useSubmissionViews({ limit: 12 });
+  const scope = isReviewer ? "all" : "me";
+  const summary = useSubmissionSummary(scope);
   // TV에 걸린 것은 내 신청 목록에서 고르지 않고 따로 조회한다. 관리자에게는
   // 전체, 게시자에게는 본인 것이 걸려 있는지가 궁금한 것이다.
   const published = useSubmissionViews({
@@ -44,31 +46,26 @@ export function DashboardPage() {
 
   const isLoading =
     summary.isPending ||
-    list.isPending ||
     published.isPending ||
     (isReviewer && pending.isPending);
   const error =
-    summary.error ??
-    list.error ??
-    published.error ??
-    (isReviewer ? pending.error : null);
+    summary.error ?? published.error ?? (isReviewer ? pending.error : null);
 
   const retry = () => {
     void summary.refetch();
-    void list.refetch();
     void published.refetch();
     if (isReviewer) void pending.refetch();
   };
 
-  const now = summary.data?.calculatedAt ?? new Date();
   const pendingItems = pending.data?.items ?? [];
-  const oldestWait = pendingItems[0]
-    ? formatElapsed(pendingItems[0].createdAt, now)
-    : null;
+  const oldest = pendingItems[0];
 
-  const needsFix = (list.data?.items ?? []).filter(
-    (item) => item.status === "REJECTED" || item.status === "SUSPENDED",
-  ).length;
+  /** 게시자가 고쳐서 다시 내야 하는 신청. 서버 요약의 상태별 건수로 센다. */
+  const needsFix = summary.data
+    ? summary.data.byStatus.REJECTED + summary.data.byStatus.SUSPENDED
+    : 0;
+  const listHref = (groupKey?: string) =>
+    to.submissions(groupKey, isReviewer ? { scope: "all" } : undefined);
 
   return (
     <PageState
@@ -77,15 +74,12 @@ export function DashboardPage() {
       onRetry={retry}
       loadingRows={5}
     >
-      {summary.data &&
-        list.data &&
-        published.data &&
-        (!isReviewer || pending.data) && (
+      {summary.data && published.data && (!isReviewer || pending.data) && (
         <>
           <div className="flex flex-wrap items-end gap-6">
             <div className="min-w-0 flex-1">
               <p className="text-label text-ink-muted">
-                {formatSeoulDateTime(now)} · 서버 시각 기준
+                {formatSeoulDateTime(summary.data.calculatedAt)} · 서버 시각 기준
                 {locationLabel && <> · {locationLabel}</>}
               </p>
               <h1 className="mt-1.5 text-display text-ink">
@@ -96,10 +90,16 @@ export function DashboardPage() {
                       <span className="text-accent">
                         {summary.data.pendingReview}건
                       </span>
-                      {oldestWait && (
+                      {oldest && (
                         <>
                           , 가장 오래된 건{" "}
-                          <span className="text-accent">{oldestWait}</span> 됐어요
+                          <span className="text-accent">
+                            {formatElapsed(
+                              oldest.submittedAt ?? oldest.createdAt,
+                              summary.data.calculatedAt,
+                            )}
+                          </span>{" "}
+                          됐어요
                         </>
                       )}
                     </>
@@ -117,9 +117,12 @@ export function DashboardPage() {
               </h1>
             </div>
             {isReviewer ? (
-              <Button asChild>
-                <Link to={to.reviews()}>순서대로 검토 시작</Link>
-              </Button>
+              // 가장 오래 기다린 건부터 연다. 결정하면 다음 건으로 이어진다.
+              oldest && (
+                <Button asChild>
+                  <Link to={to.reviewDetail(oldest.id)}>순서대로 검토 시작</Link>
+                </Button>
+              )
             ) : (
               <Button asChild>
                 <Link to={to.studio()}>새 게시 신청</Link>
@@ -133,29 +136,27 @@ export function DashboardPage() {
                 label: "승인 대기",
                 value: summary.data.pendingReview,
                 emphasis: isReviewer,
-                href: isReviewer ? to.reviews() : to.submissions("pending"),
+                href: isReviewer ? to.reviews() : listHref("pending"),
               },
               {
                 label: "게시 중",
                 value: summary.data.published,
-                href: to.submissions("published"),
+                href: listHref("published"),
               },
               {
                 label: "예약됨",
                 value: summary.data.scheduled,
-                href: to.submissions("approved"),
+                href: listHref("approved"),
               },
               {
                 label: "종료됨",
                 value: summary.data.ended,
-                href: to.submissions("ended"),
+                href: listHref("ended"),
               },
             ]}
             trailing={
               <Button variant="link" size="xs" asChild>
-                <Link to={to.submissions()}>
-                  전체 {summary.data.total}건 →
-                </Link>
+                <Link to={listHref()}>전체 {summary.data.total}건 →</Link>
               </Button>
             }
           />
@@ -165,10 +166,10 @@ export function DashboardPage() {
               <ApprovalPanel
                 submissions={pendingItems}
                 totalCount={summary.data.pendingReview}
-                now={now}
+                now={summary.data.calculatedAt}
               />
             ) : (
-              <RecentContentSection submissions={list.data.items} />
+              <RecentContentSection />
             )}
 
             <div className="flex min-w-0 flex-col gap-5">
@@ -189,7 +190,7 @@ export function DashboardPage() {
             </div>
           </div>
 
-          {isReviewer && <RecentContentSection submissions={list.data.items} />}
+          {isReviewer && <RecentContentSection />}
         </>
       )}
     </PageState>
@@ -198,22 +199,14 @@ export function DashboardPage() {
 
 function PublishedMini({ submissions }: { submissions: SubmissionView[] }) {
   if (submissions.length === 0) {
-    return <EmptyState title="지금 걸린 콘텐츠가 없어요" className="py-2" />;
+    return <EmptyState title="지금 TV에 걸린 포스터가 없어요" className="py-2" />;
   }
 
   return (
     <ul className="flex flex-col gap-3.5">
       {submissions.map((submission) => (
         <li key={submission.id} className="flex items-center gap-3">
-          <div className="aspect-3/4 w-[34px] shrink-0 overflow-hidden rounded-[6px] bg-surface-muted">
-            {submission.posterUrl && (
-              <img
-                src={submission.posterUrl}
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            )}
-          </div>
+          <PosterThumb poster={fromSubmissionView(submission)} size="sm" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-label font-bold text-ink">
               {submission.title}

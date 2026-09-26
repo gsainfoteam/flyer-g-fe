@@ -39,6 +39,12 @@ export interface SignageSubmissionDto {
   targetGroupIds: string[];
   createdAt: string;
   updatedAt: string;
+  /**
+   * 마지막으로 검토에 낸 시각. 한 번도 내지 않은 DRAFT는 null이다. 반려 뒤 다시
+   * 내면 그 시각으로 바뀐다. 관리자 목록의 "며칠째 기다림"은 이 값으로 센다 —
+   * 초안을 만든 시각으로 세면 오래 고민한 신청이 오래 기다린 것처럼 보인다.
+   */
+  submittedAt: string | null;
   version: number;
 }
 
@@ -46,12 +52,13 @@ export interface SignageSubmissionDto {
 export interface SignageSubmission
   extends Omit<
     SignageSubmissionDto,
-    "startAt" | "endAt" | "createdAt" | "updatedAt"
+    "startAt" | "endAt" | "createdAt" | "updatedAt" | "submittedAt"
   > {
   startAt: Date;
   endAt: Date;
   createdAt: Date;
   updatedAt: Date;
+  submittedAt: Date | null;
 }
 
 /**
@@ -87,8 +94,11 @@ export interface SubmissionView {
   status: SubmissionStatus;
   startAt: Date;
   endAt: Date;
-  /** 제출 시각. 관리자 목록에서 얼마나 기다렸는지 계산하는 데 쓴다. */
   createdAt: Date;
+  /** 마지막으로 검토에 낸 시각. 관리자 목록의 대기 시간은 이 값으로 센다. */
+  submittedAt: Date | null;
+  /** 신청한 사람. 관리자가 남의 신청을 볼 때 게시자 행동을 숨기는 데 쓴다. */
+  requesterId: string;
   posterUrl: string;
   detailUrl: string;
   location: string | null;
@@ -102,11 +112,18 @@ export interface SubmissionView {
 export interface SubmissionSummary {
   /** 통계의 기준 시각. 명세 FR-DASH-01 */
   calculatedAt: Date;
+  /** 보관(ARCHIVED)을 뺀 전체 */
   total: number;
   published: number;
   scheduled: number;
   pendingReview: number;
   ended: number;
+  /**
+   * 서버 시각 기준 실제 상태별 건수. 목록 탭의 건수와 "고쳐야 할 신청" 같은
+   * 묶음 숫자를 여기서 낸다. 화면이 불러온 한 페이지로 세면 틀린다.
+   * (`API-REQUIREMENTS.md` 7.1)
+   */
+  byStatus: Record<SubmissionStatus, number>;
 }
 
 export interface SubmissionListParams {

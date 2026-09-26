@@ -4,7 +4,7 @@ import type { SignageSubmissionExpanded } from "@/entities/submission";
 import { normalizeApiError } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
 import { queryKeys } from "@/shared/api/query-keys";
-import { createIdempotencyKey } from "../../create/model/idempotency";
+import { useIdempotencyKey } from "@/shared/lib/idempotency";
 
 /**
  * 시작 전 신청 취소 (명세 FR-DASH-02).
@@ -16,15 +16,21 @@ import { createIdempotencyKey } from "../../create/model/idempotency";
 export function useCancelSubmission(submissionId: string) {
   const { submissions } = useRepositories();
   const queryClient = useQueryClient();
+  // 취소 한 번에 key 하나. 응답을 못 받아 다시 눌러도 같은 요청으로 본다.
+  const key = useIdempotencyKey();
 
-  return useMutation<SignageSubmissionExpanded, ApiError, { version: number }>({
+  const mutation = useMutation<
+    SignageSubmissionExpanded,
+    ApiError,
+    { version: number }
+  >({
     // version은 화면이 본 신청의 버전이다. 그사이 바뀌었으면 서버가 409를 준다.
     mutationFn: async ({ version }) => {
       try {
         return await submissions.cancel(
           submissionId,
           { version },
-          { idempotencyKey: createIdempotencyKey() },
+          { idempotencyKey: key.current() },
         );
       } catch (cause) {
         throw normalizeApiError(cause);
@@ -38,6 +44,10 @@ export function useCancelSubmission(submissionId: string) {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.submissions.all(),
       });
+      // 승인 대기에서 빠지므로 관리자 목록과 배지도 다시 센다.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.reviews.all() });
     },
   });
+
+  return { ...mutation, startAttempt: key.renew };
 }

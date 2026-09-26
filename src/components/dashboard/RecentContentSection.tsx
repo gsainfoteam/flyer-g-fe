@@ -1,38 +1,43 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router";
 import { to } from "@/app/router/routes";
-import { getStatusSentence, groupOfStatus } from "@/entities/submission";
-import type { SubmissionStatus } from "@/entities/submission";
+import {
+  STATUS_GROUPS,
+  countByStatusGroup,
+  findStatusGroup,
+  getStatusSentence,
+} from "@/entities/submission";
 import type { SubmissionView } from "@/entities/submission/model/types";
-import { EmptyState, Panel, StatusBadge } from "@/shared/components";
+import {
+  useSubmissionSummary,
+  useSubmissionViews,
+} from "@/features/submissions/api/queries";
+import { StatusGroupTabs } from "@/features/submissions/list/ui/StatusGroupTabs";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  Panel,
+  StatusBadge,
+} from "@/shared/components";
 import {
   formatSeoulDateTime,
   formatSeoulShortDate,
 } from "@/shared/lib/datetime";
-import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { SubmissionRow } from "../common/SubmissionRow";
 
 /**
- * 내 신청 목록.
+ * 내 신청 미리보기 (대시보드).
  *
  * 각 행은 상태 배지와 함께 "지금 어떤 상황인지" 한 문장을 보여준다. 배지 색을
  * 구분하지 못해도 무엇을 해야 하는지 알 수 있어야 한다.
  *
- * 대시보드용 미리보기라 최근 몇 건만 보여주고, 전체는 목록 페이지가 맡는다.
+ * 탭과 건수는 목록 화면과 같다(`StatusGroupTabs`). 탭을 고르면 그 상태의 신청을
+ * 서버에서 몇 건만 받아 온다. 건수는 서버 요약에서 온다.
  */
-type FilterKey = "ALL" | SubmissionStatus;
-
-const filterTabs: { key: FilterKey; label: string }[] = [
-  { key: "ALL", label: "전체" },
-  { key: "PUBLISHED", label: "게시 중" },
-  { key: "SCHEDULED", label: "예약됨" },
-  { key: "PENDING_REVIEW", label: "승인 대기" },
-  { key: "REJECTED", label: "반려됨" },
-  { key: "ENDED", label: "종료됨" },
-];
-
 const PREVIEW_COUNT = 6;
+const PANEL_ID = "recent-submissions";
 
 function sentenceFor(submission: SubmissionView): string {
   return getStatusSentence({
@@ -42,107 +47,86 @@ function sentenceFor(submission: SubmissionView): string {
   });
 }
 
-interface RecentContentSectionProps {
-  submissions: SubmissionView[];
-}
+export function RecentContentSection() {
+  const [groupKey, setGroupKey] = useState(STATUS_GROUPS[0]!.key);
+  const group = findStatusGroup(groupKey);
 
-export function RecentContentSection({ submissions }: RecentContentSectionProps) {
-  const [filter, setFilter] = useState<FilterKey>("ALL");
-
-  const counts = useMemo(() => {
-    const result = new Map<FilterKey, number>([["ALL", submissions.length]]);
-    for (const submission of submissions) {
-      result.set(submission.status, (result.get(submission.status) ?? 0) + 1);
-    }
-    return result;
-  }, [submissions]);
-
-  const filtered = useMemo(
-    () =>
-      filter === "ALL"
-        ? submissions
-        : submissions.filter((submission) => submission.status === filter),
-    [submissions, filter],
+  const summary = useSubmissionSummary("me");
+  const list = useSubmissionViews(
+    { statuses: group.statuses, scope: "me", limit: PREVIEW_COUNT },
+    { keepPrevious: true },
   );
+  const counts = summary.data
+    ? countByStatusGroup(summary.data.byStatus)
+    : undefined;
+  const groupCount = counts?.[group.key];
 
   return (
     <Panel
       title="내 신청"
       action={
         <Button variant="link" size="xs" asChild>
-          <Link to={to.studio()}>새 신청 →</Link>
+          <Link to={to.studio()}>새 게시 신청 →</Link>
         </Button>
       }
       flush
     >
+      <StatusGroupTabs
+        activeKey={group.key}
+        onSelect={setGroupKey}
+        counts={counts}
+        panelId={PANEL_ID}
+        className="mb-1.5 px-3"
+      />
+
       <div
-        role="tablist"
-        aria-label="상태별 보기"
-        className="mb-1.5 flex gap-5 overflow-x-auto border-b border-line px-3"
+        id={PANEL_ID}
+        role="tabpanel"
+        aria-labelledby={`status-tab-${group.key}`}
       >
-        {filterTabs.map((tab) => {
-          const active = filter === tab.key;
-          const count = counts.get(tab.key) ?? 0;
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setFilter(tab.key)}
-              className={cn(
-                "relative shrink-0 pt-1.5 pb-2.5 text-label transition-colors duration-150",
-                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-                "after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-pill",
-                active
-                  ? "font-semibold text-ink after:bg-ink"
-                  : "font-medium text-ink-muted after:bg-transparent hover:text-ink",
-              )}
-            >
-              {tab.label}
-              <span
-                className={cn(
-                  "ml-1.5 tabular-nums",
-                  active ? "text-ink-muted" : "text-ink-subtle",
-                )}
-              >
-                {count}
-              </span>
-            </button>
-          );
-        })}
+        {list.isPending ? (
+          <LoadingState rows={3} className="px-3" />
+        ) : list.error ? (
+          <ErrorState
+            error={list.error}
+            onRetry={() => void list.refetch()}
+            className="px-3"
+          />
+        ) : list.data.items.length === 0 ? (
+          <EmptyState
+            title={
+              group.statuses.length === 0
+                ? "아직 신청이 없어요"
+                : `${group.label} 상태의 신청이 없어요`
+            }
+            description={
+              group.statuses.length === 0
+                ? "Ziggle 공지를 연결해 첫 게시를 신청해 보세요."
+                : "다른 상태를 눌러 보세요."
+            }
+            className="px-3"
+          />
+        ) : (
+          // 구분선은 li에 그린다. rounded가 걸린 행 안쪽에 그리면 모서리를 따라 휜다.
+          <ul className="flex flex-col divide-y divide-line">
+            {list.data.items.map((submission) => (
+              <SubmissionRow
+                key={submission.id}
+                submission={submission}
+                sentence={sentenceFor(submission)}
+                href={to.submissionDetail(submission.id)}
+                trailing={<StatusBadge status={submission.status} />}
+              />
+            ))}
+          </ul>
+        )}
       </div>
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          title="해당 상태의 신청이 없어요"
-          description="다른 상태를 눌러 보세요."
-          className="px-3"
-        />
-      ) : (
-        // 구분선은 li에 그린다. rounded가 걸린 행 안쪽에 그리면 모서리를 따라 휜다.
-        <ul className="flex flex-col divide-y divide-line">
-          {filtered.slice(0, PREVIEW_COUNT).map((submission) => (
-            <SubmissionRow
-              key={submission.id}
-              submission={submission}
-              sentence={sentenceFor(submission)}
-              href={to.submissionDetail(submission.id)}
-              trailing={<StatusBadge status={submission.status} />}
-            />
-          ))}
-        </ul>
-      )}
-
-      {filtered.length > PREVIEW_COUNT && (
+      {list.data && list.data.totalCount > PREVIEW_COUNT && (
         <div className="border-t border-line px-3 pt-2 pb-1">
           <Button variant="link" size="xs" asChild>
-            <Link
-              to={to.submissions(
-                filter === "ALL" ? undefined : groupOfStatus(filter).key,
-              )}
-            >
-              전체 {filtered.length}건 보기 →
+            <Link to={to.submissions(group.key)}>
+              전체 {groupCount ?? list.data.totalCount}건 보기 →
             </Link>
           </Button>
         </div>

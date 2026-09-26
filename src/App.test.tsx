@@ -49,7 +49,9 @@ describe("대시보드", () => {
     renderRoute("/", { role: "SUBMITTER" });
     await screen.findByRole("heading", { name: "내 신청" });
 
-    expect(screen.getAllByText(/TV에 나오고 있어요/).length).toBeGreaterThan(0);
+    expect(
+      (await screen.findAllByText(/TV에 나오고 있어요/)).length,
+    ).toBeGreaterThan(0);
   });
 
   it("역할에 따라 첫 문장이 달라진다", async () => {

@@ -20,10 +20,16 @@ export const to = {
   studio: () => "/studio",
   studioEdit: (submissionId: string) =>
     `/studio?submissionId=${encodeURIComponent(submissionId)}`,
-  submissions: (statusGroupKey?: string) =>
-    statusGroupKey && statusGroupKey !== "all"
-      ? `/submissions?status=${encodeURIComponent(statusGroupKey)}`
-      : "/submissions",
+  /** `scope: "all"`은 관리자의 전체 신청 목록이다. 기본은 내 신청. */
+  submissions: (statusGroupKey?: string, options?: { scope?: "all" }) => {
+    const params = new URLSearchParams();
+    if (options?.scope === "all") params.set("scope", "all");
+    if (statusGroupKey && statusGroupKey !== "all") {
+      params.set("status", statusGroupKey);
+    }
+    const query = params.toString();
+    return query ? `/submissions?${query}` : "/submissions";
+  },
   submissionDetail: (submissionId: string) =>
     `/submissions/${encodeURIComponent(submissionId)}`,
   reviews: () => "/reviews",

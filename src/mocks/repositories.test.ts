@@ -128,7 +128,7 @@ describe("mock repositories", () => {
     expect(["SCHEDULED", "PUBLISHED"]).toContain(approved.status);
 
     const history = await repos.reviews.listHistory(target.id);
-    expect(history.at(-1)?.decision).toBe("APPROVED");
+    expect(history.at(-1)?.type).toBe("APPROVED");
   });
 
   it("이미 처리된 건을 다시 승인하면 409로 막는다", async () => {

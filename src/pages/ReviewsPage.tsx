@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router";
+import { useMemo } from "react";
+import { Link, useSearchParams } from "react-router";
 import { to } from "@/app/router/routes";
 import { SubmissionRow } from "@/components/common/SubmissionRow";
 import { getStatusSentence } from "@/entities/submission";
-import { usePendingReviews } from "@/features/reviews/api/queries";
+import type { SubmissionView } from "@/entities/submission/model/types";
+import { useInfinitePendingReviews } from "@/features/reviews/api/queries";
 import { EmptyState, PageState, Panel } from "@/shared/components";
 import { formatElapsed, formatSeoulDateTime } from "@/shared/lib/datetime";
 import { Button } from "@/shared/ui/button";
@@ -14,27 +15,38 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
+import { Spinner } from "@/shared/ui/spinner";
 
 /**
  * 승인 대기 목록 (명세 FR-REV-01).
  *
- * 오래 기다린 순이 기본이다. 관리자가 먼저 처리해야 하는 건이 위로 온다.
+ * 오래 기다린 순이 기본이다. 기다린 시간은 초안을 만든 때가 아니라 마지막으로
+ * 검토에 낸 때부터 센다.
  *
- * 조직·카테고리 필터는 현재 클라이언트에서 거른다. 대기 목록은 수십 건 규모라
- * 전체를 받아 거르는 편이 단순하고, 서버 필터 식별자 체계가 아직 미확정이다.
- * 규모가 커지면 서버 필터로 옮긴다. (`API-REQUIREMENTS.md` 6.1)
+ * 조직·카테고리 필터는 URL에 남겨 새로고침·공유에도 유지한다. 필터는 불러온
+ * 건 안에서 거른다 — 대기 목록은 수십 건 규모이고 서버 필터의 식별자 체계가
+ * 아직 미확정이다. 더 불러올 것이 남아 있으면 그 사실을 함께 알린다.
+ * (`API-REQUIREMENTS.md` 6.1)
  */
 const ALL = "__all__";
+const ORGANIZATION_PARAM = "organization";
+const CATEGORY_PARAM = "category";
+/** 조직명이 빈 신청(개인 작성). Select는 빈 문자열 값을 쓸 수 없다. */
+const NO_ORGANIZATION = "__none__";
+
+const organizationKey = (item: SubmissionView) =>
+  item.organizationName || NO_ORGANIZATION;
 
 export function ReviewsPage() {
-  const pending = usePendingReviews(100);
-  const [organization, setOrganization] = useState(ALL);
-  const [category, setCategory] = useState(ALL);
+  const pending = useInfinitePendingReviews();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const organization = searchParams.get(ORGANIZATION_PARAM) ?? ALL;
+  const category = searchParams.get(CATEGORY_PARAM) ?? ALL;
 
   const items = useMemo(() => pending.data?.items ?? [], [pending.data]);
 
   const organizations = useMemo(
-    () => [...new Set(items.map((item) => item.organizationName))].sort(),
+    () => [...new Set(items.map(organizationKey))].sort(),
     [items],
   );
   const categories = useMemo(
@@ -44,12 +56,23 @@ export function ReviewsPage() {
 
   const filtered = items.filter(
     (item) =>
-      (organization === ALL || item.organizationName === organization) &&
+      (organization === ALL || organizationKey(item) === organization) &&
       (category === ALL || item.categoryName === category),
   );
 
-  const now = pending.data?.serverTime ?? new Date();
   const isFiltered = organization !== ALL || category !== ALL;
+
+  const setFilter = (param: string, value: string) => {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (value === ALL) next.delete(param);
+        else next.set(param, value);
+        return next;
+      },
+      { replace: true },
+    );
+  };
 
   return (
     <PageState
@@ -72,29 +95,35 @@ export function ReviewsPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Select value={organization} onValueChange={setOrganization}>
+              <Select
+                value={organization}
+                onValueChange={(value) => setFilter(ORGANIZATION_PARAM, value)}
+              >
                 <SelectTrigger
                   size="sm"
                   aria-label="조직 필터"
-                  className="min-w-[132px]"
+                  className="min-w-33"
                 >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL}>모든 조직</SelectItem>
-                  {organizations.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
+                  {organizations.map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {key === NO_ORGANIZATION ? "조직 없음" : key}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
-              <Select value={category} onValueChange={setCategory}>
+              <Select
+                value={category}
+                onValueChange={(value) => setFilter(CATEGORY_PARAM, value)}
+              >
                 <SelectTrigger
                   size="sm"
                   aria-label="카테고리 필터"
-                  className="min-w-[132px]"
+                  className="min-w-33"
                 >
                   <SelectValue />
                 </SelectTrigger>
@@ -128,7 +157,10 @@ export function ReviewsPage() {
             ) : (
               <ul className="flex flex-col divide-y divide-line">
                 {filtered.map((submission, index) => {
-                  const waited = formatElapsed(submission.createdAt, now);
+                  const waited = formatElapsed(
+                    submission.submittedAt ?? submission.createdAt,
+                    pending.data.serverTime,
+                  );
                   const urgent = !isFiltered && index === 0;
                   return (
                     <SubmissionRow
@@ -136,12 +168,16 @@ export function ReviewsPage() {
                       submission={submission}
                       highlighted={urgent}
                       thumbSize="md"
-                      sentence={`${submission.organizationName} · ${
-                        submission.categoryName
-                      } · ${getStatusSentence({
-                        status: submission.status,
-                        waitingLabel: waited,
-                      })}`}
+                      sentence={[
+                        submission.organizationName,
+                        submission.categoryName,
+                        getStatusSentence({
+                          status: submission.status,
+                          waitingLabel: waited,
+                        }),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                       trailing={
                         <>
                           <span
@@ -164,6 +200,27 @@ export function ReviewsPage() {
                   );
                 })}
               </ul>
+            )}
+
+            {pending.hasNextPage && (
+              <div className="border-t border-line p-3">
+                {isFiltered && (
+                  <p className="mb-2 text-caption text-ink-muted">
+                    불러온 {items.length}건 안에서 거른 결과예요. 더 불러오면
+                    나머지도 함께 걸러요.
+                  </p>
+                )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="w-full"
+                  disabled={pending.isFetchingNextPage}
+                  onClick={() => void pending.fetchNextPage()}
+                >
+                  {pending.isFetchingNextPage && <Spinner aria-hidden="true" />}
+                  더 보기 ({items.length} / {pending.data.totalCount})
+                </Button>
+              </div>
             )}
           </Panel>
         </>

@@ -205,9 +205,9 @@ describe("신청 규칙", () => {
 
     const history = await repos.reviews.listHistory("notice-003");
     expect(history.at(-1)).toMatchObject({
-      decision: "APPROVED",
-      reviewerId: MOCK_USERS.SUPER_ADMIN.id,
-      reviewerName: MOCK_USERS.SUPER_ADMIN.displayName,
+      type: "APPROVED",
+      actorId: MOCK_USERS.SUPER_ADMIN.id,
+      actorName: MOCK_USERS.SUPER_ADMIN.displayName,
     });
   });
 });
@@ -258,3 +258,68 @@ describe("기기와 편성", () => {
     expect(after.playlistVersion).not.toBe(first.playlistVersion);
   });
 });
+
+describe("처리 이력과 대기 순서 (API-REQUIREMENTS 6.1·6.4)", () => {
+  it("반려 뒤 다시 내면 재신청으로 남고, 대기 시간은 다시 낸 때부터 센다", async () => {
+    const { repos, signInAs } = setup(MOCK_USERS.SUBMITTER);
+    const rejected = await repos.submissions.getById("notice-901");
+
+    await repos.submissions.update("notice-901", {
+      title: "슈퍼-피셜 신입 부원 모집 (수정)",
+      version: rejected.version,
+    });
+    const resubmitted = await repos.submissions.submit("notice-901");
+
+    expect(resubmitted.submittedAt?.getTime()).toBe(NOW.getTime());
+    const history = await repos.reviews.listHistory("notice-901");
+    expect(history.map((event) => event.type)).toEqual([
+      "SUBMITTED",
+      "REJECTED",
+      "RESUBMITTED",
+    ]);
+
+    // 방금 다시 낸 건은 오래 기다린 건들 뒤로 간다.
+    signInAs(MOCK_USERS.REVIEWER);
+    const pending = await repos.reviews.listPending({ limit: 50 });
+    expect(pending.items.at(-1)?.id).toBe("notice-901");
+  });
+
+  it("취소도 이력에 남는다", async () => {
+    const { repos } = setup(MOCK_USERS.SUBMITTER);
+    const target = await repos.submissions.getById("notice-905");
+
+    await repos.submissions.cancel("notice-905", { version: target.version });
+
+    const history = await repos.reviews.listHistory("notice-905");
+    expect(history.at(-1)).toMatchObject({
+      type: "CANCELED",
+      actorName: MOCK_USERS.SUBMITTER.displayName,
+    });
+  });
+
+  it("게시 중단된 신청은 고쳐서 다시 낼 수 있다 (명세 6.3 SUSPENDED → PENDING_REVIEW)", async () => {
+    const { repos } = setup(MOCK_USERS.SUBMITTER);
+
+    const resubmitted = await repos.submissions.submit("notice-903");
+
+    expect(resubmitted.status).toBe("PENDING_REVIEW");
+  });
+
+  it("요약은 상태별 건수를 함께 준다", async () => {
+    const { repos } = setup(MOCK_USERS.SUBMITTER);
+
+    const summary = await repos.submissions.getSummary({ scope: "me" });
+
+    // 정하윤의 fixture: 게시 중·승인 대기·반려·작성 중·중단·종료 한 건씩
+    expect(summary.byStatus).toMatchObject({
+      PUBLISHED: 1,
+      PENDING_REVIEW: 1,
+      REJECTED: 1,
+      DRAFT: 1,
+      SUSPENDED: 1,
+      ENDED: 1,
+    });
+    expect(summary.total).toBe(6);
+  });
+});
+

@@ -39,7 +39,7 @@ describe("신청 목록", () => {
     const repositories = await repositoriesWithManySubmissions();
     renderRoute("/submissions", { role: "SUBMITTER", repositories });
 
-    const heading = await screen.findByRole("heading", { level: 1 });
+    const heading = await screen.findByRole("heading", { name: /\d+건/ });
     const total = Number(/(\d+)건/.exec(heading.textContent ?? "")?.[1]);
     expect(total).toBeGreaterThan(10);
 
@@ -50,7 +50,7 @@ describe("신청 목록", () => {
     expect(listItems()).toHaveLength(10);
 
     await user.click(screen.getByRole("button", { name: /더 보기/ }));
-    await screen.findByText(`신청 ${total}건`);
+    await screen.findByText(`내 신청 ${total}건`);
     expect(listItems()).toHaveLength(total);
     expect(screen.queryByRole("button", { name: /더 보기/ })).toBeNull();
   });
@@ -58,7 +58,7 @@ describe("신청 목록", () => {
   it("다른 사람의 신청은 내 신청 목록에 나오지 않는다", async () => {
     renderRoute("/submissions", { role: "SUBMITTER" });
 
-    await screen.findByRole("heading", { level: 1 });
+    await screen.findByRole("heading", { name: /\d+건/ });
     // fixture의 지스트신문 신청은 다른 학생이 올렸다.
     expect(screen.queryByText("지스트신문 22기 기자단 모집")).toBeNull();
     expect(screen.getByText("슈퍼-피셜 신입 부원 모집")).toBeInTheDocument();
@@ -68,8 +68,8 @@ describe("신청 목록", () => {
     const user = userEvent.setup();
     const { router } = renderRoute("/submissions", { role: "SUBMITTER" });
 
-    await screen.findByRole("heading", { level: 1 });
-    await user.click(screen.getByRole("tab", { name: "반려" }));
+    await screen.findByRole("heading", { name: /\d+건/ });
+    await user.click(screen.getByRole("tab", { name: /^반려/ }));
 
     expect(currentPath(router)).toBe("/submissions?status=rejected");
     expect(await screen.findByText(/반려 \d+건/)).toBeInTheDocument();
@@ -86,7 +86,7 @@ describe("신청 목록", () => {
 
     expect(await screen.findByText(/중단\/취소 \d+건/)).toBeInTheDocument();
     expect(
-      screen.getByRole("tab", { name: "중단/취소" }),
+      screen.getByRole("tab", { name: /^중단\/취소/ }),
     ).toHaveAttribute("aria-selected", "true");
   });
 
@@ -94,7 +94,7 @@ describe("신청 목록", () => {
     renderRoute("/submissions?status=bogus", { role: "SUBMITTER" });
 
     expect(await screen.findByText(/신청 \d+건/)).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "전체" })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: /^전체/ })).toHaveAttribute(
       "aria-selected",
       "true",
     );
@@ -102,7 +102,7 @@ describe("신청 목록", () => {
 
   it("행을 누르면 신청 상세로 간다", async () => {
     renderRoute("/submissions", { role: "SUBMITTER" });
-    await screen.findByRole("heading", { level: 1 });
+    await screen.findByRole("heading", { name: /\d+건/ });
 
     const links = screen.getAllByRole("link");
     const rowLink = links.find((link) =>
@@ -110,4 +110,51 @@ describe("신청 목록", () => {
     );
     expect(rowLink).toBeDefined();
   });
+
+  it("탭마다 서버 요약의 건수를 붙인다", async () => {
+    renderRoute("/submissions", { role: "SUBMITTER" });
+
+    // 정하윤의 fixture: 반려 1건, 중단 1건(취소 0건)
+    expect(
+      await screen.findByRole("tab", { name: "반려 1건" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "중단/취소 1건" })).toBeInTheDocument();
+  });
+
+  it("화살표 키로 탭을 옮긴다", async () => {
+    const user = userEvent.setup();
+    const { router } = renderRoute("/submissions", { role: "SUBMITTER" });
+    const all = await screen.findByRole("tab", { name: /^전체/ });
+
+    all.focus();
+    await user.keyboard("{ArrowRight}");
+
+    expect(currentPath(router)).toBe("/submissions?status=draft");
+    expect(screen.getByRole("tab", { name: /^작성 중/ })).toHaveFocus();
+  });
 });
+
+describe("관리자의 전체 신청", () => {
+  it("전체 신청으로 바꾸면 남의 신청도 보이고, 누르면 검토 화면으로 간다", async () => {
+    const user = userEvent.setup();
+    const { router } = renderRoute("/submissions", { role: "REVIEWER" });
+    await screen.findByRole("heading", { name: /내 신청 \d+건/ });
+
+    await user.click(screen.getByRole("button", { name: "전체 신청" }));
+
+    expect(currentPath(router)).toBe("/submissions?scope=all");
+    const row = await screen.findByRole("link", { name: /VESPER 피아노 정기공연/ });
+    // 게시 중인 남의 신청 → 중단할 수 있는 검토 화면
+    expect(row).toHaveAttribute("href", "/reviews/notice-001");
+  });
+
+  it("게시자는 scope=all 주소로 와도 내 신청만 본다", async () => {
+    renderRoute("/submissions?scope=all", { role: "SUBMITTER" });
+
+    expect(
+      await screen.findByRole("heading", { name: /내 신청 \d+건/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "전체 신청" })).toBeNull();
+  });
+});
+

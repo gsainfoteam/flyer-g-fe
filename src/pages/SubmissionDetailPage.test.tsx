@@ -18,7 +18,8 @@ describe("신청 상세", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("반려됨")).toBeInTheDocument();
     expect(screen.getByText("게시 기간")).toBeInTheDocument();
-    expect(screen.getByText("신청 접수")).toBeInTheDocument();
+    // 처음 낸 일이 처리 이력의 시작이다.
+    expect(screen.getByText("신청 · 정하윤")).toBeInTheDocument();
   });
 
   it("반려 사유가 게시자에게 보인다", async () => {
@@ -56,4 +57,22 @@ describe("신청 상세", () => {
       within(alert).getByText(/요청한 내용을 찾을 수 없습니다/),
     ).toBeInTheDocument();
   });
+
+  it("관리자가 남의 신청을 열면 게시자 버튼 대신 검토 화면으로 안내한다", async () => {
+    renderRoute("/submissions/notice-003", { role: "REVIEWER" });
+
+    expect(
+      await screen.findByRole("link", { name: "검토 화면에서 보기" }),
+    ).toHaveAttribute("href", "/reviews/notice-003");
+    expect(screen.queryByRole("button", { name: "신청 취소하기" })).toBeNull();
+  });
+
+  it("게시자 화면에 내부 식별자를 드러내지 않는다", async () => {
+    renderRoute("/submissions/notice-901", { role: "SUBMITTER" });
+    await screen.findByText("게시 정보");
+
+    expect(screen.queryByText("신청 ID")).toBeNull();
+    expect(screen.queryByText("신청 버전")).toBeNull();
+  });
 });
+

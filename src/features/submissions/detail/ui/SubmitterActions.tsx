@@ -7,31 +7,34 @@ import { ConfirmActionDialog } from "@/shared/components";
 import { toUserMessage } from "@/shared/api/error";
 import { isApiError } from "@/shared/api/error";
 import { Button } from "@/shared/ui/button";
+import {
+  canSubmitterCancel,
+  canSubmitterEdit,
+} from "@/entities/submission";
 import { useCancelSubmission } from "../model/use-cancel-submission";
 
 /**
  * 게시자가 상세에서 할 수 있는 일 (명세 FR-DASH-02).
  *
  * - 작성 중 → 이어서 작성
- * - 반려됨 → 수정해서 다시 신청, 또는 취소
- * - 승인 대기·예약됨 → 시작 전 취소
+ * - 반려됨·게시 중단 → 수정해서 다시 신청 (명세 6.3 전이)
+ * - 승인 대기·반려됨·예약됨 → 시작 전 취소
  * - 게시 중 → 직접 내릴 수 없다. 중단은 관리자에게 요청한다. (명세 FR-REV-05)
  *
- * 버튼 노출은 상태 기반의 화면 편의일 뿐이고 최종 판단은 서버가 한다.
+ * 무엇을 보여줄지는 상태 전이표(`canSubmitterEdit`, `canSubmitterCancel`)가
+ * 정한다. 버튼 노출은 화면 편의일 뿐이고 최종 판단은 서버가 한다.
  */
 interface SubmitterActionsProps {
   submission: SubmissionView;
 }
 
-const CANCELABLE = ["PENDING_REVIEW", "REJECTED", "SCHEDULED"] as const;
-
 export function SubmitterActions({ submission }: SubmitterActionsProps) {
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const cancel = useCancelSubmission(submission.id);
 
-  const canCancel = (CANCELABLE as readonly string[]).includes(
-    submission.status,
-  );
+  const canCancel = canSubmitterCancel(submission.status);
+  const canResubmit =
+    canSubmitterEdit(submission.status) && submission.status !== "DRAFT";
 
   return (
     <div className="flex flex-wrap items-center gap-2.5">
@@ -41,7 +44,7 @@ export function SubmitterActions({ submission }: SubmitterActionsProps) {
         </Button>
       )}
 
-      {submission.status === "REJECTED" && (
+      {canResubmit && (
         <Button size="sm" asChild>
           <Link to={to.studioEdit(submission.id)}>수정해서 다시 신청</Link>
         </Button>
@@ -51,9 +54,12 @@ export function SubmitterActions({ submission }: SubmitterActionsProps) {
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => setConfirmingCancel(true)}
+          onClick={() => {
+            cancel.startAttempt();
+            setConfirmingCancel(true);
+          }}
         >
-          신청 취소
+          신청 취소하기
         </Button>
       )}
 

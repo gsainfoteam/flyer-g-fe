@@ -1,3 +1,5 @@
+import { useMemo, useRef } from "react";
+
 /**
  * 제출 시도 하나를 가리키는 key (명세 FR-SUB-04).
  *
@@ -12,4 +14,22 @@ export function createIdempotencyKey(): string {
   }
   // 구형 환경 대비. 충돌 가능성이 있으므로 서버 중복 판정을 대신하지 않는다.
   return `idem-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+}
+
+/**
+ * 한 시도 동안 유지되는 key. 응답을 못 받아 다시 보낸 요청은 같은 key를 써야
+ * 서버가 두 번 처리하지 않는다. 사용자가 새로 시작할 때(다이얼로그를 다시 열 때)
+ * `renew()`로 바꾼다. 요청 함수 안에서 매번 새로 만들면 재시도가 새 요청이 된다.
+ */
+export function useIdempotencyKey() {
+  const keyRef = useRef<string | null>(null);
+  return useMemo(
+    () => ({
+      current: () => (keyRef.current ??= createIdempotencyKey()),
+      renew: () => {
+        keyRef.current = null;
+      },
+    }),
+    [],
+  );
 }

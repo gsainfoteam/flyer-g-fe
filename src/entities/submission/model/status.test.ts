@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  canReviewerDecide,
+  canReviewerSuspend,
+  canSubmitterCancel,
+  canSubmitterEdit,
   canTransition,
   getAllowedTransitions,
   getStatusLabel,
   getStatusMeta,
 } from "./status";
 import { SUBMISSION_STATUSES } from "./types";
+import type { SubmissionStatus } from "./types";
 
 describe("상태 표시 매핑", () => {
   it("모든 상태에 label, tone, 설명이 있다", () => {
@@ -51,3 +56,27 @@ describe("허용 전이", () => {
     expect(getAllowedTransitions("ARCHIVED")).toEqual([]);
   });
 });
+
+describe("상태별 가능한 행동 (명세 6.3 허용 전이)", () => {
+  const cases: [SubmissionStatus, { edit: boolean; cancel: boolean; decide: boolean; suspend: boolean }][] = [
+    ["DRAFT", { edit: true, cancel: false, decide: false, suspend: false }],
+    ["PENDING_REVIEW", { edit: false, cancel: true, decide: true, suspend: false }],
+    ["REJECTED", { edit: true, cancel: true, decide: false, suspend: false }],
+    ["APPROVED", { edit: false, cancel: false, decide: false, suspend: true }],
+    ["SCHEDULED", { edit: false, cancel: true, decide: false, suspend: true }],
+    ["PUBLISHED", { edit: false, cancel: false, decide: false, suspend: true }],
+    ["ENDED", { edit: false, cancel: false, decide: false, suspend: false }],
+    ["SUSPENDED", { edit: true, cancel: false, decide: false, suspend: false }],
+    ["CANCELED", { edit: false, cancel: false, decide: false, suspend: false }],
+  ];
+
+  it.each(cases)("%s", (status, expected) => {
+    expect({
+      edit: canSubmitterEdit(status),
+      cancel: canSubmitterCancel(status),
+      decide: canReviewerDecide(status),
+      suspend: canReviewerSuspend(status),
+    }).toEqual(expected);
+  });
+});
+

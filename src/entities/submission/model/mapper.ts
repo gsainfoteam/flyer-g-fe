@@ -1,10 +1,12 @@
 import { parseIsoUtc, toIsoUtc } from "@/shared/lib/datetime";
 import { resolveEffectiveStatus } from "./schedule";
+import { SUBMISSION_STATUSES } from "./types";
 import type {
   SignageSubmission,
   SignageSubmissionDto,
   SignageSubmissionExpanded,
   SignageSubmissionExpandedDto,
+  SubmissionStatus,
   SubmissionSummary,
   SubmissionView,
 } from "./types";
@@ -19,6 +21,7 @@ export function toSignageSubmission(
     endAt: parseIsoUtc(dto.endAt),
     createdAt: parseIsoUtc(dto.createdAt),
     updatedAt: parseIsoUtc(dto.updatedAt),
+    submittedAt: dto.submittedAt ? parseIsoUtc(dto.submittedAt) : null,
   };
 }
 
@@ -32,6 +35,9 @@ export function toSignageSubmissionDto(
     endAt: toIsoUtc(submission.endAt),
     createdAt: toIsoUtc(submission.createdAt),
     updatedAt: toIsoUtc(submission.updatedAt),
+    submittedAt: submission.submittedAt
+      ? toIsoUtc(submission.submittedAt)
+      : null,
   };
 }
 
@@ -44,35 +50,22 @@ export function summarizeSubmissions(
   submissions: readonly SignageSubmission[],
   serverNow: Date,
 ): SubmissionSummary {
-  const summary: SubmissionSummary = {
-    calculatedAt: serverNow,
-    total: submissions.length,
-    published: 0,
-    scheduled: 0,
-    pendingReview: 0,
-    ended: 0,
-  };
-
+  const byStatus = Object.fromEntries(
+    SUBMISSION_STATUSES.map((status) => [status, 0]),
+  ) as Record<SubmissionStatus, number>;
   for (const submission of submissions) {
-    switch (resolveEffectiveStatus(submission, serverNow)) {
-      case "PUBLISHED":
-        summary.published += 1;
-        break;
-      case "SCHEDULED":
-        summary.scheduled += 1;
-        break;
-      case "PENDING_REVIEW":
-        summary.pendingReview += 1;
-        break;
-      case "ENDED":
-        summary.ended += 1;
-        break;
-      default:
-        break;
-    }
+    byStatus[resolveEffectiveStatus(submission, serverNow)] += 1;
   }
 
-  return summary;
+  return {
+    calculatedAt: serverNow,
+    total: submissions.length - byStatus.ARCHIVED,
+    published: byStatus.PUBLISHED,
+    scheduled: byStatus.SCHEDULED,
+    pendingReview: byStatus.PENDING_REVIEW,
+    ended: byStatus.ENDED,
+    byStatus,
+  };
 }
 
 /** 확장 전송 모델 → 확장 도메인 모델 */
@@ -85,6 +78,7 @@ export function toSignageSubmissionExpanded(
     endAt: parseIsoUtc(dto.endAt),
     createdAt: parseIsoUtc(dto.createdAt),
     updatedAt: parseIsoUtc(dto.updatedAt),
+    submittedAt: dto.submittedAt ? parseIsoUtc(dto.submittedAt) : null,
   };
 }
 
@@ -106,6 +100,8 @@ export function toSubmissionView(
     startAt: submission.startAt,
     endAt: submission.endAt,
     createdAt: submission.createdAt,
+    submittedAt: submission.submittedAt,
+    requesterId: submission.requesterId,
     posterUrl: submission.posterUrl,
     detailUrl: submission.detailUrl,
     location: submission.location,
