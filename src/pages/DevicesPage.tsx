@@ -9,7 +9,6 @@ import type { SetupLinkResult } from "@/features/devices/model/setup-link";
 import { useRotateDeviceToken } from "@/features/devices/model/use-device-mutations";
 import { DeviceFormDialog } from "@/features/devices/ui/DeviceFormDialog";
 import { DeviceSetupLinkDialog } from "@/features/devices/ui/DeviceSetupLinkDialog";
-import { useSubmissionSummary } from "@/features/submissions/api/queries";
 import { isApiError, toUserMessage } from "@/shared/api/error";
 import {
   ConfirmActionDialog,
@@ -27,21 +26,17 @@ import { Button } from "@/shared/ui/button";
  * 로비 TV를 등록하고, 화면 설정(레이아웃·전환 간격·갱신 주기)을 바꾸고, 토큰을
  * 재발급한다. 등록·재발급하면 TV를 연결할 설정 링크를 한 번만 보여준다.
  *
- * "마지막 연결 N분 전"은 서버 시각으로 센다. 기기 목록 응답에는 서버 시각이 없어
- * 요약의 기준 시각을 쓴다(`API-FOLLOWUP-2026-09.md` 2-2).
+ * "마지막 연결 N분 전"은 목록과 함께 온 서버 시각으로 센다.
  */
 export function DevicesPage() {
   const devices = useDevices();
   const groups = useTargetGroups();
-  const summary = useSubmissionSummary("all");
   const rotate = useRotateDeviceToken();
 
   const [editing, setEditing] = useState<DisplayDevice | "new" | null>(null);
   const [rotating, setRotating] = useState<DisplayDevice | null>(null);
   const [setupLink, setSetupLink] = useState<SetupLinkResult | null>(null);
 
-  const serverNow =
-    devices.data?.serverTime ?? summary.data?.calculatedAt ?? null;
   const groupList = groups.data ?? [];
 
   return (
@@ -79,7 +74,7 @@ export function DevicesPage() {
                     key={device.id}
                     device={device}
                     groups={groupList}
-                    serverNow={serverNow}
+                    serverNow={devices.data.serverTime}
                     onEdit={() => setEditing(device)}
                     onRotate={() => setRotating(device)}
                   />
@@ -167,7 +162,7 @@ function DeviceRow({
 }: {
   device: DisplayDevice;
   groups: readonly TargetGroup[];
-  serverNow: Date | null;
+  serverNow: Date;
   onEdit: () => void;
   onRotate: () => void;
 }) {
@@ -175,9 +170,7 @@ function DeviceRow({
     `${LAYOUT_LABELS[device.layout.type]} · ${device.layout.rotationSeconds}초마다 넘김`,
     `${device.refreshAfterSeconds}초마다 편성 확인`,
     device.lastSeenAt
-      ? serverNow
-        ? `마지막 연결 ${formatTimeAgo(device.lastSeenAt, serverNow)}`
-        : "연결 기록 있음"
+      ? `마지막 연결 ${formatTimeAgo(device.lastSeenAt, serverNow)}`
       : "아직 연결된 적 없음",
     device.appVersion && `앱 ${device.appVersion}`,
     device.tokenIssuedAt &&

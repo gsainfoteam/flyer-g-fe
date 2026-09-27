@@ -9,16 +9,9 @@ import { formatTimeAgo } from "@/shared/lib/datetime";
  *
  * 기기가 보낸 마지막 heartbeat로 판단한다. 오프라인이어도 TV는 마지막으로 받은
  * 편성을 계속 재생하므로, 관리자가 당장 해야 할 일은 없다는 것을 함께 알린다.
+ * "N분 전"은 목록과 함께 온 서버 시각으로 센다. 클라이언트 시계로 대신하지 않는다.
  */
-interface DeviceStatusPanelProps {
-  /**
-   * 기기 목록에 서버 시각이 없을 때 쓸 서버 시각. 대시보드는 요약의 기준 시각을 넘긴다.
-   * 클라이언트 시계로 대신하지 않는다.
-   */
-  serverNow: Date;
-}
-
-export function DeviceStatusPanel({ serverNow }: DeviceStatusPanelProps) {
+export function DeviceStatusPanel() {
   const devices = useDevices();
 
   return (
@@ -41,7 +34,7 @@ export function DeviceStatusPanel({ serverNow }: DeviceStatusPanelProps) {
       ) : (
         <DeviceRows
           devices={devices.data.items}
-          now={devices.data.serverTime ?? serverNow}
+          now={devices.data.serverTime}
         />
       )}
     </Panel>

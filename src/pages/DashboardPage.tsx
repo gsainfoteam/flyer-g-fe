@@ -177,9 +177,7 @@ export function DashboardPage() {
             )}
 
             <div className="flex min-w-0 flex-col gap-5">
-              {isReviewer && (
-                <DeviceStatusPanel serverNow={summary.data.calculatedAt} />
-              )}
+              {isReviewer && <DeviceStatusPanel />}
 
               <Panel
                 title="지금 TV에 걸린 것"

@@ -83,7 +83,7 @@ export interface DeviceWithToken {
  */
 export interface DeviceList {
   items: DisplayDevice[];
-  serverTime: Date | null;
+  serverTime: Date;
 }
 
 export function toDisplayDevice(dto: DisplayDeviceDto): DisplayDevice {

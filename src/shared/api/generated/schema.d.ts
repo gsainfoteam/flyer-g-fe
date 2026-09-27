@@ -255,7 +255,7 @@ export interface paths {
          *     - 제목: 앞뒤 공백 제거 후 1~80자
          *     - 포스터: 본인이 올려 complete까지 끝낸 asset
          *     - 기간: 시작은 지금부터 24시간 이후, 종료는 시작보다 뒤, 최대 3개월(서울 달력)
-         *     - 상세 링크(선택): 허용된 호스트의 HTTPS. Ziggle 공지 주소(`/notice/{id}`)면 공지 ID를 뽑아 **공지 하나에 신청 하나**를 지킨다. 취소한 신청은 세지 않는다
+         *     - 상세 링크(선택): 허용된 호스트의 HTTPS. Ziggle 공지 주소(`/notice/{id}`)면 공지 ID를 뽑아 **공지 하나에 신청 하나**를 지킨다. 끝난 신청(취소·종료·보관)은 세지 않는다
          *     - 대상 위치(선택): 숨기지 않은 그룹. 비우면 전체 기기
          */
         post: operations["SubmissionsController_create"];
@@ -308,11 +308,11 @@ export interface paths {
          *
          *     | 현재 상태 | 수정 후 상태 |
          *     |---|---|
-         *     | PENDING_REVIEW, REJECTED, DRAFT | 그대로 |
+         *     | PENDING_REVIEW, REJECTED, SUSPENDED, DRAFT | 그대로 |
          *     | APPROVED, SCHEDULED (게시 시작 전) | **PENDING_REVIEW** (재승인 필요) |
          *     | 게시가 시작됐거나 그 외 상태 | 409 CONFLICT (중단은 운영자에게 요청) |
          *
-         *     반려된 신청은 고친 뒤 `POST /signage/submissions/{id}/submit`으로 다시 검토를 요청한다.
+         *     반려·중단된 신청은 고친 뒤 `POST /signage/submissions/{id}/submit`으로 다시 검토를 요청한다.
          */
         patch: operations["SubmissionsController_update"];
         trace?: never;
@@ -328,7 +328,7 @@ export interface paths {
         put?: never;
         /**
          * 재검토 요청
-         * @description 반려(REJECTED)된 신청을 다시 검토 대기(PENDING_REVIEW)로 보낸다. 기간 규칙을 지금 시각으로 다시 검사한다.
+         * @description 반려(REJECTED)·중단(SUSPENDED)된 신청을 다시 검토 대기(PENDING_REVIEW)로 보낸다. 기간 규칙을 지금 시각으로 다시 검사하므로, 시작이 지났으면 먼저 기간을 고친다.
          */
         post: operations["SubmissionsController_submit"];
         delete?: never;
@@ -498,7 +498,7 @@ export interface paths {
         };
         /**
          * 기기 목록
-         * @description 이름순. 검토자 이상.
+         * @description 이름순. 검토자 이상. `serverTime`과 각 기기의 `lastSeenAt`으로 마지막 연결 경과 시간을 계산한다.
          */
         get: operations["DevicesController_list"];
         put?: never;
@@ -1540,6 +1540,15 @@ export interface components {
             /** @example 2026-07-20T02:00:00.000Z */
             updatedAt: string;
         };
+        DeviceListDto: {
+            /**
+             * @description 서버 현재 시각(UTC). lastSeenAt과 비교해 마지막 연결 경과 시간을 계산한다
+             * @example 2026-07-29T06:30:00.000Z
+             */
+            serverTime: string;
+            /** @description 이름순 */
+            items: components["schemas"]["DeviceDto"][];
+        };
         CreateDeviceDto: {
             /**
              * @description 설치 위치 설명
@@ -1763,10 +1772,15 @@ export interface components {
              */
             serverTime: string;
             /**
-             * @description 편성 내용(항목과 기기 화면 설정)의 해시. 같으면 내용이 같다. ETag 헤더와 같은 값이다
+             * @description 편성 내용(항목, 기기 이름, 기기 화면 설정)의 해시. 같으면 내용이 같다. ETag 헤더와 같은 값이다
              * @example 9f2b5c0e3a1d4f6b
              */
             playlistVersion: string;
+            /**
+             * @description 기기 이름. 관리자가 바꾸면 다음 편성에 반영된다
+             * @example A동 로비 TV
+             */
+            deviceName: string;
             /**
              * @description 다음 편성 요청까지 기다릴 시간(초)
              * @example 60
@@ -2501,7 +2515,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description 같은 공지로 이미 신청함 (ALREADY_SUBMITTED, fields.detailUrl). 반려된 신청은 새로 만들지 말고 수정 후 다시 제출한다 */
+            /** @description 같은 공지로 진행 중인 신청이 있음 (ALREADY_SUBMITTED, fields.detailUrl). 반려·중단된 신청은 새로 만들지 말고 수정 후 다시 제출한다 */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2716,7 +2730,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description version이 최신이 아니거나 REJECTED·DRAFT가 아님 */
+            /** @description version이 최신이 아니거나 REJECTED·SUSPENDED·DRAFT가 아님 */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -2739,7 +2753,18 @@ export interface operations {
     SubmissionsController_cancel: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /**
+                 * @description 시도 하나당 UUID 하나. 재시도에는 같은 값을 다시 쓴다.
+                 *
+                 *     - 같은 key로 이미 성공한 요청이면 처리하지 않고 처음 응답을 그대로 준다 (`Idempotent-Replayed: true` 헤더)
+                 *     - 같은 key의 요청이 처리 중이면 끝날 때까지 기다렸다가 같은 응답을 준다. 너무 오래 걸리면 409 `CONFLICT`
+                 *     - 같은 key로 내용이 다른 요청을 보내면 422 `IDEMPOTENCY_KEY_REUSED`
+                 *     - 헤더가 없거나 형식이 틀리면 400 `INVALID_REQUEST`
+                 *     - 실패한 요청은 기억하지 않는다. 같은 key로 다시 보내면 다시 처리한다
+                 */
+                "Idempotency-Key": string;
+            };
             path: {
                 /** @description 신청 ID */
                 id: string;
@@ -2981,7 +3006,18 @@ export interface operations {
     ReviewsController_reject: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /**
+                 * @description 시도 하나당 UUID 하나. 재시도에는 같은 값을 다시 쓴다.
+                 *
+                 *     - 같은 key로 이미 성공한 요청이면 처리하지 않고 처음 응답을 그대로 준다 (`Idempotent-Replayed: true` 헤더)
+                 *     - 같은 key의 요청이 처리 중이면 끝날 때까지 기다렸다가 같은 응답을 준다. 너무 오래 걸리면 409 `CONFLICT`
+                 *     - 같은 key로 내용이 다른 요청을 보내면 422 `IDEMPOTENCY_KEY_REUSED`
+                 *     - 헤더가 없거나 형식이 틀리면 400 `INVALID_REQUEST`
+                 *     - 실패한 요청은 기억하지 않는다. 같은 key로 다시 보내면 다시 처리한다
+                 */
+                "Idempotency-Key": string;
+            };
             path: {
                 /** @description 신청 ID */
                 id: string;
@@ -3052,7 +3088,18 @@ export interface operations {
     ReviewsController_suspend: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /**
+                 * @description 시도 하나당 UUID 하나. 재시도에는 같은 값을 다시 쓴다.
+                 *
+                 *     - 같은 key로 이미 성공한 요청이면 처리하지 않고 처음 응답을 그대로 준다 (`Idempotent-Replayed: true` 헤더)
+                 *     - 같은 key의 요청이 처리 중이면 끝날 때까지 기다렸다가 같은 응답을 준다. 너무 오래 걸리면 409 `CONFLICT`
+                 *     - 같은 key로 내용이 다른 요청을 보내면 422 `IDEMPOTENCY_KEY_REUSED`
+                 *     - 헤더가 없거나 형식이 틀리면 400 `INVALID_REQUEST`
+                 *     - 실패한 요청은 기억하지 않는다. 같은 key로 다시 보내면 다시 처리한다
+                 */
+                "Idempotency-Key": string;
+            };
             path: {
                 /** @description 신청 ID */
                 id: string;
@@ -3174,7 +3221,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DeviceDto"][];
+                    "application/json": components["schemas"]["DeviceListDto"];
                 };
             };
             /** @description 로그인 필요 */

@@ -35,12 +35,14 @@ function fakeClient(response: unknown) {
 
 describe("createHttpDeviceRepository", () => {
   it("배열 응답을 읽고, heartbeat 전의 빈 값은 null로 둔다", async () => {
-    const { repository } = fakeClient([DEVICE]);
+    const { repository } = fakeClient({
+      serverTime: "2026-09-27T09:30:00.000Z",
+      items: [DEVICE],
+    });
 
     const list = await repository.list();
 
-    // 서버 목록에는 시각이 없다. 화면이 다른 응답의 서버 시각을 쓴다.
-    expect(list.serverTime).toBeNull();
+    expect(list.serverTime).toEqual(new Date("2026-09-27T09:30:00.000Z"));
     expect(list.items[0]).toEqual({
       id: "dev_01",
       name: "A동 로비",

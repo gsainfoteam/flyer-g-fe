@@ -135,7 +135,7 @@ describe("createHttpSubmissionRepository", () => {
     expect(calls[0]!.body).toEqual({ location: null, version: 3 });
   });
 
-  it("재검토 요청과 취소는 버전을 싣는다", async () => {
+  it("재검토 요청과 취소는 버전과 Idempotency-Key를 싣는다", async () => {
     const { repository, calls } = fakeClient(SUBMISSION);
 
     await repository.submit(
@@ -143,7 +143,11 @@ describe("createHttpSubmissionRepository", () => {
       { version: 2 },
       { idempotencyKey: "key-1" },
     );
-    await repository.cancel("sub_01", { version: 3 });
+    await repository.cancel(
+      "sub_01",
+      { version: 3 },
+      { idempotencyKey: "key-2" },
+    );
 
     expect(calls[0]).toMatchObject({
       method: "POST",
@@ -155,6 +159,7 @@ describe("createHttpSubmissionRepository", () => {
       method: "POST",
       path: "/signage/submissions/sub_01/cancel",
       body: { version: 3 },
+      idempotencyKey: "key-2",
     });
   });
 

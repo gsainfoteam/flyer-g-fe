@@ -34,8 +34,8 @@ import type {
  * | rotateToken | `POST /signage/devices/{id}/rotate-token` → 기기 + 새 `token` | SUPER_ADMIN |
  *
  *
- * 서버는 봉투 없이 배열을 주고 서버 시각이 없다. `serverTime`은 null로 두고, 화면이
- * 함께 받은 다른 응답의 서버 시각을 쓴다(`API-FOLLOWUP-2026-09.md` 2-2).
+ * 목록은 `{ serverTime, items }` 봉투로 온다. 화면은 이 서버 시각으로 "마지막 연결
+ * N분 전"을 센다(클라이언트 시계를 쓰지 않는다).
  * 상태(ONLINE·OFFLINE·DISABLED)는 서버가 마지막 heartbeat로 판정한다(3분).
  */
 function readOneOf<T extends string>(
@@ -132,10 +132,15 @@ export function createHttpDeviceRepository(
 ): DeviceRepository {
   return {
     async list(signal) {
-      const items = readArray(
+      const body = readObject(
         await client.request({ path: "/signage/devices", signal }),
-      ).map((item, index) => parseDevice(item, `[${index}]`));
-      return { items, serverTime: null };
+      );
+      return {
+        items: readArray(body.items, "items").map((item, index) =>
+          parseDevice(item, `items[${index}]`),
+        ),
+        serverTime: readIsoDate(body, "serverTime"),
+      };
     },
 
     async create(input: DeviceInput, signal) {

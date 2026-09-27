@@ -37,7 +37,7 @@ import type {
  * | create | `POST /signage/submissions` (Idempotency-Key) |
  * | update | `PATCH /signage/submissions/{id}` |
  * | submit | `POST /signage/submissions/{id}/submit` (Idempotency-Key) |
- * | cancel | `POST /signage/submissions/{id}/cancel` |
+ * | cancel | `POST /signage/submissions/{id}/cancel` (Idempotency-Key) |
  *
  * 응답은 화면이 쓰는 필드를 검증해 도메인 모델로 옮긴다. 승인 대기 목록(8.5)도 같은
  * 신청 객체를 주므로 파싱 함수를 함께 쓴다.
@@ -259,6 +259,7 @@ export function createHttpSubmissionRepository(
           method: "POST",
           path: `${submissionPath(id)}/cancel`,
           body: { version: input.version },
+          idempotencyKey: options?.idempotencyKey,
           signal: options?.signal,
         }),
       );
