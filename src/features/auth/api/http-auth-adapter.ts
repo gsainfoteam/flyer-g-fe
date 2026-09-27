@@ -59,6 +59,13 @@ const AUTH_PROMPT = "consent";
 /** 만료가 이만큼 남았으면 요청 전에 미리 갱신한다. 요청 도중 만료되지 않게. */
 const REFRESH_LEEWAY_MS = 30_000;
 
+/** 실제 인증 adapter인가. API client가 인증 헤더와 갱신을 이 adapter에서 받는다. */
+export function isHttpAuthAdapter(
+  adapter: AuthAdapter,
+): adapter is HttpAuthAdapter {
+  return "getAuthHeaders" in adapter && "refreshSession" in adapter;
+}
+
 export interface HttpAuthAdapter extends AuthAdapter {
   /** 실제 API 요청에 실을 인증 헤더. 만료가 가까우면 먼저 갱신한다. */
   getAuthHeaders(): Promise<Record<string, string>>;

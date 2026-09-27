@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAssetUploadService } from "../api/asset-upload-context";
 import { normalizeApiError, toUserMessage } from "@/shared/api/error";
+import type { ApiError } from "@/shared/api/error";
 import type { UploadedAsset } from "../api/asset-upload-service";
 import { validateImageFile } from "./validate-image";
-import type { ImageValidationCode, ValidateImageFileOptions } from "./validate-image";
+import type {
+  ImageValidationCode,
+  ValidateImageFileOptions,
+} from "./validate-image";
 
 /**
  * 포스터 한 장의 선택 → 검증 → 업로드 수명을 한곳에서 관리한다.
@@ -18,12 +22,7 @@ import type { ImageValidationCode, ValidateImageFileOptions } from "./validate-i
  * 바꾼다. 형식이 틀린 파일을 잘못 고른 것만으로 멀쩡히 올린 포스터를 잃으면 안 된다.
  */
 export type PosterUploadStatus =
-  | "idle"
-  | "validating"
-  | "invalid"
-  | "uploading"
-  | "failed"
-  | "uploaded";
+  "idle" | "validating" | "invalid" | "uploading" | "failed" | "uploaded";
 
 export interface PosterUploadState {
   status: PosterUploadStatus;
@@ -50,9 +49,28 @@ const IDLE_STATE: PosterUploadState = {
   dimensions: null,
 };
 
+/** 업로드 한도. 서버 운영 설정(`GET /signage/config`)에서 온다. */
+export interface UploadLimits {
+  maxSizeBytes: number;
+  minShortEdgePx: number;
+}
+
 export interface UsePosterUploadOptions {
   /** 테스트에서 decode를 대체한다. */
   validationOptions?: ValidateImageFileOptions;
+  /** 서버가 쓰는 한도. 아직 받지 못했으면 기본값으로 먼저 거르고 서버가 다시 본다. */
+  limits?: UploadLimits | null;
+}
+
+/**
+ * 서버가 파일을 거절한 이유. 사용자에게 보여줄 문구를 필드로 준다
+ * (`fields.file`: 이미지 검사, `fields.sizeBytes`: 용량, `fields.mimeType`: 형식).
+ */
+function uploadErrorMessage(error: ApiError): string {
+  const fields = error.fields ?? {};
+  return (
+    fields.file ?? fields.sizeBytes ?? fields.mimeType ?? toUserMessage(error)
+  );
 }
 
 export function usePosterUpload(options: UsePosterUploadOptions = {}) {
@@ -68,7 +86,19 @@ export function usePosterUpload(options: UsePosterUploadOptions = {}) {
   const abortRef = useRef<AbortController | null>(null);
   /** 이전 선택의 결과가 뒤늦게 도착해 새 선택을 덮어쓰지 않게 한다. */
   const selectionRef = useRef(0);
-  const validationOptions = options.validationOptions;
+  const limits = options.limits;
+  const validationOptions = useMemo(
+    () => ({
+      ...(limits
+        ? {
+            maxSizeBytes: limits.maxSizeBytes,
+            minShortEdgePx: limits.minShortEdgePx,
+          }
+        : {}),
+      ...options.validationOptions,
+    }),
+    [limits, options.validationOptions],
+  );
 
   const releasePreview = useCallback(() => {
     if (previewUrlRef.current) {
@@ -132,7 +162,7 @@ export function usePosterUpload(options: UsePosterUploadOptions = {}) {
         setState((current) => ({
           ...current,
           status: "failed",
-          errorMessage: toUserMessage(error),
+          errorMessage: uploadErrorMessage(error),
         }));
       }
     },
@@ -162,7 +192,11 @@ export function usePosterUpload(options: UsePosterUploadOptions = {}) {
         setState(
           kept
             ? // 기존 포스터를 쓰면서 새 파일이 왜 안 됐는지만 알린다.
-              { ...kept, errorMessage: result.message, invalidCode: result.code }
+              {
+                ...kept,
+                errorMessage: result.message,
+                invalidCode: result.code,
+              }
             : {
                 ...IDLE_STATE,
                 status: "invalid",
@@ -190,7 +224,8 @@ export function usePosterUpload(options: UsePosterUploadOptions = {}) {
   /** 업로드만 다시 한다. 검증은 이미 통과했으므로 반복하지 않는다. */
   const retry = useCallback(() => {
     const { file, previewUrl, dimensions } = state;
-    if (state.status !== "failed" || !file || !previewUrl || !dimensions) return;
+    if (state.status !== "failed" || !file || !previewUrl || !dimensions)
+      return;
     void runUpload(file, selectionRef.current, previewUrl, dimensions);
   }, [runUpload, state]);
 

@@ -27,6 +27,12 @@ export function readObject(value: unknown, path = "응답"): JsonObject {
   return value as JsonObject;
 }
 
+/** 배열 응답. 항목은 호출부가 하나씩 검증한다. */
+export function readArray(value: unknown, path = "응답"): unknown[] {
+  if (!Array.isArray(value)) throw invalidResponse(path, "배열");
+  return value;
+}
+
 export function readString(
   object: JsonObject,
   key: string,

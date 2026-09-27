@@ -12,5 +12,8 @@ export type {
   ImageValidationCode,
 } from "./model/validate-image";
 export { usePosterUpload } from "./model/use-poster-upload";
-export type { PosterUploadState } from "./model/use-poster-upload";
+export type {
+  PosterUploadState,
+  UploadLimits,
+} from "./model/use-poster-upload";
 export { PosterDropzone } from "./ui/PosterDropzone";

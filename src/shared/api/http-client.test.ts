@@ -53,18 +53,16 @@ describe("createHttpClient", () => {
   });
 
   it("오류 응답의 code, message, requestId를 ApiError로 옮긴다", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValue(
-        jsonResponse(
-          {
-            code: "REVIEW_CONFLICT",
-            message: "이미 처리됨",
-            requestId: "req-9",
-          },
-          { status: 409 },
-        ),
-      );
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(
+        {
+          code: "REVIEW_CONFLICT",
+          message: "이미 처리됨",
+          requestId: "req-9",
+        },
+        { status: 409 },
+      ),
+    );
     const client = createHttpClient({
       baseUrl: "https://api.example.com",
       fetchImpl,
@@ -314,5 +312,37 @@ describe("createHttpClient", () => {
         JSON.stringify({ title: "제목" }),
       );
     });
+  });
+
+  it("요청마다 제한 시간을 늘릴 수 있다", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi.fn(
+        (_url: string, init: RequestInit) =>
+          new Promise<Response>((resolve, reject) => {
+            init.signal?.addEventListener("abort", () =>
+              reject(new DOMException("Aborted", "AbortError")),
+            );
+            setTimeout(() => resolve(jsonResponse({ ok: true })), 20_000);
+          }),
+      );
+      const client = createHttpClient({
+        baseUrl: "https://api.example.com",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      });
+
+      const slow = client.request({ path: "/slow", timeoutMs: 60_000 });
+      await vi.advanceTimersByTimeAsync(20_000);
+      await expect(slow).resolves.toEqual({ ok: true });
+
+      const normal = client.request({ path: "/slow" });
+      const assertion = expect(normal).rejects.toMatchObject({
+        code: "TIMEOUT",
+      });
+      await vi.advanceTimersByTimeAsync(15_000);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { MEDIA_CONSTRAINTS } from "@/entities/media";
+import { useSignageConfig } from "@/entities/submission/api/queries";
 import type { SignageSubmissionExpanded } from "@/entities/submission";
 import { isAllowedZiggleUrl } from "@/shared/lib/ziggle-url";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
@@ -50,6 +51,9 @@ function usePosterSize(
 
 export function ReviewWarnings({ submission, serverNow }: ReviewWarningsProps) {
   const size = usePosterSize(submission.posterUrl);
+  // 서버 설정값을 쓴다. 받기 전에는 기본값으로 먼저 본다.
+  const minShortEdgePx =
+    useSignageConfig().data?.minShortEdgePx ?? MEDIA_CONSTRAINTS.minShortEdgePx;
   const shortEdge = size ? Math.min(size.width, size.height) : null;
   const ratio = size ? size.width / size.height : null;
   const now = serverNow.getTime();
@@ -91,14 +95,11 @@ export function ReviewWarnings({ submission, serverNow }: ReviewWarningsProps) {
       title: "포스터 이미지가 없어요",
       detail: "이미지 없이 승인하면 TV에 빈 칸이 나갑니다.",
     });
-  } else if (
-    shortEdge !== null &&
-    shortEdge < MEDIA_CONSTRAINTS.minShortEdgePx
-  ) {
+  } else if (shortEdge !== null && shortEdge < minShortEdgePx) {
     warnings.push({
       key: "poster-small",
       title: `포스터 해상도가 낮아요 (짧은 변 ${shortEdge}px)`,
-      detail: `TV 기준 ${MEDIA_CONSTRAINTS.minShortEdgePx}px 이상을 권장해요. 저해상도로 반려를 검토하세요.`,
+      detail: `TV 기준 ${minShortEdgePx}px 이상을 권장해요. 저해상도로 반려를 검토하세요.`,
     });
   }
 

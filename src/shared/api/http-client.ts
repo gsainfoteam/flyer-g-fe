@@ -26,6 +26,8 @@ export interface HttpRequest {
   signal?: AbortSignal;
   /** 명세 8.4: 업로드와 제출은 idempotency를 지원한다. */
   idempotencyKey?: string;
+  /** 이 요청만 기다리는 시간을 바꾼다. 서버가 이미지를 처리하는 요청처럼 오래 걸리는 곳에서 쓴다. */
+  timeoutMs?: number;
 }
 
 export interface HttpClient {
@@ -149,7 +151,10 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
       headers["Idempotency-Key"] = request.idempotencyKey;
     }
 
-    const deadline = withTimeout(request.signal, timeoutMs);
+    const deadline = withTimeout(
+      request.signal,
+      request.timeoutMs ?? timeoutMs,
+    );
     try {
       return await fetchImpl(
         buildUrl(options.baseUrl, request.path, request.query),

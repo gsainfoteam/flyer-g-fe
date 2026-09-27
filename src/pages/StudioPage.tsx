@@ -103,7 +103,17 @@ export function StudioPage() {
   const editingSubmission = editingId ? (editing.data ?? null) : null;
   const config = useSignageConfig();
   const categories = useCategories();
-  const upload = usePosterUpload();
+  const uploadLimits = useMemo(
+    () =>
+      config.data
+        ? {
+            maxSizeBytes: config.data.maxUploadBytes,
+            minShortEdgePx: config.data.minShortEdgePx,
+          }
+        : null,
+    [config.data],
+  );
+  const upload = usePosterUpload({ limits: uploadLimits });
   const createSubmission = useCreateSubmission();
 
   // 4분할 미리보기의 나머지 칸을 채울 내 게시 중 포스터와, 판정 기준이 되는 서버 시각.
@@ -388,6 +398,7 @@ export function StudioPage() {
                 upload.clear();
               }}
               error={showErrors ? errors.asset : null}
+              limits={uploadLimits}
             />
           </div>
         </aside>

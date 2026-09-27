@@ -12,7 +12,7 @@
       "autoPort": true
     },
     {
-      "name": "flyer-g-dev-real-auth",
+      "name": "flyer-g-dev-real-api",
       "runtimeExecutable": "bun",
       "runtimeArgs": [
         "run",
@@ -22,7 +22,9 @@
         "--strictPort"
       ],
       "env": {
-        "VITE_USE_MOCK_AUTH": "false"
+        "VITE_USE_MOCK_AUTH": "false",
+        "VITE_API_MODE_REFERENCE": "real",
+        "VITE_API_MODE_UPLOAD": "real"
       },
       "port": 5173
     },
