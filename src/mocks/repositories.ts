@@ -204,7 +204,9 @@ class MockStore {
     running: Promise<SignageSubmissionExpanded>,
   ): void {
     this.inFlightCreates.set(key, running);
-    void running.finally(() => this.inFlightCreates.delete(key));
+    // 실패는 호출부가 받는다. 여기서는 정리만 하고, 실패를 한 번 더 흘리지 않는다.
+    const forget = () => void this.inFlightCreates.delete(key);
+    running.then(forget, forget);
   }
 }
 
