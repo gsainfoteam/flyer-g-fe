@@ -37,14 +37,18 @@ export const AUTHORIZE_URL = "https://account.gistory.me/authorize";
 /**
  * 요청할 scope. 인포팀 계정(gsainfoteam/account-be)과 백엔드(flyer-g-be) 규칙에 맞춘다.
  *
- * - 백엔드는 IdP 토큰으로 `/oauth/userinfo`를 불러 `name`, `email`만 쓴다. id_token은
- *   쓰지 않으므로 `openid`를 요청하지 않는다(요청하면 클라이언트에 id_token 허용과
- *   `nonce`가 필요하다). `profile`은 이름이 아니라 프로필 값이다.
+ * - 백엔드는 IdP 토큰으로 `/oauth/userinfo`를 불러 `name`, `email`(필수)과
+ *   `student_id`(있으면 저장)를 쓴다. id_token은 쓰지 않으므로 `openid`를 요청하지
+ *   않는다(요청하면 클라이언트에 id_token 허용과 `nonce`가 필요하다). `profile`은
+ *   이름이 아니라 프로필 값이다.
  * - 클라이언트 설정의 **필수 scope는 모두 요청해야** 동의와 userinfo가 통과한다.
  *   필수 scope를 늘리면 여기도 함께 늘린다.
+ * - `student_id`는 클라이언트에서 선택 scope다. 동의 화면에서 사용자가 빼면 제공자가
+ *   그것만 빼고 인가하므로 로그인은 그대로 된다. 학번 인증이 없는 교직원도 로그인할 수
+ *   있게 필수로 두지 않는다.
  * - `offline_access`: refreshToken. 새로고침해도 로그인이 이어진다.
  */
-export const AUTH_SCOPE = "name email offline_access";
+export const AUTH_SCOPE = "name email student_id offline_access";
 
 /**
  * `offline_access`를 요청하면 `prompt`가 `consent`나 `login`이어야 한다(제공자 규칙).

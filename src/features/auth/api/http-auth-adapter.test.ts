@@ -117,7 +117,7 @@ describe("createHttpAuthAdapter", () => {
         response_type: "code",
         client_id: "flyer-g",
         redirect_uri: REDIRECT_URI,
-        scope: "name email offline_access",
+        scope: "name email student_id offline_access",
         // refreshToken을 받으려면 동의 화면을 거쳐야 한다(제공자 규칙).
         prompt: "consent",
         code_challenge_method: "S256",
