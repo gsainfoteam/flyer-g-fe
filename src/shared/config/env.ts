@@ -155,7 +155,10 @@ export function readAppEnv(raw: RawEnv): AppEnv {
   const apiModes = Object.fromEntries(
     API_UNITS.map((unit) => {
       const key = `VITE_API_MODE_${unit.toUpperCase()}` as ApiModeEnvKey;
-      return [unit, parseApiMode(key, raw[key], mockByDefault ? "mock" : "real")];
+      return [
+        unit,
+        parseApiMode(key, raw[key], mockByDefault ? "mock" : "real"),
+      ];
     }),
   ) as Record<ApiUnit, ApiMode>;
   const mockUnits = API_UNITS.filter((unit) => apiModes[unit] === "mock");

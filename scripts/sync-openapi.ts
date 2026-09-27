@@ -37,7 +37,9 @@ async function main() {
 
   const response = await fetch(url, { headers });
   if (!response.ok) {
-    throw new Error(`OpenAPI 문서를 받지 못했습니다: ${response.status} ${url}`);
+    throw new Error(
+      `OpenAPI 문서를 받지 못했습니다: ${response.status} ${url}`,
+    );
   }
   const document = (await response.json()) as Record<string, unknown>;
 

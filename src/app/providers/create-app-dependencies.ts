@@ -3,7 +3,10 @@ import type { AuthAdapter } from "@/features/auth/api/auth-adapter";
 import { isMockAuthAdapter } from "@/features/auth/api/mock-auth";
 import { createAssetUploadService } from "@/features/media-upload/api/create-asset-upload-service";
 import { createNoticeAdapter } from "@/entities/notice/api/create-notice-adapter";
-import { createMockRepositories, isMockRepositories } from "@/mocks/repositories";
+import {
+  createMockRepositories,
+  isMockRepositories,
+} from "@/mocks/repositories";
 import type { Repositories } from "@/shared/api/repositories";
 import { isMockUnit } from "@/shared/config/env";
 import type { ApiUnit, AppEnv } from "@/shared/config/env";
@@ -51,7 +54,10 @@ const REPOSITORY_UNITS = {
  * 실제 HTTP 구현은 단위마다 연동하면서 붙인다. 아직 없는 단위를 real로 두면
  * 시작 시점에 어느 단위인지 알린다.
  */
-function createRepositories(env: AppEnv, authAdapter: AuthAdapter): Repositories {
+function createRepositories(
+  env: AppEnv,
+  authAdapter: AuthAdapter,
+): Repositories {
   const pending = (
     Object.keys(REPOSITORY_UNITS) as (keyof Repositories)[]
   ).filter((key) => !isMockUnit(env, REPOSITORY_UNITS[key]));
