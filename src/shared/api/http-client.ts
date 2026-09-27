@@ -28,6 +28,15 @@ export interface HttpRequest {
   idempotencyKey?: string;
   /** 이 요청만 기다리는 시간을 바꾼다. 서버가 이미지를 처리하는 요청처럼 오래 걸리는 곳에서 쓴다. */
   timeoutMs?: number;
+  /** 이 요청에만 싣는 헤더. 기기 토큰(`X-Device-Token`)이나 조건부 요청에 쓴다. */
+  headers?: Record<string, string>;
+  /**
+   * 304(바뀌지 않음)를 오류로 보지 않고 `undefined`로 돌려준다. `If-None-Match`로
+   * 조건부 요청을 할 때 켠다.
+   */
+  allowNotModified?: boolean;
+  /** 응답 헤더(ETag 등)를 읽어야 할 때 받는다. 오류 응답에서는 부르지 않는다. */
+  onResponse?: (response: Response) => void;
 }
 
 export interface HttpClient {
@@ -131,7 +140,7 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
         }
         if (recovered) response = await send(request);
       }
-      return readResponse<T>(response);
+      return readResponse<T>(response, request);
     },
   };
 
@@ -150,6 +159,7 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     if (request.idempotencyKey) {
       headers["Idempotency-Key"] = request.idempotencyKey;
     }
+    Object.assign(headers, request.headers);
 
     const deadline = withTimeout(
       request.signal,
@@ -191,8 +201,16 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     }
   }
 
-  async function readResponse<T>(response: Response): Promise<T> {
+  async function readResponse<T>(
+    response: Response,
+    request: HttpRequest,
+  ): Promise<T> {
     const requestId = response.headers.get(REQUEST_ID_HEADER);
+
+    if (response.status === 304 && request.allowNotModified) {
+      request.onResponse?.(response);
+      return undefined as T;
+    }
 
     if (!response.ok) {
       const body = readErrorBody(await response.json().catch(() => null));
@@ -206,6 +224,7 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
       });
     }
 
+    request.onResponse?.(response);
     if (response.status === 204) return undefined as T;
 
     try {

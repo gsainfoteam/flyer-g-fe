@@ -3,6 +3,7 @@ import { to } from "@/shared/config/routes";
 import { PosterThumb } from "@/entities/poster/ui/PosterThumb";
 import { ApprovalPanel } from "@/widgets/dashboard/ApprovalPanel";
 import { RecentContentSection } from "@/widgets/dashboard/RecentContentSection";
+import { PREVIEW_DEVICE_ID } from "@/entities/playlist/model/types";
 import { DeviceStatusPanel } from "@/widgets/dashboard/DeviceStatusPanel";
 import { StatusCountBar } from "@/widgets/dashboard/StatusCountBar";
 import { useSessionUser } from "@/features/auth/model/auth-context";
@@ -79,7 +80,8 @@ export function DashboardPage() {
           <div className="flex flex-wrap items-end gap-6">
             <div className="min-w-0 flex-1">
               <p className="text-label text-ink-muted">
-                {formatSeoulDateTime(summary.data.calculatedAt)} · 서버 시각 기준
+                {formatSeoulDateTime(summary.data.calculatedAt)} · 서버 시각
+                기준
                 {locationLabel && <> · {locationLabel}</>}
               </p>
               <h1 className="mt-1.5 text-display text-ink">
@@ -120,7 +122,9 @@ export function DashboardPage() {
               // 가장 오래 기다린 건부터 연다. 결정하면 다음 건으로 이어진다.
               oldest && (
                 <Button asChild>
-                  <Link to={to.reviewDetail(oldest.id)}>순서대로 검토 시작</Link>
+                  <Link to={to.reviewDetail(oldest.id)}>
+                    순서대로 검토 시작
+                  </Link>
                 </Button>
               )
             ) : (
@@ -173,13 +177,15 @@ export function DashboardPage() {
             )}
 
             <div className="flex min-w-0 flex-col gap-5">
-              {isReviewer && <DeviceStatusPanel />}
+              {isReviewer && (
+                <DeviceStatusPanel serverNow={summary.data.calculatedAt} />
+              )}
 
               <Panel
                 title="지금 TV에 걸린 것"
                 action={
                   <Button variant="link" size="xs" asChild>
-                    <Link to={to.display("device-preview", { preview: true })}>
+                    <Link to={to.display(PREVIEW_DEVICE_ID, { preview: true })}>
                       미리보기 →
                     </Link>
                   </Button>
@@ -199,7 +205,9 @@ export function DashboardPage() {
 
 function PublishedMini({ submissions }: { submissions: SubmissionView[] }) {
   if (submissions.length === 0) {
-    return <EmptyState title="지금 TV에 걸린 포스터가 없어요" className="py-2" />;
+    return (
+      <EmptyState title="지금 TV에 걸린 포스터가 없어요" className="py-2" />
+    );
   }
 
   return (

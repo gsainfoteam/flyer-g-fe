@@ -1,4 +1,7 @@
-import type { DeviceStatus, DisplayDevice } from "@/entities/device/model/types";
+import type {
+  DeviceStatus,
+  DisplayDevice,
+} from "@/entities/device/model/types";
 import { useDevices } from "@/entities/device/api/queries";
 import { ErrorState, LoadingState, Panel } from "@/shared/components";
 import { formatTimeAgo } from "@/shared/lib/datetime";
@@ -31,13 +34,23 @@ const STATUS_STYLE: Record<
   },
 };
 
-export function DeviceStatusPanel() {
+interface DeviceStatusPanelProps {
+  /**
+   * 기기 목록에 서버 시각이 없을 때 쓸 서버 시각. 대시보드는 요약의 기준 시각을 넘긴다.
+   * 클라이언트 시계로 대신하지 않는다.
+   */
+  serverNow: Date;
+}
+
+export function DeviceStatusPanel({ serverNow }: DeviceStatusPanelProps) {
   const devices = useDevices();
 
   return (
     <Panel
       title={
-        devices.data ? `디스플레이 ${devices.data.items.length}대` : "디스플레이"
+        devices.data
+          ? `디스플레이 ${devices.data.items.length}대`
+          : "디스플레이"
       }
     >
       {devices.isPending ? (
@@ -52,7 +65,7 @@ export function DeviceStatusPanel() {
       ) : (
         <DeviceRows
           devices={devices.data.items}
-          now={devices.data.serverTime}
+          now={devices.data.serverTime ?? serverNow}
         />
       )}
     </Panel>

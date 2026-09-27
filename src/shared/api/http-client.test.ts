@@ -345,4 +345,33 @@ describe("createHttpClient", () => {
       vi.useRealTimers();
     }
   });
+
+  it("요청별 헤더를 싣고, 허용한 304는 오류가 아니라 undefined로 돌려준다", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(null, { status: 304, headers: { ETag: '"v1"' } }),
+      );
+    const client = createHttpClient({
+      baseUrl: "https://api.example.com",
+      fetchImpl,
+    });
+    const onResponse = vi.fn();
+
+    await expect(
+      client.request({
+        path: "/playlist",
+        headers: { "If-None-Match": '"v1"' },
+        allowNotModified: true,
+        onResponse,
+      }),
+    ).resolves.toBeUndefined();
+    expect(fetchImpl.mock.calls[0]![1].headers["If-None-Match"]).toBe('"v1"');
+    expect(onResponse.mock.calls[0]![0].headers.get("ETag")).toBe('"v1"');
+
+    // 허용하지 않은 304는 오류다.
+    await expect(client.request({ path: "/playlist" })).rejects.toMatchObject({
+      status: 304,
+    });
+  });
 });

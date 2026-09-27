@@ -141,6 +141,10 @@ export function toUserMessage(error: ApiError): string {
       return "로그인 설정이 이 주소와 맞지 않아요. 관리자에게 문의해 주세요.";
     case "AUTH_FAILED":
       return "로그인을 마치지 못했어요. 다시 로그인해 주세요.";
+    case "DEVICE_NOT_REGISTERED":
+      return "관리자에게 받은 설정 링크로 이 화면을 열어 주세요.";
+    case "DEVICE_UNAUTHORIZED":
+      return "토큰이 재발급되었거나 사용하지 않는 기기예요. 관리자에게 새 설정 링크를 받아 주세요.";
     case "UPLOAD_FAILED":
       return "포스터를 올리지 못했습니다. 다시 시도해 주세요.";
     default:

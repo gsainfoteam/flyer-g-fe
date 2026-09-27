@@ -10,11 +10,12 @@ export type DeviceOrientation = (typeof DEVICE_ORIENTATIONS)[number];
 export interface DisplayDeviceDto {
   id: string;
   name: string;
-  location: string;
+  location: string | null;
   groupIds: string[];
   /** MVP는 LANDSCAPE만 사용한다. */
   orientation: DeviceOrientation;
-  resolution: { width: number; height: number };
+  /** 기기가 마지막으로 알린 해상도. heartbeat를 받기 전에는 null */
+  resolution: { width: number; height: number } | null;
   lastSeenAt: string | null;
   appVersion: string | null;
   status: DeviceStatus;
@@ -25,12 +26,13 @@ export interface DisplayDevice extends Omit<DisplayDeviceDto, "lastSeenAt"> {
 }
 
 /**
- * 기기 목록 응답. 다른 목록처럼 서버 시각을 함께 준다. "마지막 연결 3분 전" 같은
- * 판단을 클라이언트 시계로 하면 기기 시계가 틀어졌을 때 상태가 거짓이 된다.
+ * 기기 목록. "마지막 연결 3분 전" 같은 표시는 클라이언트 시계가 아니라 서버 시각으로
+ * 센다. 서버 목록 응답에는 시각이 없어(`API-FOLLOWUP-2026-09.md` 2-2) null일 수 있고,
+ * 그때 화면은 함께 받은 다른 응답의 서버 시각을 쓴다.
  */
 export interface DeviceList {
   items: DisplayDevice[];
-  serverTime: Date;
+  serverTime: Date | null;
 }
 
 export function toDisplayDevice(dto: DisplayDeviceDto): DisplayDevice {

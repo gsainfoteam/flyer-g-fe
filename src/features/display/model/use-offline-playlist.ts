@@ -57,6 +57,11 @@ export interface OfflinePlaylistResult {
   isPending: boolean;
   /** 보여줄 것이 아무것도 없는 실패 */
   error: unknown;
+  /**
+   * 가장 최근 조회의 실패. 캐시나 앞서 받은 편성을 재생하는 중에도 알려 준다.
+   * 기기 토큰이 거절된 것처럼 재생을 멈춰야 하는 실패를 호출부가 가려낸다.
+   */
+  lastError: unknown;
   refetch(): void;
 }
 
@@ -79,7 +84,11 @@ export function useOfflinePlaylist(
   options: UseOfflinePlaylistOptions = {},
 ): OfflinePlaylistResult {
   const { displays } = useRepositories();
-  const { store: injectedStore, preload, backoffMs = computeBackoffMs } = options;
+  const {
+    store: injectedStore,
+    preload,
+    backoffMs = computeBackoffMs,
+  } = options;
 
   const [cacheStore] = useState<Promise<KeyValueStore>>(() =>
     openVersionedStore(injectedStore ?? defaultStore(), CACHE_SCHEMA_VERSION),
@@ -91,7 +100,11 @@ export function useOfflinePlaylist(
   // TanStack의 fetchFailureCount 대신 오류·성공 누적 횟수로 직접 센다.
   // 대기 시간은 실패 횟수가 바뀔 때만 계산한다. jitter가 렌더마다 달라지면
   // polling timer가 매번 다시 걸려 영영 울리지 않는다.
-  const backoffRef = useRef({ errorsAtLastSuccess: 0, failures: -1, delayMs: 0 });
+  const backoffRef = useRef({
+    errorsAtLastSuccess: 0,
+    failures: -1,
+    delayMs: 0,
+  });
 
   const query = useQuery({
     queryKey: queryKeys.displays.playlist(deviceId),
@@ -103,7 +116,8 @@ export function useOfflinePlaylist(
         backoff.errorsAtLastSuccess = state.errorUpdateCount;
       }
       const failures = state.errorUpdateCount - backoff.errorsAtLastSuccess;
-      const baseMs = clampRefreshSeconds(state.data?.refreshAfterSeconds) * 1000;
+      const baseMs =
+        clampRefreshSeconds(state.data?.refreshAfterSeconds) * 1000;
       if (failures !== backoff.failures) {
         backoff.failures = failures;
         backoff.delayMs = backoffMs(baseMs, failures);
@@ -190,7 +204,7 @@ export function useOfflinePlaylist(
   const now = useServerNow(timed);
 
   return useMemo((): OfflinePlaylistResult => {
-    const base = { refetch: () => void refetch() };
+    const base = { refetch: () => void refetch(), lastError: error };
 
     if (data && timed && now) {
       return {

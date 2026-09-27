@@ -2,6 +2,8 @@ import { createAuthAdapter } from "@/features/auth/api/create-auth-adapter";
 import type { AuthAdapter } from "@/features/auth/api/auth-adapter";
 import { isHttpAuthAdapter } from "@/features/auth/api/http-auth-adapter";
 import { isMockAuthAdapter } from "@/features/auth/api/mock-auth";
+import { createHttpDeviceRepository } from "@/entities/device/api/http-device-repository";
+import { createHttpDisplayRepository } from "@/entities/playlist/api/http-display-repository";
 import { createHttpReviewRepository } from "@/entities/review/api/http-review-repository";
 import { createHttpReferenceRepository } from "@/entities/submission/api/http-reference-repository";
 import { createHttpSubmissionRepository } from "@/entities/submission/api/http-submission-repository";
@@ -11,6 +13,7 @@ import { createHttpClient } from "@/shared/api/http-client";
 import type { HttpClient } from "@/shared/api/http-client";
 import type { Repositories } from "@/shared/api/repositories";
 import { isMockUnit } from "@/shared/config/env";
+import { deviceCredentials } from "@/shared/lib/device-credential";
 import type { ApiUnit, AppEnv } from "@/shared/config/env";
 import type { AppServices } from "./services";
 
@@ -90,6 +93,14 @@ function createRepositories(
           reference: () => createHttpReferenceRepository(apiClient),
           submissions: () => createHttpSubmissionRepository(apiClient),
           reviews: () => createHttpReviewRepository(apiClient),
+          devices: () => createHttpDeviceRepository(apiClient),
+          displays: () =>
+            createHttpDisplayRepository({
+              // TV 요청은 사용자 세션과 무관하다. 기기 토큰만 싣는다.
+              deviceClient: createHttpClient({ baseUrl: env.apiBaseUrl! }),
+              userClient: apiClient,
+              credentials: deviceCredentials,
+            }),
         };
 
   const pending = (

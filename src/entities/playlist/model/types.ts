@@ -4,6 +4,13 @@ export type LayoutType = (typeof LAYOUT_TYPES)[number];
 
 export const FOUR_GRID_SLOT_COUNT = 4;
 
+/**
+ * 관리자 미리보기용 예약 기기 id. 실제 기기가 아니라 지금 게시 중인 전체 포스터를
+ * 보여준다. 편성 API는 기기 토큰이 있어야 하므로, 이 id는 로그인한 사용자의 게시 중
+ * 신청 목록으로 편성을 만든다.
+ */
+export const PREVIEW_DEVICE_ID = "device-preview";
+
 /** 명세 FR-PLY-03 전환 간격 안전 범위. 서버 값을 이 범위로 clamp한다. */
 export const ROTATION_SECONDS = {
   min: 5,
