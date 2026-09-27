@@ -8,6 +8,10 @@
         "run",
         "dev"
       ],
+      "env": {
+        "VITE_USE_MOCK_API": "true",
+        "VITE_USE_MOCK_AUTH": "true"
+      },
       "port": 5173,
       "autoPort": true
     },
