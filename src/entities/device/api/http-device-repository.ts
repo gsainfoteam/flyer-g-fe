@@ -1,4 +1,5 @@
 import type { HttpClient } from "@/shared/api/http-client";
+import type { ApiRequestBody } from "@/shared/api/contract";
 import {
   invalidResponse,
   readArray,
@@ -148,7 +149,7 @@ export function createHttpDeviceRepository(
         await client.request({
           method: "POST",
           path: "/signage/devices",
-          body: input,
+          body: input satisfies ApiRequestBody<"CreateDeviceDto">,
           signal,
         }),
       );
@@ -159,7 +160,7 @@ export function createHttpDeviceRepository(
         await client.request({
           method: "PATCH",
           path: devicePath(id),
-          body: input,
+          body: input satisfies ApiRequestBody<"UpdateDeviceDto">,
           signal,
         }),
       );

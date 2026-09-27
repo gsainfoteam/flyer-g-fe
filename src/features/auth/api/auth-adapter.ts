@@ -24,9 +24,9 @@ export interface AuthAdapter {
   /**
    * 로그인을 시작한다.
    *
-   * 실제 구현에서는 인증 제공자로 브라우저를 넘기므로 이 Promise가 끝나지 않을 수
-   * 있다. 그 경우 돌아온 뒤 `restore()`가 세션을 복원한다. 개발용 mock은 즉시
-   * 사용자를 돌려준다.
+   * 실제 구현에서는 인증 제공자로 브라우저를 넘기므로 이 Promise가 끝나지 않는다.
+   * 돌아오면 `/auth/callback`에서 `completeSignIn()`이 code를 토큰으로 바꾼다.
+   * 개발용 mock은 즉시 사용자를 돌려준다.
    *
    * `returnTo`는 로그인 후 돌아갈 앱 내부 경로다. 외부 주소를 넘기지 않는다.
    */

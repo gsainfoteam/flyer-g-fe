@@ -5,8 +5,9 @@
  *
  * - `src/shared/api/generated/openapi.json`: 받은 문서 그대로. 백엔드 계약이 바뀌면
  *   이 파일의 diff로 무엇이 달라졌는지 본다.
- * - `src/shared/api/generated/schema.d.ts`: 위 문서로 만든 타입. 실제 HTTP 구현이
- *   요청·응답 DTO로 쓴다. 손으로 고치지 않는다.
+ * - `src/shared/api/generated/schema.d.ts`: 위 문서로 만든 타입. HTTP 구현의 요청
+ *   본문이 `ApiRequestBody`(`src/shared/api/contract.ts`)로 이 타입에 맞춘다. 응답은
+ *   믿지 않고 런타임에 검증한다. 손으로 고치지 않는다.
  *
  * 환경 변수 (bun이 `.env`를 읽는다)
  * - `OPENAPI_URL`: 문서 주소. 없으면 `${VITE_API_BASE_URL}/docs-json`

@@ -1,4 +1,5 @@
 import type { HttpClient } from "@/shared/api/http-client";
+import type { ApiRequestBody } from "@/shared/api/contract";
 import {
   invalidResponse,
   readArray,
@@ -166,18 +167,27 @@ function statusesOf(params: SubmissionListParams): string | undefined {
   return undefined;
 }
 
-/** 요청 본문. 날짜는 UTC ISO 문자열로, 보내지 않은 필드는 빼서 서버가 그대로 둔다. */
-function toBody(
-  input: Partial<CreateSubmissionInput> & { version?: number },
-): Record<string, unknown> {
+/** 생성 본문. 날짜는 UTC ISO 문자열로 보낸다. */
+function toCreateBody(
+  input: CreateSubmissionInput,
+): ApiRequestBody<"CreateSubmissionDto"> {
+  return {
+    ...input,
+    startAt: toIsoUtc(input.startAt),
+    endAt: toIsoUtc(input.endAt),
+  };
+}
+
+/** 수정 본문. 보내지 않은 필드(undefined)는 JSON에서 빠져 서버가 그대로 둔다. */
+function toUpdateBody(
+  input: UpdateSubmissionInput,
+): ApiRequestBody<"UpdateSubmissionDto"> {
   const { startAt, endAt, ...rest } = input;
-  return Object.fromEntries(
-    Object.entries({
-      ...rest,
-      startAt: startAt ? toIsoUtc(startAt) : undefined,
-      endAt: endAt ? toIsoUtc(endAt) : undefined,
-    }).filter(([, value]) => value !== undefined),
-  );
+  return {
+    ...rest,
+    startAt: startAt && toIsoUtc(startAt),
+    endAt: endAt && toIsoUtc(endAt),
+  };
 }
 
 const submissionPath = (id: string) =>
@@ -223,7 +233,7 @@ export function createHttpSubmissionRepository(
         await client.request({
           method: "POST",
           path: "/signage/submissions",
-          body: toBody(input),
+          body: toCreateBody(input),
           idempotencyKey: options?.idempotencyKey,
           signal: options?.signal,
         }),
@@ -235,7 +245,7 @@ export function createHttpSubmissionRepository(
         await client.request({
           method: "PATCH",
           path: submissionPath(id),
-          body: toBody(input),
+          body: toUpdateBody(input),
           signal: options?.signal,
         }),
       );
@@ -246,7 +256,9 @@ export function createHttpSubmissionRepository(
         await client.request({
           method: "POST",
           path: `${submissionPath(id)}/submit`,
-          body: { version: input.version },
+          body: {
+            version: input.version,
+          } satisfies ApiRequestBody<"SubmissionVersionDto">,
           idempotencyKey: options?.idempotencyKey,
           signal: options?.signal,
         }),
@@ -258,7 +270,9 @@ export function createHttpSubmissionRepository(
         await client.request({
           method: "POST",
           path: `${submissionPath(id)}/cancel`,
-          body: { version: input.version },
+          body: {
+            version: input.version,
+          } satisfies ApiRequestBody<"SubmissionVersionDto">,
           idempotencyKey: options?.idempotencyKey,
           signal: options?.signal,
         }),

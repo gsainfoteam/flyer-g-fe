@@ -1,4 +1,5 @@
 import { ApiError } from "@/shared/api/error";
+import type { ApiRequestBody } from "@/shared/api/contract";
 import type { HttpClient } from "@/shared/api/http-client";
 import { readNumber, readObject, readString } from "@/shared/api/parse";
 import type {
@@ -40,6 +41,19 @@ export interface HttpUploadServiceOptions {
 const COMPLETE_TIMEOUT_MS = 60_000;
 /** 진행률 중 파일 전송이 차지하는 몫. 나머지는 서버 처리다. */
 const TRANSFER_SHARE = 0.9;
+
+type UploadMimeType = ApiRequestBody<"PresignAssetRequestDto">["mimeType"];
+
+/** 서버가 받는 이미지 형식. 계약이 바뀌면 이 목록에서 컴파일 오류가 난다. */
+const UPLOAD_MIME_TYPES = {
+  "image/jpeg": true,
+  "image/png": true,
+  "image/webp": true,
+} satisfies Record<UploadMimeType, true>;
+
+function isUploadMimeType(value: string): value is UploadMimeType {
+  return Object.hasOwn(UPLOAD_MIME_TYPES, value);
+}
 
 /** 브라우저가 정하는 헤더. 직접 넣으면 무시되거나 오류가 난다. */
 const BROWSER_MANAGED_HEADERS = new Set(["content-length", "host"]);
@@ -148,6 +162,15 @@ export function createHttpUploadService({
   return {
     async upload(file: File, { onProgress, signal }: UploadOptions = {}) {
       onProgress?.(0);
+      // 폼이 먼저 막지만, 서버가 받지 않는 형식을 보내지 않는다.
+      const mimeType = file.type;
+      if (!isUploadMimeType(mimeType)) {
+        throw new ApiError({
+          kind: "unknown",
+          code: "UPLOAD_FAILED",
+          message: `지원하지 않는 이미지 형식입니다: ${mimeType || "알 수 없음"}`,
+        });
+      }
 
       // 전송 중 손상을 서버가 잡을 수 있게 내용의 checksum을 함께 알린다.
       const checksum = `sha256:${await digest(file)}`;
@@ -159,10 +182,10 @@ export function createHttpUploadService({
           path: "/signage/assets/presign",
           body: {
             fileName: file.name,
-            mimeType: file.type,
+            mimeType,
             sizeBytes: file.size,
             checksum,
-          },
+          } satisfies ApiRequestBody<"PresignAssetRequestDto">,
           signal,
         }),
       );

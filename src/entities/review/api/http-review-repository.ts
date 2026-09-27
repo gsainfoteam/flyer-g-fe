@@ -2,6 +2,7 @@ import {
   parseSubmission,
   parseSubmissionPage,
 } from "@/entities/submission/api/http-submission-repository";
+import type { ApiRequestBody } from "@/shared/api/contract";
 import type { HttpClient } from "@/shared/api/http-client";
 import {
   invalidResponse,
@@ -205,7 +206,7 @@ export function createHttpReviewRepository(
         await client.request({
           method: "POST",
           path: `${submissionPath(submissionId)}/approve`,
-          body: { revision },
+          body: { revision } satisfies ApiRequestBody<"ApproveSubmissionDto">,
           idempotencyKey: options?.idempotencyKey,
           signal: options?.signal,
         }),
@@ -217,7 +218,11 @@ export function createHttpReviewRepository(
         await client.request({
           method: "POST",
           path: `${submissionPath(submissionId)}/reject`,
-          body: { revision, reasonCode, comment },
+          body: {
+            revision,
+            reasonCode,
+            comment,
+          } satisfies ApiRequestBody<"RejectSubmissionDto">,
           idempotencyKey: options?.idempotencyKey,
           signal: options?.signal,
         }),
@@ -229,7 +234,7 @@ export function createHttpReviewRepository(
         await client.request({
           method: "POST",
           path: `${submissionPath(submissionId)}/suspend`,
-          body: { reason },
+          body: { reason } satisfies ApiRequestBody<"SuspendSubmissionDto">,
           idempotencyKey: options?.idempotencyKey,
           signal: options?.signal,
         }),

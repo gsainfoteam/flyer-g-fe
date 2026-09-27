@@ -1,5 +1,6 @@
 import { createStorageHeartbeatLog } from "@/mocks/heartbeats";
 import type { HeartbeatLog } from "@/mocks/heartbeats";
+import type { ApiRequestBody } from "@/shared/api/contract";
 import { ApiError } from "@/shared/api/error";
 import { createHttpClient } from "@/shared/api/http-client";
 import type { HttpClient } from "@/shared/api/http-client";
@@ -102,7 +103,7 @@ export function createHttpTelemetryAdapter({
         method: "POST",
         path: `${path(deviceId)}/heartbeat`,
         headers: authOf(deviceId),
-        body: payload,
+        body: payload satisfies ApiRequestBody<"HeartbeatDto">,
       });
     },
     async sendPlayEvents(deviceId, events) {
@@ -116,7 +117,9 @@ export function createHttpTelemetryAdapter({
           method: "POST",
           path: `${path(deviceId)}/play-events`,
           headers,
-          body: { events: events.slice(start, start + PLAY_EVENTS_MAX_BATCH) },
+          body: {
+            events: events.slice(start, start + PLAY_EVENTS_MAX_BATCH),
+          } satisfies ApiRequestBody<"PlayEventsDto">,
         });
       }
     },
