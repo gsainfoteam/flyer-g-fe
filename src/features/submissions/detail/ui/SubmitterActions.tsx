@@ -29,9 +29,14 @@ import { useCancelSubmission } from "../model/use-cancel-submission";
  */
 interface SubmitterActionsProps {
   submission: SubmissionView;
+  /** 관리자가 자기 신청을 본다. 게시 중단을 남에게 요청할 필요가 없다. */
+  isReviewer?: boolean;
 }
 
-export function SubmitterActions({ submission }: SubmitterActionsProps) {
+export function SubmitterActions({
+  submission,
+  isReviewer = false,
+}: SubmitterActionsProps) {
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const cancel = useCancelSubmission(submission.id);
 
@@ -67,8 +72,9 @@ export function SubmitterActions({ submission }: SubmitterActionsProps) {
 
       {submission.status === "PUBLISHED" && (
         <p className="text-caption text-ink-muted">
-          게시 중에는 직접 내릴 수 없어요. 급하면 하우스 관리자에게 게시 중단을
-          요청해 주세요.
+          {isReviewer
+            ? "게시 중에는 고칠 수 없어요. 내리려면 검토 화면에서 게시를 중단해 주세요."
+            : "게시 중에는 직접 내릴 수 없어요. 급하면 하우스 관리자에게 게시 중단을 요청해 주세요."}
         </p>
       )}
 
