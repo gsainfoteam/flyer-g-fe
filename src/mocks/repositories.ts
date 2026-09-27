@@ -1,8 +1,10 @@
 import type {
   DeviceList,
+  DisplayDevice,
   DisplayDeviceDto,
+  UpdateDeviceInput,
 } from "@/entities/device/model/types";
-import { toDisplayDevice } from "@/entities/device/model/types";
+import { DEVICE_LIMITS, toDisplayDevice } from "@/entities/device/model/types";
 import {
   canReviewerDecide,
   canReviewerSuspend,
@@ -55,6 +57,7 @@ import type { Clock } from "@/shared/lib/clock";
 import { systemClock } from "@/shared/lib/clock";
 import { parseIsoUtc, toIsoUtc } from "@/shared/lib/datetime";
 import { ziggleNoticeIdOf } from "@/shared/lib/ziggle-url";
+import type { DeviceSeed } from "./fixtures";
 import {
   DEVICE_FIXTURES,
   TARGET_GROUP_FIXTURES,
@@ -302,6 +305,7 @@ export function createMockRepositories(
   const heartbeats = options.heartbeats ?? createStorageHeartbeatLog();
   const startedAt = clock.now();
   const store = new MockStore(startedAt);
+  let deviceSeeds: DeviceSeed[] = [...DEVICE_FIXTURES];
   const config = SIGNAGE_CONFIG_FIXTURE;
 
   const settle = async (signal?: AbortSignal): Promise<void> => {
@@ -811,7 +815,7 @@ export function createMockRepositories(
       const now = clock.now();
       // 기기는 자기 위치가 대상인 게시물만 받는다. 등록되지 않은 id(미리보기)는
       // 모든 위치의 게시물을 본다.
-      const device = DEVICE_FIXTURES.find((item) => item.id === deviceId);
+      const device = deviceSeeds.find((item) => item.id === deviceId);
       const playable = store
         .all()
         .map(toSignageSubmissionExpanded)
@@ -828,8 +832,9 @@ export function createMockRepositories(
         serverTime: toIsoUtc(now),
         deviceName: device?.name ?? null,
         playlistVersion: hashPlaylist(playable),
-        refreshAfterSeconds: 60,
-        layout: { type: "SINGLE", rotationSeconds: 10 },
+        // 등록된 기기는 운영자가 정한 화면 설정을, 미리보기는 기본값을 쓴다.
+        refreshAfterSeconds: device?.refreshAfterSeconds ?? 60,
+        layout: device?.layout ?? { type: "SINGLE", rotationSeconds: 10 },
         items: playable.map((item) => ({
           submissionId: item.id,
           revision: item.version,
@@ -849,38 +854,167 @@ export function createMockRepositories(
     },
   };
 
+  /** 기기 관리(등록·수정·재발급)는 운영자만 한다. */
+  const requireSuperAdmin = (): SessionUser => {
+    const user = actor();
+    if (user && !hasAnyRole(user, ["SUPER_ADMIN"])) {
+      throw forbidden("시스템 운영자만 할 수 있는 작업입니다.");
+    }
+    return user ?? MOCK_USERS.SUPER_ADMIN;
+  };
+
+  /** 서버 DTO와 같은 범위로 검사한다. (`flyer-g-be` `device-input.dto.ts`) */
+  const checkDeviceInput = (input: UpdateDeviceInput) => {
+    const errors: Record<string, string> = {};
+    if (input.name !== undefined) {
+      const name = input.name.trim();
+      if (name.length === 0 || name.length > DEVICE_LIMITS.nameMaxLength) {
+        errors.name = `기기 이름은 1~${DEVICE_LIMITS.nameMaxLength}자여야 합니다.`;
+      }
+    }
+    if (
+      input.location &&
+      input.location.trim().length > DEVICE_LIMITS.locationMaxLength
+    ) {
+      errors.location = `위치는 ${DEVICE_LIMITS.locationMaxLength}자 이하여야 합니다.`;
+    }
+    const inRange = (
+      value: number | undefined,
+      { min, max }: { min: number; max: number },
+    ) =>
+      value === undefined ||
+      (Number.isInteger(value) && value >= min && value <= max);
+    if (!inRange(input.rotationSeconds, DEVICE_LIMITS.rotationSeconds)) {
+      errors.rotationSeconds = `전환 간격은 ${DEVICE_LIMITS.rotationSeconds.min}~${DEVICE_LIMITS.rotationSeconds.max}초여야 합니다.`;
+    }
+    if (
+      !inRange(input.refreshAfterSeconds, DEVICE_LIMITS.refreshAfterSeconds)
+    ) {
+      errors.refreshAfterSeconds = `갱신 주기는 ${DEVICE_LIMITS.refreshAfterSeconds.min}~${DEVICE_LIMITS.refreshAfterSeconds.max}초여야 합니다.`;
+    }
+    if (
+      input.groupIds?.some(
+        (id) => !TARGET_GROUP_FIXTURES.some((group) => group.id === id),
+      )
+    ) {
+      errors.groupIds = "선택할 수 없는 위치 그룹이 있습니다.";
+    }
+    throwIfInvalid(errors);
+  };
+
+  const issueToken = (deviceId: string) =>
+    `fgd_mock_${deviceId}_${clock.now().getTime().toString(36)}`;
+
+  const toDevice = (seed: DeviceSeed): DisplayDevice => {
+    const { silentSinceMs, isActive, ...device } = seed;
+    const now = clock.now();
+    const heartbeat = heartbeats.read()[device.id];
+    const heartbeatAt = heartbeat ? Date.parse(heartbeat.at) : Number.NaN;
+    // 정상 기기는 1분마다 heartbeat를 보낸다고 치고, 끊긴 기기는 끊긴 시점에
+    // 멈춰 있다. 실제 TV 탭이 보낸 기록이 더 최근이면 그것을 쓴다.
+    const simulated =
+      silentSinceMs === "never"
+        ? Number.NaN
+        : silentSinceMs === null
+          ? now.getTime() - (now.getTime() % HEARTBEAT_INTERVAL_MS)
+          : startedAt.getTime() - silentSinceMs;
+    const candidates = [heartbeatAt, simulated].filter(Number.isFinite);
+    const lastSeen = candidates.length > 0 ? Math.max(...candidates) : null;
+
+    const dto: DisplayDeviceDto = {
+      ...device,
+      appVersion: heartbeat?.appVersion ?? device.appVersion,
+      resolution: heartbeat?.resolution ?? device.resolution,
+      lastSeenAt: lastSeen === null ? null : toIsoUtc(new Date(lastSeen)),
+      status: !isActive
+        ? "DISABLED"
+        : lastSeen !== null && now.getTime() - lastSeen <= ONLINE_WINDOW_MS
+          ? "ONLINE"
+          : "OFFLINE",
+    };
+    return toDisplayDevice(dto);
+  };
+
+  const findDevice = (id: string): DeviceSeed => {
+    const found = deviceSeeds.find((item) => item.id === id);
+    if (!found) throw httpError(404, `기기를 찾을 수 없습니다: ${id}`);
+    return found;
+  };
+
   const devices: DeviceRepository = {
     async list(signal): Promise<DeviceList> {
       await settle(signal);
       requireReviewer();
-      const now = clock.now();
-      const recorded = heartbeats.read();
+      const items = [...deviceSeeds]
+        .sort((a, b) => a.name.localeCompare(b.name, "ko"))
+        .map(toDevice);
+      return { items, serverTime: clock.now() };
+    },
 
-      const items = DEVICE_FIXTURES.map(({ silentSinceMs, ...device }) => {
-        // 정상 기기는 1분마다 heartbeat를 보낸다고 치고, 끊긴 기기는 끊긴
-        // 시점에 멈춰 있다. 실제 TV 탭이 보낸 기록이 더 최근이면 그것을 쓴다.
-        const simulated =
-          silentSinceMs === null
-            ? now.getTime() - (now.getTime() % HEARTBEAT_INTERVAL_MS)
-            : startedAt.getTime() - silentSinceMs;
-        const heartbeat = recorded[device.id];
-        const heartbeatAt = heartbeat ? Date.parse(heartbeat.at) : Number.NaN;
-        const lastSeen =
-          Number.isFinite(heartbeatAt) && heartbeatAt > simulated
-            ? heartbeatAt
-            : simulated;
+    async create(input, signal) {
+      await settle(signal);
+      requireSuperAdmin();
+      checkDeviceInput(input);
+      const issuedAt = toIsoUtc(clock.now());
+      const id = `device-${deviceSeeds.length + 1}-${clock.now().getTime().toString(36)}`;
+      const seed: DeviceSeed = {
+        id,
+        name: input.name.trim(),
+        location: input.location?.trim() || null,
+        groupIds: input.groupIds,
+        orientation: input.orientation,
+        resolution: null,
+        appVersion: null,
+        layout: { type: input.layout, rotationSeconds: input.rotationSeconds },
+        refreshAfterSeconds: input.refreshAfterSeconds,
+        lastPlaylistVersion: null,
+        lastRenderOkAt: null,
+        tokenIssuedAt: issuedAt,
+        silentSinceMs: "never",
+        isActive: true,
+      };
+      deviceSeeds = [...deviceSeeds, seed];
+      return { device: toDevice(seed), token: issueToken(id) };
+    },
 
-        const dto: DisplayDeviceDto = {
-          ...device,
-          appVersion: heartbeat?.appVersion ?? device.appVersion,
-          resolution: heartbeat?.resolution ?? device.resolution,
-          lastSeenAt: toIsoUtc(new Date(lastSeen)),
-          status:
-            now.getTime() - lastSeen <= ONLINE_WINDOW_MS ? "ONLINE" : "OFFLINE",
-        };
-        return toDisplayDevice(dto);
-      });
-      return { items, serverTime: now };
+    async update(id, input, signal) {
+      await settle(signal);
+      requireSuperAdmin();
+      checkDeviceInput(input);
+      const current = findDevice(id);
+      const next: DeviceSeed = {
+        ...current,
+        ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+        ...(input.location !== undefined
+          ? { location: input.location?.trim() || null }
+          : {}),
+        ...(input.groupIds !== undefined ? { groupIds: input.groupIds } : {}),
+        ...(input.orientation !== undefined
+          ? { orientation: input.orientation }
+          : {}),
+        layout: {
+          type: input.layout ?? current.layout.type,
+          rotationSeconds:
+            input.rotationSeconds ?? current.layout.rotationSeconds,
+        },
+        refreshAfterSeconds:
+          input.refreshAfterSeconds ?? current.refreshAfterSeconds,
+        isActive: input.isActive ?? current.isActive,
+      };
+      deviceSeeds = deviceSeeds.map((item) => (item.id === id ? next : item));
+      return toDevice(next);
+    },
+
+    async rotateToken(id, signal) {
+      await settle(signal);
+      requireSuperAdmin();
+      const current = findDevice(id);
+      const next: DeviceSeed = {
+        ...current,
+        tokenIssuedAt: toIsoUtc(clock.now()),
+      };
+      deviceSeeds = deviceSeeds.map((item) => (item.id === id ? next : item));
+      return { device: toDevice(next), token: issueToken(id) };
     },
   };
 

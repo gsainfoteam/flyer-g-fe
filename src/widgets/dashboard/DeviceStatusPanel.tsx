@@ -1,11 +1,8 @@
-import type {
-  DeviceStatus,
-  DisplayDevice,
-} from "@/entities/device/model/types";
+import type { DisplayDevice } from "@/entities/device/model/types";
 import { useDevices } from "@/entities/device/api/queries";
+import { DeviceStatusBadge } from "@/entities/device/ui/DeviceStatusBadge";
 import { ErrorState, LoadingState, Panel } from "@/shared/components";
 import { formatTimeAgo } from "@/shared/lib/datetime";
-import { cn } from "@/shared/lib/utils";
 
 /**
  * 로비 TV의 연결 상태 (명세 FR-DASH-03).
@@ -13,27 +10,6 @@ import { cn } from "@/shared/lib/utils";
  * 기기가 보낸 마지막 heartbeat로 판단한다. 오프라인이어도 TV는 마지막으로 받은
  * 편성을 계속 재생하므로, 관리자가 당장 해야 할 일은 없다는 것을 함께 알린다.
  */
-const STATUS_STYLE: Record<
-  DeviceStatus,
-  { label: string; pill: string; dot: string }
-> = {
-  ONLINE: {
-    label: "온라인",
-    pill: "bg-success-subtle text-success-strong",
-    dot: "bg-success",
-  },
-  OFFLINE: {
-    label: "오프라인",
-    pill: "bg-attention-subtle text-attention-strong",
-    dot: "bg-attention",
-  },
-  DISABLED: {
-    label: "사용 안 함",
-    pill: "bg-surface-muted text-ink-muted",
-    dot: "bg-ink-subtle",
-  },
-};
-
 interface DeviceStatusPanelProps {
   /**
    * 기기 목록에 서버 시각이 없을 때 쓸 서버 시각. 대시보드는 요약의 기준 시각을 넘긴다.
@@ -83,7 +59,6 @@ function DeviceRows({ devices, now }: { devices: DisplayDevice[]; now: Date }) {
     <>
       <ul className="flex flex-col gap-3.5 text-body">
         {devices.map((device) => {
-          const style = STATUS_STYLE[device.status];
           return (
             <li key={device.id} className="flex items-center gap-2.5">
               <span className="min-w-0 flex-1 truncate font-semibold">
@@ -94,18 +69,7 @@ function DeviceRows({ devices, now }: { devices: DisplayDevice[]; now: Date }) {
                   {formatTimeAgo(device.lastSeenAt, now)}
                 </span>
               )}
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-pill px-2.5 py-1 text-overline",
-                  style.pill,
-                )}
-              >
-                <span
-                  className={cn("size-1.5 rounded-pill", style.dot)}
-                  aria-hidden="true"
-                />
-                {style.label}
-              </span>
+              <DeviceStatusBadge status={device.status} />
             </li>
           );
         })}

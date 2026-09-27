@@ -422,9 +422,22 @@ export interface DeviceSeed extends Omit<
   DisplayDeviceDto,
   "lastSeenAt" | "status"
 > {
-  /** 연락이 끊긴 시점. null이면 계속 heartbeat를 보내는 기기다. */
-  silentSinceMs: number | null;
+  /**
+   * 연락이 끊긴 시점(시작 시각 기준 몇 ms 전). null이면 계속 heartbeat를 보내는
+   * 기기, "never"면 등록만 하고 아직 켜지 않은 기기다.
+   */
+  silentSinceMs: number | null | "never";
+  /** false면 사용 안 함(DISABLED) */
+  isActive: boolean;
 }
+
+const SEED_DEVICE_SETTINGS = {
+  layout: { type: "SINGLE", rotationSeconds: 10 },
+  refreshAfterSeconds: 60,
+  lastPlaylistVersion: null,
+  lastRenderOkAt: null,
+  isActive: true,
+} as const;
 
 export const DEVICE_FIXTURES: readonly DeviceSeed[] = [
   {
@@ -436,6 +449,8 @@ export const DEVICE_FIXTURES: readonly DeviceSeed[] = [
     resolution: { width: 1920, height: 1080 },
     appVersion: "v0.4.2",
     silentSinceMs: null,
+    tokenIssuedAt: "2026-06-01T00:00:00.000Z",
+    ...SEED_DEVICE_SETTINGS,
   },
   {
     id: "house-b-lobby",
@@ -446,5 +461,7 @@ export const DEVICE_FIXTURES: readonly DeviceSeed[] = [
     resolution: { width: 1920, height: 1080 },
     appVersion: "v0.4.2",
     silentSinceMs: 26 * MINUTE_MS,
+    tokenIssuedAt: "2026-06-01T00:00:00.000Z",
+    ...SEED_DEVICE_SETTINGS,
   },
 ];

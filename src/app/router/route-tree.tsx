@@ -11,7 +11,6 @@ import { StudioLayout } from "@/app/layouts/StudioLayout";
 import { paths } from "@/shared/config/routes";
 import type { RouteHandle } from "@/app/router/use-document-title";
 import { RequireRole, RequireSession } from "@/features/auth/ui/guards";
-import { ComingSoonPage } from "@/pages/ComingSoonPage";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
@@ -55,6 +54,9 @@ const reviewDetailPage = lazyPage(() =>
   import("@/pages/ReviewDetailPage").then((m) => ({
     default: m.ReviewDetailPage,
   })),
+);
+const devicesPage = lazyPage(() =>
+  import("@/pages/DevicesPage").then((m) => ({ default: m.DevicesPage })),
 );
 const studioPage = lazyPage(() =>
   import("@/pages/StudioPage").then((m) => ({ default: m.StudioPage })),
@@ -148,12 +150,7 @@ export const routeTree = [
                   {
                     path: paths.displays,
                     handle: title("기기 관리"),
-                    element: (
-                      <ComingSoonPage
-                        title="기기 관리는 준비 중이에요"
-                        description="위치별 디스플레이 상태와 편성 설정이 곧 여기에 들어와요."
-                      />
-                    ),
+                    element: devicesPage,
                   },
                 ],
               },

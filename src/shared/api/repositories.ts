@@ -1,4 +1,11 @@
-import type { DeviceList, TargetGroup } from "@/entities/device/model/types";
+import type {
+  DeviceInput,
+  DeviceList,
+  DeviceWithToken,
+  DisplayDevice,
+  TargetGroup,
+  UpdateDeviceInput,
+} from "@/entities/device/model/types";
 import type {
   Category,
   SignageConfig,
@@ -172,6 +179,19 @@ export interface DisplayRepository {
 export interface DeviceRepository {
   /** 기기 목록과 연결 상태. 하우스 관리자 이상. `API-REQUIREMENTS.md` 11.1 */
   list(signal?: AbortSignal): Promise<DeviceList>;
+
+  /** 기기 등록. SUPER_ADMIN만. 응답에 토큰 원문이 한 번만 온다. */
+  create(input: DeviceInput, signal?: AbortSignal): Promise<DeviceWithToken>;
+
+  /** 이름·위치·그룹·화면 설정 수정, 사용 안 함. SUPER_ADMIN만. */
+  update(
+    id: string,
+    input: UpdateDeviceInput,
+    signal?: AbortSignal,
+  ): Promise<DisplayDevice>;
+
+  /** 토큰 재발급. 이전 토큰은 즉시 무효다. SUPER_ADMIN만. */
+  rotateToken(id: string, signal?: AbortSignal): Promise<DeviceWithToken>;
 }
 
 /** 참조 데이터와 운영 설정. 로그인한 누구나. (`API-REQUIREMENTS.md` 10절) */
