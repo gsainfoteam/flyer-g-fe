@@ -1,11 +1,4 @@
-import {
-  Ban,
-  Check,
-  OctagonPause,
-  RotateCcw,
-  Send,
-  X,
-} from "lucide-react";
+import { Ban, Check, OctagonPause, RotateCcw, Send, X } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { getRejectionReasonLabel } from "@/entities/review";
 import type {
@@ -76,7 +69,7 @@ export function SubmissionHistory({ events }: SubmissionHistoryProps) {
             at={event.occurredAt}
             icon={meta.icon}
             attention={meta.attention}
-            first={index === 0}
+            last={index === ordered.length - 1}
           />
         );
       })}
@@ -90,21 +83,25 @@ function TimelineRow({
   at,
   icon: Icon,
   attention,
-  first,
+  last,
 }: {
   label: string;
   detail: ReactNode;
   at: Date;
   icon: ComponentType<{ className?: string }>;
   attention: boolean;
-  first: boolean;
+  last: boolean;
 }) {
   return (
     <li className="relative flex gap-3 pb-5 last:pb-0">
-      {!first && (
+      {/*
+       * 아이콘 아래에서 이 줄 끝까지 선을 긋는다. 다음 줄은 바로 아이콘으로 시작하므로
+       * 사유 문구로 줄 높이가 달라져도 선이 끊기지 않는다.
+       */}
+      {!last && (
         <span
           aria-hidden="true"
-          className="absolute -top-3.5 left-3.25 h-3.5 w-px bg-line"
+          className="absolute top-6.75 bottom-0 left-3.25 w-px bg-line"
         />
       )}
       <span
