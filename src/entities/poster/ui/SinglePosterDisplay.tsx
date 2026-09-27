@@ -47,6 +47,10 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** 오른쪽 열: 시계 줄 높이와 포스터와의 간격(px, 1920x1080 스테이지 기준) */
+const CLOCK_ROW_HEIGHT = 48;
+const POSTER_COLUMN_GAP = 28;
+
 /** 이 길이를 넘는 제목은 한 단계 작게 써서 세 줄 안에 담는다. */
 const LONG_TITLE_LENGTH = 26;
 
@@ -140,13 +144,31 @@ export function SinglePosterDisplay({
         )}
       </div>
 
-      <div className="flex shrink-0 flex-col items-end gap-7">
-        <LiveClock
-          now={serverTime ?? undefined}
-          ticking={clockTicking || serverTime === null}
-          className="text-[32px]"
-        />
-        <div className="aspect-3/4 min-h-0 flex-1 overflow-hidden rounded-tv-card shadow-poster-lg ring-1 ring-white/10">
+      <div
+        className="flex shrink-0 flex-col items-end"
+        style={{ gap: POSTER_COLUMN_GAP }}
+      >
+        <div
+          className="flex shrink-0 items-center"
+          style={{ height: CLOCK_ROW_HEIGHT }}
+        >
+          <LiveClock
+            now={serverTime ?? undefined}
+            ticking={clockTicking || serverTime === null}
+            className="text-[32px]"
+          />
+        </div>
+        {/*
+         * 포스터 높이를 계산해서 준다. flex-1로 늘리면 이 열의 폭을 셀 때 높이를
+         * 모르는 채로 이미지 원본 폭(예: 1832px)을 써서, 열이 넓어지며 제목 쪽을
+         * 밀어낸다. 높이가 정해져 있으면 폭은 3:4 비율로 정해진다.
+         */}
+        <div
+          className="aspect-3/4 shrink-0 overflow-hidden rounded-tv-card shadow-poster-lg ring-1 ring-white/10"
+          style={{
+            height: `calc(100% - ${CLOCK_ROW_HEIGHT + POSTER_COLUMN_GAP}px)`,
+          }}
+        >
           <PosterArtwork
             poster={poster}
             fit="cover"
