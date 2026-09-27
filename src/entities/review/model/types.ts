@@ -49,8 +49,8 @@ export function getRejectionReasonLabel(code: RejectionReasonCode): string {
 export interface SubmissionEventDto {
   id: string;
   submissionId: string;
-  /** 이 일이 일어난 신청 버전 */
-  revision: number;
+  /** 이 일이 일어난 신청 버전. 감사 로그에서 온 게시자 행동은 모를 수 있다. */
+  revision: number | null;
   type: SubmissionEventType;
   /** 반려일 때만 */
   reasonCode: RejectionReasonCode | null;

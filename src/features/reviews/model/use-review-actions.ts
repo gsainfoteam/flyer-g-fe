@@ -1,10 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRepositories } from "@/shared/api/repositories-context";
-import type { SignageSubmissionExpanded } from "@/entities/submission";
+import type {
+  SignageSubmissionExpanded,
+  SubmissionStatus,
+} from "@/entities/submission";
 import type { RejectionReasonCode } from "@/entities/review";
 import { normalizeApiError } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
 import { queryKeys } from "@/shared/api/query-keys";
+import { runWithConflictRecovery } from "@/shared/api/recover-conflict";
 import { useIdempotencyKey } from "@/shared/lib/idempotency";
 
 /**
@@ -19,6 +23,8 @@ import { useIdempotencyKey } from "@/shared/lib/idempotency";
  *
  * idempotency key는 결정 한 번(다이얼로그를 연 한 번)에 하나다. 응답을 못 받아
  * 다시 누른 요청이 두 번 처리되지 않는다. 다이얼로그를 열 때 `startAttempt()`를 부른다.
+ * 그렇게 다시 보냈는데 첫 요청이 이미 처리되어 409가 오면, 최신 상태가 바라던
+ * 결과인지 확인해 성공으로 본다(`runWithConflictRecovery`).
  */
 function useDecisionRefresh(submissionId: string) {
   const queryClient = useQueryClient();
@@ -47,15 +53,28 @@ function useDecisionRefresh(submissionId: string) {
 
 function useDecision<Variables>(
   submissionId: string,
-  run: (variables: Variables, idempotencyKey: string) => Promise<SignageSubmissionExpanded>,
+  /** 결정이 처리되면 신청이 가 있을 상태 */
+  expected: readonly SubmissionStatus[],
+  run: (
+    variables: Variables,
+    idempotencyKey: string,
+  ) => Promise<SignageSubmissionExpanded>,
 ) {
+  const { submissions } = useRepositories();
   const key = useIdempotencyKey();
   const refresh = useDecisionRefresh(submissionId);
 
   const mutation = useMutation<SignageSubmissionExpanded, ApiError, Variables>({
     mutationFn: async (variables) => {
       try {
-        return await run(variables, key.current());
+        return await runWithConflictRecovery(
+          () => run(variables, key.current()),
+          {
+            ...key,
+            reload: () => submissions.getById(submissionId),
+            succeeded: (latest) => expected.includes(latest.status),
+          },
+        );
       } catch (cause) {
         throw normalizeApiError(cause);
       }
@@ -69,8 +88,11 @@ function useDecision<Variables>(
 
 export function useApproveSubmission(submissionId: string) {
   const { reviews } = useRepositories();
-  return useDecision<{ revision: number }>(submissionId, ({ revision }, key) =>
-    reviews.approve({ submissionId, revision }, { idempotencyKey: key }),
+  return useDecision<{ revision: number }>(
+    submissionId,
+    ["APPROVED", "SCHEDULED", "PUBLISHED"],
+    ({ revision }, key) =>
+      reviews.approve({ submissionId, revision }, { idempotencyKey: key }),
   );
 }
 
@@ -85,6 +107,7 @@ export function useRejectSubmission(submissionId: string) {
   const { reviews } = useRepositories();
   return useDecision<RejectValues>(
     submissionId,
+    ["REJECTED"],
     ({ revision, reasonCode, comment }, key) =>
       reviews.reject(
         { submissionId, revision, reasonCode, comment: comment.trim() },
@@ -95,10 +118,13 @@ export function useRejectSubmission(submissionId: string) {
 
 export function useSuspendSubmission(submissionId: string) {
   const { reviews } = useRepositories();
-  return useDecision<{ reason: string }>(submissionId, ({ reason }, key) =>
-    reviews.suspend(
-      { submissionId, reason: reason.trim() },
-      { idempotencyKey: key },
-    ),
+  return useDecision<{ reason: string }>(
+    submissionId,
+    ["SUSPENDED"],
+    ({ reason }, key) =>
+      reviews.suspend(
+        { submissionId, reason: reason.trim() },
+        { idempotencyKey: key },
+      ),
   );
 }

@@ -41,8 +41,8 @@ describe("createAppDependencies", () => {
   it("아직 실제 구현이 없는 단위를 real로 두면 시작할 때 알린다", () => {
     expect(() =>
       createAppDependencies(
-        readAppEnv({ ...REAL_AUTH, VITE_API_MODE_REVIEWS: "real" }),
+        readAppEnv({ ...REAL_AUTH, VITE_API_MODE_DEVICES: "real" }),
       ),
-    ).toThrow(/reviews/);
+    ).toThrow(/devices/);
   });
 });

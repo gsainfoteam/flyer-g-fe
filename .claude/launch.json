@@ -25,7 +25,8 @@
         "VITE_USE_MOCK_AUTH": "false",
         "VITE_API_MODE_REFERENCE": "real",
         "VITE_API_MODE_UPLOAD": "real",
-        "VITE_API_MODE_SUBMISSIONS": "real"
+        "VITE_API_MODE_SUBMISSIONS": "real",
+        "VITE_API_MODE_REVIEWS": "real"
       },
       "port": 5173
     },

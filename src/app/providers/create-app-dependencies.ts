@@ -2,6 +2,7 @@ import { createAuthAdapter } from "@/features/auth/api/create-auth-adapter";
 import type { AuthAdapter } from "@/features/auth/api/auth-adapter";
 import { isHttpAuthAdapter } from "@/features/auth/api/http-auth-adapter";
 import { isMockAuthAdapter } from "@/features/auth/api/mock-auth";
+import { createHttpReviewRepository } from "@/entities/review/api/http-review-repository";
 import { createHttpReferenceRepository } from "@/entities/submission/api/http-reference-repository";
 import { createHttpSubmissionRepository } from "@/entities/submission/api/http-submission-repository";
 import { createAssetUploadService } from "@/features/media-upload/api/create-asset-upload-service";
@@ -88,6 +89,7 @@ function createRepositories(
       : {
           reference: () => createHttpReferenceRepository(apiClient),
           submissions: () => createHttpSubmissionRepository(apiClient),
+          reviews: () => createHttpReviewRepository(apiClient),
         };
 
   const pending = (
