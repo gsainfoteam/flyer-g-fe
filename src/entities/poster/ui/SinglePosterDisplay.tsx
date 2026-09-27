@@ -15,7 +15,7 @@ import { TV_STAGE_PADDING } from "@/entities/poster/ui/stage-metrics";
  * (명세 9.6)
  *
  * 글이 길어 넘치면 글 쪽이 잘리고 QR은 항상 온전히 남는다. QR이 잘리면 원문으로
- * 갈 방법이 없다.
+ * 갈 방법이 없다. 상세 링크 없이 신청한 게시물은 QR 칸 없이 그린다.
  *
  * 게시 기간은 보여주지 않는다. TV 앞의 학생은 "기간"을 행사 일시로 읽는데, 이
  * 값은 TV에 걸리는 기간일 뿐이다. 행사 일시는 포스터와 부제가 말한다.
@@ -85,7 +85,9 @@ export function SinglePosterDisplay({
         <div className="flex shrink-0 items-center gap-4">
           <Logo size="tv" />
           {deviceLabel && (
-            <span className="ml-2 text-[26px] text-ink-subtle">{deviceLabel}</span>
+            <span className="ml-2 text-[26px] text-ink-subtle">
+              {deviceLabel}
+            </span>
           )}
         </div>
 
@@ -108,29 +110,34 @@ export function SinglePosterDisplay({
             </p>
           )}
 
-          {(poster.location || poster.organizationName) && (
+          {(poster.location || poster.organizerName) && (
             <div className="mt-8 flex flex-col gap-4">
-              {poster.location && <InfoRow label="장소" value={poster.location} />}
-              {poster.organizationName && (
-                <InfoRow label="주최" value={poster.organizationName} />
+              {poster.location && (
+                <InfoRow label="장소" value={poster.location} />
+              )}
+              {poster.organizerName && (
+                <InfoRow label="주최" value={poster.organizerName} />
               )}
             </div>
           )}
         </div>
 
-        <div className="mt-6 flex shrink-0 items-center gap-9 self-start rounded-tv-card bg-white/[0.06] py-5 pr-12 pl-6 ring-1 ring-white/10">
-          <QRCodeBox value={poster.detailUrl} size="tv" />
-          <div>
-            <p className="text-[38px] font-extrabold text-ink">
-              Ziggle에서 자세히 보기
-            </p>
-            <p className="mt-2.5 text-[27px] leading-normal text-ink-muted">
-              QR을 스캔하면 공지 원문으로 갑니다
-              <br />
-              {ZIGGLE_HOST}
-            </p>
+        {/* 상세 링크 없이 신청한 게시물은 QR 칸을 그리지 않는다. */}
+        {poster.detailUrl && (
+          <div className="mt-6 flex shrink-0 items-center gap-9 self-start rounded-tv-card bg-white/[0.06] py-5 pr-12 pl-6 ring-1 ring-white/10">
+            <QRCodeBox value={poster.detailUrl} size="tv" />
+            <div>
+              <p className="text-[38px] font-extrabold text-ink">
+                Ziggle에서 자세히 보기
+              </p>
+              <p className="mt-2.5 text-[27px] leading-normal text-ink-muted">
+                QR을 스캔하면 공지 원문으로 갑니다
+                <br />
+                {ZIGGLE_HOST}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="flex shrink-0 flex-col items-end gap-7">

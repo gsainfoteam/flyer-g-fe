@@ -7,7 +7,8 @@ import { TEST_NOW, renderRoute } from "@/test/render-route";
 
 /**
  * 시작 전 취소 (명세 FR-DASH-02).
- * mock fixture: notice-901은 REJECTED(취소 가능), notice-903은 SUSPENDED(불가).
+ * mock fixture: notice-901은 REJECTED(취소 가능), notice-903은 SUSPENDED(불가),
+ * notice-905는 PENDING_REVIEW(수정·취소 가능).
  */
 describe("신청 취소", () => {
   it("취소 확인 후 상태가 신청 취소로 바뀐다", async () => {
@@ -37,14 +38,25 @@ describe("신청 취소", () => {
     expect(await screen.findByText("신청 취소")).toBeInTheDocument();
   });
 
-  it("게시 중단된 신청은 취소 대신 고쳐서 다시 신청할 수 있다 (명세 6.3)", async () => {
+  it("게시 중단된 신청은 취소도 재신청도 없이 관리자 문의를 안내한다", async () => {
+    // 중단 건의 재검토는 백엔드에 요청해 둔 상태다(API-FOLLOWUP 1-1).
     renderRoute("/submissions/notice-903", { role: "SUBMITTER" });
 
     await screen.findByText("처리 이력");
     expect(screen.queryByRole("button", { name: "신청 취소하기" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /다시 신청|수정/ })).toBeNull();
+    expect(screen.getByText(/하우스 관리자에게 문의/)).toBeInTheDocument();
+  });
+
+  it("승인 대기 중인 신청은 고치거나 취소할 수 있다", async () => {
+    renderRoute("/submissions/notice-905", { role: "SUBMITTER" });
+
     expect(
-      screen.getByRole("link", { name: "수정해서 다시 신청" }),
-    ).toHaveAttribute("href", "/studio?submissionId=notice-903");
+      await screen.findByRole("link", { name: "수정하기" }),
+    ).toHaveAttribute("href", "/studio?submissionId=notice-905");
+    expect(
+      screen.getByRole("button", { name: "신청 취소하기" }),
+    ).toBeInTheDocument();
   });
 
   it("게시 중인 신청은 게시자가 직접 내리거나 고치지 못한다", async () => {
@@ -62,9 +74,6 @@ describe("신청 취소", () => {
     const link = await screen.findByRole("link", {
       name: "수정해서 다시 신청",
     });
-    expect(link).toHaveAttribute(
-      "href",
-      "/studio?submissionId=notice-901",
-    );
+    expect(link).toHaveAttribute("href", "/studio?submissionId=notice-901");
   });
 });

@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
 /**
  * 검토 전 자동 경고 (명세 FR-REV-02).
  *
- * 관리자가 놓치기 쉬운 문제를 미리 짚는다: 공식이 아닌 링크, 지난 기간, 없는
+ * 관리자가 놓치기 쉬운 문제를 미리 짚는다: 공식이 아닌 링크, QR 없는 게시, 지난 기간, 없는
  * 포스터, 낮은 해상도, 3:4가 아닌 비율. 경고는 판단을 돕는 것이지 승인·반려를
  * 막지 않는다 — 최종 판단은 사람과 서버가 한다.
  */
@@ -56,7 +56,14 @@ export function ReviewWarnings({ submission, serverNow }: ReviewWarningsProps) {
 
   const warnings: { key: string; title: string; detail: string }[] = [];
 
-  if (!isAllowedZiggleUrl(submission.detailUrl)) {
+  if (submission.detailUrl === null) {
+    warnings.push({
+      key: "link-missing",
+      title: "상세 링크가 없어 QR 없이 게시돼요",
+      detail:
+        "학생이 자세한 내용을 볼 곳이 포스터뿐이에요. 포스터에 필요한 정보가 다 있는지 확인하세요.",
+    });
+  } else if (!isAllowedZiggleUrl(submission.detailUrl)) {
     warnings.push({
       key: "link",
       title: "상세 링크가 공식 Ziggle 주소가 아니에요",

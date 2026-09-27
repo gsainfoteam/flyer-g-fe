@@ -5,18 +5,25 @@ import { toast } from "sonner";
 import { to } from "@/shared/config/routes";
 import { Logo } from "@/shared/components/Logo";
 import { fromSubmissionView } from "@/entities/poster";
-import { canSubmitterEdit } from "@/entities/submission";
-import type { SignageSubmissionExpanded } from "@/entities/submission";
-import { DisplayPreview } from "@/features/display-preview";
 import {
-  draftToPosterRenderModel,
-  previewSourceFromNotice,
-} from "@/features/submissions/create/model/draft-to-poster";
-import type { PreviewSource } from "@/features/submissions/create/model/draft-to-poster";
+  canSubmitterEdit,
+  canSubmitterResubmit,
+  needsReapproval,
+  resolveEffectiveStatus,
+} from "@/entities/submission";
+import type {
+  SignageSubmissionExpanded,
+  SubmissionStatus,
+} from "@/entities/submission";
+import {
+  useCategories,
+  useSignageConfig,
+} from "@/entities/submission/api/queries";
+import { DisplayPreview } from "@/features/display-preview";
+import { draftToPosterRenderModel } from "@/features/submissions/create/model/draft-to-poster";
 import { PosterDropzone, usePosterUpload } from "@/features/media-upload";
 import {
   createEmptyDraft,
-  draftFromNotice,
   draftFromSubmission,
 } from "@/features/submissions/create/model/draft";
 import type { SubmissionDraft } from "@/features/submissions/create/model/draft";
@@ -29,14 +36,13 @@ import {
   validateSubmissionForm,
 } from "@/features/submissions/create/model/validate";
 import type { SubmissionFieldErrors } from "@/features/submissions/create/model/validate";
-import { NoticePanel } from "@/features/submissions/create/ui/NoticePanel";
 import { SubmissionForm } from "@/features/submissions/create/ui/SubmissionForm";
 import { SubmitSuccessDialog } from "@/features/submissions/create/ui/SubmitSuccessDialog";
+import type { SubmitResultKind } from "@/features/submissions/create/ui/SubmitSuccessDialog";
 import {
   useSubmissionDetail,
   useSubmissionViews,
 } from "@/features/submissions/api/queries";
-import { useZiggleNotice } from "@/entities/notice/api/queries";
 import { ConfirmActionDialog, PageState } from "@/shared/components";
 import { toUserMessage } from "@/shared/api/error";
 import { useServerNow } from "@/shared/lib/use-server-now";
@@ -47,29 +53,56 @@ import { Spinner } from "@/shared/ui/spinner";
 /**
  * 게시 신청 (명세 FR-SUB-01 ~ FR-SUB-04).
  *
- * 공지를 연결하고 포스터를 올리고 게시 정보를 입력하면 미리보기가 즉시 따라온다.
- * 미리보기는 TV 플레이어와 같은 컴포넌트라 여기서 보이는 것이 실제 결과다.
+ * 포스터를 올리고 게시 정보를 입력하면 미리보기가 즉시 따라온다. 미리보기는 TV
+ * 플레이어와 같은 컴포넌트라 여기서 보이는 것이 실제 결과다.
  *
- * 넓은 화면은 세 칸(공지·포스터 / 미리보기 / 게시 정보)이고, 좁은 화면은 입력 →
- * 미리보기 순으로 쌓인다. 휴대폰으로 공지를 쓰고 바로 신청하는 경우가 많다.
+ * 넓은 화면은 세 칸(포스터 / 미리보기 / 게시 정보)이고, 좁은 화면은 입력 →
+ * 미리보기 순으로 쌓인다. 휴대폰으로 바로 신청하는 경우가 많다.
  *
- * `?submissionId=`가 있으면 수정 모드다. DRAFT는 이어서 작성, REJECTED는 수정 후
- * 재신청이며 둘 다 update → submit 경로를 쓴다. 공지는 이미 신청에 연결되어 있어
- * 다시 고르지 않는다. (명세 FR-DASH-02)
+ * `?submissionId=`가 있으면 수정 모드다. 저장하면 상태에 따라 이어진다
+ * (`API-CHANGES-BACKEND.md` 5.6): 반려는 다시 검토를 요청하고, 검토 대기는 그대로
+ * 대기이며, 게시 시작 전 승인 건은 다시 승인을 받는다. 게시가 시작되면 고칠 수 없다.
  */
-const NOTICE_PARAM = "noticeId";
 const EDIT_PARAM = "submissionId";
 const FORM_ID = "submission-create-form";
+
+/** 고치는 신청의 상태별 안내 */
+function describeEditing(status: SubmissionStatus): {
+  caption: string;
+  note: string;
+  submitLabel: string;
+} {
+  if (canSubmitterResubmit(status)) {
+    return {
+      caption:
+        status === "DRAFT" ? "작성 중인 신청 이어서 쓰기" : "반려된 신청 수정",
+      note: "제출하면 다시 검토를 받아요",
+      submitLabel: status === "DRAFT" ? "제출하기" : "다시 신청하기",
+    };
+  }
+  if (needsReapproval(status)) {
+    return {
+      caption: "예약된 신청 수정",
+      note: "고치면 다시 승인을 받아야 게시돼요",
+      submitLabel: "다시 승인 받기",
+    };
+  }
+  return {
+    caption: "검토 대기 중인 신청 수정",
+    note: "고쳐도 검토 대기 순서는 그대로예요",
+    submitLabel: "수정 저장",
+  };
+}
 
 export function StudioPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const noticeId = searchParams.get(NOTICE_PARAM);
   const editingId = searchParams.get(EDIT_PARAM);
 
-  const notice = useZiggleNotice(editingId ? null : noticeId);
   const editing = useSubmissionDetail(editingId);
   const editingSubmission = editingId ? (editing.data ?? null) : null;
+  const config = useSignageConfig();
+  const categories = useCategories();
   const upload = usePosterUpload();
   const createSubmission = useCreateSubmission();
 
@@ -94,23 +127,19 @@ export function StudioPage() {
     other: string[];
   }>({ fieldErrors: {}, other: [] });
   const [isDirty, setIsDirty] = useState(false);
-  const [submitted, setSubmitted] = useState<SignageSubmissionExpanded | null>(
-    null,
-  );
+  /**
+   * 접수된 신청과 결과 종류. 종류는 제출한 순간의 상태로 정한다 — 접수 뒤 목록을
+   * 새로 받으면 고치던 신청이 이미 검토 대기로 바뀌어 있다.
+   */
+  const [submitted, setSubmitted] = useState<{
+    submission: SignageSubmissionExpanded;
+    kind: SubmitResultKind;
+  } | null>(null);
   const [focusRequest, setFocusRequest] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
   const summaryRef = useRef<HTMLDivElement>(null);
 
-  // 공지·기존 신청이 도착하면 한 번만 채운다. 사용자가 고친 제목을 덮어쓰지 않는다.
-  const filledNoticeIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (editingId) return;
-    const loaded = notice.data;
-    if (!loaded || filledNoticeIdRef.current === loaded.id) return;
-    filledNoticeIdRef.current = loaded.id;
-    setDraft(draftFromNotice(loaded, new Date()));
-  }, [notice.data, editingId]);
-
+  // 기존 신청이 도착하면 한 번만 채운다. 사용자가 고친 입력을 덮어쓰지 않는다.
   const filledEditIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!editingSubmission || filledEditIdRef.current === editingSubmission.id)
@@ -121,9 +150,6 @@ export function StudioPage() {
 
   const values = {
     ...draft,
-    ziggleNoticeId: editingSubmission
-      ? editingSubmission.ziggleNoticeId
-      : (notice.data?.id ?? null),
     // 수정 모드에서 새 포스터를 고르지 않았을 때만 기존 포스터를 쓴다. 새 포스터가
     // 올라가는 중이거나 실패했으면 비워서, 미리보기와 다른 포스터로 제출되지 않게 한다.
     assetId:
@@ -132,7 +158,11 @@ export function StudioPage() {
         : (upload.state.asset?.assetId ?? null),
   };
   const errors: SubmissionFieldErrors = {
-    ...validateSubmissionForm(values, { now: serverNow }),
+    ...validateSubmissionForm(values, {
+      now: serverNow,
+      config: config.data ?? null,
+      categories: categories.data ?? null,
+    }),
     ...serverErrors.fieldErrors,
   };
   const summary = showErrors
@@ -145,30 +175,27 @@ export function StudioPage() {
     upload.state.status === "validating";
   /** 접수된 뒤에는 같은 내용을 다시 보낼 수 없다. (명세 FR-SUB-04) */
   const isSubmitted = submitted !== null;
-  /** 수정 대상이 제출 전 상태가 아니면 제출 자체를 막는다. */
+  /**
+   * 고치는 신청의 지금 상태. 저장된 값이 아니라 서버 시각 기준이다 — 시작 시각이
+   * 지난 예약 건은 이미 게시 중이라 고칠 수 없다.
+   */
+  const editingStatus = editingSubmission
+    ? serverNow
+      ? resolveEffectiveStatus(editingSubmission, serverNow)
+      : editingSubmission.status
+    : null;
+  /** 게시가 시작되었거나 끝난 신청은 제출 자체를 막는다. */
   const editBlocked =
-    editingSubmission !== null && !canSubmitterEdit(editingSubmission.status);
-  /** 반려·중단된 신청을 고쳐 다시 내는 것. 작성 중이던 초안은 처음 내는 것이다. */
-  const isResubmission =
-    editingSubmission?.status === "REJECTED" ||
-    editingSubmission?.status === "SUSPENDED";
+    editingStatus !== null && !canSubmitterEdit(editingStatus);
+  const editingCopy =
+    editingStatus && !editBlocked ? describeEditing(editingStatus) : null;
   const blocker = useUnsavedChangesWarning(isDirty && submitted === null);
 
-  const previewSource: PreviewSource | null = editingSubmission
-    ? {
-        id: editingSubmission.id,
-        organizationName: editingSubmission.organizationName,
-        subtitle: editingSubmission.subtitle,
-        location: editingSubmission.location,
-      }
-    : notice.data
-      ? previewSourceFromNotice(notice.data)
-      : null;
   const previewPoster = draftToPosterRenderModel({
     draft,
-    source: previewSource,
-    posterUrl:
-      upload.state.previewUrl ?? editingSubmission?.posterUrl ?? null,
+    submissionId: editingSubmission?.id ?? null,
+    categories: categories.data ?? [],
+    posterUrl: upload.state.previewUrl ?? editingSubmission?.posterUrl ?? null,
     now: serverNow,
   });
 
@@ -197,9 +224,8 @@ export function StudioPage() {
     markChanged();
   };
 
-  /** 다른 공지로 새 신청을 시작한다. 올린 포스터와 입력은 비운다. */
+  /** 새 신청을 처음부터 시작한다. 올린 포스터와 입력은 비운다. */
   const startNew = () => {
-    filledNoticeIdRef.current = null;
     setSubmitted(null);
     setShowErrors(false);
     setIsDirty(false);
@@ -218,15 +244,15 @@ export function StudioPage() {
       return;
     }
 
+    const kind: SubmitResultKind = !editingStatus
+      ? "created"
+      : canSubmitterResubmit(editingStatus)
+        ? "resubmitted"
+        : "updated";
     createSubmission.submit(
       {
-        ziggleNoticeId: values.ziggleNoticeId!,
-        title: values.title,
-        categoryId: values.categoryId,
+        ...draft,
         assetId: values.assetId!,
-        detailUrl: values.detailUrl,
-        startAt: values.startAt,
-        endAt: values.endAt,
         editing: editingSubmission
           ? {
               submissionId: editingSubmission.id,
@@ -236,7 +262,7 @@ export function StudioPage() {
       },
       {
         onSuccess: (submission) => {
-          setSubmitted(submission);
+          setSubmitted({ submission, kind });
           setIsDirty(false);
         },
         onError: (error) => {
@@ -253,7 +279,7 @@ export function StudioPage() {
     );
   };
 
-  const submitLabel = isResubmission ? "다시 신청하기" : "제출하기";
+  const submitLabel = editingCopy?.submitLabel ?? "제출하기";
 
   return (
     <>
@@ -291,27 +317,23 @@ export function StudioPage() {
         noValidate
       >
         <aside className="order-1 flex flex-col gap-4 border-b border-line bg-surface p-4 lg:h-full lg:w-75 lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-b-0">
-          {editingId ? (
+          {editingId && (
             <PageState
               isLoading={editing.isPending}
               error={editing.error}
               onRetry={() => void editing.refetch()}
             >
               {editingSubmission &&
-                (canSubmitterEdit(editingSubmission.status) ? (
+                (editingCopy && !editBlocked ? (
                   <div className="rounded-card border border-line bg-surface-muted p-3">
                     <p className="text-caption text-ink-subtle">
-                      {editingSubmission.status === "DRAFT"
-                        ? "작성 중인 신청 이어서 쓰기"
-                        : editingSubmission.status === "SUSPENDED"
-                          ? "게시 중단된 신청 수정"
-                          : "반려된 신청 수정"}
+                      {editingCopy.caption}
                     </p>
                     <p className="mt-0.5 truncate text-label text-ink">
                       {editingSubmission.title}
                     </p>
                     <p className="mt-0.5 text-caption text-ink-muted">
-                      제출하면 다시 검토를 받아요
+                      {editingCopy.note}
                     </p>
                   </div>
                 ) : (
@@ -319,8 +341,8 @@ export function StudioPage() {
                     <AlertTriangle aria-hidden="true" />
                     <AlertDescription className="space-y-2">
                       <span>
-                        지금 상태에서는 수정할 수 없어요. 작성 중이거나 반려·게시
-                        중단된 신청만 고칠 수 있습니다.
+                        지금 상태에서는 수정할 수 없어요. 게시가 시작되기
+                        전까지만 고칠 수 있습니다.
                       </span>
                       <Button variant="secondary" size="sm" asChild>
                         <Link to={to.submissionDetail(editingSubmission.id)}>
@@ -331,18 +353,6 @@ export function StudioPage() {
                   </Alert>
                 ))}
             </PageState>
-          ) : (
-            <NoticePanel
-              notice={notice.data ?? null}
-              noticeId={noticeId}
-              isLoading={notice.isPending && noticeId !== null}
-              error={notice.error}
-              onSelectNotice={(id) => {
-                setSearchParams({ [NOTICE_PARAM]: id });
-              }}
-              onClearNotice={startNew}
-              onRetry={() => void notice.refetch()}
-            />
           )}
 
           <div>
@@ -395,10 +405,7 @@ export function StudioPage() {
               <div ref={summaryRef} tabIndex={-1} className="outline-none">
                 <Alert variant="destructive">
                   <AlertTriangle aria-hidden="true" />
-                  <AlertDescription>
-                    {summary}
-                    {errors.notice && ` ${errors.notice}`}
-                  </AlertDescription>
+                  <AlertDescription>{summary}</AlertDescription>
                 </Alert>
               </div>
             )}
@@ -407,6 +414,8 @@ export function StudioPage() {
               draft={draft}
               errors={errors}
               showErrors={showErrors}
+              categories={categories.data ?? []}
+              config={config.data ?? null}
               disabled={createSubmission.isSubmitting}
               onChange={patchDraft}
             />
@@ -430,12 +439,12 @@ export function StudioPage() {
       </form>
 
       <SubmitSuccessDialog
-        submission={submitted}
-        isResubmission={editingSubmission !== null}
+        submission={submitted?.submission ?? null}
+        kind={submitted?.kind ?? "created"}
         onStartNew={startNew}
         onOpenDetail={() => {
           if (!submitted) return;
-          const id = submitted.id;
+          const id = submitted.submission.id;
           setSubmitted(null);
           void navigate(to.submissionDetail(id), { replace: true });
         }}

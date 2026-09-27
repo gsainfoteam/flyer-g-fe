@@ -52,21 +52,24 @@ export function FourSplitDisplay({
             <h2 className="mt-3 line-clamp-2 text-[36px] leading-[1.15] font-extrabold tracking-tight text-ink">
               {poster.title}
             </h2>
-            {poster.organizationName && (
+            {poster.organizerName && (
               <p className="mt-2 truncate text-[25px] text-ink-muted">
-                {poster.organizationName}
+                {poster.organizerName}
               </p>
             )}
           </div>
 
-          <div className="flex shrink-0 items-center gap-4">
-            <QRCodeBox value={poster.detailUrl} size="lg" />
-            <p className="text-[23px] leading-snug font-semibold text-ink-muted">
-              Ziggle에서
-              <br />
-              자세히 보기
-            </p>
-          </div>
+          {/* 상세 링크 없이 신청한 게시물은 QR 칸을 그리지 않는다. */}
+          {poster.detailUrl && (
+            <div className="flex shrink-0 items-center gap-4">
+              <QRCodeBox value={poster.detailUrl} size="lg" />
+              <p className="text-[23px] leading-snug font-semibold text-ink-muted">
+                Ziggle에서
+                <br />
+                자세히 보기
+              </p>
+            </div>
+          )}
         </article>
       ))}
 

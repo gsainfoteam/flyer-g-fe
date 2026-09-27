@@ -2,21 +2,26 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeUploadService } from "@/features/media-upload/api/fake-upload-service";
-import { createMockNoticeAdapter } from "@/entities/notice/api/mock-notices";
 import { createMockRepositories } from "@/mocks/repositories";
 import { ApiError } from "@/shared/api/error";
 import type { AssetUploadService } from "@/features/media-upload/api/asset-upload-service";
 import type { Repositories } from "@/shared/api/repositories";
 import { createFixedClock } from "@/shared/lib/clock";
 import { TEST_NOW, renderRoute } from "@/test/render-route";
-import { installImageDecoderMock, installObjectUrlMock } from "@/test/object-url";
+import {
+  installImageDecoderMock,
+  installObjectUrlMock,
+} from "@/test/object-url";
 
 /**
- * 게시 신청 흐름 (명세 FR-SUB-01 ~ FR-SUB-04).
+ * 게시 신청 흐름 (명세 FR-SUB-01 ~ FR-SUB-04, `API-CHANGES-BACKEND.md` 5절).
  *
  * 실제 route로 띄운다. guard와 셸을 지나 화면이 조립되는 경로까지 확인하기 위한 것이다.
+ * Ziggle 공지 조회가 없어 모든 정보를 직접 입력한다.
  */
 const JPEG_HEAD = [0xff, 0xd8, 0xff, 0xe0];
+const TITLE = "겨울 정기 공연";
+const DETAIL_URL = "https://ziggle.gistory.me/notice/1041";
 
 function posterFile(name = "poster.jpg"): File {
   const bytes = new Uint8Array(4096);
@@ -45,21 +50,39 @@ function studioRepositories() {
     clock: createFixedClock(TEST_NOW),
   });
   const createSpy = vi.spyOn(repositories.submissions, "create");
+  const updateSpy = vi.spyOn(repositories.submissions, "update");
   const submitSpy = vi.spyOn(repositories.submissions, "submit");
-  return { repositories, createSpy, submitSpy };
+  return { repositories, createSpy, updateSpy, submitSpy };
 }
 
+type User = ReturnType<typeof userEvent.setup>;
+
 async function openStudio(repositories?: Repositories) {
-  const view = renderRoute("/studio?noticeId=notice-1041", {
+  const view = renderRoute("/studio", {
     role: "SUBMITTER",
     repositories,
     services: { assetUpload: uploadService() },
   });
-  await screen.findByDisplayValue("겨울 정기 공연 〈한밤의 물리학〉");
+  await screen.findByRole("textbox", { name: /제목/ });
   return view;
 }
 
-async function uploadPoster(user: ReturnType<typeof userEvent.setup>) {
+async function chooseCategory(user: User, name: string) {
+  await user.click(screen.getByRole("combobox", { name: /카테고리/ }));
+  await user.click(await screen.findByRole("option", { name }));
+}
+
+/** 필수 입력(제목·카테고리)과 상세 링크를 채운다. 기간은 기본값을 쓴다. */
+async function fillForm(user: User) {
+  await user.type(screen.getByRole("textbox", { name: /제목/ }), TITLE);
+  await chooseCategory(user, "공연");
+  await user.type(
+    screen.getByRole("textbox", { name: /상세 링크/ }),
+    DETAIL_URL,
+  );
+}
+
+async function uploadPoster(user: User) {
   const input = document.querySelector<HTMLInputElement>('input[type="file"]');
   if (!input) throw new Error("파일 입력을 찾지 못했습니다");
   await user.upload(input, posterFile());
@@ -67,64 +90,65 @@ async function uploadPoster(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("게시 신청 스튜디오", () => {
-  it("연결된 Ziggle 공지에서 제목과 상세 링크를 채운다", async () => {
+  it("빈 폼에서 시작하고 TV에 나가는 정보를 직접 입력한다", async () => {
     await openStudio();
 
+    expect(screen.getByRole("textbox", { name: /제목/ })).toHaveValue("");
+    for (const label of [/부제/, /주최/, /장소/, /상세 링크/, /설명/]) {
+      expect(screen.getByRole("textbox", { name: label })).toHaveValue("");
+    }
+    // 기간 규칙은 서버 설정에서 받아 안내한다.
     expect(
-      screen.getByDisplayValue("겨울 정기 공연 〈한밤의 물리학〉"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByDisplayValue("https://ziggle.gistory.me/notice/notice-1041"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("연결된 Ziggle 공지")).toBeInTheDocument();
-  });
-
-  it("없는 공지로 들어오면 신청을 막는다", async () => {
-    renderRoute("/studio?noticeId=no-such-notice", {
-      role: "SUBMITTER",
-      services: { assetUpload: uploadService() },
-    });
-
-    expect(
-      await screen.findByText("이 공지로는 신청할 수 없어요"),
+      await screen.findByText(/24시간 이후부터, 기간은 최대 3개월/),
     ).toBeInTheDocument();
   });
 
-  it("제목을 바꾸면 미리보기에 바로 반영된다", async () => {
+  it("제목·부제·주최·장소를 입력하면 미리보기에 바로 반영된다", async () => {
     const user = userEvent.setup();
     await openStudio();
 
-    const title = screen.getByDisplayValue("겨울 정기 공연 〈한밤의 물리학〉");
-    await user.clear(title);
-    await user.type(title, "새 제목");
+    await user.type(screen.getByRole("textbox", { name: /제목/ }), "새 제목");
+    await user.type(
+      screen.getByRole("textbox", { name: /부제/ }),
+      "금요일 저녁 7시",
+    );
+    await user.type(screen.getByRole("textbox", { name: /주최/ }), "페이드인");
+    await user.type(screen.getByRole("textbox", { name: /장소/ }), "대강당");
 
     const preview = screen.getByRole("main");
     expect(
       await within(preview).findByRole("heading", { name: "새 제목" }),
     ).toBeInTheDocument();
+    expect(within(preview).getByText("금요일 저녁 7시")).toBeInTheDocument();
+    expect(within(preview).getByText("페이드인")).toBeInTheDocument();
+    expect(within(preview).getByText("대강당")).toBeInTheDocument();
   });
 
-  it("카테고리 변경도 미리보기가 따라온다", async () => {
+  it("카테고리는 서버 목록에서 고르고 미리보기가 따라온다", async () => {
     const user = userEvent.setup();
     await openStudio();
     const preview = screen.getByRole("main");
 
-    // 공지에서 채워진 카테고리가 그대로 보인다.
-    expect(within(preview).getByText("공연")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("combobox", { name: /카테고리/ }));
-    await user.click(await screen.findByRole("option", { name: "행사" }));
+    await chooseCategory(user, "행사");
 
     expect(await within(preview).findByText("행사")).toBeInTheDocument();
   });
 
-  it("상세 링크가 QR 값이 된다", async () => {
+  it("상세 링크가 QR 값이 되고, 비우면 QR 없이 게시된다고 알린다", async () => {
+    const user = userEvent.setup();
     await openStudio();
 
     expect(
-      screen.getAllByLabelText(
-        "QR 코드: https://ziggle.gistory.me/notice/notice-1041",
-      ).length,
+      screen.getByText("상세 링크가 없으면 TV에 QR 칸이 없어요."),
+    ).toBeInTheDocument();
+
+    await user.type(
+      screen.getByRole("textbox", { name: /상세 링크/ }),
+      DETAIL_URL,
+    );
+
+    expect(
+      screen.getAllByLabelText(`QR 코드: ${DETAIL_URL}`).length,
     ).toBeGreaterThan(0);
   });
 
@@ -136,21 +160,11 @@ describe("게시 신청 스튜디오", () => {
     expect(getByIdSpy).not.toHaveBeenCalled();
   });
 
-  it("공지 바꾸기는 폼을 제출하지 않는다", async () => {
-    const user = userEvent.setup();
-    const { repositories, createSpy } = studioRepositories();
-    await openStudio(repositories);
-
-    await user.click(screen.getByRole("button", { name: "공지 바꾸기" }));
-
-    expect(screen.queryByText(/포스터 이미지를 올려/)).not.toBeInTheDocument();
-    expect(createSpy).not.toHaveBeenCalled();
-  });
-
   it("포스터 없이 제출하면 오류를 보여주고 신청을 만들지 않는다", async () => {
     const user = userEvent.setup();
     const { repositories, createSpy } = studioRepositories();
     await openStudio(repositories);
+    await fillForm(user);
 
     await user.click(screen.getByRole("button", { name: "제출하기" }));
 
@@ -158,51 +172,117 @@ describe("게시 신청 스튜디오", () => {
     expect(createSpy).not.toHaveBeenCalled();
   });
 
-  it("유효한 입력으로 승인 대기 신청을 1건 만든다", async () => {
+  it("허용하지 않는 주소는 제출 전에 막는다", async () => {
+    const user = userEvent.setup();
+    const { repositories, createSpy } = studioRepositories();
+    await openStudio(repositories);
+    await fillForm(user);
+    const link = screen.getByRole("textbox", { name: /상세 링크/ });
+    await user.clear(link);
+    await user.type(link, "https://evil.example.com/notice/1");
+    await uploadPoster(user);
+
+    await user.click(screen.getByRole("button", { name: "제출하기" }));
+
+    expect(
+      await screen.findByText(/ziggle.gistory.me의 https 주소만/),
+    ).toBeInTheDocument();
+    expect(createSpy).not.toHaveBeenCalled();
+  });
+
+  it("유효한 입력으로 한 번의 요청에 승인 대기 신청을 1건 만든다", async () => {
     const user = userEvent.setup();
     const { repositories, createSpy, submitSpy } = studioRepositories();
     await openStudio(repositories);
+    await fillForm(user);
+    await user.type(screen.getByRole("textbox", { name: /주최/ }), "페이드인");
     await uploadPoster(user);
 
     await user.click(screen.getByRole("button", { name: "제출하기" }));
 
     expect(await screen.findByText("신청이 접수되었어요")).toBeInTheDocument();
+    // 생성과 제출이 한 번이다. 재검토 요청을 따로 보내지 않는다.
     expect(createSpy).toHaveBeenCalledTimes(1);
-    expect(submitSpy).toHaveBeenCalledTimes(1);
+    expect(submitSpy).not.toHaveBeenCalled();
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: TITLE,
+        categoryId: "performance",
+        detailUrl: DETAIL_URL,
+        organizerName: "페이드인",
+        subtitle: null,
+        location: null,
+      }),
+      { idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/) },
+    );
 
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText("승인 대기")).toBeInTheDocument();
+  });
 
-    const page = await repositories.submissions.list({
-      status: "PENDING_REVIEW",
-      limit: 50,
-    });
-    const mine = page.items.filter(
-      (item) => item.title === "겨울 정기 공연 〈한밤의 물리학〉",
+  it("상세 링크 없이도 신청할 수 있다", async () => {
+    const user = userEvent.setup();
+    const { repositories, createSpy } = studioRepositories();
+    await openStudio(repositories);
+    await user.type(screen.getByRole("textbox", { name: /제목/ }), TITLE);
+    await chooseCategory(user, "공연");
+    await uploadPoster(user);
+
+    await user.click(screen.getByRole("button", { name: "제출하기" }));
+
+    expect(await screen.findByText("신청이 접수되었어요")).toBeInTheDocument();
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ detailUrl: null }),
+      expect.anything(),
     );
-    expect(mine).toHaveLength(1);
-    expect(mine[0]?.status).toBe("PENDING_REVIEW");
   });
 
   it("제출 버튼을 두 번 눌러도 신청이 하나만 만들어진다", async () => {
     const user = userEvent.setup();
     const { repositories } = studioRepositories();
     await openStudio(repositories);
+    await fillForm(user);
     await uploadPoster(user);
 
-    const submit = screen.getByRole("button", { name: "제출하기" });
-    await user.dblClick(submit);
+    await user.dblClick(screen.getByRole("button", { name: "제출하기" }));
 
     expect(await screen.findByText("신청이 접수되었어요")).toBeInTheDocument();
-
     const page = await repositories.submissions.list({
       status: "ALL",
       limit: 100,
     });
-    const mine = page.items.filter(
-      (item) => item.title === "겨울 정기 공연 〈한밤의 물리학〉",
+    expect(page.items.filter((item) => item.title === TITLE)).toHaveLength(1);
+  });
+
+  it("이미 신청한 공지 주소면 상세 링크 칸에 이유를 붙인다", async () => {
+    const user = userEvent.setup();
+    const { repositories } = studioRepositories();
+    await repositories.submissions.create({
+      title: "먼저 낸 신청",
+      categoryId: "performance",
+      assetId: "asset-1",
+      detailUrl: DETAIL_URL,
+      organizerName: null,
+      subtitle: null,
+      location: null,
+      description: null,
+      startAt: new Date(TEST_NOW.getTime() + 2 * 86_400_000),
+      endAt: new Date(TEST_NOW.getTime() + 5 * 86_400_000),
+      targetGroupIds: [],
+    });
+    await openStudio(repositories);
+    await fillForm(user);
+    await uploadPoster(user);
+
+    await user.click(screen.getByRole("button", { name: "제출하기" }));
+
+    expect(
+      await screen.findByText("이 공지로 이미 신청한 게시물이 있습니다."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /상세 링크/ })).toHaveAttribute(
+      "aria-invalid",
+      "true",
     );
-    expect(mine).toHaveLength(1);
   });
 
   it("업로드가 실패해도 입력을 잃지 않고 재시도할 수 있다", async () => {
@@ -223,17 +303,15 @@ describe("게시 신청 스튜디오", () => {
       },
     };
 
-    renderRoute("/studio?noticeId=notice-1041", {
+    renderRoute("/studio", {
       role: "SUBMITTER",
       services: { assetUpload: flaky },
     });
-    await screen.findByDisplayValue("겨울 정기 공연 〈한밤의 물리학〉");
-
-    const title = screen.getByDisplayValue("겨울 정기 공연 〈한밤의 물리학〉");
-    await user.clear(title);
+    const title = await screen.findByRole("textbox", { name: /제목/ });
     await user.type(title, "재시도 확인");
 
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+    const input =
+      document.querySelector<HTMLInputElement>('input[type="file"]');
     await user.upload(input!, posterFile());
 
     await screen.findByRole("button", { name: "다시 시도" });
@@ -249,6 +327,7 @@ describe("게시 신청 스튜디오", () => {
     const user = userEvent.setup();
     const { repositories, createSpy } = studioRepositories();
     await openStudio(repositories);
+    await fillForm(user);
     await uploadPoster(user);
 
     const submit = screen.getByRole("button", { name: "제출하기" });
@@ -262,180 +341,24 @@ describe("게시 신청 스튜디오", () => {
     const user = userEvent.setup();
     const { repositories, createSpy } = studioRepositories();
     await openStudio(repositories);
+    await fillForm(user);
 
     const svgBytes = [...'<svg xmlns="'].map((char) => char.charCodeAt(0));
     const bytes = new Uint8Array(2048);
     bytes.set(svgBytes, 0);
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+    const input =
+      document.querySelector<HTMLInputElement>('input[type="file"]');
     await user.upload(
       input!,
       new File([bytes], "poster.jpg", { type: "image/jpeg" }),
     );
 
-    expect(await screen.findByText(/파일 내용이 이미지 형식과 맞지/)).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "제출하기" }));
-    expect(createSpy).not.toHaveBeenCalled();
-  });
-});
-
-describe("수정 모드 (명세 FR-DASH-02)", () => {
-  it("반려 건을 수정해 재제출하면 새로 만들지 않고 같은 신청이 승인 대기로 간다", async () => {
-    const user = userEvent.setup();
-    const { repositories, createSpy, submitSpy } = studioRepositories();
-    const updateSpy = vi.spyOn(repositories.submissions, "update");
-
-    renderRoute("/studio?submissionId=notice-901", {
-      role: "SUBMITTER",
-      repositories,
-      services: { assetUpload: uploadService() },
-    });
-
-    // 기존 값이 채워진다.
-    const title = await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
-    await user.clear(title);
-    await user.type(title, "슈퍼-피셜 겨울 모집");
-
-    // 기존 카테고리가 그대로 채워진다.
-    expect(screen.getByRole("combobox")).toHaveTextContent("동아리");
-
-    // 반려 건은 "다시 신청"이다.
-    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
-
-    expect(await screen.findByText("다시 신청했어요")).toBeInTheDocument();
-    expect(createSpy).not.toHaveBeenCalled();
-    expect(updateSpy).toHaveBeenCalledTimes(1);
-    expect(submitSpy).toHaveBeenCalledWith("notice-901", expect.anything());
-
-    const detail = await repositories.submissions.getById("notice-901");
-    expect(detail.status).toBe("PENDING_REVIEW");
-    expect(detail.title).toBe("슈퍼-피셜 겨울 모집");
-    // 새 포스터를 올리지 않았으니 기존 포스터가 유지된다.
-    expect(detail.posterUrl).not.toBe("");
-  });
-
-  it("상세에서 넘어와 이미 받은 신청으로 열어도 카테고리가 유지된다", async () => {
-    const { router } = renderRoute("/submissions/notice-901", {
-      role: "SUBMITTER",
-      services: { assetUpload: uploadService() },
-    });
-    await screen.findByRole("heading", { name: "슈퍼-피셜 신입 부원 모집" });
-
-    await act(() => router.navigate("/studio?submissionId=notice-901"));
-
-    await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
-    await waitFor(() => {
-      expect(screen.getByRole("combobox")).toHaveTextContent("동아리");
-    });
-  });
-
-  it("게시 중인 신청은 수정을 막는다", async () => {
-    renderRoute("/studio?submissionId=notice-001", {
-      role: "SUBMITTER",
-      services: { assetUpload: uploadService() },
-    });
-
     expect(
-      await screen.findByText(/지금 상태에서는 수정할 수 없어요/),
+      await screen.findByText(/파일 내용이 이미지 형식과 맞지/),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "제출하기" })).toBeDisabled();
-  });
-});
-
-describe("제출 실패와 복구 (명세 FR-SUB-04)", () => {
-  it("생성 뒤 제출만 실패하면 입력을 고쳐 다시 내도 새로 만들지 않는다", async () => {
-    const user = userEvent.setup();
-    const { repositories, createSpy, submitSpy } = studioRepositories();
-    const updateSpy = vi.spyOn(repositories.submissions, "update");
-    submitSpy.mockRejectedValueOnce(new Error("network down"));
-    await openStudio(repositories);
-    await uploadPoster(user);
 
     await user.click(screen.getByRole("button", { name: "제출하기" }));
-    await waitFor(() => expect(submitSpy).toHaveBeenCalledTimes(1));
-
-    // 실패 뒤 제목을 고치고 다시 낸다.
-    const title = screen.getByDisplayValue("겨울 정기 공연 〈한밤의 물리학〉");
-    await user.clear(title);
-    await user.type(title, "겨울 정기 공연");
-    await user.click(screen.getByRole("button", { name: "제출하기" }));
-
-    expect(await screen.findByText("신청이 접수되었어요")).toBeInTheDocument();
-    expect(createSpy).toHaveBeenCalledTimes(1);
-    // 이미 만든 신청을 최신 입력으로 고친 뒤 제출한다.
-    expect(updateSpy).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({ title: "겨울 정기 공연", version: 1 }),
-      expect.anything(),
-    );
-  });
-
-  it("수정 모드에서 제출이 실패한 뒤 다시 내도 자기 수정과 충돌하지 않는다", async () => {
-    const user = userEvent.setup();
-    const { repositories, submitSpy } = studioRepositories();
-    submitSpy.mockRejectedValueOnce(new Error("network down"));
-    renderRoute("/studio?submissionId=notice-901", {
-      role: "SUBMITTER",
-      repositories,
-      services: { assetUpload: uploadService() },
-    });
-    const title = await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
-
-    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
-    await waitFor(() => expect(submitSpy).toHaveBeenCalledTimes(1));
-
-    await user.clear(title);
-    await user.type(title, "슈퍼-피셜 겨울 모집");
-    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
-
-    expect(await screen.findByText("다시 신청했어요")).toBeInTheDocument();
-    const detail = await repositories.submissions.getById("notice-901");
-    expect(detail.title).toBe("슈퍼-피셜 겨울 모집");
-    expect(detail.status).toBe("PENDING_REVIEW");
-  });
-
-  it("수정 모드에서 새 포스터 업로드가 실패하면 기존 포스터로 몰래 제출하지 않는다", async () => {
-    const user = userEvent.setup();
-    const { repositories, submitSpy } = studioRepositories();
-    const updateSpy = vi.spyOn(repositories.submissions, "update");
-    const failing: AssetUploadService = {
-      upload: async () => {
-        throw new Error("network down");
-      },
-    };
-    renderRoute("/studio?submissionId=notice-901", {
-      role: "SUBMITTER",
-      repositories,
-      services: { assetUpload: failing },
-    });
-    await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
-
-    const input = document.querySelector<HTMLInputElement>('input[type="file"]');
-    await user.upload(input!, posterFile());
-    await screen.findByRole("button", { name: "다시 시도" });
-
-    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
-
-    expect(await screen.findByText(/입력을 확인해 주세요/)).toBeInTheDocument();
-    expect(updateSpy).not.toHaveBeenCalled();
-    expect(submitSpy).not.toHaveBeenCalled();
-  });
-
-  it("수정해서 다시 낸 뒤 닫으면 그 신청의 상세로 간다", async () => {
-    const user = userEvent.setup();
-    const { router } = renderRoute("/studio?submissionId=notice-901", {
-      role: "SUBMITTER",
-      services: { assetUpload: uploadService() },
-    });
-    await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
-
-    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
-    await screen.findByText("다시 신청했어요");
-    await user.keyboard("{Escape}");
-
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe("/submissions/notice-901"),
-    );
+    expect(createSpy).not.toHaveBeenCalled();
   });
 
   it("제출이 막히면 첫 문제 칸으로 포커스를 옮긴다", async () => {
@@ -465,6 +388,7 @@ describe("제출 실패와 복구 (명세 FR-SUB-04)", () => {
       }),
     );
     await openStudio(repositories);
+    await fillForm(user);
     await uploadPoster(user);
 
     await user.click(screen.getByRole("button", { name: "제출하기" }));
@@ -475,72 +399,215 @@ describe("제출 실패와 복구 (명세 FR-SUB-04)", () => {
   });
 });
 
-describe("공지 연결 (명세 FR-INT-01)", () => {
-  it("이미 신청한 공지는 다시 고를 수 없고 새 신청은 빈 폼에서 시작한다", async () => {
-    const user = userEvent.setup();
-    await openStudio();
-    await uploadPoster(user);
-    await user.click(screen.getByRole("button", { name: "제출하기" }));
-    await screen.findByText("신청이 접수되었어요");
-
-    await user.click(screen.getByRole("button", { name: "새 신청 작성" }));
-
-    // 방금 신청한 공지는 고를 수 있는 목록에서 빠진다.
-    expect(
-      await screen.findByText("기숙사 분리배출 방식 변경 안내"),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("겨울 정기 공연 〈한밤의 물리학〉")).toBeNull();
-  });
-
-  it("이미 신청한 공지로 들어오면 이유와 내 신청 링크를 보여준다", async () => {
-    const { repositories } = studioRepositories();
-    await repositories.submissions.create({
-      ziggleNoticeId: "notice-1041",
-      title: "겨울 정기 공연",
-      categoryId: "performance",
-      assetId: "asset-1",
-      detailUrl: "https://ziggle.gistory.me/notice/notice-1041",
-      startAt: new Date(TEST_NOW.getTime() + 86_400_000),
-      endAt: new Date(TEST_NOW.getTime() + 3 * 86_400_000),
-      targetGroupIds: [],
-    });
-    renderRoute("/studio?noticeId=notice-1041", {
+describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () => {
+  function openEdit(submissionId: string, repositories?: Repositories) {
+    return renderRoute(`/studio?submissionId=${submissionId}`, {
       role: "SUBMITTER",
       repositories,
       services: { assetUpload: uploadService() },
     });
+  }
 
+  it("반려 건은 고쳐서 저장한 뒤 재검토를 요청한다", async () => {
+    const user = userEvent.setup();
+    const { repositories, createSpy, updateSpy, submitSpy } =
+      studioRepositories();
+    openEdit("notice-901", repositories);
+
+    // 기존 값이 채워진다.
+    const title = await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
+    expect(screen.getByDisplayValue("학생회관 305호")).toBeInTheDocument();
     expect(
-      await screen.findByText(/진행 중인 신청이 이미 있어요/),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "내 신청 보기" })).toHaveAttribute(
-      "href",
-      "/submissions",
+      screen.getByRole("combobox", { name: /카테고리/ }),
+    ).toHaveTextContent("동아리");
+    await user.clear(title);
+    await user.type(title, "슈퍼-피셜 겨울 모집");
+
+    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
+
+    expect(await screen.findByText("다시 신청했어요")).toBeInTheDocument();
+    expect(createSpy).not.toHaveBeenCalled();
+    expect(updateSpy).toHaveBeenCalledTimes(1);
+    expect(submitSpy).toHaveBeenCalledWith(
+      "notice-901",
+      { version: 3 },
+      { idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/) },
     );
+
+    const detail = await repositories.submissions.getById("notice-901");
+    expect(detail.status).toBe("PENDING_REVIEW");
+    expect(detail.title).toBe("슈퍼-피셜 겨울 모집");
+    // 새 포스터를 올리지 않았으니 기존 포스터가 유지된다.
+    expect(detail.posterUrl).not.toBe("");
   });
 
-  it("공지를 불러오다 연결이 끊기면 막지 않고 다시 시도하게 한다", async () => {
+  it("검토 대기 중인 신청은 고쳐도 대기 그대로이고 재검토 요청을 보내지 않는다", async () => {
     const user = userEvent.setup();
-    let calls = 0;
-    const notices = createMockNoticeAdapter({ clock: createFixedClock(TEST_NOW) });
-    const flakyNotices = {
-      ...notices,
-      getById: async (id: string, signal?: AbortSignal) => {
-        calls += 1;
-        if (calls === 1) throw new TypeError("Failed to fetch");
-        return notices.getById(id, signal);
-      },
-    };
-    renderRoute("/studio?noticeId=notice-1041", {
-      role: "SUBMITTER",
-      services: { assetUpload: uploadService(), notices: flakyNotices },
-    });
+    const { repositories, submitSpy } = studioRepositories();
+    openEdit("notice-905", repositories);
 
-    expect(await screen.findByText("공지를 불러오지 못했어요")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "다시 시도" }));
+    const location = await screen.findByDisplayValue("학생회관 1층 갤러리");
+    expect(
+      await screen.findByText("고쳐도 검토 대기 순서는 그대로예요"),
+    ).toBeInTheDocument();
+    await user.clear(location);
+    await user.type(location, "학생회관 2층");
+    await user.click(screen.getByRole("button", { name: "수정 저장" }));
+
+    expect(await screen.findByText("수정했어요")).toBeInTheDocument();
+    expect(submitSpy).not.toHaveBeenCalled();
+    const detail = await repositories.submissions.getById("notice-905");
+    expect(detail).toMatchObject({
+      status: "PENDING_REVIEW",
+      location: "학생회관 2층",
+    });
+  });
+
+  it("게시 시작 전 승인 건을 고치면 다시 승인을 받는다", async () => {
+    const user = userEvent.setup();
+    const { repositories } = studioRepositories();
+    const created = await repositories.submissions.create({
+      title: "예약된 공연",
+      categoryId: "performance",
+      assetId: "asset-1",
+      detailUrl: null,
+      organizerName: null,
+      subtitle: null,
+      location: null,
+      description: null,
+      startAt: new Date(TEST_NOW.getTime() + 2 * 86_400_000),
+      endAt: new Date(TEST_NOW.getTime() + 5 * 86_400_000),
+      targetGroupIds: [],
+    });
+    await repositories.reviews.approve({
+      submissionId: created.id,
+      revision: created.version,
+    });
+    openEdit(created.id, repositories);
+
+    const subtitle = await screen.findByRole("textbox", { name: /부제/ });
+    expect(
+      await screen.findByText("고치면 다시 승인을 받아야 게시돼요"),
+    ).toBeInTheDocument();
+    await user.type(subtitle, "시간이 바뀌었어요");
+    await user.click(screen.getByRole("button", { name: "다시 승인 받기" }));
+
+    expect(await screen.findByText("수정했어요")).toBeInTheDocument();
+    const detail = await repositories.submissions.getById(created.id);
+    expect(detail.status).toBe("PENDING_REVIEW");
+  });
+
+  it("상세에서 넘어와 이미 받은 신청으로 열어도 카테고리가 유지된다", async () => {
+    const { router } = renderRoute("/submissions/notice-901", {
+      role: "SUBMITTER",
+      services: { assetUpload: uploadService() },
+    });
+    await screen.findByRole("heading", { name: "슈퍼-피셜 신입 부원 모집" });
+
+    await act(() => router.navigate("/studio?submissionId=notice-901"));
+
+    await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
+    await waitFor(() => {
+      expect(
+        screen.getByRole("combobox", { name: /카테고리/ }),
+      ).toHaveTextContent("동아리");
+    });
+  });
+
+  it("게시 중인 신청은 수정을 막는다", async () => {
+    openEdit("notice-001");
 
     expect(
-      await screen.findByDisplayValue("겨울 정기 공연 〈한밤의 물리학〉"),
+      await screen.findByText(/지금 상태에서는 수정할 수 없어요/),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "제출하기" })).toBeDisabled();
+  });
+
+  it("재검토 요청만 실패하면 다시 눌러도 저장을 반복하지 않고 자기 저장과 충돌하지 않는다", async () => {
+    const user = userEvent.setup();
+    const { repositories, updateSpy, submitSpy } = studioRepositories();
+    submitSpy.mockRejectedValueOnce(new Error("network down"));
+    openEdit("notice-901", repositories);
+    await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
+
+    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
+    await waitFor(() => expect(submitSpy).toHaveBeenCalledTimes(1));
+
+    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
+
+    expect(await screen.findByText("다시 신청했어요")).toBeInTheDocument();
+    expect(updateSpy).toHaveBeenCalledTimes(1);
+    // 두 번째 요청은 저장으로 올라간 버전을 쓰고, 같은 key로 보낸다.
+    expect(submitSpy.mock.calls[1]).toEqual(submitSpy.mock.calls[0]);
+    const detail = await repositories.submissions.getById("notice-901");
+    expect(detail.status).toBe("PENDING_REVIEW");
+  });
+
+  it("재검토 요청이 실패한 뒤 입력을 고치면 최신 버전으로 다시 저장한다", async () => {
+    const user = userEvent.setup();
+    const { repositories, updateSpy, submitSpy } = studioRepositories();
+    submitSpy.mockRejectedValueOnce(new Error("network down"));
+    openEdit("notice-901", repositories);
+    const title = await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
+
+    // 첫 저장은 성공해 버전이 2에서 3으로 오르고, 재검토 요청만 실패한다.
+    const location = screen.getByDisplayValue("학생회관 305호");
+    await user.clear(location);
+    await user.type(location, "학생회관 2층");
+    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
+    await waitFor(() => expect(submitSpy).toHaveBeenCalledTimes(1));
+
+    await user.clear(title);
+    await user.type(title, "슈퍼-피셜 겨울 모집");
+    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
+
+    expect(await screen.findByText("다시 신청했어요")).toBeInTheDocument();
+    expect(updateSpy).toHaveBeenLastCalledWith(
+      "notice-901",
+      expect.objectContaining({ title: "슈퍼-피셜 겨울 모집", version: 3 }),
+    );
+    const detail = await repositories.submissions.getById("notice-901");
+    expect(detail.title).toBe("슈퍼-피셜 겨울 모집");
+  });
+
+  it("새 포스터 업로드가 실패하면 기존 포스터로 몰래 제출하지 않는다", async () => {
+    const user = userEvent.setup();
+    const { repositories, updateSpy, submitSpy } = studioRepositories();
+    const failing: AssetUploadService = {
+      upload: async () => {
+        throw new Error("network down");
+      },
+    };
+    renderRoute("/studio?submissionId=notice-901", {
+      role: "SUBMITTER",
+      repositories,
+      services: { assetUpload: failing },
+    });
+    await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
+
+    const input =
+      document.querySelector<HTMLInputElement>('input[type="file"]');
+    await user.upload(input!, posterFile());
+    await screen.findByRole("button", { name: "다시 시도" });
+
+    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
+
+    expect(await screen.findByText(/입력을 확인해 주세요/)).toBeInTheDocument();
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(submitSpy).not.toHaveBeenCalled();
+  });
+
+  it("고쳐서 낸 뒤 닫으면 그 신청의 상세로 간다", async () => {
+    const user = userEvent.setup();
+    const { router } = openEdit("notice-901");
+    await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
+
+    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
+    await screen.findByText("다시 신청했어요");
+    await user.keyboard("{Escape}");
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/submissions/notice-901"),
+    );
   });
 });

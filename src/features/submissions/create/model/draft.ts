@@ -1,5 +1,3 @@
-import type { ZiggleNotice } from "@/entities/notice";
-import { isKnownCategory } from "@/entities/submission";
 import type { SignageSubmissionExpanded } from "@/entities/submission";
 import { toSeoulDateTimeInputValue } from "@/shared/lib/datetime";
 
@@ -9,25 +7,34 @@ import { toSeoulDateTimeInputValue } from "@/shared/lib/datetime";
  * 시각은 `<input type="datetime-local">`이 쓰는 Asia/Seoul 벽시계 문자열
  * ("YYYY-MM-DDTHH:mm")로 들고 있다가 제출 직전에만 UTC Date로 바꾼다.
  * 중간에 Date로 오가면 표시와 저장 시각이 어긋난다.
+ *
+ * Ziggle 공지를 조회할 API가 없어(`API-CHANGES-BACKEND.md` 3절) 주최·부제·장소·
+ * 설명·상세 링크를 신청자가 직접 입력한다. 선택 입력은 빈 문자열로 들고 있다가
+ * 보낼 때 null로 바꾼다.
  */
 export interface SubmissionDraft {
   title: string;
   categoryId: string;
   startAt: string;
   endAt: string;
+  /** 상세 링크(QR). 선택 */
   detailUrl: string;
+  organizerName: string;
+  subtitle: string;
+  location: string;
+  description: string;
 }
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
 /**
- * 기본 게시 기간.
+ * 기본 게시 기간: 모레 09:00 ~ 그로부터 일주일 뒤 18:00 (KST).
  *
- * 최대 게시 기간과 최소 사전 신청 시간이 아직 정해지지 않아(명세 15장 4번)
- * 검토 시간을 감안한 무난한 값을 넣어 둔다. 정책이 정해지면 여기와 검증을 함께 바꾼다.
+ * 서버는 시작이 신청 시각에서 24시간 이후여야 받는다(`minLeadTimeHours`). 모레
+ * 09:00은 지금이 몇 시든 24시간 이후라, 폼을 열자마자 오류가 뜨지 않는다.
  */
-export const DEFAULT_START_OFFSET_DAYS = 1;
+export const DEFAULT_START_OFFSET_DAYS = 2;
 export const DEFAULT_PERIOD_DAYS = 7;
 
 function seoulHour(base: Date, offsetDays: number, hour: number): Date {
@@ -44,7 +51,11 @@ function seoulHour(base: Date, offsetDays: number, hour: number): Date {
 export function createEmptyDraft(now: Date): SubmissionDraft {
   const seoulNow = new Date(now.getTime() + 9 * HOUR_MS);
   const start = seoulHour(seoulNow, DEFAULT_START_OFFSET_DAYS, 9);
-  const end = seoulHour(seoulNow, DEFAULT_START_OFFSET_DAYS + DEFAULT_PERIOD_DAYS, 18);
+  const end = seoulHour(
+    seoulNow,
+    DEFAULT_START_OFFSET_DAYS + DEFAULT_PERIOD_DAYS,
+    18,
+  );
 
   return {
     title: "",
@@ -52,41 +63,32 @@ export function createEmptyDraft(now: Date): SubmissionDraft {
     startAt: toSeoulDateTimeInputValue(start),
     endAt: toSeoulDateTimeInputValue(end),
     detailUrl: "",
+    organizerName: "",
+    subtitle: "",
+    location: "",
+    description: "",
   };
 }
 
-/**
- * 공지에서 채울 수 있는 값을 채운다 (명세 FR-INT-01).
- *
- * 제목과 카테고리는 사용자가 고칠 수 있다. 상세 URL은 공지가 정하는 값이라
- * 화면에서 읽기 전용으로 보여준다.
- */
-export function draftFromNotice(
-  notice: ZiggleNotice,
-  now: Date,
-): SubmissionDraft {
-  return {
-    ...createEmptyDraft(now),
-    title: notice.title,
-    categoryId: isKnownCategory(notice.categoryId) ? notice.categoryId : "",
-    detailUrl: notice.detailUrl,
-  };
-}
-
-/**
- * 기존 신청을 수정·재신청할 때의 초기값 (명세 FR-DASH-02).
- * 카탈로그에 없는 카테고리는 비워서 사용자가 다시 고르게 한다.
- */
+/** 기존 신청을 고칠 때의 초기값 (명세 FR-DASH-02). */
 export function draftFromSubmission(
   submission: SignageSubmissionExpanded,
 ): SubmissionDraft {
   return {
     title: submission.title,
-    categoryId: isKnownCategory(submission.categoryId)
-      ? submission.categoryId
-      : "",
+    categoryId: submission.categoryId,
     startAt: toSeoulDateTimeInputValue(submission.startAt),
     endAt: toSeoulDateTimeInputValue(submission.endAt),
-    detailUrl: submission.detailUrl,
+    detailUrl: submission.detailUrl ?? "",
+    organizerName: submission.organizerName ?? "",
+    subtitle: submission.subtitle ?? "",
+    location: submission.location ?? "",
+    description: submission.description ?? "",
   };
+}
+
+/** 선택 입력을 보낼 값으로. 비었으면 null(서버에서 비운다). */
+export function optionalText(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }

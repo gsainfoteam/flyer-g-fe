@@ -17,17 +17,14 @@ export interface PlaylistItemDto {
   title: string;
   category: string;
   assetUrl: string;
-  /** QR이 가리킬 Ziggle 원문 주소. QR 값의 단일 원천이다. */
-  detailUrl: string;
+  /** QR이 가리킬 상세 링크. QR 값의 단일 원천이다. 없으면 QR 없이 그린다. */
+  detailUrl: string | null;
   startsAt: string;
   endsAt: string;
   priority: number;
   checksum: string;
 
-  /**
-   * 아래 세 필드는 명세 8.3 예시에 없지만 Phase 05의 SINGLE 레이아웃이
-   * 일시·장소·주최를 요구한다. 실제 계약 확정 시 조정한다.
-   */
+  /** 신청자가 입력한 부제·장소·주최. SINGLE 레이아웃이 그린다. 없으면 null */
   subtitle?: string | null;
   location?: string | null;
   organizerName?: string | null;
@@ -46,8 +43,10 @@ export interface PlaylistDto {
   items: PlaylistItemDto[];
 }
 
-export interface PlaylistItem
-  extends Omit<PlaylistItemDto, "startsAt" | "endsAt"> {
+export interface PlaylistItem extends Omit<
+  PlaylistItemDto,
+  "startsAt" | "endsAt"
+> {
   startsAt: Date;
   endsAt: Date;
 }

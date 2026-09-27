@@ -53,7 +53,12 @@ export function SubmissionDetailPage() {
   const view = detail.data ? toSubmissionView(detail.data, serverNow) : null;
 
   return (
-    <PageState isLoading={isLoading} error={error} onRetry={retry} loadingRows={5}>
+    <PageState
+      isLoading={isLoading}
+      error={error}
+      onRetry={retry}
+      loadingRows={5}
+    >
       {view && detail.data && (
         <>
           <div>
@@ -94,29 +99,38 @@ export function SubmissionDetailPage() {
             <div className="flex min-w-0 flex-col gap-5">
               <Panel title="포스터">
                 <div className="aspect-3/4 w-full overflow-hidden rounded-control bg-canvas ring-1 ring-line">
-                  <PosterArtwork poster={fromSubmissionView(view)} fit="contain" />
+                  <PosterArtwork
+                    poster={fromSubmissionView(view)}
+                    fit="contain"
+                  />
                 </div>
               </Panel>
 
-              <Panel title="Ziggle 공지">
-                <div className="flex items-center gap-3.5">
-                  <QRCodeBox value={view.detailUrl} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-caption text-ink-muted">
-                      {view.detailUrl}
-                    </p>
-                    <Button variant="link" size="xs" asChild className="mt-1">
-                      <a
-                        href={view.detailUrl}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                      >
-                        원문 보기
-                        <ExternalLink aria-hidden="true" />
-                      </a>
-                    </Button>
+              <Panel title="상세 링크 (QR)">
+                {view.detailUrl ? (
+                  <div className="flex items-center gap-3.5">
+                    <QRCodeBox value={view.detailUrl} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-caption text-ink-muted">
+                        {view.detailUrl}
+                      </p>
+                      <Button variant="link" size="xs" asChild className="mt-1">
+                        <a
+                          href={view.detailUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        >
+                          원문 보기
+                          <ExternalLink aria-hidden="true" />
+                        </a>
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <p className="text-body text-ink-muted">
+                    상세 링크 없이 신청했어요. TV에 QR이 나가지 않아요.
+                  </p>
+                )}
               </Panel>
             </div>
 
@@ -129,11 +143,25 @@ export function SubmissionDetailPage() {
                   </MetaItem>
                   <MetaItem label="카테고리">{view.categoryName}</MetaItem>
                   <MetaItem label="주최">
-                    {view.organizationName || "미지정"}
+                    {view.organizerName ?? "없음"}
                   </MetaItem>
                   <MetaItem label="대상 위치">
                     {targetLabel ?? "확인하는 중"}
                   </MetaItem>
+                  {view.subtitle && (
+                    <MetaItem label="부제">{view.subtitle}</MetaItem>
+                  )}
+                  {view.location && (
+                    <MetaItem label="장소">{view.location}</MetaItem>
+                  )}
+                  {view.description && (
+                    <div className="sm:col-span-2">
+                      <dt className="text-caption text-ink-subtle">설명</dt>
+                      <dd className="mt-0.5 text-body whitespace-pre-line text-ink">
+                        {view.description}
+                      </dd>
+                    </div>
+                  )}
                 </dl>
               </Panel>
 

@@ -2,15 +2,26 @@ import { expect, test } from "@playwright/test";
 import { gotoInApp, login, switchRole, uploadGeneratedPoster } from "./helpers";
 
 /**
- * AT-01 정상 신청과 예약 게시, AT-02 반려와 재신청 (mock 기반).
+ * AT-01 정상 신청과 예약 게시, AT-02 반려와 재신청 (mock 기반, 백엔드 계약 규칙).
  * mock 상태는 페이지 단위라 한 페이지 안에서 앱 내 이동으로 이어간다.
  */
-test("게시자가 공지를 연결해 신청하면 승인 대기가 된다", async ({ page }) => {
-  await login(page, "/studio?noticeId=notice-1041");
+test("게시자가 게시 정보를 입력해 신청하면 바로 승인 대기가 된다", async ({
+  page,
+}) => {
+  await login(page, "/studio");
 
-  // 공지에서 제목·링크가 자동으로 채워진다.
+  // Ziggle 공지 조회가 없어 TV에 나갈 정보를 직접 입력한다.
+  await page.getByRole("textbox", { name: /제목/ }).fill("겨울 정기 공연");
+  await page.getByRole("combobox", { name: /카테고리/ }).click();
+  await page.getByRole("option", { name: "공연" }).click();
+  await page.getByRole("textbox", { name: /주최/ }).fill("공연동아리 페이드인");
+  await page
+    .getByRole("textbox", { name: /상세 링크/ })
+    .fill("https://ziggle.gistory.me/notice/1041");
+
+  // 미리보기가 입력을 따라온다.
   await expect(
-    page.locator('input[value="겨울 정기 공연 〈한밤의 물리학〉"]'),
+    page.getByRole("main").getByText("공연동아리 페이드인"),
   ).toBeVisible();
 
   await uploadGeneratedPoster(page);
@@ -19,14 +30,12 @@ test("게시자가 공지를 연결해 신청하면 승인 대기가 된다", as
   await expect(
     page.getByRole("heading", { name: "신청이 접수되었어요" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("dialog").getByText("승인 대기"),
-  ).toBeVisible();
+  await expect(page.getByRole("dialog").getByText("승인 대기")).toBeVisible();
 
   // 상세로 이동하면 같은 신청이 승인 대기 상태로 보인다.
   await page.getByRole("button", { name: "신청 상세 보기" }).click();
   await expect(
-    page.getByRole("heading", { name: "겨울 정기 공연 〈한밤의 물리학〉" }),
+    page.getByRole("heading", { name: "겨울 정기 공연" }),
   ).toBeVisible();
   await expect(page.getByText("관리자 검토를 기다리고 있어요")).toBeVisible();
 });
@@ -44,10 +53,7 @@ test("관리자 승인 → 미래 시작 건은 예약되고 TV에 나오지 않
     .click();
 
   await page.getByRole("button", { name: "승인" }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "승인" })
-    .click();
+  await page.getByRole("dialog").getByRole("button", { name: "승인" }).click();
   await expect(page.getByText("승인했어요")).toBeVisible();
   // 결정하면 다음으로 오래 기다린 건의 검토 화면으로 넘어간다.
   await expect(page).toHaveURL(/\/reviews\/notice-005$/);
@@ -55,9 +61,7 @@ test("관리자 승인 → 미래 시작 건은 예약되고 TV에 나오지 않
   // 같은 mock 상태로 TV를 열면(앱 내 이동) 예약 건은 노출되지 않는다.
   await gotoInApp(page, "/display/house-a-lobby");
   await expect(page.getByText("A동 로비")).toBeVisible();
-  await expect(
-    page.getByText("지스트신문 22기 기자단 모집"),
-  ).not.toBeVisible();
+  await expect(page.getByText("지스트신문 22기 기자단 모집")).not.toBeVisible();
 });
 
 test("반려 → 게시자가 사유 확인 후 수정 재신청", async ({ page }) => {

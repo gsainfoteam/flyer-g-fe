@@ -4,6 +4,8 @@ import {
   canReviewerSuspend,
   canSubmitterCancel,
   canSubmitterEdit,
+  canSubmitterResubmit,
+  needsReapproval,
   canTransition,
   getAllowedTransitions,
   getStatusLabel,
@@ -57,26 +59,129 @@ describe("허용 전이", () => {
   });
 });
 
-describe("상태별 가능한 행동 (명세 6.3 허용 전이)", () => {
-  const cases: [SubmissionStatus, { edit: boolean; cancel: boolean; decide: boolean; suspend: boolean }][] = [
-    ["DRAFT", { edit: true, cancel: false, decide: false, suspend: false }],
-    ["PENDING_REVIEW", { edit: false, cancel: true, decide: true, suspend: false }],
-    ["REJECTED", { edit: true, cancel: true, decide: false, suspend: false }],
-    ["APPROVED", { edit: false, cancel: false, decide: false, suspend: true }],
-    ["SCHEDULED", { edit: false, cancel: true, decide: false, suspend: true }],
-    ["PUBLISHED", { edit: false, cancel: false, decide: false, suspend: true }],
-    ["ENDED", { edit: false, cancel: false, decide: false, suspend: false }],
-    ["SUSPENDED", { edit: true, cancel: false, decide: false, suspend: false }],
-    ["CANCELED", { edit: false, cancel: false, decide: false, suspend: false }],
+describe("상태별 가능한 행동 (백엔드 submission-rules)", () => {
+  // 넘기는 상태는 서버 시각 기준 실제 상태다. "예약됨"은 게시 시작 전 승인 건이다.
+  const cases: [
+    SubmissionStatus,
+    {
+      edit: boolean;
+      resubmit: boolean;
+      reapproval: boolean;
+      cancel: boolean;
+      decide: boolean;
+      suspend: boolean;
+    },
+  ][] = [
+    [
+      "DRAFT",
+      {
+        edit: true,
+        resubmit: true,
+        reapproval: false,
+        cancel: true,
+        decide: false,
+        suspend: false,
+      },
+    ],
+    [
+      "PENDING_REVIEW",
+      {
+        edit: true,
+        resubmit: false,
+        reapproval: false,
+        cancel: true,
+        decide: true,
+        suspend: false,
+      },
+    ],
+    [
+      "REJECTED",
+      {
+        edit: true,
+        resubmit: true,
+        reapproval: false,
+        cancel: true,
+        decide: false,
+        suspend: false,
+      },
+    ],
+    [
+      "APPROVED",
+      {
+        edit: true,
+        resubmit: false,
+        reapproval: true,
+        cancel: true,
+        decide: false,
+        suspend: true,
+      },
+    ],
+    [
+      "SCHEDULED",
+      {
+        edit: true,
+        resubmit: false,
+        reapproval: true,
+        cancel: true,
+        decide: false,
+        suspend: true,
+      },
+    ],
+    [
+      "PUBLISHED",
+      {
+        edit: false,
+        resubmit: false,
+        reapproval: false,
+        cancel: false,
+        decide: false,
+        suspend: true,
+      },
+    ],
+    [
+      "ENDED",
+      {
+        edit: false,
+        resubmit: false,
+        reapproval: false,
+        cancel: false,
+        decide: false,
+        suspend: false,
+      },
+    ],
+    // 중단된 신청의 재검토는 백엔드에 요청해 둔 상태다(API-FOLLOWUP 1-1).
+    [
+      "SUSPENDED",
+      {
+        edit: false,
+        resubmit: false,
+        reapproval: false,
+        cancel: false,
+        decide: false,
+        suspend: false,
+      },
+    ],
+    [
+      "CANCELED",
+      {
+        edit: false,
+        resubmit: false,
+        reapproval: false,
+        cancel: false,
+        decide: false,
+        suspend: false,
+      },
+    ],
   ];
 
   it.each(cases)("%s", (status, expected) => {
     expect({
       edit: canSubmitterEdit(status),
+      resubmit: canSubmitterResubmit(status),
+      reapproval: needsReapproval(status),
       cancel: canSubmitterCancel(status),
       decide: canReviewerDecide(status),
       suspend: canReviewerSuspend(status),
     }).toEqual(expected);
   });
 });
-

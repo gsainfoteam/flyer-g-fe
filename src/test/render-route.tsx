@@ -10,12 +10,8 @@ import {
 } from "@/features/auth/api/mock-auth";
 import type { Role } from "@/features/auth/model/types";
 import { createMemoryHeartbeatLog } from "@/mocks/heartbeats";
-import {
-  createMockRepositories,
-  isMockRepositories,
-} from "@/mocks/repositories";
+import { createMockRepositories } from "@/mocks/repositories";
 import { createFakeUploadService } from "@/features/media-upload/api/fake-upload-service";
-import { createMockNoticeAdapter } from "@/entities/notice/api/mock-notices";
 import type { AppServices } from "@/app/providers/services";
 import type { Repositories } from "@/shared/api/repositories";
 import { createFixedClock } from "@/shared/lib/clock";
@@ -71,12 +67,6 @@ export function renderRoute(
   const resolvedServices: AppServices = {
     // 업로드는 즉시 끝난다. 진행률 애니메이션을 기다리지 않는다.
     assetUpload: createFakeUploadService({ tickMs: 0, tickCount: 2 }),
-    notices: createMockNoticeAdapter({
-      clock,
-      isNoticeInUse: isMockRepositories(resolvedRepositories)
-        ? resolvedRepositories.isNoticeInUse
-        : undefined,
-    }),
     ...services,
   };
 

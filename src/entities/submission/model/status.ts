@@ -7,7 +7,8 @@ import type { SubmissionStatus } from "./types";
  * info(예정됨), pending(누군가의 처리를 기다림), neutral(지난 것·비활성).
  * 색은 보조 신호일 뿐이며 구분은 항상 label과 설명 문장이 맡는다. (명세 9.6)
  */
-export type StatusTone = "neutral" | "attention" | "positive" | "info" | "pending";
+export type StatusTone =
+  "neutral" | "attention" | "positive" | "info" | "pending";
 
 export interface StatusMeta {
   /** UI 표시 문구. 명세 6.3 */
@@ -79,19 +80,21 @@ export function getStatusLabel(status: SubmissionStatus): string {
 }
 
 /** 명세 6.3 허용 전이. 클라이언트는 버튼 노출 판단에만 쓰고 최종 판단은 서버가 한다. */
-const ALLOWED_TRANSITIONS: Record<SubmissionStatus, readonly SubmissionStatus[]> =
-  {
-    DRAFT: ["PENDING_REVIEW"],
-    PENDING_REVIEW: ["APPROVED", "REJECTED", "CANCELED"],
-    REJECTED: ["PENDING_REVIEW", "CANCELED"],
-    APPROVED: ["SCHEDULED", "PUBLISHED", "SUSPENDED"],
-    SCHEDULED: ["PUBLISHED", "SUSPENDED", "CANCELED"],
-    PUBLISHED: ["ENDED", "SUSPENDED"],
-    ENDED: ["ARCHIVED"],
-    SUSPENDED: ["PENDING_REVIEW", "APPROVED", "ENDED"],
-    CANCELED: [],
-    ARCHIVED: [],
-  };
+const ALLOWED_TRANSITIONS: Record<
+  SubmissionStatus,
+  readonly SubmissionStatus[]
+> = {
+  DRAFT: ["PENDING_REVIEW"],
+  PENDING_REVIEW: ["APPROVED", "REJECTED", "CANCELED"],
+  REJECTED: ["PENDING_REVIEW", "CANCELED"],
+  APPROVED: ["SCHEDULED", "PUBLISHED", "SUSPENDED"],
+  SCHEDULED: ["PUBLISHED", "SUSPENDED", "CANCELED"],
+  PUBLISHED: ["ENDED", "SUSPENDED"],
+  ENDED: ["ARCHIVED"],
+  SUSPENDED: ["PENDING_REVIEW", "APPROVED", "ENDED"],
+  CANCELED: [],
+  ARCHIVED: [],
+};
 
 export function canTransition(
   from: SubmissionStatus,
@@ -107,19 +110,50 @@ export function getAllowedTransitions(
 }
 
 /*
- * 화면이 버튼을 보여줄지와 mock이 요청을 받아 줄지를 같은 전이표로 판단한다.
- * 규칙을 화면마다 목록으로 따로 적으면 서로 어긋난다. 넘기는 상태는 저장된
- * 값이 아니라 서버 시각 기준 실제 상태다 — 기간이 끝난 "게시 중"은 이미 종료다.
+ * 게시자·관리자가 할 수 있는 일. 화면이 버튼을 보여줄지와 mock이 요청을 받아 줄지를
+ * 같은 함수로 판단한다. 규칙은 백엔드 계약(`flyer-g-be` `submission-rules.ts`)을
+ * 따른다. 넘기는 상태는 저장된 값이 아니라 서버 시각 기준 실제 상태다 — 시작 전
+ * 승인 건은 "예약됨", 기간이 끝난 "게시 중"은 이미 종료다. 그래서 "게시 시작 전"
+ * 조건은 실제 상태가 SCHEDULED인지로 판단한다.
  */
 
-/** 게시자가 고쳐서 (다시) 검토에 낼 수 있다: 작성 중, 반려됨, 게시 중단 */
+/**
+ * 게시자가 내용을 고칠 수 있다: 작성 중, 승인 대기, 반려됨, 예약됨(게시 시작 전).
+ * 게시가 시작되면 고칠 수 없고 관리자에게 중단을 요청한다.
+ */
 export function canSubmitterEdit(status: SubmissionStatus): boolean {
-  return canTransition(status, "PENDING_REVIEW");
+  return (
+    status === "DRAFT" ||
+    status === "PENDING_REVIEW" ||
+    status === "REJECTED" ||
+    status === "APPROVED" ||
+    status === "SCHEDULED"
+  );
 }
 
-/** 게시자가 시작 전에 취소할 수 있다: 승인 대기, 반려됨, 예약됨 */
+/** 승인된 내용을 고치면 다시 승인을 받아야 한다(명세 FR-INT-02). 서버가 승인 대기로 돌린다. */
+export function needsReapproval(status: SubmissionStatus): boolean {
+  return status === "APPROVED" || status === "SCHEDULED";
+}
+
+/**
+ * 고친 뒤 다시 검토를 요청해야 하는 상태: 작성 중, 반려됨.
+ * 게시 중단된 신청의 재검토는 백엔드에 요청해 둔 상태라 아직 받지 않는다
+ * (`API-FOLLOWUP-2026-09.md` 1-1).
+ */
+export function canSubmitterResubmit(status: SubmissionStatus): boolean {
+  return status === "DRAFT" || status === "REJECTED";
+}
+
+/** 게시자가 취소할 수 있다: 게시가 시작되기 전까지(작성 중, 승인 대기, 반려됨, 예약됨) */
 export function canSubmitterCancel(status: SubmissionStatus): boolean {
-  return canTransition(status, "CANCELED");
+  return (
+    status === "DRAFT" ||
+    status === "PENDING_REVIEW" ||
+    status === "REJECTED" ||
+    status === "APPROVED" ||
+    status === "SCHEDULED"
+  );
 }
 
 /** 관리자가 승인·반려를 결정할 수 있다: 승인 대기 */

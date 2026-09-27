@@ -16,12 +16,15 @@ async function repositoriesWithManySubmissions() {
   });
   for (let index = 0; index < 6; index += 1) {
     await repositories.submissions.create({
-      ziggleNoticeId: `notice-extra-${index}`,
       title: `추가 신청 ${index + 1}`,
       categoryId: "club",
       assetId: `asset-extra-${index}`,
       detailUrl: `https://ziggle.gistory.me/notice/extra-${index}`,
-      startAt: new Date(TEST_NOW.getTime() + 86_400_000),
+      organizerName: null,
+      subtitle: null,
+      location: null,
+      description: null,
+      startAt: new Date(TEST_NOW.getTime() + 2 * 86_400_000),
       endAt: new Date(TEST_NOW.getTime() + 7 * 86_400_000),
       targetGroupIds: [],
     });
@@ -85,9 +88,10 @@ describe("신청 목록", () => {
     renderRoute("/submissions?status=stopped", { role: "SUBMITTER" });
 
     expect(await screen.findByText(/중단\/취소 \d+건/)).toBeInTheDocument();
-    expect(
-      screen.getByRole("tab", { name: /^중단\/취소/ }),
-    ).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: /^중단\/취소/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 
   it("알 수 없는 status 값은 전체 탭으로 돌아간다", async () => {
@@ -114,11 +118,15 @@ describe("신청 목록", () => {
   it("탭마다 서버 요약의 건수를 붙인다", async () => {
     renderRoute("/submissions", { role: "SUBMITTER" });
 
-    // 정하윤의 fixture: 반려 1건, 중단 1건(취소 0건)
+    // 정하윤의 fixture: 반려 1건, 중단 1건, 취소 1건
     expect(
       await screen.findByRole("tab", { name: "반려 1건" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "중단/취소 1건" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: "중단/취소 2건" }),
+    ).toBeInTheDocument();
+    // 서버는 작성 중(DRAFT) 신청을 만들지 않아 그 탭이 없다.
+    expect(screen.queryByRole("tab", { name: /^작성 중/ })).toBeNull();
   });
 
   it("화살표 키로 탭을 옮긴다", async () => {
@@ -129,8 +137,8 @@ describe("신청 목록", () => {
     all.focus();
     await user.keyboard("{ArrowRight}");
 
-    expect(currentPath(router)).toBe("/submissions?status=draft");
-    expect(screen.getByRole("tab", { name: /^작성 중/ })).toHaveFocus();
+    expect(currentPath(router)).toBe("/submissions?status=pending");
+    expect(screen.getByRole("tab", { name: /^승인 대기/ })).toHaveFocus();
   });
 });
 
@@ -143,7 +151,9 @@ describe("관리자의 전체 신청", () => {
     await user.click(screen.getByRole("button", { name: "전체 신청" }));
 
     expect(currentPath(router)).toBe("/submissions?scope=all");
-    const row = await screen.findByRole("link", { name: /VESPER 피아노 정기공연/ });
+    const row = await screen.findByRole("link", {
+      name: /VESPER 피아노 정기공연/,
+    });
     // 게시 중인 남의 신청 → 중단할 수 있는 검토 화면
     expect(row).toHaveAttribute("href", "/reviews/notice-001");
   });
@@ -157,4 +167,3 @@ describe("관리자의 전체 신청", () => {
     expect(screen.queryByRole("button", { name: "전체 신청" })).toBeNull();
   });
 });
-

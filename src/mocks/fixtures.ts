@@ -3,13 +3,13 @@ import type {
   TargetGroup,
 } from "@/entities/device/model/types";
 import type { SubmissionEventDto } from "@/entities/review/model/types";
-import { getCategoryName } from "@/entities/submission/model/categories";
 import type {
   SignageSubmissionExpandedDto,
   SubmissionStatus,
 } from "@/entities/submission/model/types";
 import { toIsoUtc } from "@/shared/lib/datetime";
 import { ZIGGLE_ORIGIN } from "@/shared/lib/ziggle-url";
+import { categoryNameOf } from "./reference";
 import { MOCK_ORGANIZATIONS, MOCK_USERS } from "./users";
 
 /**
@@ -21,14 +21,16 @@ import { MOCK_ORGANIZATIONS, MOCK_USERS } from "./users";
  * (명세 FR-PLY-01)을 실제로 확인하려면 기간이 살아 있어야 한다.
  *
  * 소유자는 역할 전환으로 로그인할 수 있는 사람(`users.ts`)과 이어진다.
- * - 게시자 정하윤: 게시 중·승인 대기·반려·작성 중·중단·종료를 하나씩 가진다.
+ * - 게시자 정하윤: 게시 중·승인 대기·반려·취소·중단·종료를 하나씩 가진다.
+ *   (서버는 만들 때 바로 검토 대기로 두므로 작성 중(DRAFT) 신청은 없다.)
  * - 하우스 관리자 이수현: 하우스오피스 공지 한 건을 직접 신청했다.
  * - 나머지는 로그인할 수 없는 다른 신청자다.
  */
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
 
-const days = (now: Date, offset: number) => new Date(now.getTime() + offset * DAY_MS);
+const days = (now: Date, offset: number) =>
+  new Date(now.getTime() + offset * DAY_MS);
 
 export const TARGET_GROUP_FIXTURES: readonly TargetGroup[] = [
   { id: "group-house-a", name: "학사기숙사 A동", deviceCount: 1 },
@@ -42,7 +44,7 @@ const PERIOD_BY_STATUS: Partial<Record<SubmissionStatus, [number, number]>> = {
   PENDING_REVIEW: [2, 16],
   ENDED: [-24, -6],
   REJECTED: [3, 17],
-  DRAFT: [7, 21],
+  CANCELED: [7, 21],
   SUSPENDED: [-2, 12],
 };
 
@@ -57,9 +59,11 @@ const APPROVED_ONCE: readonly SubmissionStatus[] = [
 
 interface SubmissionSeed {
   id: string;
-  /** Ziggle 공지 식별자. 상세 링크(QR)도 여기서 만든다. */
-  noticeSlug: string;
+  /** Ziggle 공지 식별자. 상세 링크(QR)도 여기서 만든다. null이면 QR 없는 게시물이다. */
+  noticeSlug: string | null;
   requesterId: string;
+  requesterName: string;
+  /** 주최. 신청자가 자유 입력한 값이다. */
   organization: { id: string; name: string };
   title: string;
   categoryId: string;
@@ -76,6 +80,7 @@ const SEEDS: readonly SubmissionSeed[] = [
     id: "notice-001",
     noticeSlug: "vesper-recital",
     requesterId: MOCK_USERS.SUBMITTER.id,
+    requesterName: MOCK_USERS.SUBMITTER.displayName,
     organization: MOCK_ORGANIZATIONS.piano,
     title: "VESPER 피아노 정기공연",
     categoryId: "performance",
@@ -86,9 +91,11 @@ const SEEDS: readonly SubmissionSeed[] = [
     description: "여름밤에 어울리는 피아노 소품과 재즈 편곡을 준비했습니다.",
   },
   {
+    // 상세 링크 없이 신청한 게시물. TV에 QR 칸이 없다.
     id: "notice-002",
-    noticeSlug: "research-assistant",
+    noticeSlug: null,
     requesterId: "user-ibs-lab",
+    requesterName: "박연구",
     organization: { id: "org-ibs-lab", name: "IBS 양자변환연구단" },
     title: "연구보조 학생 모집",
     categoryId: "notice",
@@ -103,6 +110,7 @@ const SEEDS: readonly SubmissionSeed[] = [
     id: "notice-003",
     noticeSlug: "gist-news-22",
     requesterId: "user-gist-news",
+    requesterName: "최기자",
     organization: { id: "org-gist-news", name: "지스트신문" },
     title: "지스트신문 22기 기자단 모집",
     categoryId: "club",
@@ -117,6 +125,7 @@ const SEEDS: readonly SubmissionSeed[] = [
     id: "notice-004",
     noticeSlug: "rnd-officer",
     requesterId: "user-student-support",
+    requesterName: "한지원",
     organization: { id: "org-student-support", name: "학생지원센터" },
     title: "과학기술전문사관 석사 후보생 모집",
     categoryId: "notice",
@@ -130,6 +139,7 @@ const SEEDS: readonly SubmissionSeed[] = [
     id: "notice-005",
     noticeSlug: "house-office-notice",
     requesterId: MOCK_USERS.REVIEWER.id,
+    requesterName: MOCK_USERS.REVIEWER.displayName,
     organization: MOCK_ORGANIZATIONS.houseOffice,
     title:
       "2026학년도 2학기 기숙사 디지털 게시판 게시 신청 안내 및 승인 절차 변경 공지",
@@ -145,6 +155,7 @@ const SEEDS: readonly SubmissionSeed[] = [
     id: "notice-006",
     noticeSlug: "band-live",
     requesterId: "user-band",
+    requesterName: "오밴드",
     organization: { id: "org-band", name: "도백 도둑" },
     title: "도백 도둑 정기공연",
     categoryId: "performance",
@@ -159,6 +170,7 @@ const SEEDS: readonly SubmissionSeed[] = [
     id: "notice-007",
     noticeSlug: "earth-club",
     requesterId: "user-earth-club",
+    requesterName: "윤지구",
     organization: { id: "org-earth-club", name: "지구는 처음이야" },
     title: "지구는 처음이야 동아리 부스",
     categoryId: "club",
@@ -166,13 +178,15 @@ const SEEDS: readonly SubmissionSeed[] = [
     posterUrl: "/posters/superficial.webp",
     subtitle: "환경 동아리 신입 부원 모집",
     location: "제1학생회관 로비",
-    description: "업사이클링 워크숍과 캠퍼스 플로깅을 함께할 부원을 모집합니다.",
+    description:
+      "업사이클링 워크숍과 캠퍼스 플로깅을 함께할 부원을 모집합니다.",
   },
   {
     // 포스터를 불러오지 못하는 경우의 대체 화면을 확인하기 위해 이미지를 비워 둔다.
     id: "notice-008",
     noticeSlug: "open-club-room",
     requesterId: "user-club-union",
+    requesterName: "강연합",
     organization: { id: "org-club-union", name: "GIST 동아리연합회" },
     title: "오픈 동방",
     categoryId: "event",
@@ -186,6 +200,7 @@ const SEEDS: readonly SubmissionSeed[] = [
     id: "notice-901",
     noticeSlug: "superficial-recruit",
     requesterId: MOCK_USERS.SUBMITTER.id,
+    requesterName: MOCK_USERS.SUBMITTER.displayName,
     organization: MOCK_ORGANIZATIONS.superficial,
     title: "슈퍼-피셜 신입 부원 모집",
     categoryId: "club",
@@ -199,10 +214,11 @@ const SEEDS: readonly SubmissionSeed[] = [
     id: "notice-902",
     noticeSlug: "superficial-sketch-day",
     requesterId: MOCK_USERS.SUBMITTER.id,
+    requesterName: MOCK_USERS.SUBMITTER.displayName,
     organization: MOCK_ORGANIZATIONS.superficial,
     title: "슈퍼-피셜 야외 스케치 데이",
     categoryId: "event",
-    status: "DRAFT",
+    status: "CANCELED",
     posterUrl: "",
     subtitle: null,
     location: null,
@@ -212,6 +228,7 @@ const SEEDS: readonly SubmissionSeed[] = [
     id: "notice-903",
     noticeSlug: "superficial-one-day-class",
     requesterId: MOCK_USERS.SUBMITTER.id,
+    requesterName: MOCK_USERS.SUBMITTER.displayName,
     organization: MOCK_ORGANIZATIONS.superficial,
     title: "슈퍼-피셜 드로잉 원데이 클래스",
     categoryId: "event",
@@ -225,6 +242,7 @@ const SEEDS: readonly SubmissionSeed[] = [
     id: "notice-904",
     noticeSlug: "vesper-spring",
     requesterId: MOCK_USERS.SUBMITTER.id,
+    requesterName: MOCK_USERS.SUBMITTER.displayName,
     organization: MOCK_ORGANIZATIONS.piano,
     title: "VESPER 봄 정기공연",
     categoryId: "performance",
@@ -238,6 +256,7 @@ const SEEDS: readonly SubmissionSeed[] = [
     id: "notice-905",
     noticeSlug: "superficial-exhibition",
     requesterId: MOCK_USERS.SUBMITTER.id,
+    requesterName: MOCK_USERS.SUBMITTER.displayName,
     organization: MOCK_ORGANIZATIONS.superficial,
     title: "슈퍼-피셜 가을 전시 〈선 긋기〉",
     categoryId: "event",
@@ -252,7 +271,13 @@ const SEEDS: readonly SubmissionSeed[] = [
 /** 신청이 거쳐 온 검토 횟수만큼 version이 올라가 있다. */
 function versionOf(status: SubmissionStatus): number {
   if (status === "SUSPENDED") return 3;
-  if (status === "REJECTED" || APPROVED_ONCE.includes(status)) return 2;
+  if (
+    status === "REJECTED" ||
+    status === "CANCELED" ||
+    APPROVED_ONCE.includes(status)
+  ) {
+    return 2;
+  }
   return 1;
 }
 
@@ -264,12 +289,14 @@ function toDto(seed: SubmissionSeed, now: Date): SignageSubmissionExpandedDto {
     id: seed.id,
     ziggleNoticeId: seed.noticeSlug,
     requesterId: seed.requesterId,
-    organizationId: seed.organization.id,
+    requesterName: seed.requesterName,
     type: "POSTER",
     title: seed.title,
     categoryId: seed.categoryId,
     assetId: `asset-${seed.id}`,
-    detailUrl: `${ZIGGLE_ORIGIN}/notice/${seed.noticeSlug}`,
+    detailUrl: seed.noticeSlug
+      ? `${ZIGGLE_ORIGIN}/notice/${seed.noticeSlug}`
+      : null,
     startAt: toIsoUtc(days(now, startOffset)),
     endAt: toIsoUtc(days(now, endOffset)),
     status: seed.status,
@@ -277,12 +304,13 @@ function toDto(seed: SubmissionSeed, now: Date): SignageSubmissionExpandedDto {
     targetGroupIds: seed.targetGroupIds ?? [],
     createdAt,
     updatedAt: createdAt,
-    // 초안을 만든 날 바로 냈다고 친다. 작성 중인 건은 아직 내지 않았다.
-    submittedAt: seed.status === "DRAFT" ? null : createdAt,
+    // 서버는 만들 때 바로 검토에 낸다.
+    submittedAt: createdAt,
     version: versionOf(seed.status),
-    categoryName: getCategoryName(seed.categoryId),
-    organizationName: seed.organization.name,
+    categoryName: categoryNameOf(seed.categoryId),
+    organizerName: seed.organization.name,
     posterUrl: seed.posterUrl,
+    posterThumbUrl: seed.posterUrl,
     subtitle: seed.subtitle,
     location: seed.location,
     description: seed.description,
@@ -316,11 +344,10 @@ export function createEventFixtures(now: Date): SubmissionEventDto[] {
   const events: SubmissionEventDto[] = [];
 
   for (const seed of SEEDS) {
-    if (seed.status === "DRAFT") continue;
     const [startOffset] = PERIOD_BY_STATUS[seed.status] ?? [0, 0];
     const submitter = SUBMITTER_OF[seed.requesterId] ?? {
       actorId: seed.requesterId,
-      actorName: seed.organization.name,
+      actorName: seed.requesterName,
     };
 
     events.push({
@@ -361,6 +388,16 @@ export function createEventFixtures(now: Date): SubmissionEventDto[] {
       occurredAt: toIsoUtc(days(now, -2)),
     },
     {
+      id: "event-cancel-notice-902",
+      submissionId: "notice-902",
+      revision: 1,
+      type: "CANCELED",
+      reasonCode: null,
+      comment: null,
+      ...SUBMITTER_OF[MOCK_USERS.SUBMITTER.id]!,
+      occurredAt: toIsoUtc(days(now, -3)),
+    },
+    {
       id: "event-suspend-notice-903",
       submissionId: "notice-903",
       revision: 2,
@@ -381,7 +418,10 @@ export function createEventFixtures(now: Date): SubmissionEventDto[] {
  * - A동 로비: 1분마다 heartbeat를 보내는 정상 기기로 흉내 낸다.
  * - B동 로비: 26분 전부터 연락이 끊긴 기기다.
  */
-export interface DeviceSeed extends Omit<DisplayDeviceDto, "lastSeenAt" | "status"> {
+export interface DeviceSeed extends Omit<
+  DisplayDeviceDto,
+  "lastSeenAt" | "status"
+> {
   /** 연락이 끊긴 시점. null이면 계속 heartbeat를 보내는 기기다. */
   silentSinceMs: number | null;
 }

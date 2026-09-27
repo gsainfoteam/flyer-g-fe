@@ -61,7 +61,12 @@ export function ReviewDetailPage() {
   );
 
   return (
-    <PageState isLoading={isLoading} error={error} onRetry={retry} loadingRows={5}>
+    <PageState
+      isLoading={isLoading}
+      error={error}
+      onRetry={retry}
+      loadingRows={5}
+    >
       {view && detail.data && (
         <>
           <div>
@@ -83,7 +88,7 @@ export function ReviewDetailPage() {
               <div className="min-w-0 flex-1">
                 <h1 className="text-display text-ink">{view.title}</h1>
                 <p className="mt-1.5 text-label text-ink-muted">
-                  {view.organizationName} ·{" "}
+                  {view.requesterName} 신청 ·{" "}
                   {getStatusSentence({ status: view.status })} · 검토 버전 v
                   {detail.data.version}
                 </p>
@@ -114,7 +119,10 @@ export function ReviewDetailPage() {
             <div className="flex min-w-0 flex-col gap-5">
               <Panel title="원본 포스터">
                 <div className="aspect-3/4 w-full overflow-hidden rounded-control bg-canvas ring-1 ring-line">
-                  <PosterArtwork poster={fromSubmissionView(view)} fit="contain" />
+                  <PosterArtwork
+                    poster={fromSubmissionView(view)}
+                    fit="contain"
+                  />
                 </div>
               </Panel>
 
@@ -134,24 +142,52 @@ export function ReviewDetailPage() {
                     </dd>
                   </div>
                   <div>
+                    <dt className="text-caption text-ink-subtle">주최</dt>
+                    <dd className="mt-0.5 text-body text-ink">
+                      {view.organizerName ?? "없음"}
+                    </dd>
+                  </div>
+                  {view.location && (
+                    <div>
+                      <dt className="text-caption text-ink-subtle">장소</dt>
+                      <dd className="mt-0.5 text-body text-ink">
+                        {view.location}
+                      </dd>
+                    </div>
+                  )}
+                  {view.description && (
+                    <div>
+                      <dt className="text-caption text-ink-subtle">설명</dt>
+                      <dd className="mt-0.5 text-body whitespace-pre-line text-ink">
+                        {view.description}
+                      </dd>
+                    </div>
+                  )}
+                  <div>
                     <dt className="text-caption text-ink-subtle">대상 위치</dt>
                     <dd className="mt-0.5 text-body text-ink">
                       {targetLabel ?? "확인하는 중"}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-caption text-ink-subtle">Ziggle 원문</dt>
+                    <dt className="text-caption text-ink-subtle">상세 링크</dt>
                     <dd className="mt-0.5">
-                      <Button variant="link" size="xs" asChild>
-                        <a
-                          href={view.detailUrl}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                        >
-                          새 창에서 확인
-                          <ExternalLink aria-hidden="true" />
-                        </a>
-                      </Button>
+                      {view.detailUrl ? (
+                        <Button variant="link" size="xs" asChild>
+                          <a
+                            href={view.detailUrl}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                          >
+                            새 창에서 확인
+                            <ExternalLink aria-hidden="true" />
+                          </a>
+                        </Button>
+                      ) : (
+                        <span className="text-body text-ink-muted">
+                          없음 (QR 없이 게시)
+                        </span>
+                      )}
                     </dd>
                   </div>
                 </dl>

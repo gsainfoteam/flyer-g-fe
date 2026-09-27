@@ -1,7 +1,11 @@
 import type { Role, SessionUser } from "@/features/auth/model/types";
 
 /**
- * 개발용 사용자와 조직.
+ * 개발용 사용자와 주최 이름.
+ *
+ * 서버에는 조직 모델이 없다. 세션의 `organizationIds`는 항상 빈 배열이고, 주최는
+ * 신청마다 자유 입력한다(`API-CHANGES-BACKEND.md` 2절). `MOCK_ORGANIZATIONS`는
+ * fixture의 주최 이름으로만 쓴다.
  *
  * mock 세션(`features/auth/api/mock-auth.ts`)과 mock repository가 같은 사람을
  * 가리키도록 한 곳에 둔다. 신청의 소유자(`requesterId`)와 검토 기록자가 실제
@@ -22,21 +26,18 @@ export const MOCK_USERS: Record<Role, SessionUser> = {
     id: "user-submitter",
     displayName: "정하윤",
     roles: ["SUBMITTER"],
-    organizationIds: [
-      MOCK_ORGANIZATIONS.superficial.id,
-      MOCK_ORGANIZATIONS.piano.id,
-    ],
+    organizationIds: [],
   },
   REVIEWER: {
     id: "user-reviewer",
     displayName: "이수현",
     roles: ["SUBMITTER", "REVIEWER"],
-    organizationIds: [MOCK_ORGANIZATIONS.houseOffice.id],
+    organizationIds: [],
   },
   SUPER_ADMIN: {
     id: "user-operator",
     displayName: "김도윤",
     roles: ["SUBMITTER", "REVIEWER", "SUPER_ADMIN"],
-    organizationIds: [MOCK_ORGANIZATIONS.infoteam.id],
+    organizationIds: [],
   },
 };

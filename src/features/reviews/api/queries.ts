@@ -1,4 +1,5 @@
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useQuery,
   useQueryClient,
@@ -36,17 +37,20 @@ export function usePendingReviews(
 /** 승인 대기 목록 화면의 한 페이지 크기 */
 export const PENDING_PAGE_SIZE = 20;
 
-/** 승인 대기 전체 목록. "더 보기"로 이어 붙인다. */
-export function useInfinitePendingReviews() {
+/**
+ * 승인 대기 전체 목록. "더 보기"로 이어 붙인다.
+ * 카테고리 필터는 서버가 거른다. 불러온 페이지 안에서 거르면 뒤 페이지의 건이 빠진다.
+ */
+export function useInfinitePendingReviews(categoryId: string | null = null) {
   const { reviews } = useRepositories();
+  const params = { limit: PENDING_PAGE_SIZE, categoryId };
 
   return useInfiniteQuery({
-    queryKey: queryKeys.reviews.pendingInfinite(PENDING_PAGE_SIZE),
+    queryKey: queryKeys.reviews.pendingInfinite(params),
+    // 필터를 바꿔도 화면 전체가 로딩으로 바뀌지 않게 앞 목록을 둔다.
+    placeholderData: keepPreviousData,
     queryFn: ({ pageParam, signal }) =>
-      reviews.listPending(
-        { limit: PENDING_PAGE_SIZE, cursor: pageParam },
-        signal,
-      ),
+      reviews.listPending({ ...params, cursor: pageParam }, signal),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     select: (data) => {

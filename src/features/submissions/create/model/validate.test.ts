@@ -1,156 +1,186 @@
 import { describe, expect, it } from "vitest";
-import { fromSeoulInput } from "@/shared/lib/datetime";
-import { createEmptyDraft, draftFromNotice } from "./draft";
+import type { SignageSubmissionExpanded } from "@/entities/submission";
+import { fromSeoulInput, parseIsoUtc } from "@/shared/lib/datetime";
+import { CATEGORY_FIXTURES, SIGNAGE_CONFIG_FIXTURE } from "@/mocks/reference";
+import { createEmptyDraft, draftFromSubmission } from "./draft";
 import {
   summarizeErrors,
   toFormFieldErrors,
   validateSubmissionForm,
 } from "./validate";
-import type { SubmissionFormValues } from "./validate";
+import type { SubmissionFormValues, ValidateOptions } from "./validate";
 
 /** 2026-06-08 12:00 Asia/Seoul */
 const NOW = fromSeoulInput("2026-06-08T12:00");
 
+const OPTIONS: ValidateOptions = {
+  now: NOW,
+  config: SIGNAGE_CONFIG_FIXTURE,
+  categories: CATEGORY_FIXTURES,
+};
+
 const validValues = (
   overrides: Partial<SubmissionFormValues> = {},
 ): SubmissionFormValues => ({
-  ziggleNoticeId: "notice-1041",
   title: "겨울 정기 공연",
   categoryId: "performance",
-  startAt: "2026-06-09T09:00",
+  startAt: "2026-06-10T09:00",
   endAt: "2026-06-16T18:00",
   detailUrl: "https://ziggle.gistory.me/notice/1041",
+  organizerName: "공연동아리 페이드인",
+  subtitle: "12월 셋째 주 금요일 저녁",
+  location: "대강당",
+  description: "",
   assetId: "asset-mock-1",
   ...overrides,
 });
 
 describe("validateSubmissionForm", () => {
   it("모두 유효하면 오류가 없다", () => {
-    expect(validateSubmissionForm(validValues(), { now: NOW })).toEqual({});
+    expect(validateSubmissionForm(validValues(), OPTIONS)).toEqual({});
   });
 
-  it("공지가 연결되지 않으면 막는다", () => {
-    const errors = validateSubmissionForm(
-      validValues({ ziggleNoticeId: null }),
-      { now: NOW },
-    );
-    expect(errors.notice).toBeDefined();
+  it("선택 입력은 비워도 된다. 상세 링크가 없으면 QR 없이 게시한다", () => {
+    expect(
+      validateSubmissionForm(
+        validValues({
+          detailUrl: "",
+          organizerName: "",
+          subtitle: " ",
+          location: "",
+        }),
+        OPTIONS,
+      ),
+    ).toEqual({});
   });
 
   it("포스터가 없으면 막는다", () => {
-    const errors = validateSubmissionForm(validValues({ assetId: null }), {
-      now: NOW,
-    });
-    expect(errors.asset).toBeDefined();
+    expect(
+      validateSubmissionForm(validValues({ assetId: null }), OPTIONS).asset,
+    ).toBeDefined();
   });
 
   describe("제목", () => {
     it("공백만 있으면 비어 있는 것으로 본다", () => {
-      const errors = validateSubmissionForm(validValues({ title: "   " }), {
-        now: NOW,
-      });
-      expect(errors.title).toBeDefined();
+      expect(
+        validateSubmissionForm(validValues({ title: "   " }), OPTIONS).title,
+      ).toBe("제목을 입력해 주세요.");
     });
 
-    it("공백 제거 후 80자는 통과하고 81자는 막는다", () => {
-      const at80 = validateSubmissionForm(
-        validValues({ title: `${"가".repeat(80)}  ` }),
-        { now: NOW },
-      );
-      const at81 = validateSubmissionForm(
-        validValues({ title: "가".repeat(81) }),
-        { now: NOW },
-      );
-      expect(at80.title).toBeUndefined();
-      expect(at81.title).toBeDefined();
+    it("서버 설정의 최대 글자 수로 막는다", () => {
+      const max = SIGNAGE_CONFIG_FIXTURE.titleMaxLength;
+      expect(
+        validateSubmissionForm(
+          validValues({ title: ` ${"가".repeat(max)} ` }),
+          OPTIONS,
+        ).title,
+      ).toBeUndefined();
+      expect(
+        validateSubmissionForm(
+          validValues({ title: "가".repeat(max + 1) }),
+          OPTIONS,
+        ).title,
+      ).toContain(`${max}자`);
     });
   });
 
   describe("카테고리", () => {
-    it("목록에 없는 값은 막는다", () => {
-      const errors = validateSubmissionForm(
-        validValues({ categoryId: "unknown-category" }),
-        { now: NOW },
-      );
-      expect(errors.categoryId).toBeDefined();
+    it("서버 목록에 없는 값은 막는다", () => {
+      expect(
+        validateSubmissionForm(validValues({ categoryId: "unknown" }), OPTIONS)
+          .categoryId,
+      ).toBeDefined();
+    });
+
+    it("목록을 아직 받지 못했으면 비어 있는지만 본다", () => {
+      const options = { ...OPTIONS, categories: null };
+      expect(
+        validateSubmissionForm(validValues({ categoryId: "unknown" }), options)
+          .categoryId,
+      ).toBeUndefined();
+      expect(
+        validateSubmissionForm(validValues({ categoryId: "" }), options)
+          .categoryId,
+      ).toBeDefined();
     });
   });
 
-  describe("게시 기간", () => {
-    it("종료가 시작보다 앞서면 막는다", () => {
-      const errors = validateSubmissionForm(
-        validValues({ startAt: "2026-06-20T09:00", endAt: "2026-06-19T09:00" }),
-        { now: NOW },
-      );
-      expect(errors.endAt).toBeDefined();
+  describe("게시 기간 (서버 설정: 24시간 전 신청, 최대 3개월)", () => {
+    it("종료가 시작보다 앞서거나 같으면 막는다", () => {
+      expect(
+        validateSubmissionForm(
+          validValues({
+            startAt: "2026-06-12T09:00",
+            endAt: "2026-06-11T09:00",
+          }),
+          OPTIONS,
+        ).endAt,
+      ).toBeDefined();
+      expect(
+        validateSubmissionForm(
+          validValues({
+            startAt: "2026-06-12T09:00",
+            endAt: "2026-06-12T09:00",
+          }),
+          OPTIONS,
+        ).endAt,
+      ).toBeDefined();
     });
 
-    it("시작과 종료가 같으면 막는다", () => {
-      const errors = validateSubmissionForm(
-        validValues({ startAt: "2026-06-20T09:00", endAt: "2026-06-20T09:00" }),
-        { now: NOW },
-      );
-      expect(errors.endAt).toBeDefined();
+    it("시작은 신청 시각에서 24시간 이후여야 한다", () => {
+      // 지금은 6/8 12:00. 6/9 12:00은 통과하고 11:59는 막는다.
+      expect(
+        validateSubmissionForm(
+          validValues({ startAt: "2026-06-09T12:00" }),
+          OPTIONS,
+        ).startAt,
+      ).toBeUndefined();
+      expect(
+        validateSubmissionForm(
+          validValues({ startAt: "2026-06-09T11:59" }),
+          OPTIONS,
+        ).startAt,
+      ).toContain("24시간");
     });
 
-    it("이미 지난 종료 시각은 막는다", () => {
-      const errors = validateSubmissionForm(
-        validValues({ startAt: "2026-06-01T09:00", endAt: "2026-06-07T18:00" }),
-        { now: NOW },
-      );
-      expect(errors.endAt).toBeDefined();
+    it("기간은 서울 달력 기준 3개월까지다", () => {
+      expect(
+        validateSubmissionForm(
+          validValues({
+            startAt: "2026-06-10T09:00",
+            endAt: "2026-09-10T09:00",
+          }),
+          OPTIONS,
+        ).endAt,
+      ).toBeUndefined();
+      expect(
+        validateSubmissionForm(
+          validValues({
+            startAt: "2026-06-10T09:00",
+            endAt: "2026-09-10T09:01",
+          }),
+          OPTIONS,
+        ).endAt,
+      ).toContain("3개월");
     });
 
-    it("시작이 과거여도 종료가 미래면 통과한다", () => {
-      const errors = validateSubmissionForm(
-        validValues({ startAt: "2026-06-01T09:00", endAt: "2026-06-12T18:00" }),
-        { now: NOW },
-      );
-      expect(errors.startAt).toBeUndefined();
-      expect(errors.endAt).toBeUndefined();
-    });
-
-    it("게시 기간은 14일을 넘을 수 없다 (명세 10.2)", () => {
-      const fourteenDays = validateSubmissionForm(
-        validValues({ startAt: "2026-06-09T09:00", endAt: "2026-06-23T09:00" }),
-        { now: NOW },
-      );
-      const tooLong = validateSubmissionForm(
-        validValues({ startAt: "2026-06-09T09:00", endAt: "2026-06-23T09:01" }),
-        { now: NOW },
-      );
-      expect(fourteenDays.endAt).toBeUndefined();
-      expect(tooLong.endAt).toMatch(/최대 14일/);
-    });
-
-    it("서버 시각을 아직 모르면 과거 판정을 서버에 맡긴다", () => {
-      const errors = validateSubmissionForm(
-        validValues({ startAt: "2020-01-01T09:00", endAt: "2020-01-02T09:00" }),
-        { now: null },
-      );
-      expect(errors.endAt).toBeUndefined();
-    });
-
-    it("Asia/Seoul 자정 직전과 직후를 구분한다", () => {
-      // 서울 6/8 12:00 = UTC 6/8 03:00. 서울 6/8 23:59는 아직 미래다.
-      const justBeforeMidnight = validateSubmissionForm(
-        validValues({ startAt: "2026-06-08T13:00", endAt: "2026-06-08T23:59" }),
-        { now: NOW },
-      );
-      expect(justBeforeMidnight.endAt).toBeUndefined();
-
-      // 서울 6/8 11:59는 이미 지났다. UTC로만 비교하면 실수하기 쉬운 지점이다.
-      const justBeforeNow = validateSubmissionForm(
-        validValues({ startAt: "2026-06-08T09:00", endAt: "2026-06-08T11:59" }),
-        { now: NOW },
-      );
-      expect(justBeforeNow.endAt).toBeDefined();
+    it("서버 시각이나 설정을 아직 모르면 지금과 비교하는 판정을 서버에 맡긴다", () => {
+      const past = validValues({
+        startAt: "2020-01-01T09:00",
+        endAt: "2020-01-02T09:00",
+      });
+      expect(
+        validateSubmissionForm(past, { ...OPTIONS, now: null }),
+      ).not.toHaveProperty("startAt");
+      expect(
+        validateSubmissionForm(past, { ...OPTIONS, config: null }),
+      ).not.toHaveProperty("endAt");
     });
 
     it("비어 있으면 각각 막는다", () => {
       const errors = validateSubmissionForm(
         validValues({ startAt: "", endAt: "" }),
-        { now: NOW },
+        OPTIONS,
       );
       expect(errors.startAt).toBeDefined();
       expect(errors.endAt).toBeDefined();
@@ -159,28 +189,34 @@ describe("validateSubmissionForm", () => {
 
   describe("상세 링크", () => {
     it("허용되지 않은 도메인은 막는다", () => {
-      const errors = validateSubmissionForm(
-        validValues({ detailUrl: "https://evil.example.com/notice/1" }),
-        { now: NOW },
-      );
-      expect(errors.detailUrl).toBeDefined();
-    });
-
-    it("구 Ziggle 도메인은 새 입력으로 허용하지 않는다", () => {
-      const errors = validateSubmissionForm(
-        validValues({ detailUrl: "https://ziggle.gist.ac.kr/notice/1" }),
-        { now: NOW },
-      );
-      expect(errors.detailUrl).toBeDefined();
+      expect(
+        validateSubmissionForm(
+          validValues({ detailUrl: "https://evil.example.com/notice/1" }),
+          OPTIONS,
+        ).detailUrl,
+      ).toBeDefined();
     });
 
     it("HTTP는 막는다", () => {
-      const errors = validateSubmissionForm(
-        validValues({ detailUrl: "http://ziggle.gistory.me/notice/1" }),
-        { now: NOW },
-      );
-      expect(errors.detailUrl).toBeDefined();
+      expect(
+        validateSubmissionForm(
+          validValues({ detailUrl: "http://ziggle.gistory.me/notice/1" }),
+          OPTIONS,
+        ).detailUrl,
+      ).toBeDefined();
     });
+  });
+
+  it("선택 입력이 서버 제한보다 길면 막는다", () => {
+    const errors = validateSubmissionForm(
+      validValues({
+        organizerName: "가".repeat(101),
+        description: "가".repeat(1001),
+      }),
+      OPTIONS,
+    );
+    expect(errors.organizerName).toContain("100자");
+    expect(errors.description).toContain("1000자");
   });
 });
 
@@ -190,72 +226,52 @@ describe("summarizeErrors", () => {
   });
 
   it("오류 개수를 알려준다", () => {
-    expect(summarizeErrors({ title: "a", asset: "b" })).toContain("2개");
+    expect(summarizeErrors({ title: "x", endAt: "y" })).toContain("2개");
   });
 });
 
-describe("createEmptyDraft / draftFromNotice", () => {
-  it("기본 기간은 미래이고 종료가 시작보다 뒤다", () => {
-    const draft = createEmptyDraft(NOW);
-    const errors = validateSubmissionForm(
-      { ...draft, ziggleNoticeId: "n", assetId: "a", title: "t", categoryId: "notice", detailUrl: "https://ziggle.gistory.me/notice/1" },
-      { now: NOW },
-    );
-    expect(errors.startAt).toBeUndefined();
-    expect(errors.endAt).toBeUndefined();
+describe("createEmptyDraft / draftFromSubmission", () => {
+  it("기본 시작은 모레 09:00이라 24시간 전 신청 규칙을 늘 지킨다", () => {
+    // 밤 11시에 열어도 모레 아침이면 24시간이 넘는다.
+    for (const now of ["2026-06-08T00:00", "2026-06-08T23:59"]) {
+      const draft = createEmptyDraft(fromSeoulInput(now));
+      expect(draft.startAt).toBe("2026-06-10T09:00");
+      expect(
+        validateSubmissionForm(
+          validValues({ startAt: draft.startAt, endAt: draft.endAt }),
+          {
+            ...OPTIONS,
+            now: fromSeoulInput(now),
+          },
+        ),
+      ).toEqual({});
+    }
   });
 
-  it("기본 시작은 다음 날 09:00 (Asia/Seoul)이다", () => {
-    expect(createEmptyDraft(NOW).startAt).toBe("2026-06-09T09:00");
-  });
-
-  it("공지에서 제목·카테고리·상세 링크를 채운다", () => {
-    const draft = draftFromNotice(
-      {
-        id: "notice-1041",
-        title: "겨울 정기 공연",
-        categoryId: "performance",
-        organizationName: "가상 공연동아리",
-        detailUrl: "https://ziggle.gistory.me/notice/notice-1041",
-        summary: null,
-        location: null,
-        publishedAt: NOW,
-      },
-      NOW,
-    );
-    expect(draft).toMatchObject({
+  it("기존 신청의 선택 입력은 빈 문자열로 채운다", () => {
+    const submission = {
       title: "겨울 정기 공연",
       categoryId: "performance",
-      detailUrl: "https://ziggle.gistory.me/notice/notice-1041",
+      startAt: parseIsoUtc("2026-06-10T00:00:00.000Z"),
+      endAt: parseIsoUtc("2026-06-16T09:00:00.000Z"),
+      detailUrl: null,
+      organizerName: null,
+      subtitle: "부제",
+      location: null,
+      description: null,
+    } as SignageSubmissionExpanded;
+
+    expect(draftFromSubmission(submission)).toEqual({
+      title: "겨울 정기 공연",
+      categoryId: "performance",
+      startAt: "2026-06-10T09:00",
+      endAt: "2026-06-16T18:00",
+      detailUrl: "",
+      organizerName: "",
+      subtitle: "부제",
+      location: "",
+      description: "",
     });
-  });
-
-  it("모르는 카테고리는 비워 두고 사용자가 고르게 한다", () => {
-    const draft = draftFromNotice(
-      {
-        id: "notice-1",
-        title: "제목",
-        categoryId: "ziggle-only-category",
-        organizationName: null,
-        detailUrl: "https://ziggle.gistory.me/notice/1",
-        summary: null,
-        location: null,
-        publishedAt: NOW,
-      },
-      NOW,
-    );
-    expect(draft.categoryId).toBe("");
-  });
-});
-
-describe("공지가 없을 때", () => {
-  it("상세 링크 오류를 따로 세지 않는다", () => {
-    const errors = validateSubmissionForm(
-      validValues({ ziggleNoticeId: null, detailUrl: "" }),
-      { now: NOW },
-    );
-    expect(errors.notice).toBeDefined();
-    expect(errors.detailUrl).toBeUndefined();
   });
 });
 
@@ -264,14 +280,16 @@ describe("toFormFieldErrors", () => {
     expect(
       toFormFieldErrors({
         assetId: "포스터가 손상되었어요.",
-        ziggleNoticeId: "공지를 찾을 수 없어요.",
+        detailUrl: "이 공지로 이미 신청한 게시물이 있습니다.",
+        organizerName: "주최는 100자 이하여야 합니다.",
         endAt: "기간이 너무 길어요.",
         priority: "우선순위를 정할 수 없어요.",
       }),
     ).toEqual({
       fieldErrors: {
         asset: "포스터가 손상되었어요.",
-        notice: "공지를 찾을 수 없어요.",
+        detailUrl: "이 공지로 이미 신청한 게시물이 있습니다.",
+        organizerName: "주최는 100자 이하여야 합니다.",
         endAt: "기간이 너무 길어요.",
       },
       other: ["우선순위를 정할 수 없어요."],
