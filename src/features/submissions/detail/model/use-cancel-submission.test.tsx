@@ -38,14 +38,13 @@ describe("신청 취소", () => {
     expect(await screen.findByText("신청 취소")).toBeInTheDocument();
   });
 
-  it("게시 중단된 신청은 취소도 재신청도 없이 관리자 문의를 안내한다", async () => {
-    // 중단 건의 재검토는 백엔드에 요청해 둔 상태다(API-FOLLOWUP 1-1).
+  it("게시 중단된 신청은 취소할 수 없고, 고쳐서 다시 신청할 수 있다", async () => {
     renderRoute("/submissions/notice-903", { role: "SUBMITTER" });
 
-    await screen.findByText("처리 이력");
+    expect(
+      await screen.findByRole("link", { name: "수정해서 다시 신청" }),
+    ).toHaveAttribute("href", "/studio?submissionId=notice-903");
     expect(screen.queryByRole("button", { name: "신청 취소하기" })).toBeNull();
-    expect(screen.queryByRole("link", { name: /다시 신청|수정/ })).toBeNull();
-    expect(screen.getByText(/하우스 관리자에게 문의/)).toBeInTheDocument();
   });
 
   it("승인 대기 중인 신청은 고치거나 취소할 수 있다", async () => {

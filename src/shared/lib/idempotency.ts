@@ -22,8 +22,8 @@ export function createIdempotencyKey(): string {
  * `renew()`로 바꾼다. 요청 함수 안에서 매번 새로 만들면 재시도가 새 요청이 된다.
  *
  * 응답을 받지 못한 요청(연결 끊김·시간 초과)이 있었는지도 기억한다. 서버에 닿아
- * 처리됐는지 모르는 상태라, 같은 key로 다시 보냈을 때 409가 오면 "다른 사람이 먼저
- * 처리함"이 아니라 "내 요청이 이미 처리됨"일 수 있다. (`API-FOLLOWUP-2026-09.md` 2-1)
+ * 처리 중인지 모르는 상태라, 같은 key로 다시 보냈을 때 409가 오면 "다른 사람이 먼저
+ * 처리함"이 아니라 "내 요청이 아직 처리 중"일 수 있다. (`recover-conflict.ts`)
  */
 export function useIdempotencyKey() {
   const keyRef = useRef<string | null>(null);

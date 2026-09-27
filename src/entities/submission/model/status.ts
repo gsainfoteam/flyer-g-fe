@@ -118,8 +118,8 @@ export function getAllowedTransitions(
  */
 
 /**
- * 게시자가 내용을 고칠 수 있다: 작성 중, 승인 대기, 반려됨, 예약됨(게시 시작 전).
- * 게시가 시작되면 고칠 수 없고 관리자에게 중단을 요청한다.
+ * 게시자가 내용을 고칠 수 있다: 작성 중, 승인 대기, 반려됨, 예약됨(게시 시작 전),
+ * 게시 중단됨. 게시가 시작되면 고칠 수 없고 관리자에게 중단을 요청한다.
  */
 export function canSubmitterEdit(status: SubmissionStatus): boolean {
   return (
@@ -127,7 +127,8 @@ export function canSubmitterEdit(status: SubmissionStatus): boolean {
     status === "PENDING_REVIEW" ||
     status === "REJECTED" ||
     status === "APPROVED" ||
-    status === "SCHEDULED"
+    status === "SCHEDULED" ||
+    status === "SUSPENDED"
   );
 }
 
@@ -137,12 +138,11 @@ export function needsReapproval(status: SubmissionStatus): boolean {
 }
 
 /**
- * 고친 뒤 다시 검토를 요청해야 하는 상태: 작성 중, 반려됨.
- * 게시 중단된 신청의 재검토는 백엔드에 요청해 둔 상태라 아직 받지 않는다
- * (`API-FOLLOWUP-2026-09.md` 1-1).
+ * 고친 뒤 다시 검토를 요청해야 하는 상태: 작성 중, 반려됨, 게시 중단됨.
+ * 고치기만 하면 상태는 그대로이고, 재검토를 요청해야 승인 대기로 돌아간다.
  */
 export function canSubmitterResubmit(status: SubmissionStatus): boolean {
-  return status === "DRAFT" || status === "REJECTED";
+  return status === "DRAFT" || status === "REJECTED" || status === "SUSPENDED";
 }
 
 /** 게시자가 취소할 수 있다: 게시가 시작되기 전까지(작성 중, 승인 대기, 반려됨, 예약됨) */

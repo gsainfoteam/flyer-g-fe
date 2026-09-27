@@ -109,6 +109,12 @@ function httpError(
 
 const notFound = (id: string) =>
   httpError(404, `신청을 찾을 수 없습니다: ${id}`);
+/** 공지 하나에 신청 하나 규칙에서 세지 않는 끝난 상태. 다시 살아나지 않는다. */
+const FINISHED_STATUSES: readonly SubmissionStatus[] = [
+  "CANCELED",
+  "ENDED",
+  "ARCHIVED",
+];
 const alreadySubmitted = () =>
   new ApiError({
     kind: "http",
@@ -380,9 +386,9 @@ export function createMockRepositories(
   };
 
   /**
-   * 공지 하나에 신청 하나. 취소한 신청만 세지 않는다(서버의 부분 unique index).
-   * 종료·중단된 신청이 있어도 같은 공지로 다시 신청할 수 없다
-   * (`API-FOLLOWUP-2026-09.md` 1-2에서 완화를 요청했다).
+   * 공지 하나에 신청 하나(서버의 부분 unique index). 끝난 신청(취소·종료·보관)은
+   * 세지 않아 같은 공지로 다시 신청할 수 있다. 반려·중단된 신청은 새로 만들지 않고
+   * 고쳐서 다시 낸다.
    */
   const assertNoticeFree = (noticeId: string | null, exceptId?: string) => {
     if (noticeId === null) return;
@@ -392,7 +398,7 @@ export function createMockRepositories(
         (item) =>
           item.id !== exceptId &&
           item.ziggleNoticeId === noticeId &&
-          item.status !== "CANCELED",
+          !FINISHED_STATUSES.includes(effectiveOf(item)),
       );
     if (taken) throw alreadySubmitted();
   };
@@ -499,6 +505,30 @@ export function createMockRepositories(
     store.addEvent(eventOf(created, "SUBMITTED", user, now));
     store.rememberIdempotency("create", mutationOptions?.idempotencyKey, id);
     return toSignageSubmissionExpanded(created);
+  };
+
+  /**
+   * 같은 key로 이미 처리한 요청이면 처리하지 않고 지금 상태를 돌려준다. 서버는 처음
+   * 응답을 그대로 주는데, mock은 그사이 바뀐 것이 없다고 보고 지금 상태로 대신한다.
+   */
+  const replayed = (
+    scope: string,
+    id: string,
+    mutationOptions: MutationOptions | undefined,
+  ): SignageSubmissionExpanded | null =>
+    store.resolveIdempotency(scope, mutationOptions?.idempotencyKey) === id
+      ? toSignageSubmissionExpanded(store.find(id))
+      : null;
+
+  /** 검토 결정을 저장하고 key를 기억한다. */
+  const decided = (
+    scope: string,
+    next: SignageSubmissionExpandedDto,
+    mutationOptions: MutationOptions | undefined,
+  ): SignageSubmissionExpanded => {
+    const saved = store.replace(next);
+    store.rememberIdempotency(scope, mutationOptions?.idempotencyKey, saved.id);
+    return toSignageSubmissionExpanded(saved);
   };
 
   const submissions: SubmissionRepository = {
@@ -689,6 +719,8 @@ export function createMockRepositories(
 
     async cancel(id, input: SubmissionVersionInput, mutationOptions) {
       await settle(mutationOptions?.signal);
+      const replay = replayed("cancel", id, mutationOptions);
+      if (replay) return replay;
       const current = findOwned(id, input.version);
       if (!canSubmitterCancel(effectiveOf(current))) {
         throw conflict("이미 게시가 시작되어 취소할 수 없습니다.");
@@ -700,6 +732,7 @@ export function createMockRepositories(
       store.addEvent(
         eventOf(canceled, "CANCELED", actor() ?? MOCK_USERS.SUBMITTER, now),
       );
+      store.rememberIdempotency("cancel", mutationOptions?.idempotencyKey, id);
       return toSignageSubmissionExpanded(canceled);
     },
   };
@@ -734,6 +767,8 @@ export function createMockRepositories(
     async approve(input: ApproveInput, mutationOptions?: MutationOptions) {
       await settle(mutationOptions?.signal);
       const reviewer = requireReviewer();
+      const replay = replayed("approve", input.submissionId, mutationOptions);
+      if (replay) return replay;
       const current = store.find(input.submissionId);
       if (!canReviewerDecide(effectiveOf(current))) {
         throw conflict("다른 관리자가 이미 처리했습니다.");
@@ -752,14 +787,18 @@ export function createMockRepositories(
           ? "SCHEDULED"
           : "PUBLISHED";
       store.addEvent(eventOf(current, "APPROVED", reviewer, now));
-      return toSignageSubmissionExpanded(
-        store.replace(touch(current, now, { status })),
+      return decided(
+        "approve",
+        touch(current, now, { status }),
+        mutationOptions,
       );
     },
 
     async reject(input: RejectInput, mutationOptions?: MutationOptions) {
       await settle(mutationOptions?.signal);
       const reviewer = requireReviewer();
+      const replay = replayed("reject", input.submissionId, mutationOptions);
+      if (replay) return replay;
       if (input.comment.trim().length === 0) {
         throw invalid("반려 사유를 입력해야 합니다.", {
           comment: "반려 사유를 입력해야 합니다.",
@@ -780,14 +819,18 @@ export function createMockRepositories(
           comment: input.comment,
         }),
       );
-      return toSignageSubmissionExpanded(
-        store.replace(touch(current, now, { status: "REJECTED" })),
+      return decided(
+        "reject",
+        touch(current, now, { status: "REJECTED" }),
+        mutationOptions,
       );
     },
 
     async suspend(input: SuspendInput, mutationOptions?: MutationOptions) {
       await settle(mutationOptions?.signal);
       const reviewer = requireReviewer();
+      const replay = replayed("suspend", input.submissionId, mutationOptions);
+      if (replay) return replay;
       if (input.reason.trim().length === 0) {
         throw invalid("중단 사유를 입력해야 합니다.", {
           reason: "중단 사유를 입력해야 합니다.",
@@ -805,8 +848,10 @@ export function createMockRepositories(
           comment: input.reason,
         }),
       );
-      return toSignageSubmissionExpanded(
-        store.replace(touch(current, now, { status: "SUSPENDED" })),
+      return decided(
+        "suspend",
+        touch(current, now, { status: "SUSPENDED" }),
+        mutationOptions,
       );
     },
   };

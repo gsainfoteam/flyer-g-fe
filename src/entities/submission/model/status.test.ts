@@ -149,12 +149,12 @@ describe("상태별 가능한 행동 (백엔드 submission-rules)", () => {
         suspend: false,
       },
     ],
-    // 중단된 신청의 재검토는 백엔드에 요청해 둔 상태다(API-FOLLOWUP 1-1).
+    // 중단된 신청은 고쳐서 다시 검토를 요청한다. 취소는 할 수 없다.
     [
       "SUSPENDED",
       {
-        edit: false,
-        resubmit: false,
+        edit: true,
+        resubmit: true,
         reapproval: false,
         cancel: false,
         decide: false,

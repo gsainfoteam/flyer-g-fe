@@ -18,13 +18,11 @@ import { useCancelSubmission } from "../model/use-cancel-submission";
 /**
  * 게시자가 상세에서 할 수 있는 일 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6·5.7).
  *
- * - 반려됨 → 수정해서 다시 신청
+ * - 반려됨, 게시 중단 → 수정해서 다시 신청 (사유는 처리 이력에 있다)
  * - 승인 대기 → 수정 (대기 순서 그대로)
  * - 예약됨(게시 시작 전) → 수정 (다시 승인을 받는다)
  * - 게시가 시작되기 전까지 → 취소
  * - 게시 중 → 직접 내릴 수 없다. 중단은 관리자에게 요청한다. (명세 FR-REV-05)
- * - 게시 중단 → 아직 다시 신청할 수 없다. 서버에 요청해 둔 상태다
- *   (`API-FOLLOWUP-2026-09.md` 1-1).
  *
  * 무엇을 보여줄지는 `canSubmitterEdit`, `canSubmitterCancel`이 정한다. 버튼 노출은
  * 화면 편의일 뿐이고 최종 판단은 서버가 한다.
@@ -76,8 +74,8 @@ export function SubmitterActions({ submission }: SubmitterActionsProps) {
 
       {submission.status === "SUSPENDED" && (
         <p className="text-caption text-ink-muted">
-          관리자가 게시를 중단했어요. 사유는 처리 이력에서 확인할 수 있어요.
-          다시 게시하려면 하우스 관리자에게 문의해 주세요.
+          사유는 처리 이력에서 확인할 수 있어요. 고쳐서 다시 신청하면 다시
+          검토를 받아요.
         </p>
       )}
 

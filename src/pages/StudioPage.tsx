@@ -60,7 +60,7 @@ import { Spinner } from "@/shared/ui/spinner";
  * 미리보기 순으로 쌓인다. 휴대폰으로 바로 신청하는 경우가 많다.
  *
  * `?submissionId=`가 있으면 수정 모드다. 저장하면 상태에 따라 이어진다
- * (`API-CHANGES-BACKEND.md` 5.6): 반려는 다시 검토를 요청하고, 검토 대기는 그대로
+ * (`API-CHANGES-BACKEND.md` 5.6): 반려·중단은 다시 검토를 요청하고, 검토 대기는 그대로
  * 대기이며, 게시 시작 전 승인 건은 다시 승인을 받는다. 게시가 시작되면 고칠 수 없다.
  */
 const EDIT_PARAM = "submissionId";
@@ -75,7 +75,11 @@ function describeEditing(status: SubmissionStatus): {
   if (canSubmitterResubmit(status)) {
     return {
       caption:
-        status === "DRAFT" ? "작성 중인 신청 이어서 쓰기" : "반려된 신청 수정",
+        status === "DRAFT"
+          ? "작성 중인 신청 이어서 쓰기"
+          : status === "SUSPENDED"
+            ? "중단된 신청 수정"
+            : "반려된 신청 수정",
       note: "제출하면 다시 검토를 받아요",
       submitLabel: status === "DRAFT" ? "제출하기" : "다시 신청하기",
     };

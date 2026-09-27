@@ -28,16 +28,13 @@ import type {
  * |---|---|
  * | listPending | `GET /signage/reviews?status=PENDING_REVIEW&categoryId=&cursor=&limit=` |
  * | approve | `POST /signage/submissions/{id}/approve` (`{ revision }`, Idempotency-Key) |
- * | reject | `POST /signage/submissions/{id}/reject` (`{ revision, reasonCode, comment }`) |
- * | suspend | `POST /signage/submissions/{id}/suspend` (`{ reason }`) |
+ * | reject | `POST /signage/submissions/{id}/reject` (`{ revision, reasonCode, comment }`, Idempotency-Key) |
+ * | suspend | `POST /signage/submissions/{id}/suspend` (`{ reason }`, Idempotency-Key) |
  * | listHistory | `GET /signage/submissions/{id}/reviews` + `GET /signage/audit-logs` |
  *
  * 처리 이력은 두 API를 합친다(`API-FOLLOWUP-2026-09.md` 3절). 검토 결정(승인·반려·
  * 중단)은 사유 코드와 게시자에게 공개되는 의견이 있는 `/reviews`에서, 게시자 행동
  * (신청·재신청·취소)은 `/audit-logs`에서 가져온다.
- *
- * 반려·중단은 서버가 key를 받지 않지만 같은 시도의 key를 함께 보낸다. 서버가
- * 재응답을 지원하면(`API-FOLLOWUP-2026-09.md` 2-1) 바로 효과가 난다.
  */
 
 /** 감사 로그를 한 번에 받는 수. 서버 최대값이다. */

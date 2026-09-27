@@ -77,9 +77,8 @@ export interface DeviceWithToken {
 }
 
 /**
- * 기기 목록. "마지막 연결 3분 전" 같은 표시는 클라이언트 시계가 아니라 서버 시각으로
- * 센다. 서버 목록 응답에는 시각이 없어(`API-FOLLOWUP-2026-09.md` 2-2) null일 수 있고,
- * 그때 화면은 함께 받은 다른 응답의 서버 시각을 쓴다.
+ * 기기 목록. "마지막 연결 3분 전" 같은 표시는 클라이언트 시계가 아니라 목록과 함께
+ * 온 서버 시각으로 센다.
  */
 export interface DeviceList {
   items: DisplayDevice[];

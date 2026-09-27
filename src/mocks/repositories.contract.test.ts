@@ -64,9 +64,7 @@ function createInput(
   };
 }
 
-async function errorOf(
-  promise: Promise<unknown>,
-): Promise<{
+async function errorOf(promise: Promise<unknown>): Promise<{
   status?: number;
   code?: string;
   fields?: Record<string, string> | null;
@@ -220,16 +218,14 @@ describe("신청 생성 (생성과 제출이 한 번)", () => {
     await expect(repos.submissions.create(createInput())).resolves.toBeTruthy();
   });
 
-  it("종료된 신청이 있는 공지도 막는다 (취소만 세지 않는다)", async () => {
-    expect(
-      await errorOf(
-        repos.submissions.create(
-          createInput({
-            detailUrl: "https://ziggle.gistory.me/notice/earth-club",
-          }),
-        ),
+  it("끝난 신청(종료)의 공지로는 다시 신청할 수 있다", async () => {
+    await expect(
+      repos.submissions.create(
+        createInput({
+          detailUrl: "https://ziggle.gistory.me/notice/earth-club",
+        }),
       ),
-    ).toMatchObject({ code: "ALREADY_SUBMITTED" });
+    ).resolves.toMatchObject({ status: "PENDING_REVIEW" });
   });
 
   it("공지 주소가 아닌 링크는 중복을 따지지 않는다", async () => {
@@ -370,15 +366,21 @@ describe("수정·재검토·취소", () => {
     ).toBe(409);
   });
 
-  it("게시 중단된 신청은 아직 다시 낼 수 없다 (백엔드에 요청해 둠)", async () => {
+  it("게시 중단된 신청은 고쳐도 중단 상태이고, 다시 내면 검토 대기로 돌아간다", async () => {
     const { repos } = setup(MOCK_USERS.SUBMITTER);
     const suspended = await repos.submissions.getById("notice-903");
 
-    expect(
-      await statusOf(
-        repos.submissions.submit("notice-903", { version: suspended.version }),
-      ),
-    ).toBe(409);
+    const edited = await repos.submissions.update("notice-903", {
+      startAt: new Date(NOW.getTime() + 2 * DAY_MS),
+      endAt: new Date(NOW.getTime() + 9 * DAY_MS),
+      version: suspended.version,
+    });
+    expect(edited.status).toBe("SUSPENDED");
+
+    const resubmitted = await repos.submissions.submit("notice-903", {
+      version: edited.version,
+    });
+    expect(resubmitted.status).toBe("PENDING_REVIEW");
   });
 
   it("본 버전이 최신이 아니면 취소를 409로 막고, 취소도 이력에 남는다", async () => {
@@ -401,6 +403,44 @@ describe("수정·재검토·취소", () => {
 });
 
 describe("검토", () => {
+  it("같은 key로 다시 보낸 반려·취소는 처리하지 않고 처음 결과를 돌려준다", async () => {
+    const { repos, signInAs } = setup(MOCK_USERS.REVIEWER);
+    const target = await repos.submissions.getById("notice-003");
+    const reject = () =>
+      repos.reviews.reject(
+        {
+          submissionId: "notice-003",
+          revision: target.version,
+          reasonCode: "OTHER",
+          comment: "다시 확인해 주세요.",
+        },
+        { idempotencyKey: "reject-key" },
+      );
+    const first = await reject();
+    await expect(reject()).resolves.toMatchObject({
+      status: "REJECTED",
+      version: first.version,
+    });
+    const rejections = (await repos.reviews.listHistory("notice-003")).filter(
+      (event) => event.type === "REJECTED",
+    );
+    expect(rejections).toHaveLength(1);
+
+    signInAs(MOCK_USERS.SUBMITTER);
+    const pending = await repos.submissions.getById("notice-905");
+    const cancel = () =>
+      repos.submissions.cancel(
+        "notice-905",
+        { version: pending.version },
+        { idempotencyKey: "cancel-key" },
+      );
+    const canceled = await cancel();
+    await expect(cancel()).resolves.toMatchObject({
+      status: "CANCELED",
+      version: canceled.version,
+    });
+  });
+
   it("반려도 승인처럼 검토한 버전을 확인한다", async () => {
     const { repos } = setup(MOCK_USERS.REVIEWER);
     const target = await repos.submissions.getById("notice-003");

@@ -8,6 +8,7 @@ import { createHttpDisplayRepository } from "./http-display-repository";
 const PLAYLIST = {
   serverTime: "2026-09-27T10:00:00.000Z",
   playlistVersion: "a1b2c3d4e5f60718",
+  deviceName: "A동 로비",
   refreshAfterSeconds: 60,
   layout: { type: "FOUR_GRID", rotationSeconds: 10 },
   items: [
@@ -83,29 +84,17 @@ function setup(replies: Record<string, (request: HttpRequest) => Reply>) {
   };
 }
 
-const session = () => ({
-  body: {
-    deviceId: "dev_01",
-    name: "A동 로비",
-    location: null,
-    orientation: "LANDSCAPE",
-    serverTime: "2026-09-27T10:00:00.000Z",
-  },
-});
-
 describe("createHttpDisplayRepository", () => {
-  it("기기 토큰을 헤더로 싣고, 기기 이름은 한 번만 받아 붙인다", async () => {
+  it("기기 토큰을 헤더로 싣고, 기기 이름은 편성에서 읽는다", async () => {
     const ctx = setup({
       "/signage/devices/dev_01/playlist": () => ({
         body: PLAYLIST,
         etag: '"a1b2"',
       }),
-      "/signage/devices/dev_01/session": session,
     });
     ctx.credentials.save("dev_01", "fgd_token");
 
     const playlist = await ctx.repository.getPlaylist("dev_01");
-    await ctx.repository.getPlaylist("dev_01");
 
     expect(playlist).toMatchObject({
       deviceName: "A동 로비",
@@ -119,9 +108,8 @@ describe("createHttpDisplayRepository", () => {
     expect(ctx.deviceCalls[0]!.headers).toEqual({
       "X-Device-Token": "fgd_token",
     });
-    expect(
-      ctx.deviceCalls.filter((call) => call.path.endsWith("/session")),
-    ).toHaveLength(1);
+    // 기기 이름을 따로 묻지 않는다.
+    expect(ctx.deviceCalls).toHaveLength(1);
   });
 
   it("받은 ETag로 조건부 요청하고, 304면 편성은 그대로 두고 서버 시각만 옮긴다", async () => {
@@ -130,7 +118,6 @@ describe("createHttpDisplayRepository", () => {
         call.headers?.["If-None-Match"]
           ? { status: 304 }
           : { body: PLAYLIST, etag: '"a1b2"' },
-      "/signage/devices/dev_01/session": session,
     });
     ctx.credentials.save("dev_01", "fgd_token");
 

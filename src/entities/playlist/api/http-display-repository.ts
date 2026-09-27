@@ -27,8 +27,8 @@ import type { LayoutType, Playlist, PlaylistItem } from "../model/types";
  * - 받은 `ETag`를 다음 요청의 `If-None-Match`로 보낸다. 편성이 그대로면 서버가
  *   304(본문 없음)를 주고, 마지막 편성을 계속 쓴다. 이때 `serverTime`은 마지막으로
  *   받은 뒤 흐른 시간만큼 옮긴다 — 오프라인 시각 보정이 이 값에 기댄다.
- * - 편성 응답에는 기기 이름이 없다. `GET /signage/devices/{id}/session`에서 한 번 받아
- *   붙인다(`API-FOLLOWUP-2026-09.md` 2-3).
+ * - 기기 이름도 편성에 담겨 온다. 관리자가 이름을 바꾸면 편성 버전이 바뀌어 다음
+ *   편성에서 TV에 반영된다.
  * - 기기 인증 실패는 `DEVICE_*` code로 바꾼다. 401을 그대로 두면 같은 브라우저에
  *   로그인한 관리자 세션까지 "로그인 만료"로 끊긴다.
  *
@@ -75,7 +75,7 @@ function asDeviceError(error: unknown): unknown {
   return error;
 }
 
-export function parsePlaylist(payload: unknown): Omit<Playlist, "deviceName"> {
+export function parsePlaylist(payload: unknown): Playlist {
   const body = readObject(payload);
   const layout = readObject(body.layout, "layout");
   const type = readString(layout, "type", "layout.type");
@@ -89,6 +89,7 @@ export function parsePlaylist(payload: unknown): Omit<Playlist, "deviceName"> {
   return {
     serverTime: readIsoDate(body, "serverTime"),
     playlistVersion: readString(body, "playlistVersion"),
+    deviceName: readString(body, "deviceName"),
     refreshAfterSeconds: readNumber(body, "refreshAfterSeconds"),
     layout: {
       type: type as LayoutType,
@@ -150,34 +151,9 @@ export function createHttpDisplayRepository({
   now = Date.now,
 }: HttpDisplayRepositoryOptions): DisplayRepository {
   const states = new Map<string, DeviceState>();
-  const deviceNames = new Map<string, string>();
 
   const devicePath = (deviceId: string) =>
     `/signage/devices/${encodeURIComponent(deviceId)}`;
-
-  /** 기기 이름. 한 번 받으면 기억한다. 받지 못해도 편성은 이름 없이 그린다. */
-  const deviceNameOf = async (
-    deviceId: string,
-    headers: Record<string, string>,
-    signal?: AbortSignal,
-  ): Promise<string | null> => {
-    const known = deviceNames.get(deviceId);
-    if (known !== undefined) return known;
-    try {
-      const session = readObject(
-        await deviceClient.request({
-          path: `${devicePath(deviceId)}/session`,
-          headers,
-          signal,
-        }),
-      );
-      const name = readString(session, "name");
-      deviceNames.set(deviceId, name);
-      return name;
-    } catch {
-      return null;
-    }
-  };
 
   const previewPlaylist = async (signal?: AbortSignal): Promise<Playlist> => {
     const query = { statuses: "PUBLISHED", limit: 100 };
@@ -255,10 +231,7 @@ export function createHttpDisplayRepository({
         return playlist;
       }
 
-      const playlist: Playlist = {
-        ...parsePlaylist(payload),
-        deviceName: await deviceNameOf(deviceId, auth, signal),
-      };
+      const playlist = parsePlaylist(payload);
       states.set(deviceId, { playlist, etag, receivedAt });
       return playlist;
     },
