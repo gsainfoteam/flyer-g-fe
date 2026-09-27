@@ -6,6 +6,7 @@ import { createFakeUploadService } from "../api/fake-upload-service";
 import type { AssetUploadService } from "../api/asset-upload-service";
 import { installObjectUrlMock } from "@/test/object-url";
 import type { ObjectUrlMock } from "@/test/object-url";
+import { ApiError } from "@/shared/api/error";
 import { usePosterUpload } from "./use-poster-upload";
 
 const JPEG_HEAD = [0xff, 0xd8, 0xff, 0xe0];
@@ -50,9 +51,12 @@ const instantUploadService = () =>
   });
 
 const renderUpload = (service: AssetUploadService) =>
-  renderHook(() => usePosterUpload({ validationOptions: { decode: decodeOk } }), {
-    wrapper: wrapper(service),
-  });
+  renderHook(
+    () => usePosterUpload({ validationOptions: { decode: decodeOk } }),
+    {
+      wrapper: wrapper(service),
+    },
+  );
 
 describe("usePosterUpload", () => {
   it("검증을 통과하면 업로드하고 assetId를 준다", async () => {
@@ -190,5 +194,47 @@ describe("usePosterUpload", () => {
     unmount();
 
     expect(objectUrls.revoked).toContain("blob:mock/1");
+  });
+
+  it("서버가 파일을 거절하면 서버가 준 사유를 보여준다", async () => {
+    const { result } = renderUpload({
+      upload: async () => {
+        throw new ApiError({
+          kind: "http",
+          code: "VALIDATION_FAILED",
+          message: "rejected",
+          status: 422,
+          fields: { file: "짧은 변이 1080px 이상이어야 합니다. (현재 800px)" },
+        });
+      },
+    });
+
+    await act(async () => {
+      await result.current.selectFile(makeFile());
+    });
+
+    await waitFor(() => expect(result.current.state.status).toBe("failed"));
+    expect(result.current.state.errorMessage).toBe(
+      "짧은 변이 1080px 이상이어야 합니다. (현재 800px)",
+    );
+  });
+
+  it("서버 설정의 한도로 업로드 전에 거른다", async () => {
+    const upload = vi.fn();
+    const { result } = renderHook(
+      () =>
+        usePosterUpload({
+          validationOptions: { decode: decodeOk },
+          limits: { maxSizeBytes: 1024, minShortEdgePx: 1080 },
+        }),
+      { wrapper: wrapper({ upload }) },
+    );
+
+    await act(async () => {
+      await result.current.selectFile(makeFile());
+    });
+
+    expect(result.current.state.invalidCode).toBe("TOO_LARGE");
+    expect(upload).not.toHaveBeenCalled();
   });
 });

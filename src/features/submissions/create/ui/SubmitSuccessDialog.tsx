@@ -20,37 +20,56 @@ import {
  * 간다 — 새 신청이면 빈 폼, 수정이었으면 그 신청의 상세다. 같은 내용을 한 번 더
  * 보내거나, 이미 검토 중인 신청의 수정 화면에 갇히지 않게 한다.
  */
+/**
+ * - `created`: 새 신청
+ * - `resubmitted`: 반려된 신청을 고쳐 다시 검토를 요청했다
+ * - `updated`: 검토 대기·예약 중인 신청을 고쳤다(예약 건은 다시 승인을 받는다)
+ */
+export type SubmitResultKind = "created" | "resubmitted" | "updated";
+
+const COPY: Record<SubmitResultKind, { title: string; description: string }> = {
+  created: {
+    title: "신청이 접수되었어요",
+    description: "하우스 관리자가 검토한 뒤 게시가 시작됩니다.",
+  },
+  resubmitted: {
+    title: "다시 신청했어요",
+    description: "하우스 관리자가 다시 검토한 뒤 게시가 시작됩니다.",
+  },
+  updated: {
+    title: "수정했어요",
+    description: "하우스 관리자가 고친 내용을 검토한 뒤 게시가 시작됩니다.",
+  },
+};
+
 interface SubmitSuccessDialogProps {
   submission: SignageSubmissionExpanded | null;
-  /** 반려·작성 중인 신청을 고쳐 다시 낸 경우 */
-  isResubmission: boolean;
+  kind: SubmitResultKind;
   onStartNew: () => void;
   onOpenDetail: () => void;
 }
 
 export function SubmitSuccessDialog({
   submission,
-  isResubmission,
+  kind,
   onStartNew,
   onOpenDetail,
 }: SubmitSuccessDialogProps) {
+  // 고친 신청은 폼에 다시 남지 않고 상세로 간다. 새 신청만 이어서 새로 쓸 수 있다.
+  const isNew = kind === "created";
   return (
     <Dialog
       open={submission !== null}
       onOpenChange={(open) => {
         if (open) return;
-        if (isResubmission) onOpenDetail();
-        else onStartNew();
+        if (isNew) onStartNew();
+        else onOpenDetail();
       }}
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {isResubmission ? "다시 신청했어요" : "신청이 접수되었어요"}
-          </DialogTitle>
-          <DialogDescription>
-            하우스 관리자가 검토한 뒤 게시가 시작됩니다.
-          </DialogDescription>
+          <DialogTitle>{COPY[kind].title}</DialogTitle>
+          <DialogDescription>{COPY[kind].description}</DialogDescription>
         </DialogHeader>
 
         {submission && (
@@ -63,7 +82,7 @@ export function SubmitSuccessDialog({
         )}
 
         <DialogFooter>
-          {!isResubmission && (
+          {isNew && (
             <Button variant="outline" onClick={onStartNew}>
               새 신청 작성
             </Button>

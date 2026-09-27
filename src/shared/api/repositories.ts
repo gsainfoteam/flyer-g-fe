@@ -1,4 +1,15 @@
-import type { DeviceList, TargetGroup } from "@/entities/device/model/types";
+import type {
+  DeviceInput,
+  DeviceList,
+  DeviceWithToken,
+  DisplayDevice,
+  TargetGroup,
+  UpdateDeviceInput,
+} from "@/entities/device/model/types";
+import type {
+  Category,
+  SignageConfig,
+} from "@/entities/submission/model/policy";
 import type { Playlist } from "@/entities/playlist/model/types";
 import type {
   RejectionReasonCode,
@@ -21,30 +32,42 @@ import type {
  * 부르면 401(세션 없음)이나 403(권한 없음)이 온다. (명세 3.2 권한 매트릭스)
  */
 
+/**
+ * 게시 신청. 만들면 바로 검토 대기가 된다(생성과 제출이 한 번).
+ * (`API-CHANGES-BACKEND.md` 5.2)
+ *
+ * Ziggle 공지를 조회할 API가 없어 주최·부제·장소·설명은 신청자가 직접 입력한다.
+ * 공지 ID는 서버가 `detailUrl`에서 뽑는다.
+ */
 export interface CreateSubmissionInput {
-  ziggleNoticeId: string;
   title: string;
   categoryId: string;
   assetId: string;
-  detailUrl: string;
+  /** 상세 링크(QR). 없으면 QR 없이 게시한다. */
+  detailUrl: string | null;
+  organizerName: string | null;
+  subtitle: string | null;
+  location: string | null;
+  description: string | null;
   startAt: Date;
   endAt: Date;
   targetGroupIds: string[];
 }
 
 /**
- * 제출 전(DRAFT·REJECTED) 수정. 명세 FR-INT-02.
- * 승인 후 변경의 재승인 여부는 서버 정책이며, 프론트는 응답 상태를 그대로 따른다.
+ * 신청 수정. 명세 FR-INT-02.
+ *
+ * 선택 입력(`detailUrl` 등)은 null이면 비운다. 게시 시작 전 승인 건을 고치면 서버가
+ * 승인 대기로 되돌린다(재승인). 프론트는 응답 상태를 그대로 따른다.
  */
-export interface UpdateSubmissionInput
-  extends Partial<Omit<CreateSubmissionInput, "ziggleNoticeId">> {
+export interface UpdateSubmissionInput extends Partial<CreateSubmissionInput> {
   /** 화면이 본 버전. 서버는 이 값으로 동시 수정 충돌을 판정한다. */
   version: number;
 }
 
-/** 신청 취소. `API-REQUIREMENTS.md` 5.7 */
-export interface CancelSubmissionInput {
-  /** 화면이 본 버전. 최신이 아니면 서버가 409를 준다. */
+/** 버전만 싣는 상태 변경(재검토 요청, 취소). 최신이 아니면 서버가 409를 준다. */
+export interface SubmissionVersionInput {
+  /** 화면이 본 버전 */
   version: number;
 }
 
@@ -60,10 +83,7 @@ export interface SubmissionRepository {
     signal?: AbortSignal,
   ): Promise<Page<SignageSubmissionExpanded>>;
 
-  getById(
-    id: string,
-    signal?: AbortSignal,
-  ): Promise<SignageSubmissionExpanded>;
+  getById(id: string, signal?: AbortSignal): Promise<SignageSubmissionExpanded>;
 
   /** 운영 요약. 목록과 같은 기준 시각을 쓰도록 서버가 함께 계산한다. */
   getSummary(
@@ -82,14 +102,16 @@ export interface SubmissionRepository {
     options?: MutationOptions,
   ): Promise<SignageSubmissionExpanded>;
 
+  /** 반려된 신청을 고친 뒤 다시 검토를 요청한다. (`API-CHANGES-BACKEND.md` 5.3) */
   submit(
     id: string,
+    input: SubmissionVersionInput,
     options?: MutationOptions,
   ): Promise<SignageSubmissionExpanded>;
 
   cancel(
     id: string,
-    input: CancelSubmissionInput,
+    input: SubmissionVersionInput,
     options?: MutationOptions,
   ): Promise<SignageSubmissionExpanded>;
 }
@@ -112,9 +134,18 @@ export interface SuspendInput {
   reason: string;
 }
 
+export interface PendingReviewParams extends Omit<
+  SubmissionListParams,
+  "status" | "statuses" | "scope"
+> {
+  /** 카테고리로 거른다. 서버가 거른다. */
+  categoryId?: string | null;
+}
+
 export interface ReviewRepository {
+  /** 승인 대기 목록. 오래 기다린 순(마지막 검토 요청 시각 오름차순). */
   listPending(
-    params: Omit<SubmissionListParams, "status" | "scope">,
+    params: PendingReviewParams,
     signal?: AbortSignal,
   ): Promise<Page<SignageSubmissionExpanded>>;
 
@@ -149,7 +180,27 @@ export interface DeviceRepository {
   /** 기기 목록과 연결 상태. 하우스 관리자 이상. `API-REQUIREMENTS.md` 11.1 */
   list(signal?: AbortSignal): Promise<DeviceList>;
 
-  /** 게시 대상 위치 묶음. 로그인한 누구나. `API-REQUIREMENTS.md` 10.2 */
+  /** 기기 등록. SUPER_ADMIN만. 응답에 토큰 원문이 한 번만 온다. */
+  create(input: DeviceInput, signal?: AbortSignal): Promise<DeviceWithToken>;
+
+  /** 이름·위치·그룹·화면 설정 수정, 사용 안 함. SUPER_ADMIN만. */
+  update(
+    id: string,
+    input: UpdateDeviceInput,
+    signal?: AbortSignal,
+  ): Promise<DisplayDevice>;
+
+  /** 토큰 재발급. 이전 토큰은 즉시 무효다. SUPER_ADMIN만. */
+  rotateToken(id: string, signal?: AbortSignal): Promise<DeviceWithToken>;
+}
+
+/** 참조 데이터와 운영 설정. 로그인한 누구나. (`API-REQUIREMENTS.md` 10절) */
+export interface ReferenceRepository {
+  /** 게시 운영 제한값. 폼이 서버와 같은 규칙으로 미리 막는다. */
+  getConfig(signal?: AbortSignal): Promise<SignageConfig>;
+  /** 게시 카테고리. 숨긴 카테고리는 빠진다. */
+  listCategories(signal?: AbortSignal): Promise<Category[]>;
+  /** 게시 대상 위치 묶음 */
   listTargetGroups(signal?: AbortSignal): Promise<TargetGroup[]>;
 }
 
@@ -158,4 +209,5 @@ export interface Repositories {
   reviews: ReviewRepository;
   displays: DisplayRepository;
   devices: DeviceRepository;
+  reference: ReferenceRepository;
 }

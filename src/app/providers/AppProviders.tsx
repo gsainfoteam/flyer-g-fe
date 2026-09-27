@@ -2,7 +2,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import type { ReactNode } from "react";
 import type { AuthAdapter } from "@/features/auth/api/auth-adapter";
-import { NoticeAdapterContext } from "@/entities/notice/api/notice-adapter-context";
 import { AuthProvider } from "@/features/auth/ui/AuthProvider";
 import { AssetUploadContext } from "@/features/media-upload/api/asset-upload-context";
 import { isRetryableError } from "@/shared/api/error";
@@ -62,13 +61,11 @@ export function AppProviders({
     <QueryClientProvider client={client}>
       <RepositoriesContext.Provider value={dependencies.repositories}>
         <AssetUploadContext.Provider value={dependencies.services.assetUpload}>
-          <NoticeAdapterContext.Provider value={dependencies.services.notices}>
           <AuthProvider adapter={dependencies.authAdapter}>
             <SessionSync />
             {children}
             <Toaster position="top-right" />
           </AuthProvider>
-          </NoticeAdapterContext.Provider>
         </AssetUploadContext.Provider>
       </RepositoriesContext.Provider>
     </QueryClientProvider>

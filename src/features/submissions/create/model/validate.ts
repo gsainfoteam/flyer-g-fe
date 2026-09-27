@@ -1,30 +1,47 @@
-import { isKnownCategory } from "@/entities/submission";
+import {
+  canSubmitterResubmit,
+  checkSchedule,
+  isAllowedDetailUrl,
+  needsReapproval,
+} from "@/entities/submission";
+import type {
+  Category,
+  SignageConfig,
+  SubmissionStatus,
+} from "@/entities/submission";
 import { InvalidDateError, fromSeoulInput } from "@/shared/lib/datetime";
-import { isAllowedZiggleUrl } from "@/shared/lib/ziggle-url";
-import type { SubmissionDraft } from "./draft";
+import { isScheduleChanged } from "./draft";
+import type { OriginalSchedule, SubmissionDraft } from "./draft";
 
 /**
  * 게시 신청 폼 검증 (명세 FR-SUB-02).
  *
- * 순수 함수다. 서버가 최종 판단하지만(명세 9.4), 사용자가 10MB를 올린 뒤에야
- * 거절당하지 않도록 같은 규칙을 화면에서도 본다.
+ * 순수 함수다. 서버가 최종 판단하지만(명세 9.4), 사용자가 입력을 다 채운 뒤에야
+ * 거절당하지 않도록 서버와 같은 규칙을 화면에서도 본다. 제한값은 서버 설정
+ * (`GET /signage/config`)에서 받는다. 아직 받지 못했으면 그 규칙은 서버에 맡긴다.
  */
-export const TITLE_MAX_LENGTH = 80;
 
 /**
- * 게시 기간 상한 (명세 10.2 "기본 게시 기간 최대 14일"). 명세는 이 값을 서버 설정으로
- * 두라고 하므로 서버 응답(422)이 최종이다. 화면은 같은 값을 미리 알려 줄 뿐이다.
+ * 선택 입력의 최대 글자 수. 서버 DTO의 형식 제한이며 운영 설정에는 없다.
+ * (`flyer-g-be` `submission-input.dto.ts`)
  */
-export const MAX_PERIOD_DAYS = 14;
-const DAY_MS = 24 * 60 * 60 * 1000;
+export const TEXT_LIMITS = {
+  organizerName: 100,
+  subtitle: 100,
+  location: 100,
+  description: 1000,
+} as const;
 
 export type SubmissionFieldName =
-  | "notice"
   | "title"
   | "categoryId"
   | "startAt"
   | "endAt"
   | "detailUrl"
+  | "organizerName"
+  | "subtitle"
+  | "location"
+  | "description"
   | "asset";
 
 export type SubmissionFieldErrors = Partial<
@@ -32,18 +49,40 @@ export type SubmissionFieldErrors = Partial<
 >;
 
 export interface SubmissionFormValues extends SubmissionDraft {
-  /** 연결된 Ziggle 공지. 없으면 신청 자체가 불가능하다. */
-  ziggleNoticeId: string | null;
   /** 업로드가 끝난 포스터. 업로드 중이거나 실패면 null이다. */
   assetId: string | null;
 }
 
 export interface ValidateOptions {
   /**
-   * 과거 종료 판정의 기준이 되는 서버 시각. 클라이언트 시계를 직접 읽지 않는다.
-   * 아직 모르면 null이며, 그때는 과거 판정을 서버에 맡긴다.
+   * 기간 판정의 기준이 되는 서버 시각. 클라이언트 시계를 직접 읽지 않는다.
+   * 아직 모르면 null이며, 그때는 지금과 비교하는 판정을 서버에 맡긴다.
    */
   now: Date | null;
+  /** 서버 운영 제한값. 아직 모르면 null */
+  config: SignageConfig | null;
+  /** 고를 수 있는 카테고리. 아직 모르면 null */
+  categories: readonly Category[] | null;
+  /** 고치는 신청. 새 신청이면 없다. */
+  editing?: { status: SubmissionStatus; schedule: OriginalSchedule } | null;
+}
+
+/**
+ * 게시 기간 규칙(최소 사전 신청 시간 등)을 다시 볼 것인가. 서버와 같다: 새 신청,
+ * 다시 검토를 요청하는 신청(반려·중단·작성 중), 다시 승인을 받는 신청(예약됨),
+ * 기간을 바꾼 수정. 승인 대기 건의 제목만 고칠 때는 시작이 24시간 안으로 다가와도
+ * 막지 않는다.
+ */
+function needsScheduleCheck(
+  values: SubmissionDraft,
+  editing: ValidateOptions["editing"],
+): boolean {
+  if (!editing) return true;
+  return (
+    canSubmitterResubmit(editing.status) ||
+    needsReapproval(editing.status) ||
+    isScheduleChanged(values, editing.schedule)
+  );
 }
 
 function parseSeoul(value: string): Date | null {
@@ -58,54 +97,62 @@ function parseSeoul(value: string): Date | null {
 
 export function validateSubmissionForm(
   values: SubmissionFormValues,
-  { now }: ValidateOptions,
+  { now, config, categories, editing }: ValidateOptions,
 ): SubmissionFieldErrors {
   const errors: SubmissionFieldErrors = {};
-
-  if (!values.ziggleNoticeId) {
-    errors.notice = "Ziggle 공지를 먼저 연결해 주세요.";
-  }
 
   const title = values.title.trim();
   if (title.length === 0) {
     errors.title = "제목을 입력해 주세요.";
-  } else if (title.length > TITLE_MAX_LENGTH) {
-    errors.title = `제목은 ${TITLE_MAX_LENGTH}자까지 쓸 수 있어요. 지금 ${title.length}자입니다.`;
+  } else if (config && title.length > config.titleMaxLength) {
+    errors.title = `제목은 ${config.titleMaxLength}자까지 쓸 수 있어요. 지금 ${title.length}자입니다.`;
   }
 
   if (values.categoryId.length === 0) {
     errors.categoryId = "카테고리를 선택해 주세요.";
-  } else if (!isKnownCategory(values.categoryId)) {
+  } else if (
+    categories &&
+    !categories.some((category) => category.id === values.categoryId)
+  ) {
     errors.categoryId = "선택할 수 없는 카테고리예요.";
   }
 
   const startAt = parseSeoul(values.startAt);
   const endAt = parseSeoul(values.endAt);
-
   if (startAt === null) {
     errors.startAt = "게시 시작 시각을 입력해 주세요.";
   }
-
   if (endAt === null) {
     errors.endAt = "게시 종료 시각을 입력해 주세요.";
-  } else if (now !== null && endAt.getTime() <= now.getTime()) {
-    errors.endAt = "종료 시각은 현재보다 뒤여야 해요.";
-  } else if (startAt !== null && endAt.getTime() <= startAt.getTime()) {
-    errors.endAt = "종료 시각은 시작 시각보다 뒤여야 해요.";
-  } else if (
+  }
+  if (
     startAt !== null &&
-    endAt.getTime() - startAt.getTime() > MAX_PERIOD_DAYS * DAY_MS
+    endAt !== null &&
+    needsScheduleCheck(values, editing)
   ) {
-    errors.endAt = `게시 기간은 최대 ${MAX_PERIOD_DAYS}일이에요.`;
+    if (now !== null && config !== null) {
+      Object.assign(errors, checkSchedule(startAt, endAt, now, config));
+    } else if (endAt.getTime() <= startAt.getTime()) {
+      errors.endAt = "종료 시각은 시작 시각보다 뒤여야 해요.";
+    }
   }
 
-  // 상세 링크는 공지에서 온다. 공지가 없으면 공지 오류 하나로 충분하다.
-  if (values.ziggleNoticeId) {
-    const detailUrl = values.detailUrl.trim();
-    if (detailUrl.length === 0) {
-      errors.detailUrl = "Ziggle 상세 링크가 필요해요.";
-    } else if (!isAllowedZiggleUrl(detailUrl)) {
-      errors.detailUrl = "공식 Ziggle 주소(https://ziggle.gistory.me)만 쓸 수 있어요.";
+  const detailUrl = values.detailUrl.trim();
+  if (
+    detailUrl.length > 0 &&
+    config &&
+    !isAllowedDetailUrl(detailUrl, config)
+  ) {
+    errors.detailUrl = `${config.allowedDetailUrlHosts.join(", ")}의 https 주소만 쓸 수 있어요.`;
+  }
+
+  for (const field of Object.keys(
+    TEXT_LIMITS,
+  ) as (keyof typeof TEXT_LIMITS)[]) {
+    const length = values[field].trim().length;
+    if (length > TEXT_LIMITS[field]) {
+      errors[field] =
+        `${TEXT_LIMITS[field]}자까지 쓸 수 있어요. 지금 ${length}자입니다.`;
     }
   }
 
@@ -132,12 +179,15 @@ export function summarizeErrors(errors: SubmissionFieldErrors): string | null {
 
 /** 서버 422의 `fields` 키 → 폼 항목. 서버는 API 필드 이름으로 준다. */
 const SERVER_FIELD_TO_FORM: Record<string, SubmissionFieldName> = {
-  ziggleNoticeId: "notice",
   title: "title",
   categoryId: "categoryId",
   startAt: "startAt",
   endAt: "endAt",
   detailUrl: "detailUrl",
+  organizerName: "organizerName",
+  subtitle: "subtitle",
+  location: "location",
+  description: "description",
   assetId: "asset",
 };
 

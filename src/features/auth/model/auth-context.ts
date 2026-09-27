@@ -5,6 +5,11 @@ export interface AuthContextValue {
   state: AuthState;
   /** 로그인을 시작한다. 성공하면 `returnTo`로 이동하는 것은 호출부 책임이다. */
   signIn: (returnTo: string) => Promise<SessionUser | null>;
+  /**
+   * 로그인 제공자에서 돌아온 뒤 로그인을 마친다. 성공하면 돌아갈 경로를 준다.
+   * 실패하면 던진다 — 세션 상태는 그대로 두고 호출한 화면이 안내한다.
+   */
+  completeSignIn: (params: URLSearchParams) => Promise<string>;
   signOut: () => Promise<void>;
   /**
    * 서버가 401을 주면 부른다. 세션을 정리하고 로그인 화면이 만료를 안내하게 한다.

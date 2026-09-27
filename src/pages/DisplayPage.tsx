@@ -12,6 +12,10 @@ import {
   usePrefetchImages,
 } from "@/features/display";
 import { useRotation } from "@/features/display/model/use-rotation";
+import { PREVIEW_DEVICE_ID } from "@/entities/playlist/model/types";
+import { toUserMessage } from "@/shared/api/error";
+import type { ApiError } from "@/shared/api/error";
+import { captureDeviceTokenFromUrl } from "@/shared/lib/device-credential";
 import { ZIGGLE_HOST } from "@/shared/lib/ziggle-url";
 import { Button } from "@/shared/ui/button";
 
@@ -28,11 +32,17 @@ import { Button } from "@/shared/ui/button";
  * - 아무것도 없음 → 브랜드·시각·안내 fallback
  *
  * 상태 보고(heartbeat)와 노출 이벤트는 실패해도 재생을 멈추지 않는다.
+ *
+ * 기기 연결: 관리자가 준 설정 링크(`/display/{id}#token=...`)로 한 번 열면 토큰을
+ * 저장하고 주소에서 지운다. 토큰이 없거나 거절되면 설정 링크로 다시 열라고 안내하고
+ * 재생하지 않는다(`useOfflinePlaylist`). 네트워크 실패는 저장된 편성을 계속 재생한다.
  */
 export function DisplayPage() {
-  const { deviceId = "device-preview" } = useParams();
+  const { deviceId = PREVIEW_DEVICE_ID } = useParams();
   const [searchParams] = useSearchParams();
   const isPreview = searchParams.get("preview") === "1";
+  // 첫 편성 요청보다 먼저 설정 링크의 토큰을 저장한다. 렌더 중에 한 번만 한다.
+  useState(() => captureDeviceTokenFromUrl(deviceId));
 
   const feed = useOfflinePlaylist(deviceId);
   const playlistVersion = feed.playlist?.playlistVersion ?? null;
@@ -111,7 +121,9 @@ export function DisplayPage() {
   return (
     <div className="relative h-full">
       <ScaledStage className="h-full w-full">
-        {feed.isPending || !serverTime ? (
+        {feed.deviceError ? (
+          <DeviceSetupNotice error={feed.deviceError} deviceId={deviceId} />
+        ) : feed.isPending || !serverTime ? (
           <div className="flex h-full flex-col items-center justify-center gap-6">
             <Logo size="tv" />
             <p className="text-[30px] text-ink-subtle">편성을 불러오는 중</p>
@@ -150,7 +162,11 @@ export function DisplayPage() {
             onClick={() => setPaused((value) => !value)}
             aria-label={paused ? "재생" : "일시정지"}
           >
-            {paused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
+            {paused ? (
+              <Play aria-hidden="true" />
+            ) : (
+              <Pause aria-hidden="true" />
+            )}
           </Button>
           <Button
             variant="ghost"
@@ -187,7 +203,9 @@ function EmptyDisplay({
       <div className="flex items-center gap-4">
         <Logo size="tv" />
         {deviceLabel && (
-          <span className="ml-2 text-[26px] text-ink-subtle">{deviceLabel}</span>
+          <span className="ml-2 text-[26px] text-ink-subtle">
+            {deviceLabel}
+          </span>
         )}
         <LiveClock now={serverTime} ticking className="ml-auto text-[32px]" />
       </div>
@@ -199,6 +217,33 @@ function EmptyDisplay({
           게시 신청은 Ziggle 공지에서 할 수 있어요 · {ZIGGLE_HOST}
         </p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 기기가 연결되지 않았을 때. 설치하는 사람이 TV 앞에서 읽는다. 무엇을 하면 되는지와
+ * 관리자에게 알려 줄 기기 ID를 크게 보여준다. 토큰 값은 절대 보여주지 않는다.
+ */
+function DeviceSetupNotice({
+  error,
+  deviceId,
+}: {
+  error: ApiError;
+  deviceId: string;
+}) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-8 text-center">
+      <Logo size="tv" />
+      <h1 className="text-[64px] leading-tight font-extrabold text-ink">
+        {error.code === "DEVICE_UNAUTHORIZED"
+          ? "이 TV의 연결이 끊겼어요"
+          : "이 TV는 아직 연결되지 않았어요"}
+      </h1>
+      <p className="max-w-[1200px] text-[32px] leading-normal text-ink-muted">
+        {toUserMessage(error)}
+      </p>
+      <p className="text-[26px] text-ink-subtle">기기 ID · {deviceId}</p>
     </div>
   );
 }

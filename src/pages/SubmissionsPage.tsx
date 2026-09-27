@@ -38,15 +38,14 @@ const STATUS_PARAM = "status";
 const SCOPE_PARAM = "scope";
 const PANEL_ID = "submission-list";
 
-function sentenceFor(submission: SubmissionView, withOrganization: boolean) {
+/** 전체 신청(관리자)에서는 누가 올렸는지를 앞에 붙인다. */
+function sentenceFor(submission: SubmissionView, withRequester: boolean) {
   const sentence = getStatusSentence({
     status: submission.status,
     startsAtLabel: formatSeoulDateTime(submission.startAt),
     endsAtLabel: formatSeoulShortDate(submission.endAt),
   });
-  return withOrganization && submission.organizationName
-    ? `${submission.organizationName} · ${sentence}`
-    : sentence;
+  return withRequester ? `${submission.requesterName} · ${sentence}` : sentence;
 }
 
 export function SubmissionsPage() {

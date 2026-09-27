@@ -1,4 +1,5 @@
 import type { SubmissionListParams } from "@/entities/submission/model/types";
+import type { PendingReviewParams } from "./repositories";
 
 /**
  * 서버 상태 캐시 키 규칙.
@@ -16,17 +17,12 @@ export const queryKeys = {
     summary: (scope: SubmissionListParams["scope"]) =>
       ["submissions", "summary", scope ?? "me"] as const,
   },
-  notices: {
-    all: () => ["notices"] as const,
-    detail: (noticeId: string) => ["notices", "detail", noticeId] as const,
-    submittable: () => ["notices", "submittable"] as const,
-  },
   reviews: {
     all: () => ["reviews"] as const,
-    pending: (params: Omit<SubmissionListParams, "status" | "scope">) =>
+    pending: (params: PendingReviewParams) =>
       ["reviews", "pending", params] as const,
-    pendingInfinite: (limit: number) =>
-      ["reviews", "pending-infinite", limit] as const,
+    pendingInfinite: (params: Omit<PendingReviewParams, "cursor">) =>
+      ["reviews", "pending-infinite", params] as const,
     history: (submissionId: string) =>
       ["reviews", "history", submissionId] as const,
   },
@@ -37,6 +33,11 @@ export const queryKeys = {
   devices: {
     all: () => ["devices"] as const,
     list: () => ["devices", "list"] as const,
-    targetGroups: () => ["devices", "target-groups"] as const,
+  },
+  reference: {
+    all: () => ["reference"] as const,
+    config: () => ["reference", "config"] as const,
+    categories: () => ["reference", "categories"] as const,
+    targetGroups: () => ["reference", "target-groups"] as const,
   },
 } as const;

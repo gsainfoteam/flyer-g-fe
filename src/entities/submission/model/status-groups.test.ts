@@ -1,18 +1,15 @@
 import { describe, expect, it } from "vitest";
-import {
-  STATUS_GROUPS,
-  findStatusGroup,
-  groupOfStatus,
-} from "./status-groups";
+import { STATUS_GROUPS, findStatusGroup, groupOfStatus } from "./status-groups";
 import { SUBMISSION_STATUSES } from "./types";
 
 describe("STATUS_GROUPS", () => {
-  it("ARCHIVED를 제외한 모든 상태가 정확히 한 그룹에 속한다", () => {
+  it("보관·작성 중을 뺀 모든 상태가 정확히 한 그룹에 속한다", () => {
     for (const status of SUBMISSION_STATUSES) {
       const owners = STATUS_GROUPS.filter((group) =>
         group.statuses.includes(status),
       );
-      if (status === "ARCHIVED") {
+      // 보관은 운영 목록에서 숨기고, 작성 중은 서버가 만들지 않는다.
+      if (status === "ARCHIVED" || status === "DRAFT") {
         expect(owners).toHaveLength(0);
       } else {
         expect(owners, status).toHaveLength(1);

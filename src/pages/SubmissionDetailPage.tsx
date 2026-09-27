@@ -6,6 +6,7 @@ import { QRCodeBox } from "@/shared/components/QRCodeBox";
 import { fromSubmissionView } from "@/entities/poster";
 import { getStatusSentence, toSubmissionView } from "@/entities/submission";
 import { useSessionUser } from "@/features/auth/model/auth-context";
+import { hasAnyRole } from "@/features/auth/model/types";
 import { useTargetGroupLabel } from "@/entities/device/api/queries";
 import {
   useReviewHistory,
@@ -28,12 +29,16 @@ import { Button } from "@/shared/ui/button";
  * 게시자가 "지금 어떤 상태이고 왜 그런지"를 한 화면에서 확인한다. 반려·중단
  * 사유는 검토 타임라인이 보여준다.
  *
+ * 관리자가 자기 신청을 열면 게시자 버튼(수정·취소)과 함께 검토 화면 링크를 둔다.
+ * 자기 게시물도 승인·중단은 검토 화면에서 한다(명세 3.2, 서버도 막지 않는다).
+ *
  * 표시 상태는 저장된 값이 아니라 서버 시각 기준 실제 상태다. 기준 시각은 요약
  * 응답의 `calculatedAt`을 쓴다. (명세 6.3)
  */
 export function SubmissionDetailPage() {
   const { submissionId = "" } = useParams();
   const user = useSessionUser();
+  const isReviewer = hasAnyRole(user, ["REVIEWER", "SUPER_ADMIN"]);
 
   const detail = useSubmissionDetail(submissionId);
   const history = useReviewHistory(submissionId);
@@ -53,7 +58,12 @@ export function SubmissionDetailPage() {
   const view = detail.data ? toSubmissionView(detail.data, serverNow) : null;
 
   return (
-    <PageState isLoading={isLoading} error={error} onRetry={retry} loadingRows={5}>
+    <PageState
+      isLoading={isLoading}
+      error={error}
+      onRetry={retry}
+      loadingRows={5}
+    >
       {view && detail.data && (
         <>
           <div>
@@ -78,12 +88,17 @@ export function SubmissionDetailPage() {
               <StatusBadge status={view.status} className="mt-1.5" />
             </div>
 
-            <div className="mt-4">
-              {view.requesterId === user.id ? (
-                <SubmitterActions submission={view} />
-              ) : (
-                // 관리자가 남의 신청을 연 경우. 결정·중단은 검토 화면에서 한다.
-                <Button size="sm" asChild>
+            <div className="mt-4 flex flex-wrap items-center gap-2.5">
+              {view.requesterId === user.id && (
+                <SubmitterActions submission={view} isReviewer={isReviewer} />
+              )}
+              {isReviewer && (
+                // 결정·중단은 검토 화면에서 한다. 남의 신청이면 이것이 주 동작이다.
+                <Button
+                  size="sm"
+                  variant={view.requesterId === user.id ? "outline" : "default"}
+                  asChild
+                >
                   <Link to={to.reviewDetail(view.id)}>검토 화면에서 보기</Link>
                 </Button>
               )}
@@ -94,29 +109,38 @@ export function SubmissionDetailPage() {
             <div className="flex min-w-0 flex-col gap-5">
               <Panel title="포스터">
                 <div className="aspect-3/4 w-full overflow-hidden rounded-control bg-canvas ring-1 ring-line">
-                  <PosterArtwork poster={fromSubmissionView(view)} fit="contain" />
+                  <PosterArtwork
+                    poster={fromSubmissionView(view)}
+                    fit="contain"
+                  />
                 </div>
               </Panel>
 
-              <Panel title="Ziggle 공지">
-                <div className="flex items-center gap-3.5">
-                  <QRCodeBox value={view.detailUrl} size="sm" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-caption text-ink-muted">
-                      {view.detailUrl}
-                    </p>
-                    <Button variant="link" size="xs" asChild className="mt-1">
-                      <a
-                        href={view.detailUrl}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                      >
-                        원문 보기
-                        <ExternalLink aria-hidden="true" />
-                      </a>
-                    </Button>
+              <Panel title="상세 링크 (QR)">
+                {view.detailUrl ? (
+                  <div className="flex items-center gap-3.5">
+                    <QRCodeBox value={view.detailUrl} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-caption text-ink-muted">
+                        {view.detailUrl}
+                      </p>
+                      <Button variant="link" size="xs" asChild className="mt-1">
+                        <a
+                          href={view.detailUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        >
+                          원문 보기
+                          <ExternalLink aria-hidden="true" />
+                        </a>
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <p className="text-body text-ink-muted">
+                    상세 링크 없이 신청했어요. TV에 QR이 나가지 않아요.
+                  </p>
+                )}
               </Panel>
             </div>
 
@@ -129,11 +153,25 @@ export function SubmissionDetailPage() {
                   </MetaItem>
                   <MetaItem label="카테고리">{view.categoryName}</MetaItem>
                   <MetaItem label="주최">
-                    {view.organizationName || "미지정"}
+                    {view.organizerName ?? "없음"}
                   </MetaItem>
                   <MetaItem label="대상 위치">
                     {targetLabel ?? "확인하는 중"}
                   </MetaItem>
+                  {view.subtitle && (
+                    <MetaItem label="부제">{view.subtitle}</MetaItem>
+                  )}
+                  {view.location && (
+                    <MetaItem label="장소">{view.location}</MetaItem>
+                  )}
+                  {view.description && (
+                    <div className="sm:col-span-2">
+                      <dt className="text-caption text-ink-subtle">설명</dt>
+                      <dd className="mt-0.5 text-body whitespace-pre-line text-ink">
+                        {view.description}
+                      </dd>
+                    </div>
+                  )}
                 </dl>
               </Panel>
 

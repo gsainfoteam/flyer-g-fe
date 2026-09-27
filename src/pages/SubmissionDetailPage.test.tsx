@@ -1,6 +1,9 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { renderRoute } from "@/test/render-route";
+import { createMockRepositories } from "@/mocks/repositories";
+import { MOCK_USERS } from "@/mocks/users";
+import { createFixedClock } from "@/shared/lib/clock";
+import { TEST_NOW, renderRoute } from "@/test/render-route";
 
 /**
  * 신청 상세 (명세 FR-SUB-05).
@@ -67,6 +70,35 @@ describe("신청 상세", () => {
     expect(screen.queryByRole("button", { name: "신청 취소하기" })).toBeNull();
   });
 
+  it("관리자가 자기 신청을 열면 수정·취소와 함께 검토 화면으로 갈 수 있다", async () => {
+    const repositories = createMockRepositories({
+      clock: createFixedClock(TEST_NOW),
+      session: () => MOCK_USERS.REVIEWER,
+    });
+    const own = await repositories.submissions.create({
+      title: "관리자가 낸 공지",
+      categoryId: "performance",
+      assetId: "asset-own",
+      detailUrl: null,
+      organizerName: null,
+      subtitle: null,
+      location: null,
+      description: null,
+      startAt: new Date(TEST_NOW.getTime() + 2 * 86_400_000),
+      endAt: new Date(TEST_NOW.getTime() + 5 * 86_400_000),
+      targetGroupIds: [],
+    });
+    renderRoute(`/submissions/${own.id}`, { role: "REVIEWER", repositories });
+
+    expect(
+      await screen.findByRole("link", { name: "검토 화면에서 보기" }),
+    ).toHaveAttribute("href", `/reviews/${own.id}`);
+    expect(screen.getByRole("link", { name: "수정하기" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "신청 취소하기" }),
+    ).toBeInTheDocument();
+  });
+
   it("게시자 화면에 내부 식별자를 드러내지 않는다", async () => {
     renderRoute("/submissions/notice-901", { role: "SUBMITTER" });
     await screen.findByText("게시 정보");
@@ -75,4 +107,3 @@ describe("신청 상세", () => {
     expect(screen.queryByText("신청 버전")).toBeNull();
   });
 });
-

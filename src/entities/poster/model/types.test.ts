@@ -9,14 +9,16 @@ const view: SubmissionView = {
   title: "동아리 모집",
   subtitle: null,
   categoryName: "동아리",
-  organizationName: "지구는 처음이야",
+  organizerName: "지구는 처음이야",
   status: "PUBLISHED",
   startAt: parseIsoUtc("2026-06-08T00:00:00.000Z"),
   endAt: parseIsoUtc("2026-06-15T00:00:00.000Z"),
   createdAt: parseIsoUtc("2026-06-01T00:00:00.000Z"),
   submittedAt: parseIsoUtc("2026-06-01T00:00:00.000Z"),
   requesterId: "user-1",
+  requesterName: "홍길동",
   posterUrl: "/posters/a.png",
+  posterThumbUrl: "/posters/a.png",
   detailUrl: "https://ziggle.gistory.me/notices/1",
   location: "제1학생회관",
   description: "업사이클링 워크숍",
@@ -30,7 +32,7 @@ describe("fromSubmissionView", () => {
       id: "s-1",
       title: "동아리 모집",
       categoryName: "동아리",
-      organizationName: "지구는 처음이야",
+      organizerName: "지구는 처음이야",
       location: "제1학생회관",
       detailUrl: "https://ziggle.gistory.me/notices/1",
     });
@@ -38,9 +40,9 @@ describe("fromSubmissionView", () => {
 
   it("subtitle이 없으면 설명으로 대신한다", () => {
     expect(fromSubmissionView(view).subtitle).toBe("업사이클링 워크숍");
-    expect(
-      fromSubmissionView({ ...view, subtitle: "부제" }).subtitle,
-    ).toBe("부제");
+    expect(fromSubmissionView({ ...view, subtitle: "부제" }).subtitle).toBe(
+      "부제",
+    );
   });
 });
 
@@ -74,10 +76,31 @@ describe("fromPlaylistItem", () => {
       id: "s-2",
       title: "정기공연",
       categoryName: "공연",
-      organizationName: "도백 도둑",
+      organizerName: "도백 도둑",
       location: "오룡관",
       posterUrl: "https://cdn.example/a.webp",
     });
+  });
+
+  it("상세 링크가 없으면 QR 값도 없다", () => {
+    const [item] = toPlaylist({
+      serverTime: "2026-06-10T00:00:00.000Z",
+      playlistVersion: "v2",
+      refreshAfterSeconds: 60,
+      layout: { type: "SINGLE", rotationSeconds: 10 },
+      items: [
+        {
+          ...playlist.items[0]!,
+          detailUrl: null,
+          startsAt: "2026-06-08T00:00:00.000Z",
+          endsAt: "2026-06-15T00:00:00.000Z",
+        },
+      ],
+    }).items;
+    expect(fromPlaylistItem(item!).detailUrl).toBeNull();
+    expect(
+      fromSubmissionView({ ...view, detailUrl: null }).detailUrl,
+    ).toBeNull();
   });
 
   it("미리보기와 플레이어가 같은 키를 쓴다", () => {

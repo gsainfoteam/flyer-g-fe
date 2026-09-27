@@ -21,17 +21,19 @@ export type ContentType = (typeof CONTENT_TYPES)[number];
 /**
  * 명세 6.4 SignageSubmission. 서버와 주고받는 전송 모델이다.
  * 날짜는 ISO 8601 UTC 문자열이며 화면에서 직접 쓰지 않는다.
+ * (백엔드 `SubmissionDto`, `API-CHANGES-BACKEND.md` 5.1)
  */
 export interface SignageSubmissionDto {
   id: string;
-  ziggleNoticeId: string;
+  /** `detailUrl`이 Ziggle 공지 주소일 때 서버가 뽑은 공지 ID. 아니면 null */
+  ziggleNoticeId: string | null;
   requesterId: string;
-  organizationId: string | null;
   type: ContentType;
   title: string;
   categoryId: string;
   assetId: string;
-  detailUrl: string;
+  /** QR이 가리킬 상세 링크. 없으면 QR 없이 게시한다. */
+  detailUrl: string | null;
   startAt: string;
   endAt: string;
   status: SubmissionStatus;
@@ -49,11 +51,10 @@ export interface SignageSubmissionDto {
 }
 
 /** 전송 모델을 Date로 해석한 도메인 모델. 계산과 비교는 이 타입으로 한다. */
-export interface SignageSubmission
-  extends Omit<
-    SignageSubmissionDto,
-    "startAt" | "endAt" | "createdAt" | "updatedAt" | "submittedAt"
-  > {
+export interface SignageSubmission extends Omit<
+  SignageSubmissionDto,
+  "startAt" | "endAt" | "createdAt" | "updatedAt" | "submittedAt"
+> {
   startAt: Date;
   endAt: Date;
   createdAt: Date;
@@ -62,24 +63,28 @@ export interface SignageSubmission
 }
 
 /**
- * 목록·상세가 참조를 해소해 함께 내려주는 확장 표현.
- * 실제 API 계약이 확정되면(명세 15장 Ziggle 기술 연동) 이 경계에서 조정한다.
+ * 목록·상세가 참조를 해소하고, 신청자가 직접 입력한 표시 정보를 함께 내려주는 표현.
+ * 백엔드는 모든 신청 응답에 이 필드들을 싣는다.
  */
 export interface SignageSubmissionExpandedDto extends SignageSubmissionDto {
   categoryName: string;
-  organizationName: string;
+  /** 신청자 이름. 검토 화면에서 누가 올렸는지 보여준다. */
+  requesterName: string;
+  /** 포스터 미리보기 (1280x1280 안) */
   posterUrl: string;
+  /** 포스터 썸네일 (400x400 안). 목록 카드용 */
+  posterThumbUrl: string;
+  /** 주최. 신청자가 자유 입력한다. 조직 모델은 없다. */
+  organizerName: string | null;
   subtitle: string | null;
   location: string | null;
   description: string | null;
 }
 
 export interface SignageSubmissionExpanded
-  extends SignageSubmission,
-    Omit<
-      SignageSubmissionExpandedDto,
-      keyof SignageSubmissionDto
-    > {}
+  extends
+    SignageSubmission,
+    Omit<SignageSubmissionExpandedDto, keyof SignageSubmissionDto> {}
 
 /**
  * 목록·카드·상세가 실제로 그리는 표시 모델.
@@ -90,7 +95,7 @@ export interface SubmissionView {
   title: string;
   subtitle: string | null;
   categoryName: string;
-  organizationName: string;
+  organizerName: string | null;
   status: SubmissionStatus;
   startAt: Date;
   endAt: Date;
@@ -99,8 +104,10 @@ export interface SubmissionView {
   submittedAt: Date | null;
   /** 신청한 사람. 관리자가 남의 신청을 볼 때 게시자 행동을 숨기는 데 쓴다. */
   requesterId: string;
+  requesterName: string;
   posterUrl: string;
-  detailUrl: string;
+  posterThumbUrl: string;
+  detailUrl: string | null;
   location: string | null;
   description: string | null;
   /** 게시할 위치 묶음. 비어 있으면 모든 위치다. */

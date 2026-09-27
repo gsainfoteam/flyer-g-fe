@@ -64,7 +64,7 @@ export function ApprovalPanel({
                 key={submission.id}
                 submission={submission}
                 highlighted={urgent}
-                sentence={`${submission.organizationName} · ${getStatusSentence({
+                sentence={`${submission.requesterName} · ${getStatusSentence({
                   status: submission.status,
                   waitingLabel: waited,
                 })}`}

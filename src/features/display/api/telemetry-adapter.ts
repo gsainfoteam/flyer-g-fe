@@ -1,12 +1,18 @@
 import { createStorageHeartbeatLog } from "@/mocks/heartbeats";
 import type { HeartbeatLog } from "@/mocks/heartbeats";
+import type { ApiRequestBody } from "@/shared/api/contract";
+import { ApiError } from "@/shared/api/error";
+import { createHttpClient } from "@/shared/api/http-client";
+import type { HttpClient } from "@/shared/api/http-client";
+import { isMockUnit } from "@/shared/config/env";
 import type { AppEnv } from "@/shared/config/env";
+import { deviceCredentials } from "@/shared/lib/device-credential";
+import type { DeviceCredentials } from "@/shared/lib/device-credential";
 
 /**
  * 기기 상태·노출 이벤트 전송 경계 (명세 FR-PLY-08, FR-DASH-03).
  *
- * 수신 서버가 아직 없다(`API-REQUIREMENTS.md` 9절). 실제 계약이 생기면 구현체만
- * 바꾼다.
+ * 실제 전송은 `createHttpTelemetryAdapter`, 개발용은 `createMockTelemetryAdapter`다.
  *
  * 이름은 "노출 이벤트"다. 디스플레이가 정상 렌더링한 횟수이지 사람이 본 횟수가
  * 아니며, 그렇게 표현해서도 안 된다. 개인정보·화면 캡처는 어떤 구현에서도
@@ -59,17 +65,78 @@ export function createMockTelemetryAdapter(
 }
 
 /**
- * 상태 보고는 재생에 필요한 기능이 아니다. 수신 서버가 없는 환경에서도 플레이어는
- * 떠야 하므로 던지지 않고 아무것도 보내지 않는 구현으로 대신한다.
+ * 실제 전송 (`API-CHANGES-BACKEND.md` 9절). 기기 토큰(`X-Device-Token`)으로 보낸다.
+ *
+ * - heartbeat: `POST /signage/devices/{id}/heartbeat` → 204
+ * - 노출 이벤트: `POST /signage/devices/{id}/play-events` → 200 `{ accepted, duplicates }`.
+ *   서버는 한 번에 300개까지 받는다. queue가 50개씩 보내므로 넘지 않는다.
+ *
+ * 토큰이 없으면 던진다. heartbeat는 버려지고, 노출 이벤트는 queue에 남아 토큰이
+ * 생긴 뒤 보낸다.
  */
+export const PLAY_EVENTS_MAX_BATCH = 300;
+
+export function createHttpTelemetryAdapter({
+  client,
+  credentials,
+}: {
+  client: HttpClient;
+  credentials: DeviceCredentials;
+}): DeviceTelemetryAdapter {
+  const authOf = (deviceId: string) => {
+    const token = credentials.get(deviceId);
+    if (token === null) {
+      throw new ApiError({
+        kind: "unknown",
+        code: "DEVICE_NOT_REGISTERED",
+        message: "이 기기의 토큰이 없습니다.",
+      });
+    }
+    return { "X-Device-Token": token };
+  };
+  const path = (deviceId: string) =>
+    `/signage/devices/${encodeURIComponent(deviceId)}`;
+
+  return {
+    async sendHeartbeat(deviceId, payload) {
+      await client.request({
+        method: "POST",
+        path: `${path(deviceId)}/heartbeat`,
+        headers: authOf(deviceId),
+        body: payload satisfies ApiRequestBody<"HeartbeatDto">,
+      });
+    },
+    async sendPlayEvents(deviceId, events) {
+      const headers = authOf(deviceId);
+      for (
+        let start = 0;
+        start < events.length;
+        start += PLAY_EVENTS_MAX_BATCH
+      ) {
+        await client.request({
+          method: "POST",
+          path: `${path(deviceId)}/play-events`,
+          headers,
+          body: {
+            events: events.slice(start, start + PLAY_EVENTS_MAX_BATCH),
+          } satisfies ApiRequestBody<"PlayEventsDto">,
+        });
+      }
+    },
+  };
+}
+
+/** 환경에 맞는 전송 구현을 고른다. (`VITE_API_MODE_DISPLAY`) */
 export function createTelemetryAdapter(env: AppEnv): DeviceTelemetryAdapter {
-  if (env.useMockApi) {
+  if (isMockUnit(env, "display")) {
     return createMockTelemetryAdapter();
   }
-  // TODO(Phase 08): API-REQUIREMENTS.md 9절 계약이 정해지면 실제 전송으로 바꾼다.
-  console.warn("기기 상태 보고 서버가 아직 연결되지 않아 보고를 건너뜁니다.");
-  return {
-    async sendHeartbeat() {},
-    async sendPlayEvents() {},
-  };
+  if (env.apiBaseUrl === null) {
+    throw new Error("실제 기기 상태 보고에는 API 주소가 필요합니다.");
+  }
+  return createHttpTelemetryAdapter({
+    // 기기 요청은 사용자 세션과 무관하다. 인증 헤더를 싣지 않는 client를 쓴다.
+    client: createHttpClient({ baseUrl: env.apiBaseUrl }),
+    credentials: deviceCredentials,
+  });
 }

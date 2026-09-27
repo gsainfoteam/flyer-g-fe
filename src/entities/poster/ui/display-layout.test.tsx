@@ -10,7 +10,7 @@ function poster(id: string): PosterRenderModel {
     title: `포스터 ${id}`,
     subtitle: null,
     categoryName: "공지",
-    organizationName: "가상 조직",
+    organizerName: "가상 조직",
     location: null,
     posterUrl: `/posters/${id}.webp`,
     detailUrl: `https://ziggle.gistory.me/notice/${id}`,
@@ -74,7 +74,9 @@ describe("4분할", () => {
     expect(screen.getAllByRole("article")).toHaveLength(2);
     const grid = container.querySelector(".grid-cols-4")!;
     expect(grid.children).toHaveLength(4);
-    expect(within(grid as HTMLElement).getAllByText(/여기에 함께 걸 수 있어요/)).toHaveLength(2);
+    expect(
+      within(grid as HTMLElement).getAllByText(/여기에 함께 걸 수 있어요/),
+    ).toHaveLength(2);
   });
 
   it("게시 건수는 지금 페이지가 아니라 편성 전체를 센다", () => {

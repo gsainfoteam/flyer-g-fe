@@ -8,8 +8,33 @@
         "run",
         "dev"
       ],
+      "env": {
+        "VITE_USE_MOCK_API": "true",
+        "VITE_USE_MOCK_AUTH": "true"
+      },
       "port": 5173,
       "autoPort": true
+    },
+    {
+      "name": "flyer-g-dev-real-api",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
+      "env": {
+        "VITE_USE_MOCK_AUTH": "false",
+        "VITE_API_MODE_REFERENCE": "real",
+        "VITE_API_MODE_UPLOAD": "real",
+        "VITE_API_MODE_SUBMISSIONS": "real",
+        "VITE_API_MODE_REVIEWS": "real",
+        "VITE_API_MODE_DEVICES": "real",
+        "VITE_API_MODE_DISPLAY": "real"
+      },
+      "port": 5173
     },
     {
       "name": "flyer-g-dist-preview",

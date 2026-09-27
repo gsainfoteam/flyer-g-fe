@@ -40,9 +40,9 @@ const OPERATIONS = [
   "reviews.suspend",
   "displays.getPlaylist",
   "devices.list",
-  "devices.listTargetGroups",
-  "notices.getById",
-  "notices.listSubmittable",
+  "reference.getConfig",
+  "reference.listCategories",
+  "reference.listTargetGroups",
 ] as const;
 
 const STATUSES = [401, 403, 404, 409, 413, 422, 429, 500] as const;
@@ -62,7 +62,11 @@ export function MockControlPanel() {
 
       <div className="flex flex-wrap items-end gap-2">
         <Select value={operation} onValueChange={setOperation}>
-          <SelectTrigger size="sm" aria-label="대상 요청" className="min-w-[220px]">
+          <SelectTrigger
+            size="sm"
+            aria-label="대상 요청"
+            className="min-w-[220px]"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -75,7 +79,11 @@ export function MockControlPanel() {
         </Select>
 
         <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger size="sm" aria-label="오류 status" className="min-w-[96px]">
+          <SelectTrigger
+            size="sm"
+            aria-label="오류 status"
+            className="min-w-[96px]"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

@@ -9,7 +9,7 @@ function poster(id: string): PosterRenderModel {
     title: `포스터 ${id}`,
     subtitle: null,
     categoryName: "공지",
-    organizationName: "가상 조직",
+    organizerName: "가상 조직",
     location: null,
     posterUrl: `/posters/${id}.webp`,
     detailUrl: `https://ziggle.gistory.me/notice/${id}`,

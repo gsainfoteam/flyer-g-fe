@@ -23,11 +23,11 @@ export function useDevices({ enabled = true }: { enabled?: boolean } = {}) {
 
 /** 게시 대상 위치 묶음. 자주 바뀌지 않는 참조 데이터다. */
 export function useTargetGroups() {
-  const { devices } = useRepositories();
+  const { reference } = useRepositories();
 
   return useQuery({
-    queryKey: queryKeys.devices.targetGroups(),
-    queryFn: ({ signal }) => devices.listTargetGroups(signal),
+    queryKey: queryKeys.reference.targetGroups(),
+    queryFn: ({ signal }) => reference.listTargetGroups(signal),
     staleTime: 10 * 60_000,
   });
 }
@@ -36,7 +36,9 @@ export function useTargetGroups() {
  * 신청의 대상 위치를 한 줄로. 그룹 목록을 받기 전에는 null이다.
  * 받기 전에 "모든 위치"라고 먼저 보여주면 틀린 값이 잠깐 스친다.
  */
-export function useTargetGroupLabel(groupIds: readonly string[]): string | null {
+export function useTargetGroupLabel(
+  groupIds: readonly string[],
+): string | null {
   const groups = useTargetGroups();
   if (!groups.data) return null;
   return describeTargetGroups(groupIds, groups.data);

@@ -9,6 +9,9 @@ import type { SubmissionStatus } from "./types";
  *
  * ARCHIVED는 어느 탭에도 넣지 않는다. 보관은 운영 목록에서 숨기는 것이 목적이다.
  * (명세 6.3)
+ *
+ * "작성 중(DRAFT)" 탭은 없다. 서버는 신청을 만들 때 바로 검토 대기로 둔다
+ * (`API-CHANGES-BACKEND.md` 5.2). 건수는 "전체"에 그대로 포함된다.
  */
 export interface StatusGroup {
   key: string;
@@ -19,7 +22,6 @@ export interface StatusGroup {
 
 export const STATUS_GROUPS: readonly StatusGroup[] = [
   { key: "all", label: "전체", statuses: [] },
-  { key: "draft", label: "작성 중", statuses: ["DRAFT"] },
   { key: "pending", label: "승인 대기", statuses: ["PENDING_REVIEW"] },
   { key: "rejected", label: "반려", statuses: ["REJECTED"] },
   { key: "approved", label: "승인/예약", statuses: ["APPROVED", "SCHEDULED"] },
@@ -28,12 +30,9 @@ export const STATUS_GROUPS: readonly StatusGroup[] = [
   { key: "stopped", label: "중단/취소", statuses: ["SUSPENDED", "CANCELED"] },
 ] as const;
 
-
 /** 알 수 없는 key(오래된 링크, 오타)는 전체 탭으로 조용히 돌아간다. */
 export function findStatusGroup(key: string | null | undefined): StatusGroup {
-  return (
-    STATUS_GROUPS.find((group) => group.key === key) ?? STATUS_GROUPS[0]!
-  );
+  return STATUS_GROUPS.find((group) => group.key === key) ?? STATUS_GROUPS[0]!;
 }
 
 /** 상태가 속한 그룹. 목록 행에서 "이 탭으로 이동" 같은 연결에 쓴다. */

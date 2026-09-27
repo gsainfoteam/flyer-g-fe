@@ -4,6 +4,7 @@ import type { SignageSubmissionExpanded } from "@/entities/submission";
 import { normalizeApiError } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
 import { queryKeys } from "@/shared/api/query-keys";
+import { runWithConflictRecovery } from "@/shared/api/recover-conflict";
 import { useIdempotencyKey } from "@/shared/lib/idempotency";
 
 /**
@@ -27,10 +28,19 @@ export function useCancelSubmission(submissionId: string) {
     // version은 화면이 본 신청의 버전이다. 그사이 바뀌었으면 서버가 409를 준다.
     mutationFn: async ({ version }) => {
       try {
-        return await submissions.cancel(
-          submissionId,
-          { version },
-          { idempotencyKey: key.current() },
+        // 응답을 못 받고 다시 눌렀는데 이미 취소되어 있으면 성공으로 본다.
+        return await runWithConflictRecovery(
+          () =>
+            submissions.cancel(
+              submissionId,
+              { version },
+              { idempotencyKey: key.current() },
+            ),
+          {
+            ...key,
+            reload: () => submissions.getById(submissionId),
+            succeeded: (latest) => latest.status === "CANCELED",
+          },
         );
       } catch (cause) {
         throw normalizeApiError(cause);

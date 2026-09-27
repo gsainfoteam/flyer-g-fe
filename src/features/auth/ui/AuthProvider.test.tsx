@@ -12,7 +12,9 @@ function Probe() {
   return (
     <div>
       <p>상태: {state.status}</p>
-      {state.status === "authenticated" && <p>사용자: {state.user.displayName}</p>}
+      {state.status === "authenticated" && (
+        <p>사용자: {state.user.displayName}</p>
+      )}
       {state.status === "error" && <p>오류: {state.error.code}</p>}
       <button type="button" onClick={() => void signIn("/")}>
         로그인
@@ -37,8 +39,12 @@ describe("AuthProvider", () => {
     // 이 상태가 없으면 로그인한 사용자에게 로그인 화면이 잠깐 스쳐 보인다.
     let resolve: (value: null) => void = () => {};
     const adapter: AuthAdapter = {
-      restore: () => new Promise((r) => { resolve = r; }),
+      restore: () =>
+        new Promise((r) => {
+          resolve = r;
+        }),
       signIn: vi.fn(),
+      completeSignIn: vi.fn(),
       signOut: vi.fn(),
     };
 
@@ -65,9 +71,14 @@ describe("AuthProvider", () => {
     const adapter: AuthAdapter = {
       restore: () =>
         Promise.reject(
-          new ApiError({ kind: "http", code: "UNAUTHENTICATED", message: "만료" }),
+          new ApiError({
+            kind: "http",
+            code: "UNAUTHENTICATED",
+            message: "만료",
+          }),
         ),
       signIn: vi.fn(),
+      completeSignIn: vi.fn(),
       signOut: vi.fn(),
     };
 
@@ -100,6 +111,7 @@ describe("AuthProvider", () => {
     const adapter: AuthAdapter = {
       restore: () => Promise.resolve(null),
       signIn: vi.fn(),
+      completeSignIn: vi.fn(),
       signOut: vi.fn(),
     };
 

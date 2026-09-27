@@ -27,6 +27,32 @@ export function parseIsoUtc(value: string): Date {
   return date;
 }
 
+const SEOUL_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/**
+ * 서울 달력 기준으로 n개월 뒤의 같은 시각. 그 달에 같은 날짜가 없으면 말일로 맞춘다.
+ * 예: 2026-01-31 10:00 KST + 1개월 = 2026-02-28 10:00 KST
+ *
+ * 최대 게시 기간(개월) 판정에 쓴다. 서버(`flyer-g-be` `addMonthsInSeoul`)와 같은 규칙이다.
+ */
+export function addSeoulMonths(date: Date, months: number): Date {
+  // UTC 필드가 서울 벽시계 시각을 나타내도록 옮긴다.
+  const local = new Date(date.getTime() + SEOUL_OFFSET_MS);
+  const year = local.getUTCFullYear();
+  const month = local.getUTCMonth() + months;
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const shifted = Date.UTC(
+    year,
+    month,
+    Math.min(local.getUTCDate(), lastDay),
+    local.getUTCHours(),
+    local.getUTCMinutes(),
+    local.getUTCSeconds(),
+    local.getUTCMilliseconds(),
+  );
+  return new Date(shifted - SEOUL_OFFSET_MS);
+}
+
 /** Date를 API로 보낼 UTC ISO 8601 문자열로 바꾼다. */
 export function toIsoUtc(date: Date): string {
   return date.toISOString();
@@ -102,7 +128,8 @@ export function toSeoulDateTimeInputValue(date: Date): string {
  */
 export function fromSeoulInput(value: string): Date {
   const normalized = value.includes("T") ? value : `${value}T00:00`;
-  const withSeconds = normalized.length === 16 ? `${normalized}:00` : normalized;
+  const withSeconds =
+    normalized.length === 16 ? `${normalized}:00` : normalized;
   return parseIsoUtc(`${withSeconds}${SEOUL_UTC_OFFSET}`);
 }
 

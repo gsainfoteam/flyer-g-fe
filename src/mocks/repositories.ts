@@ -1,14 +1,19 @@
 import type {
   DeviceList,
+  DisplayDevice,
   DisplayDeviceDto,
+  UpdateDeviceInput,
 } from "@/entities/device/model/types";
-import { toDisplayDevice } from "@/entities/device/model/types";
+import { DEVICE_LIMITS, toDisplayDevice } from "@/entities/device/model/types";
 import {
   canReviewerDecide,
   canReviewerSuspend,
   canSubmitterCancel,
   canSubmitterEdit,
-  getCategoryName,
+  canSubmitterResubmit,
+  checkSchedule,
+  isAllowedDetailUrl,
+  needsReapproval,
   resolveEffectiveStatus,
   summarizeSubmissions,
   toSignageSubmissionExpanded,
@@ -32,25 +37,27 @@ import type { Playlist } from "@/entities/playlist/model/types";
 import { hasAnyRole } from "@/features/auth/model/types";
 import type { SessionUser } from "@/features/auth/model/types";
 import { getMockAssetUrl } from "@/features/media-upload/api/fake-upload-service";
-import { findMockNoticeDetails } from "@/entities/notice/api/mock-notices";
 import { ApiError, codeForStatus } from "@/shared/api/error";
 import type {
   ApproveInput,
-  CancelSubmissionInput,
   CreateSubmissionInput,
   DeviceRepository,
   DisplayRepository,
   MutationOptions,
+  ReferenceRepository,
   RejectInput,
   Repositories,
   ReviewRepository,
   SubmissionRepository,
+  SubmissionVersionInput,
   SuspendInput,
   UpdateSubmissionInput,
 } from "@/shared/api/repositories";
 import type { Clock } from "@/shared/lib/clock";
 import { systemClock } from "@/shared/lib/clock";
 import { parseIsoUtc, toIsoUtc } from "@/shared/lib/datetime";
+import { ziggleNoticeIdOf } from "@/shared/lib/ziggle-url";
+import type { DeviceSeed } from "./fixtures";
 import {
   DEVICE_FIXTURES,
   TARGET_GROUP_FIXTURES,
@@ -60,28 +67,30 @@ import {
 import { createStorageHeartbeatLog } from "./heartbeats";
 import type { HeartbeatLog } from "./heartbeats";
 import { withInjection } from "./injection";
+import {
+  CATEGORY_FIXTURES,
+  SIGNAGE_CONFIG_FIXTURE,
+  categoryNameOf,
+} from "./reference";
 import { MOCK_USERS } from "./users";
 
 /**
  * 개발·테스트용 in-memory 구현. 실제 서버 대신 같은 repository 인터페이스를 만족한다.
  *
- * 화면이 실제 서버에서 만날 응답을 미리 겪도록, 서버 계약(`API-REQUIREMENTS.md`)의
- * 규칙을 흉내 낸다. 세션 사용자로 조회 범위와 소유권을 판단하고, 권한이 없으면
- * 403, 세션이 없으면 401을 준다. mock이 서버보다 관대하면 권한·충돌 버그가 숨는다.
+ * 화면이 실제 서버에서 만날 응답을 미리 겪도록 백엔드(`flyer-g-be`)의 규칙을 흉내
+ * 낸다. 세션 사용자로 조회 범위와 소유권을 판단하고, 권한이 없으면 403, 남의
+ * 신청은 404, 세션이 없으면 401을 준다. mock이 서버보다 관대하면 권한·충돌 버그가
+ * 숨는다. (`API-CHANGES-BACKEND.md`)
+ *
+ * 서버는 1분마다 승인 건의 저장 상태를 기간에 맞추지만, mock은 요청마다 기간으로
+ * 판정한 실제 상태를 쓴다. 결과는 같다.
  */
 const DEFAULT_PAGE_SIZE = 8;
 
-/** 이 시간 안에 heartbeat가 있으면 온라인이다. 명세 9.7 경보 기준(5분)과 같다. */
-const ONLINE_WINDOW_MS = 5 * 60 * 1000;
+/** 이 시간 안에 heartbeat가 있으면 온라인이다. 서버 기준(3분)과 같다. */
+const ONLINE_WINDOW_MS = 3 * 60 * 1000;
 /** 정상 기기가 heartbeat를 보내는 간격. 플레이어(`use-device-telemetry`)와 같다. */
 const HEARTBEAT_INTERVAL_MS = 60 * 1000;
-
-/** 같은 공지로 다시 신청할 수 없는 상태. 끝났거나 취소된 건은 새로 신청할 수 있다. */
-const CLOSED_STATUSES: readonly SubmissionStatus[] = [
-  "ENDED",
-  "CANCELED",
-  "ARCHIVED",
-];
 
 function httpError(
   status: number,
@@ -98,7 +107,23 @@ function httpError(
   });
 }
 
-const notFound = (id: string) => httpError(404, `신청을 찾을 수 없습니다: ${id}`);
+const notFound = (id: string) =>
+  httpError(404, `신청을 찾을 수 없습니다: ${id}`);
+/** 공지 하나에 신청 하나 규칙에서 세지 않는 끝난 상태. 다시 살아나지 않는다. */
+const FINISHED_STATUSES: readonly SubmissionStatus[] = [
+  "CANCELED",
+  "ENDED",
+  "ARCHIVED",
+];
+const alreadySubmitted = () =>
+  new ApiError({
+    kind: "http",
+    code: "ALREADY_SUBMITTED",
+    message: "이 공지로 이미 신청한 게시물이 있습니다.",
+    status: 409,
+    requestId: "mock-request",
+    fields: { detailUrl: "이 공지로 이미 신청한 게시물이 있습니다." },
+  });
 const conflict = (message: string) => httpError(409, message);
 const invalid = (message: string, fields?: Record<string, string>) =>
   httpError(422, message, fields);
@@ -157,7 +182,11 @@ class MockStore {
    * key는 요청 종류별로 나눠 기억한다. 생성 key와 제출 key가 우연히 같아도
    * 서로 다른 요청이다.
    */
-  rememberIdempotency(scope: string, key: string | undefined, id: string): void {
+  rememberIdempotency(
+    scope: string,
+    key: string | undefined,
+    id: string,
+  ): void {
     if (key) this.seenIdempotencyKeys.set(`${scope}:${key}`, id);
   }
 
@@ -181,7 +210,9 @@ class MockStore {
     running: Promise<SignageSubmissionExpanded>,
   ): void {
     this.inFlightCreates.set(key, running);
-    void running.finally(() => this.inFlightCreates.delete(key));
+    // 실패는 호출부가 받는다. 여기서는 정리만 하고, 실패를 한 번 더 흘리지 않는다.
+    const forget = () => void this.inFlightCreates.delete(key);
+    running.then(forget, forget);
   }
 }
 
@@ -274,29 +305,16 @@ export interface MockRepositoryOptions {
   heartbeats?: HeartbeatLog;
 }
 
-/**
- * mock 저장소끼리 잇는 통로. 실제 서버에서는 한 DB라 저절로 맞는 것을 흉내 낸다.
- * 화면 코드는 쓰지 않는다.
- */
-export interface MockRepositories extends Repositories {
-  /** 이 공지에 끝나지 않은 신청이 있는가. mock 공지 adapter가 "이미 신청함"을 판단한다. */
-  isNoticeInUse(noticeId: string): boolean;
-}
-
-export function isMockRepositories(
-  repositories: Repositories,
-): repositories is MockRepositories {
-  return "isNoticeInUse" in repositories;
-}
-
 export function createMockRepositories(
   options: MockRepositoryOptions = {},
-): MockRepositories {
+): Repositories {
   const clock = options.clock ?? systemClock;
   const latencyMs = options.latencyMs ?? 0;
   const heartbeats = options.heartbeats ?? createStorageHeartbeatLog();
   const startedAt = clock.now();
   const store = new MockStore(startedAt);
+  let deviceSeeds: DeviceSeed[] = [...DEVICE_FIXTURES];
+  const config = SIGNAGE_CONFIG_FIXTURE;
 
   const settle = async (signal?: AbortSignal): Promise<void> => {
     if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
@@ -326,27 +344,34 @@ export function createMockRepositories(
     return user ?? MOCK_USERS.REVIEWER;
   };
 
-  /** 본인 신청이거나 관리자면 볼 수 있다. (명세 3.2 "본인 신청 조회") */
+  /** 본인 신청이거나 관리자면 볼 수 있다. 그 외에는 있는지도 알리지 않는다(404). */
   const findVisible = (id: string): SignageSubmissionExpandedDto => {
     const user = actor();
     const found = store.find(id);
     if (user && found.requesterId !== user.id && !isReviewer(user)) {
-      throw forbidden("이 신청을 볼 권한이 없습니다.");
+      throw notFound(id);
     }
     return found;
   };
 
-  /** 신청을 고치고 내리는 것은 본인만 한다. 관리자도 남의 신청을 대신 고치지 않는다. */
-  const findOwned = (id: string): SignageSubmissionExpandedDto => {
+  /**
+   * 신청을 고치고 내리는 것은 본인만 한다. 관리자도 남의 신청은 404다.
+   * 서버와 같은 순서로 판정한다: 없음·남의 것(404) → 버전(409).
+   */
+  const findOwned = (
+    id: string,
+    version: number,
+  ): SignageSubmissionExpandedDto => {
     const user = actor();
     const found = store.find(id);
-    if (user && found.requesterId !== user.id) {
-      throw forbidden("본인 신청만 바꿀 수 있습니다.");
+    if (user && found.requesterId !== user.id) throw notFound(id);
+    if (found.version !== version) {
+      throw conflict("다른 곳에서 먼저 바뀌었습니다. 새로 고침해 주세요.");
     }
     return found;
   };
 
-  /** scope가 all이면 관리자만, me(기본)면 본인 신청만. */
+  /** scope가 all이면 관리자만(아니면 403), me(기본)면 본인 신청만. */
   const inScope = (
     scope: SubmissionListParams["scope"],
   ): SignageSubmissionExpandedDto[] => {
@@ -360,17 +385,65 @@ export function createMockRepositories(
       : store.all();
   };
 
-  const isNoticeInUse = (noticeId: string): boolean => {
-    const now = clock.now();
-    return store
+  /**
+   * 공지 하나에 신청 하나(서버의 부분 unique index). 끝난 신청(취소·종료·보관)은
+   * 세지 않아 같은 공지로 다시 신청할 수 있다. 반려·중단된 신청은 새로 만들지 않고
+   * 고쳐서 다시 낸다.
+   */
+  const assertNoticeFree = (noticeId: string | null, exceptId?: string) => {
+    if (noticeId === null) return;
+    const taken = store
       .all()
       .some(
         (item) =>
+          item.id !== exceptId &&
           item.ziggleNoticeId === noticeId &&
-          !CLOSED_STATUSES.includes(
-            resolveEffectiveStatus(toSignageSubmissionExpanded(item), now),
-          ),
+          !FINISHED_STATUSES.includes(effectiveOf(item)),
       );
+    if (taken) throw alreadySubmitted();
+  };
+
+  /** 상세 링크를 검증하고 공지 ID를 뽑는다. 빈 값은 링크 없음이다. */
+  const parseDetail = (
+    raw: string | null | undefined,
+    errors: Record<string, string>,
+  ): { url: string; noticeId: string | null } | null => {
+    const value = raw?.trim();
+    if (!value) return null;
+    if (!isAllowedDetailUrl(value, config)) {
+      errors.detailUrl = `${config.allowedDetailUrlHosts.join(", ")} 의 https 주소만 쓸 수 있어요.`;
+      return null;
+    }
+    return { url: value, noticeId: ziggleNoticeIdOf(value) };
+  };
+
+  const optionalText = (value: string | null | undefined) => {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : null;
+  };
+
+  const checkReferences = (
+    input: Pick<UpdateSubmissionInput, "title" | "categoryId">,
+    errors: Record<string, string>,
+  ) => {
+    if (input.title !== undefined) {
+      const title = input.title.trim();
+      if (title.length === 0 || title.length > config.titleMaxLength) {
+        errors.title = `제목은 1~${config.titleMaxLength}자여야 해요.`;
+      }
+    }
+    if (
+      input.categoryId !== undefined &&
+      !CATEGORY_FIXTURES.some((category) => category.id === input.categoryId)
+    ) {
+      errors.categoryId = "선택할 수 없는 카테고리예요.";
+    }
+  };
+
+  const throwIfInvalid = (errors: Record<string, string>) => {
+    if (Object.keys(errors).length > 0) {
+      throw invalid("입력을 확인해 주세요.", errors);
+    }
   };
 
   const runCreate = async (
@@ -387,59 +460,75 @@ export function createMockRepositories(
       return toSignageSubmissionExpanded(store.find(existingId));
     }
 
-    if (input.endAt.getTime() <= input.startAt.getTime()) {
-      // 실서버 계약처럼 필드 단위 오류를 담는다. (`API-REQUIREMENTS.md` 1.2)
-      throw invalid("종료 시각은 시작 시각보다 뒤여야 합니다.", {
-        endAt: "종료 시각은 시작 시각보다 뒤여야 합니다.",
-      });
-    }
-
     const now = clock.now();
-    // 공지 하나에는 진행 중인 신청 하나만 있다. 반려된 건은 새로 만들지 않고
-    // 고쳐서 다시 제출한다. (명세 FR-INT-01)
-    if (isNoticeInUse(input.ziggleNoticeId)) {
-      throw new ApiError({
-        kind: "http",
-        code: "ALREADY_SUBMITTED",
-        message: "이 공지로 진행 중인 신청이 이미 있습니다.",
-        status: 409,
-        requestId: "mock-request",
-      });
-    }
+    // 실서버처럼 필드 단위 오류를 담는다. (`API-REQUIREMENTS.md` 1.2)
+    const errors: Record<string, string> = {
+      ...checkSchedule(input.startAt, input.endAt, now, config),
+    };
+    checkReferences(input, errors);
+    const detail = parseDetail(input.detailUrl, errors);
+    throwIfInvalid(errors);
+    assertNoticeFree(detail?.noticeId ?? null);
 
-    // 조직·부제·장소는 연결한 공지에서 서버가 채운다.
-    const notice = findMockNoticeDetails(input.ziggleNoticeId);
+    // 만들면 바로 검토 대기다(생성과 제출이 한 번). 서버는 만든 시각을 낸 시각으로 둔다.
     const id = `submission-${store.all().length + 1}-${now.getTime()}`;
+    // 실제 서버는 assetId로 저장소 URL을 돌려준다. mock은 방금 올린 미리보기를 쓴다.
+    const posterUrl = getMockAssetUrl(input.assetId) ?? "";
     const created: SignageSubmissionExpandedDto = {
       id,
-      ziggleNoticeId: input.ziggleNoticeId,
+      ziggleNoticeId: detail?.noticeId ?? null,
       requesterId: user.id,
-      organizationId: null,
+      requesterName: user.displayName,
       type: "POSTER",
-      title: input.title,
+      title: input.title.trim(),
       categoryId: input.categoryId,
       assetId: input.assetId,
-      detailUrl: input.detailUrl,
+      detailUrl: detail?.url ?? null,
       startAt: toIsoUtc(input.startAt),
       endAt: toIsoUtc(input.endAt),
-      status: "DRAFT",
+      status: "PENDING_REVIEW",
       priority: 0,
       targetGroupIds: input.targetGroupIds,
       createdAt: toIsoUtc(now),
       updatedAt: toIsoUtc(now),
-      submittedAt: null,
+      submittedAt: toIsoUtc(now),
       version: 1,
-      categoryName: getCategoryName(input.categoryId),
-      organizationName: notice?.organizationName ?? user.displayName,
-      // 실제 서버는 assetId로 저장소 URL을 돌려준다. mock은 방금 올린 미리보기를 쓴다.
-      posterUrl: getMockAssetUrl(input.assetId) ?? "",
-      subtitle: notice?.summary ?? null,
-      location: notice?.location ?? null,
-      description: null,
+      categoryName: categoryNameOf(input.categoryId),
+      organizerName: optionalText(input.organizerName),
+      posterUrl,
+      posterThumbUrl: posterUrl,
+      subtitle: optionalText(input.subtitle),
+      location: optionalText(input.location),
+      description: optionalText(input.description),
     };
     store.insert(created);
+    store.addEvent(eventOf(created, "SUBMITTED", user, now));
     store.rememberIdempotency("create", mutationOptions?.idempotencyKey, id);
     return toSignageSubmissionExpanded(created);
+  };
+
+  /**
+   * 같은 key로 이미 처리한 요청이면 처리하지 않고 지금 상태를 돌려준다. 서버는 처음
+   * 응답을 그대로 주는데, mock은 그사이 바뀐 것이 없다고 보고 지금 상태로 대신한다.
+   */
+  const replayed = (
+    scope: string,
+    id: string,
+    mutationOptions: MutationOptions | undefined,
+  ): SignageSubmissionExpanded | null =>
+    store.resolveIdempotency(scope, mutationOptions?.idempotencyKey) === id
+      ? toSignageSubmissionExpanded(store.find(id))
+      : null;
+
+  /** 검토 결정을 저장하고 key를 기억한다. */
+  const decided = (
+    scope: string,
+    next: SignageSubmissionExpandedDto,
+    mutationOptions: MutationOptions | undefined,
+  ): SignageSubmissionExpanded => {
+    const saved = store.replace(next);
+    store.rememberIdempotency(scope, mutationOptions?.idempotencyKey, saved.id);
+    return toSignageSubmissionExpanded(saved);
   };
 
   const submissions: SubmissionRepository = {
@@ -477,7 +566,10 @@ export function createMockRepositories(
       ) satisfies SubmissionSummary;
     },
 
-    async create(input: CreateSubmissionInput, mutationOptions?: MutationOptions) {
+    async create(
+      input: CreateSubmissionInput,
+      mutationOptions?: MutationOptions,
+    ) {
       const key = mutationOptions?.idempotencyKey;
       if (key) {
         const pending = store.pendingCreate(key);
@@ -489,55 +581,129 @@ export function createMockRepositories(
       return running;
     },
 
+    /**
+     * 신청자 본인만 고친다. 값이 실제로 바뀐 필드만 반영하고, 바뀐 것이 없으면
+     * version도 그대로다. 게시 시작 전 승인 건을 고치면 승인 대기로 돌아간다(재승인).
+     */
     async update(id, input: UpdateSubmissionInput, mutationOptions) {
       await settle(mutationOptions?.signal);
-      const current = findOwned(id);
-      // 다시 검토에 낼 수 있는 상태(작성 중·반려·중단)만 고칠 수 있다. 승인 후
-      // 변경의 재승인 정책은 서버 몫이며 mock은 흉내 내지 않는다. (명세 FR-INT-02)
-      if (!canSubmitterEdit(effectiveOf(current))) {
-        throw conflict("지금 상태에서는 수정할 수 없습니다.");
-      }
-      if (current.version !== input.version) {
-        throw conflict("다른 곳에서 먼저 수정했습니다. 새로 고침해 주세요.");
+      const current = findOwned(id, input.version);
+      const status = effectiveOf(current);
+      if (!canSubmitterEdit(status)) {
+        throw conflict("게시가 시작되어 수정할 수 없습니다.");
       }
 
-      const startAt = input.startAt ?? parseIsoUtc(current.startAt);
-      const endAt = input.endAt ?? parseIsoUtc(current.endAt);
-      if (endAt.getTime() <= startAt.getTime()) {
-        throw invalid("종료 시각은 시작 시각보다 뒤여야 합니다.", {
-          endAt: "종료 시각은 시작 시각보다 뒤여야 합니다.",
-        });
+      const errors: Record<string, string> = {};
+      checkReferences(input, errors);
+      const changes: Partial<SignageSubmissionExpandedDto> = {};
+      const setIfChanged = <K extends keyof SignageSubmissionExpandedDto>(
+        key: K,
+        value: SignageSubmissionExpandedDto[K] | undefined,
+      ) => {
+        if (value !== undefined && value !== current[key]) changes[key] = value;
+      };
+
+      setIfChanged("title", input.title?.trim());
+      setIfChanged("categoryId", input.categoryId);
+      setIfChanged("assetId", input.assetId);
+      for (const key of [
+        "organizerName",
+        "subtitle",
+        "location",
+        "description",
+      ] as const) {
+        if (input[key] !== undefined)
+          setIfChanged(key, optionalText(input[key]));
       }
+      setIfChanged(
+        "startAt",
+        input.startAt ? toIsoUtc(input.startAt) : undefined,
+      );
+      setIfChanged("endAt", input.endAt ? toIsoUtc(input.endAt) : undefined);
+      if (input.detailUrl !== undefined) {
+        const detail = parseDetail(input.detailUrl, errors);
+        setIfChanged("detailUrl", detail?.url ?? null);
+        setIfChanged("ziggleNoticeId", detail?.noticeId ?? null);
+      }
+      const groupsChanged =
+        input.targetGroupIds !== undefined &&
+        (input.targetGroupIds.length !== current.targetGroupIds.length ||
+          input.targetGroupIds.some(
+            (groupId) => !current.targetGroupIds.includes(groupId),
+          ));
+      if (groupsChanged) changes.targetGroupIds = input.targetGroupIds;
 
-      const next = touch(current, clock.now(), {
-        title: input.title ?? current.title,
-        categoryId: input.categoryId ?? current.categoryId,
-        categoryName: input.categoryId
-          ? getCategoryName(input.categoryId)
-          : current.categoryName,
-        assetId: input.assetId ?? current.assetId,
-        posterUrl: input.assetId
-          ? (getMockAssetUrl(input.assetId) ?? current.posterUrl)
-          : current.posterUrl,
-        detailUrl: input.detailUrl ?? current.detailUrl,
-        startAt: toIsoUtc(startAt),
-        endAt: toIsoUtc(endAt),
-        targetGroupIds: input.targetGroupIds ?? current.targetGroupIds,
-      });
-      return toSignageSubmissionExpanded(store.replace(next));
-    },
-
-    async submit(id, mutationOptions) {
-      await settle(mutationOptions?.signal);
-      const current = findOwned(id);
-      // 응답을 못 받아 같은 key로 다시 보낸 제출은 처음 결과를 돌려준다.
-      if (store.resolveIdempotency("submit", mutationOptions?.idempotencyKey) === id) {
+      if (Object.keys(changes).length === 0) {
+        throwIfInvalid(errors);
         return toSignageSubmissionExpanded(current);
       }
-      if (!canSubmitterEdit(effectiveOf(current))) {
-        throw conflict("제출할 수 있는 상태가 아닙니다.");
+
+      const now = clock.now();
+      const reapproval = needsReapproval(status);
+      if (changes.startAt || changes.endAt || reapproval) {
+        Object.assign(
+          errors,
+          checkSchedule(
+            parseIsoUtc(changes.startAt ?? current.startAt),
+            parseIsoUtc(changes.endAt ?? current.endAt),
+            now,
+            config,
+          ),
+        );
+      }
+      throwIfInvalid(errors);
+      if (changes.ziggleNoticeId !== undefined) {
+        assertNoticeFree(changes.ziggleNoticeId, current.id);
+      }
+
+      if (changes.assetId) {
+        const posterUrl = getMockAssetUrl(changes.assetId) ?? current.posterUrl;
+        changes.posterUrl = posterUrl;
+        changes.posterThumbUrl = posterUrl;
+      }
+      if (changes.categoryId) {
+        changes.categoryName = categoryNameOf(changes.categoryId);
+      }
+
+      const next = store.replace(
+        touch(current, now, {
+          ...changes,
+          ...(reapproval
+            ? { status: "PENDING_REVIEW", submittedAt: toIsoUtc(now) }
+            : {}),
+        }),
+      );
+      if (reapproval) {
+        store.addEvent(
+          eventOf(next, "RESUBMITTED", actor() ?? MOCK_USERS.SUBMITTER, now),
+        );
+      }
+      return toSignageSubmissionExpanded(next);
+    },
+
+    /** 반려된 신청을 고친 뒤 다시 검토를 요청한다. 기간 규칙을 지금 시각으로 다시 본다. */
+    async submit(id, input: SubmissionVersionInput, mutationOptions) {
+      await settle(mutationOptions?.signal);
+      // 응답을 못 받아 같은 key로 다시 보낸 요청은 처음 결과를 돌려준다.
+      if (
+        store.resolveIdempotency("submit", mutationOptions?.idempotencyKey) ===
+        id
+      ) {
+        return toSignageSubmissionExpanded(store.find(id));
+      }
+      const current = findOwned(id, input.version);
+      if (!canSubmitterResubmit(effectiveOf(current))) {
+        throw conflict("다시 검토를 요청할 수 있는 상태가 아닙니다.");
       }
       const now = clock.now();
+      throwIfInvalid({
+        ...checkSchedule(
+          parseIsoUtc(current.startAt),
+          parseIsoUtc(current.endAt),
+          now,
+          config,
+        ),
+      });
       const submitted = store.replace(
         touch(current, now, {
           status: "PENDING_REVIEW",
@@ -545,25 +711,19 @@ export function createMockRepositories(
         }),
       );
       store.addEvent(
-        eventOf(
-          submitted,
-          current.submittedAt === null ? "SUBMITTED" : "RESUBMITTED",
-          actor() ?? MOCK_USERS.SUBMITTER,
-          now,
-        ),
+        eventOf(submitted, "RESUBMITTED", actor() ?? MOCK_USERS.SUBMITTER, now),
       );
       store.rememberIdempotency("submit", mutationOptions?.idempotencyKey, id);
       return toSignageSubmissionExpanded(submitted);
     },
 
-    async cancel(id, input: CancelSubmissionInput, mutationOptions) {
+    async cancel(id, input: SubmissionVersionInput, mutationOptions) {
       await settle(mutationOptions?.signal);
-      const current = findOwned(id);
+      const replay = replayed("cancel", id, mutationOptions);
+      if (replay) return replay;
+      const current = findOwned(id, input.version);
       if (!canSubmitterCancel(effectiveOf(current))) {
         throw conflict("이미 게시가 시작되어 취소할 수 없습니다.");
-      }
-      if (current.version !== input.version) {
-        throw conflict("다른 곳에서 먼저 바뀌었습니다. 새로 고침해 주세요.");
       }
       const now = clock.now();
       const canceled = store.replace(
@@ -572,6 +732,7 @@ export function createMockRepositories(
       store.addEvent(
         eventOf(canceled, "CANCELED", actor() ?? MOCK_USERS.SUBMITTER, now),
       );
+      store.rememberIdempotency("cancel", mutationOptions?.idempotencyKey, id);
       return toSignageSubmissionExpanded(canceled);
     },
   };
@@ -586,7 +747,11 @@ export function createMockRepositories(
         item.submittedAt ?? item.createdAt;
       const pending = store
         .all()
-        .filter((item) => item.status === "PENDING_REVIEW")
+        .filter(
+          (item) =>
+            item.status === "PENDING_REVIEW" &&
+            (!params.categoryId || item.categoryId === params.categoryId),
+        )
         .sort((a, b) => waitingSince(a).localeCompare(waitingSince(b)));
       return paginate(pending, params, clock.now());
     },
@@ -594,14 +759,16 @@ export function createMockRepositories(
     async listHistory(submissionId, signal) {
       await settle(signal);
       findVisible(submissionId);
-      return store.eventsOf(submissionId).map(
-        (event): SubmissionEvent => toSubmissionEvent(event),
-      );
+      return store
+        .eventsOf(submissionId)
+        .map((event): SubmissionEvent => toSubmissionEvent(event));
     },
 
     async approve(input: ApproveInput, mutationOptions?: MutationOptions) {
       await settle(mutationOptions?.signal);
       const reviewer = requireReviewer();
+      const replay = replayed("approve", input.submissionId, mutationOptions);
+      if (replay) return replay;
       const current = store.find(input.submissionId);
       if (!canReviewerDecide(effectiveOf(current))) {
         throw conflict("다른 관리자가 이미 처리했습니다.");
@@ -611,19 +778,27 @@ export function createMockRepositories(
       }
 
       const now = clock.now();
+      // 기간이 끝난 신청은 승인하지 않는다. 기간 문제로 반려한다.
+      if (parseIsoUtc(current.endAt).getTime() <= now.getTime()) {
+        throw conflict("게시 기간이 이미 끝났습니다.");
+      }
       const status =
         parseIsoUtc(current.startAt).getTime() > now.getTime()
           ? "SCHEDULED"
           : "PUBLISHED";
       store.addEvent(eventOf(current, "APPROVED", reviewer, now));
-      return toSignageSubmissionExpanded(
-        store.replace(touch(current, now, { status })),
+      return decided(
+        "approve",
+        touch(current, now, { status }),
+        mutationOptions,
       );
     },
 
     async reject(input: RejectInput, mutationOptions?: MutationOptions) {
       await settle(mutationOptions?.signal);
       const reviewer = requireReviewer();
+      const replay = replayed("reject", input.submissionId, mutationOptions);
+      if (replay) return replay;
       if (input.comment.trim().length === 0) {
         throw invalid("반려 사유를 입력해야 합니다.", {
           comment: "반려 사유를 입력해야 합니다.",
@@ -644,14 +819,18 @@ export function createMockRepositories(
           comment: input.comment,
         }),
       );
-      return toSignageSubmissionExpanded(
-        store.replace(touch(current, now, { status: "REJECTED" })),
+      return decided(
+        "reject",
+        touch(current, now, { status: "REJECTED" }),
+        mutationOptions,
       );
     },
 
     async suspend(input: SuspendInput, mutationOptions?: MutationOptions) {
       await settle(mutationOptions?.signal);
       const reviewer = requireReviewer();
+      const replay = replayed("suspend", input.submissionId, mutationOptions);
+      if (replay) return replay;
       if (input.reason.trim().length === 0) {
         throw invalid("중단 사유를 입력해야 합니다.", {
           reason: "중단 사유를 입력해야 합니다.",
@@ -669,8 +848,10 @@ export function createMockRepositories(
           comment: input.reason,
         }),
       );
-      return toSignageSubmissionExpanded(
-        store.replace(touch(current, now, { status: "SUSPENDED" })),
+      return decided(
+        "suspend",
+        touch(current, now, { status: "SUSPENDED" }),
+        mutationOptions,
       );
     },
   };
@@ -681,7 +862,7 @@ export function createMockRepositories(
       const now = clock.now();
       // 기기는 자기 위치가 대상인 게시물만 받는다. 등록되지 않은 id(미리보기)는
       // 모든 위치의 게시물을 본다.
-      const device = DEVICE_FIXTURES.find((item) => item.id === deviceId);
+      const device = deviceSeeds.find((item) => item.id === deviceId);
       const playable = store
         .all()
         .map(toSignageSubmissionExpanded)
@@ -698,8 +879,9 @@ export function createMockRepositories(
         serverTime: toIsoUtc(now),
         deviceName: device?.name ?? null,
         playlistVersion: hashPlaylist(playable),
-        refreshAfterSeconds: 60,
-        layout: { type: "SINGLE", rotationSeconds: 10 },
+        // 등록된 기기는 운영자가 정한 화면 설정을, 미리보기는 기본값을 쓴다.
+        refreshAfterSeconds: device?.refreshAfterSeconds ?? 60,
+        layout: device?.layout ?? { type: "SINGLE", rotationSeconds: 10 },
         items: playable.map((item) => ({
           submissionId: item.id,
           revision: item.version,
@@ -713,44 +895,187 @@ export function createMockRepositories(
           checksum: `mock-${item.id}`,
           subtitle: item.subtitle,
           location: item.location,
-          organizerName: item.organizationName,
+          organizerName: item.organizerName,
         })),
       });
     },
+  };
+
+  /** 기기 관리(등록·수정·재발급)는 운영자만 한다. */
+  const requireSuperAdmin = (): SessionUser => {
+    const user = actor();
+    if (user && !hasAnyRole(user, ["SUPER_ADMIN"])) {
+      throw forbidden("시스템 운영자만 할 수 있는 작업입니다.");
+    }
+    return user ?? MOCK_USERS.SUPER_ADMIN;
+  };
+
+  /** 서버 DTO와 같은 범위로 검사한다. (`flyer-g-be` `device-input.dto.ts`) */
+  const checkDeviceInput = (input: UpdateDeviceInput) => {
+    const errors: Record<string, string> = {};
+    if (input.name !== undefined) {
+      const name = input.name.trim();
+      if (name.length === 0 || name.length > DEVICE_LIMITS.nameMaxLength) {
+        errors.name = `기기 이름은 1~${DEVICE_LIMITS.nameMaxLength}자여야 합니다.`;
+      }
+    }
+    if (
+      input.location &&
+      input.location.trim().length > DEVICE_LIMITS.locationMaxLength
+    ) {
+      errors.location = `위치는 ${DEVICE_LIMITS.locationMaxLength}자 이하여야 합니다.`;
+    }
+    const inRange = (
+      value: number | undefined,
+      { min, max }: { min: number; max: number },
+    ) =>
+      value === undefined ||
+      (Number.isInteger(value) && value >= min && value <= max);
+    if (!inRange(input.rotationSeconds, DEVICE_LIMITS.rotationSeconds)) {
+      errors.rotationSeconds = `전환 간격은 ${DEVICE_LIMITS.rotationSeconds.min}~${DEVICE_LIMITS.rotationSeconds.max}초여야 합니다.`;
+    }
+    if (
+      !inRange(input.refreshAfterSeconds, DEVICE_LIMITS.refreshAfterSeconds)
+    ) {
+      errors.refreshAfterSeconds = `갱신 주기는 ${DEVICE_LIMITS.refreshAfterSeconds.min}~${DEVICE_LIMITS.refreshAfterSeconds.max}초여야 합니다.`;
+    }
+    if (
+      input.groupIds?.some(
+        (id) => !TARGET_GROUP_FIXTURES.some((group) => group.id === id),
+      )
+    ) {
+      errors.groupIds = "선택할 수 없는 위치 그룹이 있습니다.";
+    }
+    throwIfInvalid(errors);
+  };
+
+  const issueToken = (deviceId: string) =>
+    `fgd_mock_${deviceId}_${clock.now().getTime().toString(36)}`;
+
+  const toDevice = (seed: DeviceSeed): DisplayDevice => {
+    const { silentSinceMs, isActive, ...device } = seed;
+    const now = clock.now();
+    const heartbeat = heartbeats.read()[device.id];
+    const heartbeatAt = heartbeat ? Date.parse(heartbeat.at) : Number.NaN;
+    // 정상 기기는 1분마다 heartbeat를 보낸다고 치고, 끊긴 기기는 끊긴 시점에
+    // 멈춰 있다. 실제 TV 탭이 보낸 기록이 더 최근이면 그것을 쓴다.
+    const simulated =
+      silentSinceMs === "never"
+        ? Number.NaN
+        : silentSinceMs === null
+          ? now.getTime() - (now.getTime() % HEARTBEAT_INTERVAL_MS)
+          : startedAt.getTime() - silentSinceMs;
+    const candidates = [heartbeatAt, simulated].filter(Number.isFinite);
+    const lastSeen = candidates.length > 0 ? Math.max(...candidates) : null;
+
+    const dto: DisplayDeviceDto = {
+      ...device,
+      appVersion: heartbeat?.appVersion ?? device.appVersion,
+      resolution: heartbeat?.resolution ?? device.resolution,
+      lastSeenAt: lastSeen === null ? null : toIsoUtc(new Date(lastSeen)),
+      status: !isActive
+        ? "DISABLED"
+        : lastSeen !== null && now.getTime() - lastSeen <= ONLINE_WINDOW_MS
+          ? "ONLINE"
+          : "OFFLINE",
+    };
+    return toDisplayDevice(dto);
+  };
+
+  const findDevice = (id: string): DeviceSeed => {
+    const found = deviceSeeds.find((item) => item.id === id);
+    if (!found) throw httpError(404, `기기를 찾을 수 없습니다: ${id}`);
+    return found;
   };
 
   const devices: DeviceRepository = {
     async list(signal): Promise<DeviceList> {
       await settle(signal);
       requireReviewer();
-      const now = clock.now();
-      const recorded = heartbeats.read();
+      const items = [...deviceSeeds]
+        .sort((a, b) => a.name.localeCompare(b.name, "ko"))
+        .map(toDevice);
+      return { items, serverTime: clock.now() };
+    },
 
-      const items = DEVICE_FIXTURES.map(({ silentSinceMs, ...device }) => {
-        // 정상 기기는 1분마다 heartbeat를 보낸다고 치고, 끊긴 기기는 끊긴
-        // 시점에 멈춰 있다. 실제 TV 탭이 보낸 기록이 더 최근이면 그것을 쓴다.
-        const simulated =
-          silentSinceMs === null
-            ? now.getTime() - (now.getTime() % HEARTBEAT_INTERVAL_MS)
-            : startedAt.getTime() - silentSinceMs;
-        const heartbeat = recorded[device.id];
-        const heartbeatAt = heartbeat ? Date.parse(heartbeat.at) : Number.NaN;
-        const lastSeen =
-          Number.isFinite(heartbeatAt) && heartbeatAt > simulated
-            ? heartbeatAt
-            : simulated;
+    async create(input, signal) {
+      await settle(signal);
+      requireSuperAdmin();
+      checkDeviceInput(input);
+      const issuedAt = toIsoUtc(clock.now());
+      const id = `device-${deviceSeeds.length + 1}-${clock.now().getTime().toString(36)}`;
+      const seed: DeviceSeed = {
+        id,
+        name: input.name.trim(),
+        location: input.location?.trim() || null,
+        groupIds: input.groupIds,
+        orientation: input.orientation,
+        resolution: null,
+        appVersion: null,
+        layout: { type: input.layout, rotationSeconds: input.rotationSeconds },
+        refreshAfterSeconds: input.refreshAfterSeconds,
+        lastPlaylistVersion: null,
+        lastRenderOkAt: null,
+        tokenIssuedAt: issuedAt,
+        silentSinceMs: "never",
+        isActive: true,
+      };
+      deviceSeeds = [...deviceSeeds, seed];
+      return { device: toDevice(seed), token: issueToken(id) };
+    },
 
-        const dto: DisplayDeviceDto = {
-          ...device,
-          appVersion: heartbeat?.appVersion ?? device.appVersion,
-          resolution: heartbeat?.resolution ?? device.resolution,
-          lastSeenAt: toIsoUtc(new Date(lastSeen)),
-          status:
-            now.getTime() - lastSeen <= ONLINE_WINDOW_MS ? "ONLINE" : "OFFLINE",
-        };
-        return toDisplayDevice(dto);
-      });
-      return { items, serverTime: now };
+    async update(id, input, signal) {
+      await settle(signal);
+      requireSuperAdmin();
+      checkDeviceInput(input);
+      const current = findDevice(id);
+      const next: DeviceSeed = {
+        ...current,
+        ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+        ...(input.location !== undefined
+          ? { location: input.location?.trim() || null }
+          : {}),
+        ...(input.groupIds !== undefined ? { groupIds: input.groupIds } : {}),
+        ...(input.orientation !== undefined
+          ? { orientation: input.orientation }
+          : {}),
+        layout: {
+          type: input.layout ?? current.layout.type,
+          rotationSeconds:
+            input.rotationSeconds ?? current.layout.rotationSeconds,
+        },
+        refreshAfterSeconds:
+          input.refreshAfterSeconds ?? current.refreshAfterSeconds,
+        isActive: input.isActive ?? current.isActive,
+      };
+      deviceSeeds = deviceSeeds.map((item) => (item.id === id ? next : item));
+      return toDevice(next);
+    },
+
+    async rotateToken(id, signal) {
+      await settle(signal);
+      requireSuperAdmin();
+      const current = findDevice(id);
+      const next: DeviceSeed = {
+        ...current,
+        tokenIssuedAt: toIsoUtc(clock.now()),
+      };
+      deviceSeeds = deviceSeeds.map((item) => (item.id === id ? next : item));
+      return { device: toDevice(next), token: issueToken(id) };
+    },
+  };
+
+  const reference: ReferenceRepository = {
+    async getConfig(signal) {
+      await settle(signal);
+      actor();
+      return { ...config };
+    },
+
+    async listCategories(signal) {
+      await settle(signal);
+      actor();
+      return CATEGORY_FIXTURES.map((category) => ({ ...category }));
     },
 
     async listTargetGroups(signal) {
@@ -766,6 +1091,6 @@ export function createMockRepositories(
     reviews: withInjection("reviews", reviews),
     displays: withInjection("displays", displays),
     devices: withInjection("devices", devices),
-    isNoticeInUse,
+    reference: withInjection("reference", reference),
   };
 }

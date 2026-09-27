@@ -67,6 +67,12 @@ describe("접근성 자동 검사", () => {
     await expectNoViolations(container);
   });
 
+  it("기기 관리", async () => {
+    const { container } = renderRoute("/displays", { role: "SUPER_ADMIN" });
+    await screen.findByRole("heading", { name: /디스플레이 기기/ });
+    await expectNoViolations(container);
+  });
+
   it("로그인", async () => {
     const { container } = renderRoute("/submissions", { role: null });
     await screen.findByRole("button", { name: /Ziggle 계정으로 로그인/ });

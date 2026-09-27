@@ -26,7 +26,10 @@ describe("mock repositories", () => {
     expect(first.items).toHaveLength(4);
     expect(first.nextCursor).not.toBeNull();
 
-    const second = await repos.submissions.list({ limit: 4, cursor: first.nextCursor });
+    const second = await repos.submissions.list({
+      limit: 4,
+      cursor: first.nextCursor,
+    });
     expect(second.items.length).toBeGreaterThan(0);
     expect(second.items[0]!.id).not.toBe(first.items[0]!.id);
     expect(first.totalCount).toBe(second.totalCount);
@@ -61,10 +64,10 @@ describe("mock repositories", () => {
     }
   });
 
-  it("승인 대기 목록은 오래 기다린 순으로 준다", async () => {
+  it("승인 대기 목록은 오래 기다린 순(마지막 검토 요청 시각)으로 준다", async () => {
     const pending = await repos.reviews.listPending({ limit: 10 });
-    const created = pending.items.map((item) => item.createdAt.getTime());
-    expect(created).toEqual([...created].sort((a, b) => a - b));
+    const waiting = pending.items.map((item) => item.submittedAt!.getTime());
+    expect(waiting).toEqual([...waiting].sort((a, b) => a - b));
   });
 
   it("요약 통계가 목록과 같은 기준 시각을 쓴다", async () => {
@@ -75,26 +78,35 @@ describe("mock repositories", () => {
   });
 
   it("없는 신청은 NOT_FOUND로 실패한다", async () => {
-    const error = await repos.submissions.getById("nope").catch((cause) => cause);
+    const error = await repos.submissions
+      .getById("nope")
+      .catch((cause) => cause);
     expect(isApiError(error)).toBe(true);
     expect(error.status).toBe(404);
   });
 
   it("같은 idempotency key로 두 번 만들어도 하나만 생긴다", async () => {
     const input = {
-      ziggleNoticeId: "notice-x",
       title: "새 신청",
-      categoryId: "동아리",
+      categoryId: "club",
       assetId: "asset-x",
-      detailUrl: "https://ziggle.gistory.me/notices/x",
+      detailUrl: "https://ziggle.gistory.me/notice/x",
+      organizerName: null,
+      subtitle: null,
+      location: null,
+      description: null,
       startAt: parseIsoUtc("2026-06-10T00:00:00.000Z"),
       endAt: parseIsoUtc("2026-06-20T00:00:00.000Z"),
       targetGroupIds: ["group-house-a"],
     };
 
     const before = await repos.submissions.list({ limit: 100 });
-    const first = await repos.submissions.create(input, { idempotencyKey: "key-1" });
-    const second = await repos.submissions.create(input, { idempotencyKey: "key-1" });
+    const first = await repos.submissions.create(input, {
+      idempotencyKey: "key-1",
+    });
+    const second = await repos.submissions.create(input, {
+      idempotencyKey: "key-1",
+    });
     const after = await repos.submissions.list({ limit: 100 });
 
     expect(second.id).toBe(first.id);
@@ -104,11 +116,14 @@ describe("mock repositories", () => {
   it("종료가 시작보다 빠르면 만들지 않는다", async () => {
     const error = await repos.submissions
       .create({
-        ziggleNoticeId: "notice-y",
         title: "잘못된 기간",
-        categoryId: "공지",
+        categoryId: "notice",
         assetId: "asset-y",
-        detailUrl: "https://ziggle.gistory.me/notices/y",
+        detailUrl: "https://ziggle.gistory.me/notice/y",
+        organizerName: null,
+        subtitle: null,
+        location: null,
+        description: null,
         startAt: parseIsoUtc("2026-06-20T00:00:00.000Z"),
         endAt: parseIsoUtc("2026-06-10T00:00:00.000Z"),
         targetGroupIds: [],
@@ -135,7 +150,10 @@ describe("mock repositories", () => {
     const pending = await repos.reviews.listPending({});
     const target = pending.items[0]!;
 
-    await repos.reviews.approve({ submissionId: target.id, revision: target.version });
+    await repos.reviews.approve({
+      submissionId: target.id,
+      revision: target.version,
+    });
     const error = await repos.reviews
       .approve({ submissionId: target.id, revision: target.version })
       .catch((cause) => cause);

@@ -5,7 +5,10 @@ import { Alert, AlertDescription } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
 import { Spinner } from "@/shared/ui/spinner";
 import { cn } from "@/shared/lib/utils";
-import type { PosterUploadState } from "../model/use-poster-upload";
+import type {
+  PosterUploadState,
+  UploadLimits,
+} from "../model/use-poster-upload";
 
 /**
  * 포스터 선택과 업로드 상태 (명세 FR-SUB-01).
@@ -23,10 +26,11 @@ interface PosterDropzoneProps {
   onClear: () => void;
   /** 제출을 눌렀는데 포스터가 없을 때처럼, 폼 차원의 오류 */
   error?: string | null;
+  /** 서버 업로드 한도. 받기 전에는 기본값으로 안내한다. */
+  limits?: UploadLimits | null;
 }
 
 const ACCEPT = ALLOWED_IMAGE_MIME_TYPES.join(",");
-const MAX_MB = Math.floor(MEDIA_CONSTRAINTS.maxSizeBytes / (1024 * 1024));
 
 export function PosterDropzone({
   state,
@@ -34,7 +38,13 @@ export function PosterDropzone({
   onRetry,
   onClear,
   error,
+  limits,
 }: PosterDropzoneProps) {
+  const maxMb = Math.floor(
+    (limits?.maxSizeBytes ?? MEDIA_CONSTRAINTS.maxSizeBytes) / (1024 * 1024),
+  );
+  const minShortEdgePx =
+    limits?.minShortEdgePx ?? MEDIA_CONSTRAINTS.minShortEdgePx;
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
@@ -61,7 +71,9 @@ export function PosterDropzone({
         }}
         onDragLeave={(event) => {
           // 안쪽 요소 위로 옮겨 가도 dragleave가 난다. 영역을 벗어날 때만 끈다.
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          if (
+            !event.currentTarget.contains(event.relatedTarget as Node | null)
+          ) {
             setIsDraggingOver(false);
           }
         }}
@@ -114,8 +126,7 @@ export function PosterDropzone({
               : "이미지를 끌어다 놓거나 선택하세요"}
           </p>
           <p className="mt-1 text-caption text-ink-muted">
-            JPG, PNG, WebP · 최대 {MAX_MB}MB · 짧은 변{" "}
-            {MEDIA_CONSTRAINTS.minShortEdgePx}px 이상
+            JPG, PNG, WebP · 최대 {maxMb}MB · 짧은 변 {minShortEdgePx}px 이상
           </p>
           {!busy && (
             <span className="mt-3 rounded-control bg-ink px-3 py-1.5 text-caption text-surface">
@@ -151,7 +162,12 @@ export function PosterDropzone({
       )}
 
       {state.status === "failed" && (
-        <Button variant="secondary" size="sm" onClick={onRetry} className="w-full">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onRetry}
+          className="w-full"
+        >
           <RotateCcw aria-hidden="true" />
           다시 시도
         </Button>

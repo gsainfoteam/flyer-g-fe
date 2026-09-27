@@ -1,23 +1,26 @@
+import type { HttpClient } from "@/shared/api/http-client";
+import { isMockUnit } from "@/shared/config/env";
 import type { AppEnv } from "@/shared/config/env";
 import type { AssetUploadService } from "./asset-upload-service";
 import { createFakeUploadService } from "./fake-upload-service";
 import type { FakeUploadOptions } from "./fake-upload-service";
+import { createHttpUploadService } from "./http-upload-service";
 
 /**
- * 환경에 맞는 업로드 구현을 고른다.
+ * 환경에 맞는 업로드 구현을 고른다. (`VITE_API_MODE_UPLOAD`)
  *
- * 실제 업로드는 presign 계약이 확정된 뒤 Phase 08에서 붙인다. 계약이 없는 상태에서
- * 운영 endpoint를 추측해 고정하지 않는다. (`API-REQUIREMENTS.md` 2절)
+ * 실제 업로드는 사용자 토큰을 싣는 API client가 필요하다. mock이면 쓰지 않는다.
  */
 export function createAssetUploadService(
   env: AppEnv,
+  client: HttpClient | null,
   options: FakeUploadOptions = {},
 ): AssetUploadService {
-  if (env.useMockApi) {
+  if (isMockUnit(env, "upload")) {
     return createFakeUploadService(options);
   }
-
-  throw new Error(
-    "실제 업로드 서비스가 아직 연결되지 않았습니다. presign 계약 확정 후 Phase 08에서 구현합니다.",
-  );
+  if (client === null) {
+    throw new Error("실제 업로드에는 API 주소가 필요합니다.");
+  }
+  return createHttpUploadService({ client });
 }

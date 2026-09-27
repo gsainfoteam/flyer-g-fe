@@ -12,11 +12,12 @@ export interface PosterRenderModel {
   title: string;
   subtitle: string | null;
   categoryName: string;
-  organizationName: string;
+  /** 주최. 신청자가 자유 입력한다. 없으면 null */
+  organizerName: string | null;
   location: string | null;
   posterUrl: string;
-  /** QR과 상세 링크의 단일 원천 */
-  detailUrl: string;
+  /** QR과 상세 링크의 단일 원천. 없으면 QR 없이 그린다. */
+  detailUrl: string | null;
   startAt: Date;
   endAt: Date;
   /** 편성에 실린 신청 버전. 노출 이벤트가 어느 버전을 보여줬는지 남긴다. */
@@ -29,7 +30,7 @@ export function fromSubmissionView(view: SubmissionView): PosterRenderModel {
     title: view.title,
     subtitle: view.subtitle ?? view.description,
     categoryName: view.categoryName,
-    organizationName: view.organizationName,
+    organizerName: view.organizerName,
     location: view.location,
     posterUrl: view.posterUrl,
     detailUrl: view.detailUrl,
@@ -45,7 +46,7 @@ export function fromPlaylistItem(item: PlaylistItem): PosterRenderModel {
     title: item.title,
     subtitle: item.subtitle ?? null,
     categoryName: item.category,
-    organizationName: item.organizerName ?? "",
+    organizerName: item.organizerName ?? null,
     location: item.location ?? null,
     posterUrl: item.assetUrl,
     detailUrl: item.detailUrl,
