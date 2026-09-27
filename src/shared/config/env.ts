@@ -11,6 +11,8 @@
  * (`docs/frontend-phases/phase-08-real-api-integration.md` 2절)
  */
 
+import { paths } from "./routes";
+
 /**
  * 따로 연동하는 API 단위. 인증은 `VITE_USE_MOCK_AUTH`가 따로 정한다.
  *
@@ -129,6 +131,11 @@ function parseAuthConfig(raw: RawEnv): AuthConfig {
       "실제 로그인에는 VITE_AUTH_CLIENT_ID와 VITE_AUTH_REDIRECT_URI가 반드시 필요합니다.",
     );
   }
+  if (redirectUri.pathname !== paths.authCallback) {
+    throw new EnvConfigError(
+      `VITE_AUTH_REDIRECT_URI의 경로는 ${paths.authCallback}여야 합니다. 로그인 후 그 경로가 결과를 받습니다.`,
+    );
+  }
   // 제공자는 등록한 문자열과 정확히 비교한다. 정규화하지 않고 입력 그대로 쓴다.
   return { clientId, redirectUri: raw.VITE_AUTH_REDIRECT_URI!.trim() };
 }
@@ -177,6 +184,11 @@ export function readAppEnv(raw: RawEnv): AppEnv {
   if (realUnits.length > 0 && apiBaseUrl === null) {
     throw new EnvConfigError(
       "실제 API 모드에서는 VITE_API_BASE_URL이 반드시 필요합니다.",
+    );
+  }
+  if (!useMockAuth && apiBaseUrl === null) {
+    throw new EnvConfigError(
+      "실제 로그인은 백엔드가 토큰을 발급하므로 VITE_API_BASE_URL이 반드시 필요합니다.",
     );
   }
   // 실제 서버는 mock 세션을 모른다. 로그인이 필요한 단위만 real로 두면 전부 401이다.

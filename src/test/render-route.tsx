@@ -3,7 +3,11 @@ import { render } from "@testing-library/react";
 import { RouterProvider, createMemoryRouter } from "react-router";
 import { AppProviders } from "@/app/providers/AppProviders";
 import { routeTree } from "@/app/router/route-tree";
-import { createMockAuthAdapter } from "@/features/auth/api/mock-auth";
+import type { AuthAdapter } from "@/features/auth/api/auth-adapter";
+import {
+  createMockAuthAdapter,
+  isMockAuthAdapter,
+} from "@/features/auth/api/mock-auth";
 import type { Role } from "@/features/auth/model/types";
 import { createMemoryHeartbeatLog } from "@/mocks/heartbeats";
 import {
@@ -30,16 +34,22 @@ interface RenderRouteOptions {
   role?: Role | null;
   repositories?: Repositories;
   services?: Partial<AppServices>;
+  /** 실제 로그인 흐름을 흉내 낼 때 넘긴다. 없으면 `role`로 mock 세션을 만든다. */
+  authAdapter?: AuthAdapter;
 }
 
 export function renderRoute(
   initialPath: string,
-  { role = null, repositories, services }: RenderRouteOptions = {},
+  {
+    role = null,
+    repositories,
+    services,
+    authAdapter = createMockAuthAdapter({ initialRole: role }),
+  }: RenderRouteOptions = {},
 ) {
   // mock 인증은 sessionStorage에 역할을 남긴다. 테스트끼리 새지 않게 지운다.
   sessionStorage.clear();
 
-  const authAdapter = createMockAuthAdapter({ initialRole: role });
   const router = createMemoryRouter(routeTree, { initialEntries: [initialPath] });
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -51,7 +61,9 @@ export function renderRoute(
     createMockRepositories({
       clock,
       // 실제 서버처럼 로그인한 역할로 조회 범위와 권한을 판단한다.
-      session: () => authAdapter.peekUser(),
+      session: isMockAuthAdapter(authAdapter)
+        ? () => authAdapter.peekUser()
+        : undefined,
       heartbeats: createMemoryHeartbeatLog(),
     });
   const resolvedServices: AppServices = {

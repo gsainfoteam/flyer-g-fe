@@ -131,6 +131,14 @@ export function toUserMessage(error: ApiError): string {
       return "서버가 응답하지 않아요. 잠시 후 다시 시도해 주세요.";
     case "REQUEST_CANCELED":
       return "요청이 취소되었습니다.";
+    case "AUTH_DENIED":
+      return "로그인을 취소했어요. 다시 로그인해 주세요.";
+    case "AUTH_STATE_MISMATCH":
+      return "로그인 요청이 만료되었거나 다른 창에서 시작되었어요. 다시 로그인해 주세요.";
+    case "AUTH_REDIRECT_MISMATCH":
+      return "로그인 설정이 이 주소와 맞지 않아요. 관리자에게 문의해 주세요.";
+    case "AUTH_FAILED":
+      return "로그인을 마치지 못했어요. 다시 로그인해 주세요.";
     case "UPLOAD_FAILED":
       return "포스터를 올리지 못했습니다. 다시 시도해 주세요.";
     default:

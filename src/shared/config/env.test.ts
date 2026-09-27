@@ -10,6 +10,7 @@ const allModes = (mode: ApiMode) =>
 
 /** 실제 로그인에 필요한 값. 테스트용이며 실제 제공자에 등록된 값이 아니다. */
 const REAL_AUTH = {
+  VITE_API_BASE_URL: "https://api.example.com",
   VITE_USE_MOCK_AUTH: "false",
   VITE_AUTH_CLIENT_ID: "test-client",
   VITE_AUTH_REDIRECT_URI: "https://app.example.com/auth/callback",
@@ -85,6 +86,7 @@ describe("readAppEnv", () => {
         PROD: true,
         VITE_USE_MOCK_API: "false",
         ...REAL_AUTH,
+        VITE_API_BASE_URL: "",
       }),
     ).toThrow(/VITE_API_BASE_URL/);
   });
@@ -144,7 +146,6 @@ describe("readAppEnv", () => {
         PROD: false,
         VITE_USE_MOCK_API: "false",
         VITE_API_MODE_UPLOAD: "mock",
-        VITE_API_BASE_URL: "http://localhost:3000",
         ...REAL_AUTH,
       });
       expect(env.apiModes).toEqual({ ...allModes("real"), upload: "mock" });
@@ -174,7 +175,6 @@ describe("readAppEnv", () => {
           VITE_DEMO_MODE: "false",
           VITE_USE_MOCK_API: "false",
           VITE_API_MODE_DEVICES: "mock",
-          VITE_API_BASE_URL: "https://api.example.com",
           ...REAL_AUTH,
         }),
       ).toThrow(/devices/);
@@ -194,6 +194,7 @@ describe("readAppEnv", () => {
       expect(() =>
         readAppEnv({
           PROD: false,
+          VITE_API_BASE_URL: "https://api.example.com",
           VITE_USE_MOCK_AUTH: "false",
           VITE_AUTH_CLIENT_ID: "test-client",
         }),
@@ -216,6 +217,23 @@ describe("readAppEnv", () => {
           VITE_AUTH_REDIRECT_URI: "http://localhost:5173/auth/callback",
         }).auth?.redirectUri,
       ).toBe("http://localhost:5173/auth/callback");
+    });
+
+    it("redirect_uri 경로는 로그인 결과를 받는 화면이어야 한다", () => {
+      expect(() =>
+        readAppEnv({
+          PROD: false,
+          ...REAL_AUTH,
+          VITE_AUTH_REDIRECT_URI: "https://app.example.com/login",
+        }),
+      ).toThrow(/\/auth\/callback/);
+    });
+
+    it("실제 로그인에는 API 주소가 필요하다", () => {
+      // 토큰은 백엔드가 발급한다. 데이터가 전부 mock이어도 로그인은 서버가 한다.
+      expect(() =>
+        readAppEnv({ PROD: false, ...REAL_AUTH, VITE_API_BASE_URL: "" }),
+      ).toThrow(/VITE_API_BASE_URL/);
     });
 
     it("mock 세션이면 로그인 값이 없어도 된다", () => {

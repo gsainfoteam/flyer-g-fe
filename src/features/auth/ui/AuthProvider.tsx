@@ -30,17 +30,22 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
       .restore(controller.signal)
       .then((user) => {
         if (!active) return;
-        setState(
-          user
-            ? { status: "authenticated", user }
-            : { status: "unauthenticated" },
+        // 복원하는 사이 로그인 복귀(`/auth/callback`)가 먼저 끝났으면 덮어쓰지 않는다.
+        setState((current) =>
+          current.status !== "initializing"
+            ? current
+            : user
+              ? { status: "authenticated", user }
+              : { status: "unauthenticated" },
         );
       })
       .catch((cause: unknown) => {
         if (!active) return;
         const error = normalizeApiError(cause);
         if (error.kind === "canceled") return;
-        setState({ status: "error", error });
+        setState((current) =>
+          current.status === "initializing" ? { status: "error", error } : current,
+        );
       });
 
     return () => {
@@ -63,6 +68,15 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
         setState({ status: "error", error: normalizeApiError(cause) });
         return null;
       }
+    },
+    [adapter],
+  );
+
+  const completeSignIn = useCallback(
+    async (params: URLSearchParams) => {
+      const { user, returnTo } = await adapter.completeSignIn(params);
+      setState({ status: "authenticated", user });
+      return returnTo;
     },
     [adapter],
   );
@@ -91,8 +105,24 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
   );
 
   const value = useMemo<AuthContextValue>(
-    () => ({ state, signIn, signOut, expireSession, switchRole, availableRoles }),
-    [state, signIn, signOut, expireSession, switchRole, availableRoles],
+    () => ({
+      state,
+      signIn,
+      completeSignIn,
+      signOut,
+      expireSession,
+      switchRole,
+      availableRoles,
+    }),
+    [
+      state,
+      signIn,
+      completeSignIn,
+      signOut,
+      expireSession,
+      switchRole,
+      availableRoles,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

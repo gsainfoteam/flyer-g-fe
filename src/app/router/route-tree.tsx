@@ -12,6 +12,7 @@ import { paths } from "@/shared/config/routes";
 import type { RouteHandle } from "@/app/router/use-document-title";
 import { RequireRole, RequireSession } from "@/features/auth/ui/guards";
 import { ComingSoonPage } from "@/pages/ComingSoonPage";
+import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { LoadingState } from "@/shared/components";
@@ -90,6 +91,11 @@ export const routeTree = [
     errorElement: <RouteErrorScreen />,
     children: [
       { path: paths.login, element: <LoginPage />, handle: title("로그인") },
+      {
+        path: paths.authCallback,
+        element: <AuthCallbackPage />,
+        handle: title("로그인"),
+      },
 
       // 세션이 있어야 볼 수 있는 화면
       {

@@ -12,6 +12,21 @@
       "autoPort": true
     },
     {
+      "name": "flyer-g-dev-real-auth",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
+      "env": {
+        "VITE_USE_MOCK_AUTH": "false"
+      },
+      "port": 5173
+    },
+    {
       "name": "flyer-g-dist-preview",
       "runtimeExecutable": "bunx",
       "runtimeArgs": [

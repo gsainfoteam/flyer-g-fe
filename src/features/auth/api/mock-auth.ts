@@ -37,7 +37,7 @@ export interface MockAuthAdapter extends AuthAdapter {
   getAvailableRoles(): readonly Role[];
   /**
    * 지금 세션의 사용자. mock repository가 실제 서버처럼 "누가 요청했는지"를
-   * 알기 위해 쓴다. 실제 서버는 쿠키로 판단하므로 실제 adapter에는 없다.
+   * 알기 위해 쓴다. 실제 서버는 Bearer 토큰으로 판단하므로 실제 adapter에는 없다.
    */
   peekUser(): SessionUser | null;
 }
@@ -65,6 +65,14 @@ export function createMockAuthAdapter(
       current = role;
       writeStoredRole(role);
       return MOCK_USERS[role];
+    },
+
+    async completeSignIn() {
+      // mock은 제공자로 넘어가지 않아 이 경로에 올 일이 없다. 오면 바로 로그인시킨다.
+      const role = current ?? readStoredRole() ?? "REVIEWER";
+      current = role;
+      writeStoredRole(role);
+      return { user: MOCK_USERS[role], returnTo: "/" };
     },
 
     async signOut() {

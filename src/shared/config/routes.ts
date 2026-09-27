@@ -13,6 +13,8 @@ export const paths = {
   displays: "/displays",
   display: "/display/:deviceId",
   login: "/login",
+  /** 로그인 제공자에서 돌아오는 곳. `VITE_AUTH_REDIRECT_URI`의 경로와 같아야 한다. */
+  authCallback: "/auth/callback",
 } as const;
 
 export const to = {

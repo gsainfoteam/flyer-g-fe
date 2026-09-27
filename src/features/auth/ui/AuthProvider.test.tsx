@@ -39,6 +39,7 @@ describe("AuthProvider", () => {
     const adapter: AuthAdapter = {
       restore: () => new Promise((r) => { resolve = r; }),
       signIn: vi.fn(),
+      completeSignIn: vi.fn(),
       signOut: vi.fn(),
     };
 
@@ -68,6 +69,7 @@ describe("AuthProvider", () => {
           new ApiError({ kind: "http", code: "UNAUTHENTICATED", message: "만료" }),
         ),
       signIn: vi.fn(),
+      completeSignIn: vi.fn(),
       signOut: vi.fn(),
     };
 
@@ -100,6 +102,7 @@ describe("AuthProvider", () => {
     const adapter: AuthAdapter = {
       restore: () => Promise.resolve(null),
       signIn: vi.fn(),
+      completeSignIn: vi.fn(),
       signOut: vi.fn(),
     };
 

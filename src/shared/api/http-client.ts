@@ -12,6 +12,7 @@ import type { ApiErrorBody } from "./error";
  * - 제한 시간 초과 → `timeout`. 응답 없는 서버를 무한히 기다리면 화면이 로딩에 갇힌다.
  * - 호출자가 취소 → `canceled`
  * - 4xx/5xx → `http`. 서버의 `code`·`fields`(422 필드 오류)를 그대로 전달한다.
+ * - 401 → `onUnauthorized`가 세션을 되살리면 한 번 다시 보낸다. 그래도 401이면 던진다.
  */
 export type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
@@ -33,8 +34,14 @@ export interface HttpClient {
 
 export interface HttpClientOptions {
   baseUrl: string;
-  /** 인증 헤더 주입. 실제 연동 때 auth adapter가 채운다. */
+  /** 인증 헤더 주입. 요청마다 부르므로 갱신된 토큰이 바로 실린다. */
   getAuthHeaders?: () => Promise<Record<string, string>>;
+  /**
+   * 401을 받았을 때 한 번 부른다. 세션을 되살렸으면(토큰 갱신) true를 돌려주고,
+   * 그러면 같은 요청을 새 인증 헤더로 한 번만 다시 보낸다. 401은 서버가 처리하지
+   * 않았다는 뜻이라 변경 요청도 다시 보내도 안전하다.
+   */
+  onUnauthorized?: () => Promise<boolean>;
   fetchImpl?: typeof fetch;
   /** 요청 하나를 기다리는 최대 시간. 업로드처럼 긴 요청은 호출부가 늘린다. */
   timeoutMs?: number;
@@ -112,85 +119,100 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
 
   return {
     async request<T>(request: HttpRequest): Promise<T> {
-      const method = request.method ?? "GET";
-      const headers: Record<string, string> = { Accept: "application/json" };
-      try {
-        Object.assign(headers, await options.getAuthHeaders?.());
-      } catch (cause) {
-        // 토큰을 준비하지 못했다. 원인 객체를 그대로 흘리지 않는다.
-        throw normalizeApiError(cause);
-      }
-      if (request.body !== undefined) {
-        headers["Content-Type"] = "application/json";
-      }
-      if (request.idempotencyKey) {
-        headers["Idempotency-Key"] = request.idempotencyKey;
-      }
-
-      const deadline = withTimeout(request.signal, timeoutMs);
-      let response: Response;
-      try {
-        response = await fetchImpl(
-          buildUrl(options.baseUrl, request.path, request.query),
-          {
-            method,
-            headers,
-            signal: deadline.signal,
-            body:
-              request.body === undefined
-                ? undefined
-                : JSON.stringify(request.body),
-          },
-        );
-      } catch (cause) {
-        if (deadline.timedOut()) {
-          throw new ApiError({
-            kind: "timeout",
-            code: "TIMEOUT",
-            message: "서버가 제시간에 응답하지 않았습니다.",
-          });
+      let response = await send(request);
+      if (response.status === 401 && options.onUnauthorized) {
+        let recovered = false;
+        try {
+          recovered = await options.onUnauthorized();
+        } catch {
+          // 갱신이 실패하면 원래 401을 그대로 알린다.
         }
-        if (cause instanceof DOMException && cause.name === "AbortError") {
-          throw normalizeApiError(cause);
-        }
-        // fetch가 응답 없이 실패한 경우만 연결 문제다. 다른 TypeError는 코드
-        // 버그일 수 있어 여기서만 network로 분류한다.
-        throw new ApiError({
-          kind: "network",
-          code: "NETWORK_ERROR",
-          message: "네트워크에 연결할 수 없습니다.",
-        });
-      } finally {
-        deadline.dispose();
+        if (recovered) response = await send(request);
       }
-
-      const requestId = response.headers.get(REQUEST_ID_HEADER);
-
-      if (!response.ok) {
-        const body = readErrorBody(await response.json().catch(() => null));
-        throw new ApiError({
-          kind: "http",
-          code: body.code ?? codeForStatus(response.status),
-          message: body.message ?? `요청이 실패했습니다 (${response.status})`,
-          status: response.status,
-          requestId: body.requestId ?? requestId,
-          fields: body.fields ?? null,
-        });
-      }
-
-      if (response.status === 204) return undefined as T;
-
-      try {
-        return (await response.json()) as T;
-      } catch {
-        throw new ApiError({
-          kind: "parse",
-          code: "INVALID_RESPONSE",
-          message: "서버 응답을 해석할 수 없습니다.",
-          status: response.status,
-          requestId,
-        });
-      }
+      return readResponse<T>(response);
     },
   };
+
+  async function send(request: HttpRequest): Promise<Response> {
+    const method = request.method ?? "GET";
+    const headers: Record<string, string> = { Accept: "application/json" };
+    try {
+      Object.assign(headers, await options.getAuthHeaders?.());
+    } catch (cause) {
+      // 토큰을 준비하지 못했다. 원인 객체를 그대로 흘리지 않는다.
+      throw normalizeApiError(cause);
+    }
+    if (request.body !== undefined) {
+      headers["Content-Type"] = "application/json";
+    }
+    if (request.idempotencyKey) {
+      headers["Idempotency-Key"] = request.idempotencyKey;
+    }
+
+    const deadline = withTimeout(request.signal, timeoutMs);
+    try {
+      return await fetchImpl(
+        buildUrl(options.baseUrl, request.path, request.query),
+        {
+          method,
+          headers,
+          signal: deadline.signal,
+          body:
+            request.body === undefined
+              ? undefined
+              : JSON.stringify(request.body),
+        },
+      );
+    } catch (cause) {
+      if (deadline.timedOut()) {
+        throw new ApiError({
+          kind: "timeout",
+          code: "TIMEOUT",
+          message: "서버가 제시간에 응답하지 않았습니다.",
+        });
+      }
+      if (cause instanceof DOMException && cause.name === "AbortError") {
+        throw normalizeApiError(cause);
+      }
+      // fetch가 응답 없이 실패한 경우만 연결 문제다. 다른 TypeError는 코드
+      // 버그일 수 있어 여기서만 network로 분류한다.
+      throw new ApiError({
+        kind: "network",
+        code: "NETWORK_ERROR",
+        message: "네트워크에 연결할 수 없습니다.",
+      });
+    } finally {
+      deadline.dispose();
+    }
+  }
+
+  async function readResponse<T>(response: Response): Promise<T> {
+    const requestId = response.headers.get(REQUEST_ID_HEADER);
+
+    if (!response.ok) {
+      const body = readErrorBody(await response.json().catch(() => null));
+      throw new ApiError({
+        kind: "http",
+        code: body.code ?? codeForStatus(response.status),
+        message: body.message ?? `요청이 실패했습니다 (${response.status})`,
+        status: response.status,
+        requestId: body.requestId ?? requestId,
+        fields: body.fields ?? null,
+      });
+    }
+
+    if (response.status === 204) return undefined as T;
+
+    try {
+      return (await response.json()) as T;
+    } catch {
+      throw new ApiError({
+        kind: "parse",
+        code: "INVALID_RESPONSE",
+        message: "서버 응답을 해석할 수 없습니다.",
+        status: response.status,
+        requestId,
+      });
+    }
+  }
 }

@@ -181,4 +181,86 @@ describe("createHttpClient", () => {
     expect(isApiError(error)).toBe(true);
     expect((error as ApiError).message).not.toContain("token");
   });
+
+  describe("401 뒤 세션 갱신", () => {
+    const unauthorized = () =>
+      jsonResponse({ code: "UNAUTHENTICATED", message: "만료" }, { status: 401 });
+
+    it("갱신에 성공하면 새 인증 헤더로 한 번 다시 보낸다", async () => {
+      let token = "old";
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(unauthorized())
+        .mockResolvedValueOnce(jsonResponse({ ok: true }));
+      const onUnauthorized = vi.fn(async () => {
+        token = "new";
+        return true;
+      });
+      const client = createHttpClient({
+        baseUrl: "https://api.example.com",
+        fetchImpl,
+        getAuthHeaders: async () => ({ Authorization: `Bearer ${token}` }),
+        onUnauthorized,
+      });
+
+      await expect(client.request({ path: "/x" })).resolves.toEqual({ ok: true });
+      expect(onUnauthorized).toHaveBeenCalledTimes(1);
+      expect(fetchImpl.mock.calls[1]![1].headers.Authorization).toBe("Bearer new");
+    });
+
+    it("다시 보낸 요청도 401이면 더 갱신하지 않고 던진다", async () => {
+      const fetchImpl = vi.fn().mockImplementation(async () => unauthorized());
+      const onUnauthorized = vi.fn(async () => true);
+      const client = createHttpClient({
+        baseUrl: "https://api.example.com",
+        fetchImpl,
+        onUnauthorized,
+      });
+
+      await expect(client.request({ path: "/x" })).rejects.toMatchObject({
+        code: "UNAUTHENTICATED",
+        status: 401,
+      });
+      expect(onUnauthorized).toHaveBeenCalledTimes(1);
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    });
+
+    it("갱신하지 못하면 원래 401을 던진다", async () => {
+      const fetchImpl = vi.fn().mockResolvedValue(unauthorized());
+      const client = createHttpClient({
+        baseUrl: "https://api.example.com",
+        fetchImpl,
+        onUnauthorized: async () => {
+          throw new Error("refresh failed");
+        },
+      });
+
+      await expect(client.request({ path: "/x" })).rejects.toMatchObject({
+        code: "UNAUTHENTICATED",
+      });
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+
+    it("변경 요청은 같은 idempotency key로 다시 보낸다", async () => {
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValueOnce(unauthorized())
+        .mockResolvedValueOnce(jsonResponse({ id: "sub-1" }, { status: 201 }));
+      const client = createHttpClient({
+        baseUrl: "https://api.example.com",
+        fetchImpl,
+        onUnauthorized: async () => true,
+      });
+
+      await client.request({
+        method: "POST",
+        path: "/signage/submissions",
+        body: { title: "제목" },
+        idempotencyKey: "key-1",
+      });
+
+      expect(fetchImpl.mock.calls[1]![1].headers["Idempotency-Key"]).toBe("key-1");
+      expect(fetchImpl.mock.calls[1]![1].body).toBe(JSON.stringify({ title: "제목" }));
+    });
+  });
 });
