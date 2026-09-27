@@ -1,4 +1,5 @@
 import { ApiError, isApiError } from "@/shared/api/error";
+import type { ApiRequestBody } from "@/shared/api/contract";
 import { createHttpClient } from "@/shared/api/http-client";
 import {
   readNumber,
@@ -142,6 +143,11 @@ export function createHttpAuthAdapter(
   });
 
   let refreshing: Promise<boolean> | null = null;
+  /**
+   * 로그아웃할 때마다 올린다. 로그아웃 전에 보낸 갱신·로그인 요청의 응답이 뒤늦게 와도
+   * 토큰을 저장하지 않는다. 저장하면 새로고침 뒤 로그아웃한 세션이 되살아난다.
+   */
+  let generation = 0;
 
   /**
    * refreshToken으로 새 토큰을 받는다. 동시에 여러 요청이 401을 받아도 한 번만 보낸다.
@@ -151,6 +157,7 @@ export function createHttpAuthAdapter(
    */
   const refreshSession = (): Promise<boolean> => {
     refreshing ??= (async () => {
+      const startedIn = generation;
       let used = tokens.getRefreshToken();
       for (let attempt = 0; attempt < 2 && used !== null; attempt += 1) {
         try {
@@ -158,12 +165,17 @@ export function createHttpAuthAdapter(
             await publicClient.request({
               method: "POST",
               path: "/auth/refresh",
-              body: { refreshToken: used },
+              body: {
+                refreshToken: used,
+              } satisfies ApiRequestBody<"RefreshRequestDto">,
             }),
           );
+          if (startedIn !== generation) return false;
           tokens.save(grant);
           return true;
         } catch (error) {
+          if (startedIn !== generation) return false;
+          // 연결 끊김·서버 오류는 세션이 끝났다는 뜻이 아니다. 토큰을 두고 원인을 알린다.
           if (!isUnauthenticated(error)) throw error;
           const latest = tokens.getRefreshToken();
           if (latest === used) break;
@@ -228,6 +240,7 @@ export function createHttpAuthAdapter(
       );
     }
 
+    const startedIn = generation;
     const pending = takePendingSignIn(pendingStorage, now());
     if (pending === null || pending.state !== state) {
       throw authError(
@@ -244,9 +257,12 @@ export function createHttpAuthAdapter(
           code,
           redirectUri: options.redirectUri,
           codeVerifier: pending.codeVerifier,
-        },
+        } satisfies ApiRequestBody<"LoginRequestDto">,
       }),
     );
+    if (startedIn !== generation) {
+      throw authError("AUTH_FAILED", "로그인을 마치기 전에 로그아웃했습니다.");
+    }
     tokens.save(grant);
     return {
       user: await fetchSessionUser(),
@@ -324,6 +340,7 @@ export function createHttpAuthAdapter(
 
     async signOut() {
       const access = tokens.getAccessToken();
+      generation += 1;
       tokens.clear();
       if (access === null) return;
       // 서버는 할 일이 없지만 계약대로 알린다. 실패해도 로그아웃은 끝난 것이다.

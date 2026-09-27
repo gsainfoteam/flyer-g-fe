@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { isApiError } from "./error";
-import type { ApiError } from "./error";
+import { ApiError, isApiError } from "./error";
 import { createHttpClient } from "./http-client";
 
 function jsonResponse(
@@ -271,18 +270,36 @@ describe("createHttpClient", () => {
       expect(fetchImpl).toHaveBeenCalledTimes(2);
     });
 
-    it("갱신하지 못하면 원래 401을 던진다", async () => {
+    it("세션을 되살리지 못하면(갱신 거절) 원래 401을 던진다", async () => {
+      const fetchImpl = vi.fn().mockResolvedValue(unauthorized());
+      const client = createHttpClient({
+        baseUrl: "https://api.example.com",
+        fetchImpl,
+        onUnauthorized: async () => false,
+      });
+
+      await expect(client.request({ path: "/x" })).rejects.toMatchObject({
+        code: "UNAUTHENTICATED",
+      });
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+
+    it("갱신이 연결 끊김으로 실패하면 로그인 만료가 아니라 그 오류를 던진다", async () => {
       const fetchImpl = vi.fn().mockResolvedValue(unauthorized());
       const client = createHttpClient({
         baseUrl: "https://api.example.com",
         fetchImpl,
         onUnauthorized: async () => {
-          throw new Error("refresh failed");
+          throw new ApiError({
+            kind: "network",
+            code: "NETWORK_ERROR",
+            message: "offline",
+          });
         },
       });
 
       await expect(client.request({ path: "/x" })).rejects.toMatchObject({
-        code: "UNAUTHENTICATED",
+        code: "NETWORK_ERROR",
       });
       expect(fetchImpl).toHaveBeenCalledTimes(1);
     });

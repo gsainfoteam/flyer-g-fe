@@ -3,9 +3,8 @@ import type { ApiErrorBody } from "./error";
 
 /**
  * 공통 transport. 화면 컴포넌트는 이 계층을 직접 쓰지 않고 repository를 통해 접근한다.
- *
- * 경로는 호출자가 넘긴다. 명세 8장의 개념 endpoint는 아직 확정 계약이 아니므로
- * 이 파일에 실제 경로를 상수로 고정하지 않는다. 실제 연결은 Phase 08에서 한다.
+ * 경로와 본문은 각 repository가 정하고, 이 파일은 인증 헤더·idempotency key·제한
+ * 시간·오류 변환만 맡는다.
  *
  * 실패는 모두 `ApiError`로 바꿔 던진다.
  * - 응답이 오지 않음(연결 실패) → `network`
@@ -13,6 +12,8 @@ import type { ApiErrorBody } from "./error";
  * - 호출자가 취소 → `canceled`
  * - 4xx/5xx → `http`. 서버의 `code`·`fields`(422 필드 오류)를 그대로 전달한다.
  * - 401 → `onUnauthorized`가 세션을 되살리면 한 번 다시 보낸다. 그래도 401이면 던진다.
+ *   갱신 자체가 연결 끊김·서버 오류로 실패하면 그 오류를 던진다. 세션이 끝났는지
+ *   알 수 없으므로 401(로그인 만료)로 바꾸지 않는다.
  */
 export type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
@@ -132,11 +133,11 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
     async request<T>(request: HttpRequest): Promise<T> {
       let response = await send(request);
       if (response.status === 401 && options.onUnauthorized) {
-        let recovered = false;
+        let recovered: boolean;
         try {
           recovered = await options.onUnauthorized();
-        } catch {
-          // 갱신이 실패하면 원래 401을 그대로 알린다.
+        } catch (cause) {
+          throw normalizeApiError(cause);
         }
         if (recovered) response = await send(request);
       }

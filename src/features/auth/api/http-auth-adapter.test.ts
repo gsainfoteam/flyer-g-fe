@@ -410,6 +410,36 @@ describe("createHttpAuthAdapter", () => {
       expect(ctx.local.getItem("flyerg:auth:refresh-token")).toBeNull();
       await expect(ctx.adapter.getAuthHeaders()).resolves.toEqual({});
     });
+
+    it("로그아웃 전에 보낸 갱신의 응답이 뒤늦게 와도 토큰을 다시 저장하지 않는다", async () => {
+      let respond: (response: Response) => void = () => {};
+      const ctx = setup(
+        {
+          "/auth/refresh": () =>
+            new Promise<Response>((resolve) => {
+              respond = resolve;
+            }),
+          "/auth/logout": () => new Response(null, { status: 204 }),
+        },
+        { refreshToken: "refresh-1" },
+      );
+
+      const refreshing = ctx.adapter.refreshSession();
+      await vi.waitFor(() => expect(ctx.server.calls).toHaveLength(1));
+      await ctx.adapter.signOut();
+      respond(
+        json({
+          accessToken: "access-late",
+          refreshToken: "refresh-late",
+          expiresIn: 3600,
+        }),
+      );
+
+      await expect(refreshing).resolves.toBe(false);
+      expect(ctx.tokenStore.getAccessToken()).toBeNull();
+      expect(ctx.tokenStore.getRefreshToken()).toBeNull();
+      expect(ctx.local.getItem("flyerg:auth:refresh-token")).toBeNull();
+    });
   });
 });
 
