@@ -8,8 +8,8 @@ import { normalizeApiError } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
 import { fromSeoulInput } from "@/shared/lib/datetime";
 import { createIdempotencyKey } from "@/shared/lib/idempotency";
-import type { SubmissionDraft } from "./draft";
-import { optionalText } from "./draft";
+import type { OriginalSchedule, SubmissionDraft } from "./draft";
+import { isScheduleChanged, optionalText } from "./draft";
 
 /**
  * 게시 신청 제출 (명세 FR-SUB-04, `API-CHANGES-BACKEND.md` 5.2·5.3·5.6).
@@ -25,9 +25,20 @@ import { optionalText } from "./draft";
  */
 export interface CreateSubmissionValues extends SubmissionDraft {
   assetId: string;
+  /**
+   * 대상 위치. 새 신청에서 비우면 모든 기기다. 수정에서 비우면 보내지 않아 서버가
+   * 기존 대상을 그대로 둔다. 빈 배열은 "모든 기기로 바꾸라"는 뜻이 되기 때문이다.
+   */
   targetGroupIds?: string[];
-  /** 수정 대상. 있으면 create 대신 update한다. */
-  editing?: { submissionId: string; version: number };
+  /**
+   * 수정 대상. 있으면 create 대신 update한다. 기간을 바꾸지 않았으면 기간은 보내지
+   * 않는다. 서버는 기간이 바뀐 수정만 기간 규칙을 다시 본다.
+   */
+  editing?: {
+    submissionId: string;
+    version: number;
+    schedule: OriginalSchedule;
+  };
 }
 
 export function useCreateSubmission() {
@@ -90,21 +101,31 @@ export function useCreateSubmission() {
         description: optionalText(values.description),
         startAt: fromSeoulInput(values.startAt),
         endAt: fromSeoulInput(values.endAt),
-        targetGroupIds: values.targetGroupIds ?? [],
       };
 
       try {
         if (!values.editing) {
           const key = (createKeyRef.current ??= createIdempotencyKey());
-          return await submissions.create(fields, { idempotencyKey: key });
+          return await submissions.create(
+            { ...fields, targetGroupIds: values.targetGroupIds ?? [] },
+            { idempotencyKey: key },
+          );
         }
 
         const saved = savedRef.current;
         if (saved === null || saved.stale) {
+          const { startAt, endAt, ...unscheduled } = fields;
           const updated = await submissions.update(
             values.editing.submissionId,
             {
-              ...fields,
+              ...unscheduled,
+              ...(isScheduleChanged(values, values.editing.schedule) && {
+                startAt,
+                endAt,
+              }),
+              ...(values.targetGroupIds && {
+                targetGroupIds: values.targetGroupIds,
+              }),
               version: saved?.submission.version ?? values.editing.version,
             },
           );

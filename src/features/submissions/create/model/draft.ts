@@ -87,6 +87,23 @@ export function draftFromSubmission(
   };
 }
 
+/** 고치는 신청의 원래 게시 기간. 폼 입력과 같은 형식이다. */
+export interface OriginalSchedule {
+  startAt: string;
+  endAt: string;
+}
+
+/**
+ * 게시 기간을 바꿨는가. 폼 입력(분 단위) 그대로 비교한다. 저장된 시각을 다시 변환해
+ * 비교하면 초 단위 차이로 바꾸지 않은 기간을 바꾼 것으로 본다.
+ */
+export function isScheduleChanged(
+  draft: Pick<SubmissionDraft, "startAt" | "endAt">,
+  original: OriginalSchedule,
+): boolean {
+  return draft.startAt !== original.startAt || draft.endAt !== original.endAt;
+}
+
 /** 선택 입력을 보낼 값으로. 비었으면 null(서버에서 비운다). */
 export function optionalText(value: string): string | null {
   const trimmed = value.trim();

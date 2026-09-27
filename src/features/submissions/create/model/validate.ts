@@ -1,7 +1,17 @@
-import { checkSchedule, isAllowedDetailUrl } from "@/entities/submission";
-import type { Category, SignageConfig } from "@/entities/submission";
+import {
+  canSubmitterResubmit,
+  checkSchedule,
+  isAllowedDetailUrl,
+  needsReapproval,
+} from "@/entities/submission";
+import type {
+  Category,
+  SignageConfig,
+  SubmissionStatus,
+} from "@/entities/submission";
 import { InvalidDateError, fromSeoulInput } from "@/shared/lib/datetime";
-import type { SubmissionDraft } from "./draft";
+import { isScheduleChanged } from "./draft";
+import type { OriginalSchedule, SubmissionDraft } from "./draft";
 
 /**
  * 게시 신청 폼 검증 (명세 FR-SUB-02).
@@ -53,6 +63,26 @@ export interface ValidateOptions {
   config: SignageConfig | null;
   /** 고를 수 있는 카테고리. 아직 모르면 null */
   categories: readonly Category[] | null;
+  /** 고치는 신청. 새 신청이면 없다. */
+  editing?: { status: SubmissionStatus; schedule: OriginalSchedule } | null;
+}
+
+/**
+ * 게시 기간 규칙(최소 사전 신청 시간 등)을 다시 볼 것인가. 서버와 같다: 새 신청,
+ * 다시 검토를 요청하는 신청(반려·중단·작성 중), 다시 승인을 받는 신청(예약됨),
+ * 기간을 바꾼 수정. 승인 대기 건의 제목만 고칠 때는 시작이 24시간 안으로 다가와도
+ * 막지 않는다.
+ */
+function needsScheduleCheck(
+  values: SubmissionDraft,
+  editing: ValidateOptions["editing"],
+): boolean {
+  if (!editing) return true;
+  return (
+    canSubmitterResubmit(editing.status) ||
+    needsReapproval(editing.status) ||
+    isScheduleChanged(values, editing.schedule)
+  );
 }
 
 function parseSeoul(value: string): Date | null {
@@ -67,7 +97,7 @@ function parseSeoul(value: string): Date | null {
 
 export function validateSubmissionForm(
   values: SubmissionFormValues,
-  { now, config, categories }: ValidateOptions,
+  { now, config, categories, editing }: ValidateOptions,
 ): SubmissionFieldErrors {
   const errors: SubmissionFieldErrors = {};
 
@@ -95,7 +125,11 @@ export function validateSubmissionForm(
   if (endAt === null) {
     errors.endAt = "게시 종료 시각을 입력해 주세요.";
   }
-  if (startAt !== null && endAt !== null) {
+  if (
+    startAt !== null &&
+    endAt !== null &&
+    needsScheduleCheck(values, editing)
+  ) {
     if (now !== null && config !== null) {
       Object.assign(errors, checkSchedule(startAt, endAt, now, config));
     } else if (endAt.getTime() <= startAt.getTime()) {

@@ -171,11 +171,30 @@ export function StudioPage() {
         ? (editingSubmission?.assetId ?? null)
         : (upload.state.asset?.assetId ?? null),
   };
+  /**
+   * 고치는 신청의 지금 상태. 저장된 값이 아니라 서버 시각 기준이다 — 시작 시각이
+   * 지난 예약 건은 이미 게시 중이라 고칠 수 없다.
+   */
+  const editingStatus = editingSubmission
+    ? serverNow
+      ? resolveEffectiveStatus(editingSubmission, serverNow)
+      : editingSubmission.status
+    : null;
+  /** 고치는 신청의 원래 기간. 기간을 바꿨는지로 기간 규칙을 다시 볼지 정한다. */
+  const originalSchedule = useMemo(() => {
+    if (!editingSubmission) return null;
+    const { startAt, endAt } = draftFromSubmission(editingSubmission);
+    return { startAt, endAt };
+  }, [editingSubmission]);
   const errors: SubmissionFieldErrors = {
     ...validateSubmissionForm(values, {
       now: serverNow,
       config: config.data ?? null,
       categories: categories.data ?? null,
+      editing:
+        editingStatus && originalSchedule
+          ? { status: editingStatus, schedule: originalSchedule }
+          : null,
     }),
     ...serverErrors.fieldErrors,
   };
@@ -189,15 +208,6 @@ export function StudioPage() {
     upload.state.status === "validating";
   /** 접수된 뒤에는 같은 내용을 다시 보낼 수 없다. (명세 FR-SUB-04) */
   const isSubmitted = submitted !== null;
-  /**
-   * 고치는 신청의 지금 상태. 저장된 값이 아니라 서버 시각 기준이다 — 시작 시각이
-   * 지난 예약 건은 이미 게시 중이라 고칠 수 없다.
-   */
-  const editingStatus = editingSubmission
-    ? serverNow
-      ? resolveEffectiveStatus(editingSubmission, serverNow)
-      : editingSubmission.status
-    : null;
   /** 게시가 시작되었거나 끝난 신청은 제출 자체를 막는다. */
   const editBlocked =
     editingStatus !== null && !canSubmitterEdit(editingStatus);
@@ -267,12 +277,14 @@ export function StudioPage() {
       {
         ...draft,
         assetId: values.assetId!,
-        editing: editingSubmission
-          ? {
-              submissionId: editingSubmission.id,
-              version: editingSubmission.version,
-            }
-          : undefined,
+        editing:
+          editingSubmission && originalSchedule
+            ? {
+                submissionId: editingSubmission.id,
+                version: editingSubmission.version,
+                schedule: originalSchedule,
+              }
+            : undefined,
       },
       {
         onSuccess: (submission) => {

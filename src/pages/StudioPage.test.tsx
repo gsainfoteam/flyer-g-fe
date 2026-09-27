@@ -463,6 +463,70 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
     });
   });
 
+  it("제목만 고치면 대상 위치는 그대로 둔다", async () => {
+    const user = userEvent.setup();
+    const { repositories, updateSpy } = studioRepositories();
+    const created = await repositories.submissions.create({
+      title: "A동 공지",
+      categoryId: "performance",
+      assetId: "asset-1",
+      detailUrl: null,
+      organizerName: null,
+      subtitle: null,
+      location: null,
+      description: null,
+      startAt: new Date(TEST_NOW.getTime() + 2 * 86_400_000),
+      endAt: new Date(TEST_NOW.getTime() + 5 * 86_400_000),
+      targetGroupIds: ["group-house-a"],
+    });
+    openEdit(created.id, repositories);
+
+    const title = await screen.findByDisplayValue("A동 공지");
+    await user.clear(title);
+    await user.type(title, "A동 공지 (수정)");
+    await user.click(screen.getByRole("button", { name: "수정 저장" }));
+
+    expect(await screen.findByText("수정했어요")).toBeInTheDocument();
+    // 기간과 대상을 보내지 않아 서버가 그대로 둔다.
+    expect(updateSpy.mock.calls[0]![1]).not.toHaveProperty("targetGroupIds");
+    expect(updateSpy.mock.calls[0]![1]).not.toHaveProperty("startAt");
+    const detail = await repositories.submissions.getById(created.id);
+    expect(detail.targetGroupIds).toEqual(["group-house-a"]);
+  });
+
+  it("시작이 24시간 안으로 다가온 승인 대기 건도 기간을 두고 제목은 고칠 수 있다", async () => {
+    const user = userEvent.setup();
+    let now = TEST_NOW.getTime();
+    const repositories = createMockRepositories({
+      clock: { now: () => new Date(now) },
+    });
+    const created = await repositories.submissions.create({
+      title: "곧 시작하는 공지",
+      categoryId: "performance",
+      assetId: "asset-1",
+      detailUrl: null,
+      organizerName: null,
+      subtitle: null,
+      location: null,
+      description: null,
+      startAt: new Date(now + 25 * 3_600_000),
+      endAt: new Date(now + 5 * 86_400_000),
+      targetGroupIds: [],
+    });
+    // 하루가 지나 시작까지 1시간 남았다. 아직 검토 대기다.
+    now += 24 * 3_600_000;
+    const updateSpy = vi.spyOn(repositories.submissions, "update");
+    openEdit(created.id, repositories);
+
+    const title = await screen.findByDisplayValue("곧 시작하는 공지");
+    await user.clear(title);
+    await user.type(title, "곧 시작하는 공지 (오타 수정)");
+    await user.click(screen.getByRole("button", { name: "수정 저장" }));
+
+    expect(await screen.findByText("수정했어요")).toBeInTheDocument();
+    expect(updateSpy).toHaveBeenCalledTimes(1);
+  });
+
   it("게시 시작 전 승인 건을 고치면 다시 승인을 받는다", async () => {
     const user = userEvent.setup();
     const { repositories } = studioRepositories();

@@ -177,6 +177,37 @@ describe("validateSubmissionForm", () => {
       ).not.toHaveProperty("endAt");
     });
 
+    it("수정은 기간을 바꿨거나 다시 검토·승인을 받을 때만 기간 규칙을 다시 본다", () => {
+      // 시작까지 1시간. 새 신청이면 24시간 규칙에 걸린다.
+      const soon = { startAt: "2026-06-08T13:00", endAt: "2026-06-09T13:00" };
+      const values = validValues(soon);
+      const editing = (
+        status: "PENDING_REVIEW" | "REJECTED" | "SCHEDULED",
+      ) => ({
+        ...OPTIONS,
+        editing: { status, schedule: soon },
+      });
+
+      expect(validateSubmissionForm(values, OPTIONS).startAt).toBeDefined();
+      expect(
+        validateSubmissionForm(values, editing("PENDING_REVIEW")),
+      ).not.toHaveProperty("startAt");
+      // 재검토 요청과 재승인은 서버가 기간을 다시 본다.
+      expect(
+        validateSubmissionForm(values, editing("REJECTED")).startAt,
+      ).toBeDefined();
+      expect(
+        validateSubmissionForm(values, editing("SCHEDULED")).startAt,
+      ).toBeDefined();
+      // 기간을 바꾸면 다시 본다.
+      expect(
+        validateSubmissionForm(
+          validValues({ ...soon, startAt: "2026-06-08T14:00" }),
+          editing("PENDING_REVIEW"),
+        ).startAt,
+      ).toBeDefined();
+    });
+
     it("비어 있으면 각각 막는다", () => {
       const errors = validateSubmissionForm(
         validValues({ startAt: "", endAt: "" }),
