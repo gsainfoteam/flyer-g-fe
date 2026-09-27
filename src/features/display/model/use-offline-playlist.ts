@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { fromPlaylistItem } from "@/entities/poster";
 import { selectPlayableItems } from "@/entities/playlist";
 import type { Playlist } from "@/entities/playlist/model/types";
+import { isApiError } from "@/shared/api/error";
+import type { ApiError } from "@/shared/api/error";
 import { useRepositories } from "@/shared/api/repositories-context";
 import {
   clampRefreshSeconds,
@@ -38,11 +40,24 @@ import type { PreloadOptions } from "@/features/display/model/preload-media";
  * 응답에 멈춰 있지만 시간은 흐른다. 마지막으로 안 서버 시각에 흐른 시간을 더한
  * 시각으로 판정하고, 다음 시작·종료 시각에 맞춰 다시 거른다. 그러지 않으면
  * 오프라인 TV에 끝난 행사가 무기한 걸린다.
+ *
+ * **기기 토큰이 없거나 거절되면 재생하지 않는다.** 재발급·비활성화된 기기가 중단된
+ * 포스터를 계속 띄우면 안 된다. 거절은 인증된 조회가 다시 성공할 때까지 유지한다.
+ * 그 사이의 네트워크 실패로 풀리지 않게 하고, 저장해 둔 캐시도 지워 재시작해도
+ * 옛 편성이 나오지 않게 한다.
  */
 export const CACHE_SCHEMA_VERSION = 1;
 const CACHE_DB_NAME = "flyer-g-display";
 /** 시각 경계가 멀어도 이 간격마다는 다시 판정한다. 기기 절전·시계 보정 대비 */
 const MAX_BOUNDARY_WAIT_MS = 5 * 60 * 1000;
+/** 재생을 멈춰야 하는 기기 인증 실패 */
+const DEVICE_REJECTION_CODES = ["DEVICE_NOT_REGISTERED", "DEVICE_UNAUTHORIZED"];
+
+function asDeviceRejection(error: unknown): ApiError | null {
+  return isApiError(error) && DEVICE_REJECTION_CODES.includes(error.code)
+    ? error
+    : null;
+}
 
 function defaultStore(): KeyValueStore {
   return isIndexedDbAvailable()
@@ -58,10 +73,10 @@ export interface OfflinePlaylistResult {
   /** 보여줄 것이 아무것도 없는 실패 */
   error: unknown;
   /**
-   * 가장 최근 조회의 실패. 캐시나 앞서 받은 편성을 재생하는 중에도 알려 준다.
-   * 기기 토큰이 거절된 것처럼 재생을 멈춰야 하는 실패를 호출부가 가려낸다.
+   * 기기 토큰이 없거나 거절됐다. 인증된 조회가 다시 성공할 때까지 유지되고,
+   * 그동안 `playlist`는 null이다. 호출부는 설정 안내를 그린다.
    */
-  lastError: unknown;
+  deviceError: ApiError | null;
   refetch(): void;
 }
 
@@ -185,7 +200,39 @@ export function useOfflinePlaylist(
     });
   }, [query.data, cacheStore, preload]);
 
-  const { data, dataUpdatedAt, error, isPending, refetch } = query;
+  const { data, dataUpdatedAt, error, errorUpdatedAt, isPending, refetch } =
+    query;
+
+  // 기기 인증 거절과 그 시각. 뒤이은 네트워크 실패는 이것을 풀지 못하고, 그 뒤에
+  // 성공한 조회만 푼다.
+  const [rejection, setRejection] = useState<{
+    error: ApiError;
+    at: number;
+  } | null>(null);
+  const rejected = asDeviceRejection(error);
+  if (rejected && rejection?.at !== errorUpdatedAt) {
+    setRejection({ error: rejected, at: errorUpdatedAt });
+  }
+  const deviceError =
+    rejection && dataUpdatedAt <= rejection.at ? rejection.error : null;
+
+  // 한 번 거절된 뒤에는 이 창에서 읽어 둔 캐시로 돌아가지 않는다.
+  const usableCache = rejection === null ? cached : null;
+
+  // 거절되면 저장해 둔 편성을 지운다. 진행 중인 승격은 버전 확인에서 멈춘다.
+  const rejectedAt = deviceError ? rejection!.at : null;
+  useEffect(() => {
+    if (rejectedAt === null) return;
+    latestVersionRef.current = null;
+    promotedVersionRef.current = null;
+    saveChainRef.current = saveChainRef.current.then(async () => {
+      try {
+        await createPlaylistCache(await cacheStore).clear();
+      } catch {
+        // 지우지 못해도 거절이 풀리기 전에는 재생하지 않는다.
+      }
+    });
+  }, [rejectedAt, cacheStore]);
 
   const timed = useMemo((): TimedPlaylist | null => {
     if (data) {
@@ -195,16 +242,29 @@ export function useOfflinePlaylist(
         clockOffsetMs: data.serverTime.getTime() - dataUpdatedAt,
       };
     }
-    if (cached) {
-      return { playlist: cached.playlist, clockOffsetMs: cached.clockOffsetMs };
+    if (usableCache) {
+      return {
+        playlist: usableCache.playlist,
+        clockOffsetMs: usableCache.clockOffsetMs,
+      };
     }
     return null;
-  }, [data, dataUpdatedAt, cached]);
+  }, [data, dataUpdatedAt, usableCache]);
 
   const now = useServerNow(timed);
 
   return useMemo((): OfflinePlaylistResult => {
-    const base = { refetch: () => void refetch(), lastError: error };
+    const base = { refetch: () => void refetch(), deviceError };
+
+    if (deviceError) {
+      return {
+        ...base,
+        source: null,
+        isPending: false,
+        error: deviceError,
+        playlist: null,
+      };
+    }
 
     if (data && timed && now) {
       return {
@@ -216,15 +276,15 @@ export function useOfflinePlaylist(
       };
     }
 
-    if (cached && now) {
+    if (usableCache && now) {
       return {
         ...base,
         source: "cache",
         isPending: false,
         error: null,
         // 미디어 blob이 사라진 항목은 방어적으로 제외한다.
-        playlist: toDisplayPlaylist(cached.playlist, now, (item) =>
-          cached.posterUrls.get(item.submissionId),
+        playlist: toDisplayPlaylist(usableCache.playlist, now, (item) =>
+          usableCache.posterUrls.get(item.submissionId),
         ),
       };
     }
@@ -236,7 +296,7 @@ export function useOfflinePlaylist(
       error: isPending ? null : error,
       playlist: null,
     };
-  }, [data, timed, now, cached, isPending, error, refetch]);
+  }, [data, timed, now, usableCache, isPending, error, deviceError, refetch]);
 }
 
 /**

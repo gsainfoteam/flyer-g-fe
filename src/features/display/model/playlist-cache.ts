@@ -41,10 +41,14 @@ export interface PlaylistCache {
   findMedia(checksum: string): Promise<Blob | undefined>;
   /** blob이 전부 갖춰졌을 때만 부른다. 참조가 끊긴 미디어는 정리한다. */
   save(playlist: Playlist, media: ReadonlyMap<string, Blob>): Promise<void>;
+  /** 편성과 미디어를 모두 지운다. 기기 토큰이 거절되면 부른다. */
+  clear(): Promise<void>;
 }
 
 export function createPlaylistCache(store: KeyValueStore): PlaylistCache {
   return {
+    clear: () => store.clear(),
+
     async findMedia(checksum) {
       const blob = await store.get<Blob>(mediaKey(checksum));
       return blob instanceof Blob ? blob : undefined;

@@ -239,6 +239,50 @@ describe("기기 연결 (`API-CHANGES-BACKEND.md` 8절)", () => {
     expect(screen.queryByRole("heading", { name: "첫 포스터" })).toBeNull();
   });
 
+  it("토큰이 거절된 뒤 네트워크가 끊겨도 받아 둔 편성을 다시 재생하지 않는다", async () => {
+    const repositories = createMockRepositories({
+      clock: createFixedClock(TEST_NOW),
+    });
+    const getPlaylist = vi
+      .spyOn(repositories.displays, "getPlaylist")
+      .mockResolvedValueOnce(playlistWith([{ id: "p1", title: "첫 포스터" }]))
+      .mockRejectedValueOnce(
+        new ApiError({
+          kind: "http",
+          code: "DEVICE_UNAUTHORIZED",
+          message: "revoked",
+          status: 401,
+        }),
+      )
+      .mockRejectedValueOnce(
+        new ApiError({
+          kind: "network",
+          code: "NETWORK_ERROR",
+          message: "offline",
+        }),
+      )
+      .mockResolvedValue(playlistWith([{ id: "p1", title: "첫 포스터" }]));
+    renderRoute("/display/dev_01", { repositories });
+    await screen.findByRole("heading", { name: "첫 포스터" });
+
+    fireEvent(window, new Event("visibilitychange"));
+    await screen.findByRole("heading", { name: "이 TV의 연결이 끊겼어요" });
+
+    // 다음 조회는 연결 끊김. 거절은 풀리지 않는다.
+    fireEvent(window, new Event("visibilitychange"));
+    await vi.waitFor(() => expect(getPlaylist).toHaveBeenCalledTimes(3));
+    expect(
+      screen.getByRole("heading", { name: "이 TV의 연결이 끊겼어요" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "첫 포스터" })).toBeNull();
+
+    // 새 설정 링크로 인증된 조회가 성공하면 다시 재생한다.
+    fireEvent(window, new Event("visibilitychange"));
+    expect(
+      await screen.findByRole("heading", { name: "첫 포스터" }),
+    ).toBeInTheDocument();
+  });
+
   it("설정 링크로 열면 첫 편성 요청 전에 토큰을 저장하고 주소에서 지운다", async () => {
     window.history.replaceState(null, "", "/display/dev_01#token=fgd_secret");
     const repositories = withPlaylist(

@@ -6,6 +6,7 @@ import { RepositoriesContext } from "@/shared/api/repositories-context";
 import { toPlaylist } from "@/entities/playlist";
 import type { Playlist } from "@/entities/playlist/model/types";
 import { createMockRepositories } from "@/mocks/repositories";
+import { ApiError } from "@/shared/api/error";
 import type { Repositories } from "@/shared/api/repositories";
 import { createFixedClock } from "@/shared/lib/clock";
 import { parseIsoUtc } from "@/shared/lib/datetime";
@@ -127,6 +128,37 @@ describe("useOfflinePlaylist", () => {
     await waitFor(() => expect(result.current.source).toBe("cache"));
     expect(result.current.playlist?.posters).toHaveLength(1);
     expect(result.current.playlist?.posters[0]?.posterUrl).toMatch(/^blob:/);
+  });
+
+  it("기기 토큰이 거절되면 캐시로 재생하지 않고 저장된 캐시도 지운다", async () => {
+    const store = createMemoryStore();
+    await (await primedCache(store)).save(
+      playlistFixture(["cached-poster"]),
+      new Map([["sha:cached-poster", new Blob(["x"])]]),
+    );
+    const repositories = repositoriesWith(async () => {
+      throw new ApiError({
+        kind: "http",
+        code: "DEVICE_UNAUTHORIZED",
+        message: "revoked",
+        status: 401,
+      });
+    });
+
+    const { result } = renderHook(
+      () =>
+        useOfflinePlaylist("device-1", { store, preload: instantPreload }),
+      { wrapper: makeWrapper(repositories) },
+    );
+
+    await waitFor(() =>
+      expect(result.current.deviceError?.code).toBe("DEVICE_UNAUTHORIZED"),
+    );
+    expect(result.current.playlist).toBeNull();
+    // 재시작해도 옛 편성이 나오지 않는다.
+    await waitFor(async () =>
+      expect(await (await primedCache(store)).load()).toBeNull(),
+    );
   });
 
   it("캐시에서도 만료된 항목은 재생하지 않는다", async () => {

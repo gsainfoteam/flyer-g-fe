@@ -13,7 +13,7 @@ import {
 } from "@/features/display";
 import { useRotation } from "@/features/display/model/use-rotation";
 import { PREVIEW_DEVICE_ID } from "@/entities/playlist/model/types";
-import { isApiError, toUserMessage } from "@/shared/api/error";
+import { toUserMessage } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
 import { captureDeviceTokenFromUrl } from "@/shared/lib/device-credential";
 import { ZIGGLE_HOST } from "@/shared/lib/ziggle-url";
@@ -34,11 +34,9 @@ import { Button } from "@/shared/ui/button";
  * 상태 보고(heartbeat)와 노출 이벤트는 실패해도 재생을 멈추지 않는다.
  *
  * 기기 연결: 관리자가 준 설정 링크(`/display/{id}#token=...`)로 한 번 열면 토큰을
- * 저장하고 주소에서 지운다. 토큰이 없거나 거절되면 설정 링크로 다시 열라고 안내한다.
- * 이때는 저장된 편성이 있어도 재생하지 않는다. 재발급·비활성화된 기기가 중단된
- * 포스터를 계속 띄우면 안 된다. 네트워크 실패는 저장된 편성을 계속 재생한다.
+ * 저장하고 주소에서 지운다. 토큰이 없거나 거절되면 설정 링크로 다시 열라고 안내하고
+ * 재생하지 않는다(`useOfflinePlaylist`). 네트워크 실패는 저장된 편성을 계속 재생한다.
  */
-const DEVICE_SETUP_CODES = ["DEVICE_NOT_REGISTERED", "DEVICE_UNAUTHORIZED"];
 export function DisplayPage() {
   const { deviceId = PREVIEW_DEVICE_ID } = useParams();
   const [searchParams] = useSearchParams();
@@ -123,9 +121,8 @@ export function DisplayPage() {
   return (
     <div className="relative h-full">
       <ScaledStage className="h-full w-full">
-        {isApiError(feed.lastError) &&
-        DEVICE_SETUP_CODES.includes(feed.lastError.code) ? (
-          <DeviceSetupNotice error={feed.lastError} deviceId={deviceId} />
+        {feed.deviceError ? (
+          <DeviceSetupNotice error={feed.deviceError} deviceId={deviceId} />
         ) : feed.isPending || !serverTime ? (
           <div className="flex h-full flex-col items-center justify-center gap-6">
             <Logo size="tv" />
