@@ -142,10 +142,8 @@ function parseAuthConfig(raw: RawEnv): AuthConfig {
 
 export function readAppEnv(raw: RawEnv): AppEnv {
   const isProduction = raw.PROD === true;
-  // TODO(Phase 08): 실제 API 연동 시작과 함께 기본값을 false로 되돌린다.
-  // 백엔드가 없는 지금은 어떤 배포든 mock 데모가 유일하게 동작하는 형태라
-  // 별도 환경 변수 없이도 배포가 뜨도록 잠시 기본을 데모로 둔다.
-  const isDemo = parseBoolean(raw.VITE_DEMO_MODE, true);
+  // 데모는 명시적으로 켤 때만이다. 비워 둔 production 빌드는 실제 API로 뜬다.
+  const isDemo = parseBoolean(raw.VITE_DEMO_MODE, false);
   // 데모 빌드는 백엔드 없이 배포하는 것이 목적이므로 mock이 기본이다.
   const mockByDefault = parseBoolean(
     raw.VITE_USE_MOCK_API,

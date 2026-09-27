@@ -69,13 +69,13 @@ TV 플레이어는 편성·포스터를 IndexedDB에 캐시한다(last-known-goo
 
 | 빌드 | 비워 두었을 때 | 비고 |
 |---|---|---|
-| 개발(`bun run dev`) | mock API, mock 세션 | |
-| production(`bun run build`) | **데모 배포**: mock API, mock 세션 | `VITE_DEMO_MODE`의 기본값이 지금은 `true`다 |
-| production + `VITE_DEMO_MODE=false` | 실제 API | `VITE_API_BASE_URL`이 없거나 mock을 켜면 시작 화면에서 설정 오류를 알린다 |
+| 개발(`bun run dev`) | mock API, mock 세션 | 단위별로 `VITE_API_MODE_*=real`을 켜서 실제 서버에 붙일 수 있다 |
+| production(`bun run build`) | 실제 API, 실제 로그인 | 모든 단위가 real이어야 한다. `VITE_API_BASE_URL`, `VITE_AUTH_CLIENT_ID`, `VITE_AUTH_REDIRECT_URI`가 없거나 mock을 켜면 시작 화면에서 설정 오류를 알린다 |
+| production + `VITE_DEMO_MODE=true` | **데모 배포**: mock API, mock 세션 | 백엔드 없이 화면만 보여줄 때 |
 
-실제 API가 아직 없어 지금은 데모가 유일한 배포 형태다. 데모 배포 화면 위에는
-"새로고침하면 처음 상태로 돌아가요" 안내 띠가 붙는다. 실제 API를 연결하면
-`VITE_DEMO_MODE`의 기본값을 `false`로 되돌린다(`src/shared/config/env.ts`의 TODO).
+데모 배포 화면 위에는 "새로고침하면 처음 상태로 돌아가요" 안내 띠가 붙는다.
+
+`.env`가 실제 API를 가리켜도 E2E(`bun run test:e2e`)는 5174 포트에서 mock으로 돈다.
 
 앱 버전은 `package.json`의 `version`과 빌드 시각으로 만든다. TV가 상태 보고에 싣는다.
 

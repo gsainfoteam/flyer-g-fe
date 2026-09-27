@@ -71,8 +71,8 @@ const REPOSITORY_UNITS = {
 /**
  * 사이니지 API 구현을 단위별로 고른다. (Phase 08 부분 연동)
  *
- * 연결을 마친 단위는 실제 구현을, 나머지는 mock을 쓴다. 아직 실제 구현이 없는
- * 단위를 real로 두면 시작 시점에 어느 단위인지 알린다.
+ * real 단위는 실제 구현을, mock 단위는 mock을 쓴다. real 단위가 있으면 env 검증이
+ * base URL을 요구하므로 `apiClient`가 있다.
  */
 function createRepositories(
   env: AppEnv,
@@ -86,34 +86,24 @@ function createRepositories(
       ? () => authAdapter.peekUser()
       : undefined,
   });
-  const real: Partial<{ [K in keyof Repositories]: () => Repositories[K] }> =
-    apiClient === null
-      ? {}
-      : {
-          reference: () => createHttpReferenceRepository(apiClient),
-          submissions: () => createHttpSubmissionRepository(apiClient),
-          reviews: () => createHttpReviewRepository(apiClient),
-          devices: () => createHttpDeviceRepository(apiClient),
-          displays: () =>
-            createHttpDisplayRepository({
-              // TV 요청은 사용자 세션과 무관하다. 기기 토큰만 싣는다.
-              deviceClient: createHttpClient({ baseUrl: env.apiBaseUrl! }),
-              userClient: apiClient,
-              credentials: deviceCredentials,
-            }),
-        };
-
-  const pending = (
-    Object.keys(REPOSITORY_UNITS) as (keyof Repositories)[]
-  ).filter((key) => !isMockUnit(env, REPOSITORY_UNITS[key]) && !real[key]);
-  if (pending.length > 0) {
-    throw new Error(
-      `실제 API repository가 아직 연결되지 않았습니다: ${pending.join(", ")}. 해당 VITE_API_MODE_*를 mock으로 두세요.`,
-    );
-  }
+  const real: {
+    [K in keyof Repositories]: (client: HttpClient) => Repositories[K];
+  } = {
+    reference: createHttpReferenceRepository,
+    submissions: createHttpSubmissionRepository,
+    reviews: createHttpReviewRepository,
+    devices: createHttpDeviceRepository,
+    displays: (client) =>
+      createHttpDisplayRepository({
+        // TV 요청은 사용자 세션과 무관하다. 기기 토큰만 싣는다.
+        deviceClient: createHttpClient({ baseUrl: env.apiBaseUrl! }),
+        userClient: client,
+        credentials: deviceCredentials,
+      }),
+  };
 
   const pick = <K extends keyof Repositories>(key: K): Repositories[K] =>
-    isMockUnit(env, REPOSITORY_UNITS[key]) ? mock[key] : real[key]!();
+    isMockUnit(env, REPOSITORY_UNITS[key]) ? mock[key] : real[key](apiClient!);
 
   return {
     submissions: pick("submissions"),

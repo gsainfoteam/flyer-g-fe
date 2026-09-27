@@ -24,8 +24,7 @@ describe("readAppEnv", () => {
       useMockApi: true,
       useMockAuth: true,
       auth: null,
-      // TODO(Phase 08): 데모 기본값을 false로 되돌리면 이 값도 바뀐다.
-      isDemo: true,
+      isDemo: false,
       isProduction: false,
     });
   });
@@ -64,10 +63,29 @@ describe("readAppEnv", () => {
     });
   });
 
-  it("백엔드 연동 전에는 production 기본값도 데모 빌드다", () => {
-    // TODO(Phase 08): 기본값을 실제 API 모드로 되돌리면서 이 테스트도 뒤집는다.
-    expect(readAppEnv({ PROD: true }).isDemo).toBe(true);
-    expect(readAppEnv({ PROD: true }).useMockApi).toBe(true);
+  it("production은 기본으로 모든 단위가 실제 API이고, 설정이 빠지면 시작 시점에 막는다", () => {
+    expect(() => readAppEnv({ PROD: true })).toThrow(EnvConfigError);
+
+    const env = readAppEnv({
+      PROD: true,
+      VITE_API_BASE_URL: "https://api.example.com",
+      VITE_AUTH_CLIENT_ID: "flyer-g",
+      VITE_AUTH_REDIRECT_URI: "https://flyer.example.com/auth/callback",
+    });
+    expect(env).toMatchObject({
+      isDemo: false,
+      apiModes: allModes("real"),
+      useMockApi: false,
+      useMockAuth: false,
+    });
+  });
+
+  it("데모 배포는 VITE_DEMO_MODE=true로 명시할 때만 mock으로 뜬다", () => {
+    expect(readAppEnv({ PROD: true, VITE_DEMO_MODE: "true" })).toMatchObject({
+      isDemo: true,
+      useMockApi: true,
+      useMockAuth: true,
+    });
   });
 
   it("데모를 끄면 production mock 금지 검증이 그대로 동작한다", () => {
