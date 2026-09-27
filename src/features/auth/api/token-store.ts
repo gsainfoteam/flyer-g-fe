@@ -46,7 +46,8 @@ function defaultStorage(): TokenStoreOptions["storage"] {
 }
 
 export function createTokenStore(options: TokenStoreOptions = {}): TokenStore {
-  const storage = options.storage === undefined ? defaultStorage() : options.storage;
+  const storage =
+    options.storage === undefined ? defaultStorage() : options.storage;
   const now = options.now ?? Date.now;
   let access: AccessToken | null = null;
   // 저장소를 쓸 수 없을 때만 쓰는 메모리 사본

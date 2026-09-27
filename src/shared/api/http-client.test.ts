@@ -21,7 +21,10 @@ describe("createHttpClient", () => {
       fetchImpl,
     });
 
-    await client.request({ path: "/signage/submissions", query: { status: "PENDING_REVIEW", cursor: null } });
+    await client.request({
+      path: "/signage/submissions",
+      query: { status: "PENDING_REVIEW", cursor: null },
+    });
 
     const [url, init] = fetchImpl.mock.calls[0]!;
     expect(url).toBe(
@@ -32,7 +35,10 @@ describe("createHttpClient", () => {
 
   it("idempotency key를 헤더로 보낸다", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({}));
-    const client = createHttpClient({ baseUrl: "https://api.example.com", fetchImpl });
+    const client = createHttpClient({
+      baseUrl: "https://api.example.com",
+      fetchImpl,
+    });
 
     await client.request({
       method: "POST",
@@ -47,13 +53,22 @@ describe("createHttpClient", () => {
   });
 
   it("오류 응답의 code, message, requestId를 ApiError로 옮긴다", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      jsonResponse(
-        { code: "REVIEW_CONFLICT", message: "이미 처리됨", requestId: "req-9" },
-        { status: 409 },
-      ),
-    );
-    const client = createHttpClient({ baseUrl: "https://api.example.com", fetchImpl });
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(
+          {
+            code: "REVIEW_CONFLICT",
+            message: "이미 처리됨",
+            requestId: "req-9",
+          },
+          { status: 409 },
+        ),
+      );
+    const client = createHttpClient({
+      baseUrl: "https://api.example.com",
+      fetchImpl,
+    });
 
     await expect(client.request({ path: "/x" })).rejects.toMatchObject({
       code: "REVIEW_CONFLICT",
@@ -65,8 +80,13 @@ describe("createHttpClient", () => {
   it("오류 본문이 없으면 status로 code를 정한다", async () => {
     const fetchImpl = vi
       .fn()
-      .mockResolvedValue(new Response("", { status: 500, headers: { "x-request-id": "req-h" } }));
-    const client = createHttpClient({ baseUrl: "https://api.example.com", fetchImpl });
+      .mockResolvedValue(
+        new Response("", { status: 500, headers: { "x-request-id": "req-h" } }),
+      );
+    const client = createHttpClient({
+      baseUrl: "https://api.example.com",
+      fetchImpl,
+    });
 
     await expect(client.request({ path: "/x" })).rejects.toMatchObject({
       code: "SERVER_ERROR",
@@ -75,8 +95,13 @@ describe("createHttpClient", () => {
   });
 
   it("네트워크 실패를 ApiError로 정규화한다", async () => {
-    const fetchImpl = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
-    const client = createHttpClient({ baseUrl: "https://api.example.com", fetchImpl });
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValue(new TypeError("Failed to fetch"));
+    const client = createHttpClient({
+      baseUrl: "https://api.example.com",
+      fetchImpl,
+    });
 
     const error: unknown = await client
       .request({ path: "/x" })
@@ -86,8 +111,13 @@ describe("createHttpClient", () => {
   });
 
   it("204 응답은 본문 없이 끝낸다", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
-    const client = createHttpClient({ baseUrl: "https://api.example.com", fetchImpl });
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    const client = createHttpClient({
+      baseUrl: "https://api.example.com",
+      fetchImpl,
+    });
     await expect(client.request({ path: "/x" })).resolves.toBeUndefined();
   });
 
@@ -101,7 +131,10 @@ describe("createHttpClient", () => {
           else init?.signal?.addEventListener("abort", abort);
         }),
     );
-    const client = createHttpClient({ baseUrl: "https://api.example.com", fetchImpl });
+    const client = createHttpClient({
+      baseUrl: "https://api.example.com",
+      fetchImpl,
+    });
     const controller = new AbortController();
 
     const pending = client.request({ path: "/x", signal: controller.signal });
@@ -140,8 +173,13 @@ describe("createHttpClient", () => {
   });
 
   it("응답 없이 실패한 fetch는 네트워크 오류다", async () => {
-    const fetchImpl = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
-    const client = createHttpClient({ baseUrl: "https://api.example.com", fetchImpl });
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValue(new TypeError("Failed to fetch"));
+    const client = createHttpClient({
+      baseUrl: "https://api.example.com",
+      fetchImpl,
+    });
 
     await expect(client.request({ path: "/x" })).rejects.toMatchObject({
       kind: "network",
@@ -160,7 +198,10 @@ describe("createHttpClient", () => {
         { status: 422 },
       ),
     );
-    const client = createHttpClient({ baseUrl: "https://api.example.com", fetchImpl });
+    const client = createHttpClient({
+      baseUrl: "https://api.example.com",
+      fetchImpl,
+    });
 
     await expect(client.request({ path: "/x" })).rejects.toMatchObject({
       status: 422,
@@ -184,7 +225,10 @@ describe("createHttpClient", () => {
 
   describe("401 뒤 세션 갱신", () => {
     const unauthorized = () =>
-      jsonResponse({ code: "UNAUTHENTICATED", message: "만료" }, { status: 401 });
+      jsonResponse(
+        { code: "UNAUTHENTICATED", message: "만료" },
+        { status: 401 },
+      );
 
     it("갱신에 성공하면 새 인증 헤더로 한 번 다시 보낸다", async () => {
       let token = "old";
@@ -203,9 +247,13 @@ describe("createHttpClient", () => {
         onUnauthorized,
       });
 
-      await expect(client.request({ path: "/x" })).resolves.toEqual({ ok: true });
+      await expect(client.request({ path: "/x" })).resolves.toEqual({
+        ok: true,
+      });
       expect(onUnauthorized).toHaveBeenCalledTimes(1);
-      expect(fetchImpl.mock.calls[1]![1].headers.Authorization).toBe("Bearer new");
+      expect(fetchImpl.mock.calls[1]![1].headers.Authorization).toBe(
+        "Bearer new",
+      );
     });
 
     it("다시 보낸 요청도 401이면 더 갱신하지 않고 던진다", async () => {
@@ -259,8 +307,12 @@ describe("createHttpClient", () => {
         idempotencyKey: "key-1",
       });
 
-      expect(fetchImpl.mock.calls[1]![1].headers["Idempotency-Key"]).toBe("key-1");
-      expect(fetchImpl.mock.calls[1]![1].body).toBe(JSON.stringify({ title: "제목" }));
+      expect(fetchImpl.mock.calls[1]![1].headers["Idempotency-Key"]).toBe(
+        "key-1",
+      );
+      expect(fetchImpl.mock.calls[1]![1].body).toBe(
+        JSON.stringify({ title: "제목" }),
+      );
     });
   });
 });

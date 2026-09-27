@@ -27,7 +27,11 @@ export function readObject(value: unknown, path = "응답"): JsonObject {
   return value as JsonObject;
 }
 
-export function readString(object: JsonObject, key: string, path = key): string {
+export function readString(
+  object: JsonObject,
+  key: string,
+  path = key,
+): string {
   const value = object[key];
   if (typeof value !== "string") throw invalidResponse(path, "문자열");
   return value;
@@ -40,11 +44,16 @@ export function readNullableString(
 ): string | null {
   const value = object[key];
   if (value === null || value === undefined) return null;
-  if (typeof value !== "string") throw invalidResponse(path, "문자열 또는 null");
+  if (typeof value !== "string")
+    throw invalidResponse(path, "문자열 또는 null");
   return value;
 }
 
-export function readNumber(object: JsonObject, key: string, path = key): number {
+export function readNumber(
+  object: JsonObject,
+  key: string,
+  path = key,
+): number {
   const value = object[key];
   if (typeof value !== "number" || !Number.isFinite(value)) {
     throw invalidResponse(path, "숫자");

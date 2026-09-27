@@ -44,7 +44,9 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
         const error = normalizeApiError(cause);
         if (error.kind === "canceled") return;
         setState((current) =>
-          current.status === "initializing" ? { status: "error", error } : current,
+          current.status === "initializing"
+            ? { status: "error", error }
+            : current,
         );
       });
 

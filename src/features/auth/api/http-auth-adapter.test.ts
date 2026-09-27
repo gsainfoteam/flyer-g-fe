@@ -44,18 +44,25 @@ type Handler = (init: RequestInit) => Response | Promise<Response>;
 /** 경로별 응답을 정해 두는 가짜 서버. 부른 요청을 기록한다. */
 function fakeServer(routes: Record<string, Handler>) {
   const calls: { path: string; init: RequestInit }[] = [];
-  const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const path = new URL(String(input)).pathname;
-    calls.push({ path, init: init ?? {} });
-    const handler = routes[path];
-    if (!handler) throw new Error(`예상하지 못한 요청: ${path}`);
-    return handler(init ?? {});
-  });
+  const fetchImpl = vi.fn(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      calls.push({ path, init: init ?? {} });
+      const handler = routes[path];
+      if (!handler) throw new Error(`예상하지 못한 요청: ${path}`);
+      return handler(init ?? {});
+    },
+  );
   const bodyOf = (index: number) =>
     JSON.parse(String(calls[index]!.init.body)) as Record<string, unknown>;
   const headerOf = (index: number, name: string) =>
     (calls[index]!.init.headers as Record<string, string>)[name];
-  return { fetchImpl: fetchImpl as unknown as typeof fetch, calls, bodyOf, headerOf };
+  return {
+    fetchImpl: fetchImpl as unknown as typeof fetch,
+    calls,
+    bodyOf,
+    headerOf,
+  };
 }
 
 function setup(
@@ -98,7 +105,10 @@ function setup(
 }
 
 /** 로그인을 시작해 제공자로 넘어간 주소에서 state를 꺼낸다. */
-async function startSignIn(ctx: ReturnType<typeof setup>, returnTo = "/reviews") {
+async function startSignIn(
+  ctx: ReturnType<typeof setup>,
+  returnTo = "/reviews",
+) {
   void ctx.adapter.signIn(returnTo);
   await vi.waitFor(() => expect(ctx.navigate).toHaveBeenCalled());
   return new URL(ctx.navigate.mock.calls[0]![0] as string);
@@ -155,14 +165,21 @@ describe("createHttpAuthAdapter", () => {
     it("code를 토큰으로 바꾸고 세션 사용자와 돌아갈 경로를 준다", async () => {
       const ctx = setup({
         "/auth/login": () =>
-          json({ accessToken: "access-1", refreshToken: "refresh-1", expiresIn: 3600 }),
+          json({
+            accessToken: "access-1",
+            refreshToken: "refresh-1",
+            expiresIn: 3600,
+          }),
         "/auth/session": () => json(SESSION),
       });
       const url = await startSignIn(ctx);
       const saved = JSON.parse(ctx.pending.getItem("flyerg:auth:pending")!);
 
       const result = await ctx.adapter.completeSignIn(
-        new URLSearchParams({ code: "code-1", state: url.searchParams.get("state")! }),
+        new URLSearchParams({
+          code: "code-1",
+          state: url.searchParams.get("state")!,
+        }),
       );
 
       expect(result).toEqual({
@@ -202,7 +219,9 @@ describe("createHttpAuthAdapter", () => {
       ]);
 
       expect(second).toBe(first);
-      expect(ctx.server.calls.filter((call) => call.path === "/auth/login")).toHaveLength(1);
+      expect(
+        ctx.server.calls.filter((call) => call.path === "/auth/login"),
+      ).toHaveLength(1);
     });
 
     it("이 창에서 시작하지 않은 로그인은 받지 않는다", async () => {
@@ -210,7 +229,9 @@ describe("createHttpAuthAdapter", () => {
       await startSignIn(ctx);
 
       await expect(
-        ctx.adapter.completeSignIn(new URLSearchParams({ code: "c", state: "other" })),
+        ctx.adapter.completeSignIn(
+          new URLSearchParams({ code: "c", state: "other" }),
+        ),
       ).rejects.toMatchObject({ code: "AUTH_STATE_MISMATCH" });
       expect(ctx.server.calls).toHaveLength(0);
     });
@@ -222,7 +243,10 @@ describe("createHttpAuthAdapter", () => {
 
       await expect(
         ctx.adapter.completeSignIn(
-          new URLSearchParams({ code: "c", state: url.searchParams.get("state")! }),
+          new URLSearchParams({
+            code: "c",
+            state: url.searchParams.get("state")!,
+          }),
         ),
       ).rejects.toMatchObject({ code: "AUTH_STATE_MISMATCH" });
     });
@@ -230,7 +254,9 @@ describe("createHttpAuthAdapter", () => {
     it("사용자가 제공자에서 취소하면 AUTH_DENIED", async () => {
       const ctx = setup({});
       await expect(
-        ctx.adapter.completeSignIn(new URLSearchParams({ error: "access_denied" })),
+        ctx.adapter.completeSignIn(
+          new URLSearchParams({ error: "access_denied" }),
+        ),
       ).rejects.toMatchObject({ code: "AUTH_DENIED" });
     });
   });
@@ -245,13 +271,16 @@ describe("createHttpAuthAdapter", () => {
     it("새로고침 뒤에는 refreshToken으로 토큰을 다시 받아 세션을 복원한다", async () => {
       const ctx = setup(
         {
-          "/auth/refresh": () => json({ accessToken: "access-2", expiresIn: 3600 }),
+          "/auth/refresh": () =>
+            json({ accessToken: "access-2", expiresIn: 3600 }),
           "/auth/session": () => json(SESSION),
         },
         { refreshToken: "refresh-1" },
       );
 
-      await expect(ctx.adapter.restore()).resolves.toMatchObject({ id: "user_01" });
+      await expect(ctx.adapter.restore()).resolves.toMatchObject({
+        id: "user_01",
+      });
       expect(ctx.server.bodyOf(0)).toEqual({ refreshToken: "refresh-1" });
       expect(ctx.server.headerOf(1, "Authorization")).toBe("Bearer access-2");
       // 갱신 응답에 새 refreshToken이 없으면 가지고 있던 것을 계속 쓴다.
@@ -315,7 +344,10 @@ describe("createHttpAuthAdapter", () => {
 
     it("여러 요청이 동시에 갱신해도 서버에는 한 번만 보낸다", async () => {
       const ctx = setup(
-        { "/auth/refresh": () => json({ accessToken: "access-2", expiresIn: 3600 }) },
+        {
+          "/auth/refresh": () =>
+            json({ accessToken: "access-2", expiresIn: 3600 }),
+        },
         { refreshToken: "refresh-1" },
       );
 
@@ -340,7 +372,11 @@ describe("createHttpAuthAdapter", () => {
               local.setItem("flyerg:auth:refresh-token", "refresh-2");
               return unauthorized();
             }
-            return json({ accessToken: "access-3", refreshToken: "refresh-3", expiresIn: 3600 });
+            return json({
+              accessToken: "access-3",
+              refreshToken: "refresh-3",
+              expiresIn: 3600,
+            });
           },
         },
         { tokenStore: createTokenStore({ storage: local }) },
@@ -360,7 +396,8 @@ describe("createHttpAuthAdapter", () => {
     it("토큰을 지우고 서버에 알린다. 서버가 실패해도 로그아웃은 끝난다", async () => {
       const ctx = setup(
         {
-          "/auth/refresh": () => json({ accessToken: "access-1", expiresIn: 3600 }),
+          "/auth/refresh": () =>
+            json({ accessToken: "access-1", expiresIn: 3600 }),
           "/auth/logout": () => json({ code: "SERVER_ERROR" }, 500),
         },
         { refreshToken: "refresh-1" },

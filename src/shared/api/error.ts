@@ -102,7 +102,9 @@ export function isRetryableError(error: unknown): boolean {
   const apiError = normalizeApiError(error);
   if (apiError.kind === "canceled") return false;
   if (apiError.status === null) return apiError.kind !== "parse";
-  return apiError.status >= 500 || apiError.status === 408 || apiError.status === 429;
+  return (
+    apiError.status >= 500 || apiError.status === 408 || apiError.status === 429
+  );
 }
 
 /**

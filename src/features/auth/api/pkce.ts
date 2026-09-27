@@ -25,7 +25,10 @@ type SessionStorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 function toBase64Url(bytes: Uint8Array): string {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
 /** 추측할 수 없는 URL-safe 문자열. 32바이트면 43자로 PKCE 최소 길이를 넘는다. */
@@ -33,7 +36,9 @@ export function randomUrlSafe(byteLength = 32): string {
   return toBase64Url(crypto.getRandomValues(new Uint8Array(byteLength)));
 }
 
-export async function createCodeChallenge(codeVerifier: string): Promise<string> {
+export async function createCodeChallenge(
+  codeVerifier: string,
+): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(codeVerifier),

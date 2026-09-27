@@ -207,12 +207,18 @@ export function createHttpAuthAdapter(
     if (providerError) {
       throw providerError === "access_denied"
         ? authError("AUTH_DENIED", "로그인을 취소했습니다.")
-        : authError("AUTH_FAILED", `로그인 제공자가 거절했습니다: ${providerError}`);
+        : authError(
+            "AUTH_FAILED",
+            `로그인 제공자가 거절했습니다: ${providerError}`,
+          );
     }
     const code = params.get("code");
     const state = params.get("state");
     if (!code || !state) {
-      throw authError("AUTH_FAILED", "로그인 응답에 code 또는 state가 없습니다.");
+      throw authError(
+        "AUTH_FAILED",
+        "로그인 응답에 code 또는 state가 없습니다.",
+      );
     }
 
     const pending = takePendingSignIn(pendingStorage, now());
@@ -246,7 +252,10 @@ export function createHttpAuthAdapter(
     refreshSession,
 
     async restore(signal) {
-      if (tokens.getAccessToken() === null && tokens.getRefreshToken() === null) {
+      if (
+        tokens.getAccessToken() === null &&
+        tokens.getRefreshToken() === null
+      ) {
         return null;
       }
       try {

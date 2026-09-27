@@ -50,7 +50,9 @@ export function renderRoute(
   // mock 인증은 sessionStorage에 역할을 남긴다. 테스트끼리 새지 않게 지운다.
   sessionStorage.clear();
 
-  const router = createMemoryRouter(routeTree, { initialEntries: [initialPath] });
+  const router = createMemoryRouter(routeTree, {
+    initialEntries: [initialPath],
+  });
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
