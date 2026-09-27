@@ -1,12 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { EnvConfigError, readAppEnv } from "./env";
+import { API_UNITS, EnvConfigError, readAppEnv } from "./env";
+import type { ApiMode, ApiUnit } from "./env";
+
+const allModes = (mode: ApiMode) =>
+  Object.fromEntries(API_UNITS.map((unit) => [unit, mode])) as Record<
+    ApiUnit,
+    ApiMode
+  >;
+
+/** 실제 로그인에 필요한 값. 테스트용이며 실제 제공자에 등록된 값이 아니다. */
+const REAL_AUTH = {
+  VITE_USE_MOCK_AUTH: "false",
+  VITE_AUTH_CLIENT_ID: "test-client",
+  VITE_AUTH_REDIRECT_URI: "https://app.example.com/auth/callback",
+};
 
 describe("readAppEnv", () => {
   it("개발 환경은 기본으로 mock을 쓴다", () => {
     expect(readAppEnv({ PROD: false })).toEqual({
       apiBaseUrl: null,
+      apiModes: allModes("mock"),
       useMockApi: true,
       useMockAuth: true,
+      auth: null,
       // TODO(Phase 08): 데모 기본값을 false로 되돌리면 이 값도 바뀐다.
       isDemo: true,
       isProduction: false,
@@ -38,8 +54,10 @@ describe("readAppEnv", () => {
     // 백엔드 없이 UI를 보여주는 배포(Cloudflare Pages 등)를 위한 명시적 opt-in.
     expect(readAppEnv({ PROD: true, VITE_DEMO_MODE: "true" })).toEqual({
       apiBaseUrl: null,
+      apiModes: allModes("mock"),
       useMockApi: true,
       useMockAuth: true,
+      auth: null,
       isDemo: true,
       isProduction: true,
     });
@@ -66,9 +84,9 @@ describe("readAppEnv", () => {
       readAppEnv({
         PROD: true,
         VITE_USE_MOCK_API: "false",
-        VITE_USE_MOCK_AUTH: "false",
+        ...REAL_AUTH,
       }),
-    ).toThrow(EnvConfigError);
+    ).toThrow(/VITE_API_BASE_URL/);
   });
 
   it("HTTPS가 아닌 base URL을 막고 localhost만 예외로 둔다", () => {
@@ -76,15 +94,16 @@ describe("readAppEnv", () => {
       readAppEnv({
         PROD: true,
         VITE_USE_MOCK_API: "false",
-        VITE_USE_MOCK_AUTH: "false",
+        ...REAL_AUTH,
         VITE_API_BASE_URL: "http://api.example.com",
       }),
-    ).toThrow(EnvConfigError);
+    ).toThrow(/HTTPS/);
 
     expect(
       readAppEnv({
         PROD: false,
         VITE_USE_MOCK_API: "false",
+        ...REAL_AUTH,
         VITE_API_BASE_URL: "http://localhost:3000",
       }).apiBaseUrl,
     ).toBe("http://localhost:3000");
@@ -95,7 +114,7 @@ describe("readAppEnv", () => {
       readAppEnv({
         PROD: true,
         VITE_USE_MOCK_API: "false",
-        VITE_USE_MOCK_AUTH: "false",
+        ...REAL_AUTH,
         VITE_API_BASE_URL: "https://api.example.com/v1/",
       }).apiBaseUrl,
     ).toBe("https://api.example.com/v1");
@@ -105,5 +124,102 @@ describe("readAppEnv", () => {
     expect(() => readAppEnv({ PROD: false, VITE_USE_MOCK_API: "yes" })).toThrow(
       EnvConfigError,
     );
+  });
+
+  describe("단위별 연동 (Phase 08)", () => {
+    it("단위 하나만 real로 두고 나머지는 mock으로 쓴다", () => {
+      const env = readAppEnv({
+        PROD: false,
+        VITE_API_BASE_URL: "http://localhost:3000",
+        VITE_API_MODE_DISPLAY: "real",
+      });
+      expect(env.apiModes).toEqual({ ...allModes("mock"), display: "real" });
+      expect(env.useMockApi).toBe(false);
+      // 기기 토큰으로 인증하는 단위라 mock 세션과 함께 쓸 수 있다.
+      expect(env.useMockAuth).toBe(true);
+    });
+
+    it("VITE_USE_MOCK_API는 단위별 값이 없을 때의 기본값이다", () => {
+      const env = readAppEnv({
+        PROD: false,
+        VITE_USE_MOCK_API: "false",
+        VITE_API_MODE_UPLOAD: "mock",
+        VITE_API_BASE_URL: "http://localhost:3000",
+        ...REAL_AUTH,
+      });
+      expect(env.apiModes).toEqual({ ...allModes("real"), upload: "mock" });
+    });
+
+    it("mock도 real도 아닌 값을 거부한다", () => {
+      expect(() =>
+        readAppEnv({ PROD: false, VITE_API_MODE_REVIEWS: "on" }),
+      ).toThrow(/VITE_API_MODE_REVIEWS/);
+    });
+
+    it("로그인이 필요한 단위를 real로 두면 mock 세션을 쓸 수 없다", () => {
+      // 실제 서버는 mock 세션을 모르므로 모든 요청이 401이 된다.
+      expect(() =>
+        readAppEnv({
+          PROD: false,
+          VITE_API_BASE_URL: "http://localhost:3000",
+          VITE_API_MODE_SUBMISSIONS: "real",
+        }),
+      ).toThrow(/VITE_USE_MOCK_AUTH/);
+    });
+
+    it("데모가 아닌 production은 한 단위라도 mock이면 막는다", () => {
+      expect(() =>
+        readAppEnv({
+          PROD: true,
+          VITE_DEMO_MODE: "false",
+          VITE_USE_MOCK_API: "false",
+          VITE_API_MODE_DEVICES: "mock",
+          VITE_API_BASE_URL: "https://api.example.com",
+          ...REAL_AUTH,
+        }),
+      ).toThrow(/devices/);
+    });
+  });
+
+  describe("로그인 설정", () => {
+    it("실제 로그인은 client_id와 redirect_uri를 읽는다", () => {
+      const env = readAppEnv({ PROD: false, ...REAL_AUTH });
+      expect(env.auth).toEqual({
+        clientId: "test-client",
+        redirectUri: "https://app.example.com/auth/callback",
+      });
+    });
+
+    it("실제 로그인에 값이 없으면 시작 시점에 막는다", () => {
+      expect(() =>
+        readAppEnv({
+          PROD: false,
+          VITE_USE_MOCK_AUTH: "false",
+          VITE_AUTH_CLIENT_ID: "test-client",
+        }),
+      ).toThrow(/VITE_AUTH_REDIRECT_URI/);
+    });
+
+    it("redirect_uri도 HTTPS만 받고 localhost만 예외로 둔다", () => {
+      expect(() =>
+        readAppEnv({
+          PROD: false,
+          ...REAL_AUTH,
+          VITE_AUTH_REDIRECT_URI: "http://app.example.com/auth/callback",
+        }),
+      ).toThrow(/HTTPS/);
+
+      expect(
+        readAppEnv({
+          PROD: false,
+          ...REAL_AUTH,
+          VITE_AUTH_REDIRECT_URI: "http://localhost:5173/auth/callback",
+        }).auth?.redirectUri,
+      ).toBe("http://localhost:5173/auth/callback");
+    });
+
+    it("mock 세션이면 로그인 값이 없어도 된다", () => {
+      expect(readAppEnv({ PROD: false }).auth).toBeNull();
+    });
   });
 });

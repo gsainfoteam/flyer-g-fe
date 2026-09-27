@@ -1,3 +1,4 @@
+import { isMockUnit } from "@/shared/config/env";
 import type { AppEnv } from "@/shared/config/env";
 import type { AssetUploadService } from "./asset-upload-service";
 import { createFakeUploadService } from "./fake-upload-service";
@@ -13,7 +14,7 @@ export function createAssetUploadService(
   env: AppEnv,
   options: FakeUploadOptions = {},
 ): AssetUploadService {
-  if (env.useMockApi) {
+  if (isMockUnit(env, "upload")) {
     return createFakeUploadService(options);
   }
 

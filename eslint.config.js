@@ -40,7 +40,7 @@ const otherFeatures = (name) => ({
 })
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'src/shared/api/generated']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

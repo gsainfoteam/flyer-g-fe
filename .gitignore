@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# 환경 변수. 값은 커밋하지 않고 .env.example에 양식만 둔다
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "api:sync": "bun scripts/sync-openapi.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.1",
@@ -48,6 +49,7 @@
     "globals": "^17.6.0",
     "jsdom": "^30.0.1",
     "jsqr": "^1.4.0",
+    "openapi-typescript": "^7.13.0",
     "shadcn": "^4.18.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.61.0",

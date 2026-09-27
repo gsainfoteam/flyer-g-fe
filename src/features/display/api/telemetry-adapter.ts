@@ -1,5 +1,6 @@
 import { createStorageHeartbeatLog } from "@/mocks/heartbeats";
 import type { HeartbeatLog } from "@/mocks/heartbeats";
+import { isMockUnit } from "@/shared/config/env";
 import type { AppEnv } from "@/shared/config/env";
 
 /**
@@ -63,7 +64,7 @@ export function createMockTelemetryAdapter(
  * 떠야 하므로 던지지 않고 아무것도 보내지 않는 구현으로 대신한다.
  */
 export function createTelemetryAdapter(env: AppEnv): DeviceTelemetryAdapter {
-  if (env.useMockApi) {
+  if (isMockUnit(env, "display")) {
     return createMockTelemetryAdapter();
   }
   // TODO(Phase 08): API-REQUIREMENTS.md 9절 계약이 정해지면 실제 전송으로 바꾼다.

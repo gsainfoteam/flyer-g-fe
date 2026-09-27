@@ -5,7 +5,8 @@ import { createAssetUploadService } from "@/features/media-upload/api/create-ass
 import { createNoticeAdapter } from "@/entities/notice/api/create-notice-adapter";
 import { createMockRepositories, isMockRepositories } from "@/mocks/repositories";
 import type { Repositories } from "@/shared/api/repositories";
-import type { AppEnv } from "@/shared/config/env";
+import { isMockUnit } from "@/shared/config/env";
+import type { ApiUnit, AppEnv } from "@/shared/config/env";
 import type { AppServices } from "./services";
 
 /**
@@ -36,24 +37,35 @@ export function createAppDependencies(env: AppEnv): AppDependencies {
   return { authAdapter, repositories, services };
 }
 
+/** repository 하나를 어느 연동 단위가 정하는가 */
+const REPOSITORY_UNITS = {
+  submissions: "submissions",
+  reviews: "reviews",
+  displays: "display",
+  devices: "devices",
+} as const satisfies Record<keyof Repositories, ApiUnit>;
+
 /**
- * 사이니지 API 구현을 고른다.
+ * 사이니지 API 구현을 단위별로 고른다. (Phase 08 부분 연동)
  *
- * 실제 HTTP 구현은 사이니지 OpenAPI 계약이 확정된 뒤 Phase 08에서 붙인다.
- * 계약이 없는 상태에서 운영 endpoint를 추측해 고정하지 않는다.
+ * 실제 HTTP 구현은 단위마다 연동하면서 붙인다. 아직 없는 단위를 real로 두면
+ * 시작 시점에 어느 단위인지 알린다.
  */
 function createRepositories(env: AppEnv, authAdapter: AuthAdapter): Repositories {
-  if (env.useMockApi) {
-    return createMockRepositories({
-      latencyMs: 200,
-      // mock 서버가 "누가 요청했는지" 알게 한다. 실제 서버는 쿠키로 안다.
-      session: isMockAuthAdapter(authAdapter)
-        ? () => authAdapter.peekUser()
-        : undefined,
-    });
+  const pending = (
+    Object.keys(REPOSITORY_UNITS) as (keyof Repositories)[]
+  ).filter((key) => !isMockUnit(env, REPOSITORY_UNITS[key]));
+  if (pending.length > 0) {
+    throw new Error(
+      `실제 API repository가 아직 연결되지 않았습니다: ${pending.join(", ")}. 해당 VITE_API_MODE_*를 mock으로 두세요.`,
+    );
   }
 
-  throw new Error(
-    "실제 API repository가 아직 연결되지 않았습니다. API 계약 확정 후 Phase 08에서 구현합니다.",
-  );
+  return createMockRepositories({
+    latencyMs: 200,
+    // mock 서버가 "누가 요청했는지" 알게 한다. 실제 서버는 Bearer 토큰으로 안다.
+    session: isMockAuthAdapter(authAdapter)
+      ? () => authAdapter.peekUser()
+      : undefined,
+  });
 }
