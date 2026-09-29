@@ -14,7 +14,7 @@ export async function gotoInApp(page: Page, path: string): Promise<void> {
 /** mock 로그인. 기본 역할은 하우스 관리자(게시자 역할 포함)다. */
 export async function login(page: Page, path = "/"): Promise<void> {
   await page.goto(path);
-  await page.getByRole("button", { name: "Ziggle 계정으로 로그인" }).click();
+  await page.getByRole("button", { name: "인포팀 계정으로 로그인" }).click();
 }
 
 export async function switchRole(
