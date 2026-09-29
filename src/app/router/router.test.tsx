@@ -32,16 +32,18 @@ describe("세션 guard", () => {
       expect(currentPath(router)).toBe("/login?returnTo=%2Freviews");
     });
     expect(
-      await screen.findByRole("heading", { name: /Ziggle 계정으로 시작해요/ }),
+      await screen.findByRole("heading", {
+        name: /인포팀 계정으로 시작하세요/,
+      }),
     ).toBeInTheDocument();
   });
 
   it("로그인하면 원래 가려던 경로로 돌아간다", async () => {
     const { router } = renderRoute("/reviews");
 
-    await screen.findByRole("button", { name: "Ziggle 계정으로 로그인" });
+    await screen.findByRole("button", { name: "인포팀 계정으로 로그인" });
     await userEvent.click(
-      screen.getByRole("button", { name: "Ziggle 계정으로 로그인" }),
+      screen.getByRole("button", { name: "인포팀 계정으로 로그인" }),
     );
 
     await waitFor(() => expect(currentPath(router)).toBe("/reviews"));
@@ -61,7 +63,9 @@ describe("역할 기반 접근", () => {
     renderRoute("/reviews", { role: "SUBMITTER" });
 
     expect(
-      await screen.findByRole("heading", { name: "이 화면을 볼 권한이 없어요" }),
+      await screen.findByRole("heading", {
+        name: "이 화면을 볼 권한이 없어요",
+      }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /승인 대기 \d+건/ }),
@@ -78,7 +82,9 @@ describe("역할 기반 접근", () => {
   it("기기 관리는 운영자만 볼 수 있다", async () => {
     renderRoute("/displays", { role: "REVIEWER" });
     expect(
-      await screen.findByRole("heading", { name: "이 화면을 볼 권한이 없어요" }),
+      await screen.findByRole("heading", {
+        name: "이 화면을 볼 권한이 없어요",
+      }),
     ).toBeInTheDocument();
   });
 

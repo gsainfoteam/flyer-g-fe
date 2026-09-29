@@ -75,7 +75,7 @@ describe("접근성 자동 검사", () => {
 
   it("로그인", async () => {
     const { container } = renderRoute("/submissions", { role: null });
-    await screen.findByRole("button", { name: /Ziggle 계정으로 로그인/ });
+    await screen.findByRole("button", { name: /인포팀 계정으로 로그인/ });
     await expectNoViolations(container);
   });
 });
