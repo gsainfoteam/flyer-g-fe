@@ -1,6 +1,10 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { DEVICE_LIMITS } from "@/entities/device/model/types";
+import {
+  DEVICE_LIMITS,
+  selectableTargetGroups,
+} from "@/entities/device/model/types";
 import type {
   DeviceWithToken,
   DisplayDevice,
@@ -8,6 +12,7 @@ import type {
 } from "@/entities/device/model/types";
 import { LAYOUT_TYPES } from "@/entities/playlist/model/types";
 import { isApiError, toUserMessage } from "@/shared/api/error";
+import { queryKeys } from "@/shared/api/query-keys";
 import { ConfirmActionDialog, FormField } from "@/shared/components";
 import { Input } from "@/shared/ui/input";
 import {
@@ -38,6 +43,9 @@ import {
  * 등록하면 서버가 토큰을 한 번만 준다. 호출부가 받아 설정 링크로 보여준다.
  * 수정에서는 "사용 안 함"으로 바꿀 수 있다. 사용 안 함인 기기는 토큰이 있어도
  * 편성을 받지 못한다.
+ *
+ * 숨긴 위치 그룹은 고를 수 없다. 이 기기에 이미 연결된 숨긴 그룹만 남겨 풀 수 있게
+ * 한다(서버도 그대로 두는 것은 허용한다).
  */
 interface DeviceFormDialogProps {
   open: boolean;
@@ -65,6 +73,8 @@ export function DeviceFormDialog({
   const [serverErrors, setServerErrors] = useState<DeviceFieldErrors>({});
   const create = useCreateDevice();
   const update = useUpdateDevice(device?.id ?? "");
+  const queryClient = useQueryClient();
+  const choices = selectableTargetGroups(groups, device?.groupIds);
 
   const errors = { ...validateDeviceDraft(draft), ...serverErrors };
   const errorOf = (field: keyof DeviceFieldErrors) =>
@@ -98,17 +108,36 @@ export function DeviceFormDialog({
         if (Object.keys(validateDeviceDraft(draft)).length > 0) {
           throw new IncompleteForm();
         }
+        // 고른 뒤 다른 운영자가 숨긴 그룹은 목록에서 사라지니 보내지 않는다.
+        // 모르는 id(목록을 못 받았거나 지운 그룹)는 서버가 판단하게 둔다.
+        const sent = {
+          ...draft,
+          groupIds: draft.groupIds.filter(
+            (id) =>
+              choices.some((group) => group.id === id) ||
+              !groups.some((group) => group.id === id),
+          ),
+        };
         if (device) {
-          await update.mutateAsync(toUpdateDeviceInput(draft));
+          await update.mutateAsync(toUpdateDeviceInput(sent));
           toast.success("기기 설정을 저장했어요");
         } else {
-          onCreated(await create.mutateAsync(toDeviceInput(draft)));
+          onCreated(await create.mutateAsync(toDeviceInput(sent)));
         }
       }}
       onError={(error) => {
         if (error instanceof IncompleteForm) return;
         if (isApiError(error)) {
-          setServerErrors(toDeviceFieldErrors(error.fields));
+          const fieldErrors = toDeviceFieldErrors(error.fields);
+          if (fieldErrors.groupIds) {
+            // 서버 문구에는 그룹 id가 들어 있다. 사람이 읽을 말로 바꾸고 목록을 새로 받는다.
+            fieldErrors.groupIds =
+              "숨겼거나 지운 그룹이 섞여 있어요. 그룹 목록을 새로 받았으니 다시 골라 주세요.";
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.reference.targetGroups(),
+            });
+          }
+          setServerErrors(fieldErrors);
         }
         toast.error(device ? "저장하지 못했어요" : "등록하지 못했어요", {
           description: isApiError(error)
@@ -148,13 +177,14 @@ export function DeviceFormDialog({
             신청자가 대상 위치로 이 그룹을 고르면 이 TV에 나가요. 대상을 고르지
             않은 신청은 모든 TV에 나가요.
           </p>
-          {groups.length === 0 ? (
+          {choices.length === 0 ? (
             <p className="text-caption text-ink-subtle">
-              등록된 위치 그룹이 없어요.
+              고를 수 있는 위치 그룹이 없어요. 기기 목록 아래 위치 그룹에서
+              추가해 주세요.
             </p>
           ) : (
             <div className="flex flex-wrap gap-2 pt-1">
-              {groups.map((group) => (
+              {choices.map((group) => (
                 <label
                   key={group.id}
                   className="inline-flex cursor-pointer items-center gap-2 rounded-control border border-line px-3 py-1.5 text-label has-checked:border-ink has-checked:bg-surface-muted"
@@ -165,7 +195,7 @@ export function DeviceFormDialog({
                     checked={draft.groupIds.includes(group.id)}
                     onChange={() => toggleGroup(group.id)}
                   />
-                  {group.name}
+                  {group.isHidden ? `${group.name} (숨김)` : group.name}
                 </label>
               ))}
             </div>
