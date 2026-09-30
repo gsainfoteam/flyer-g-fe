@@ -34,10 +34,16 @@ export function SiteFooter() {
                 </FooterLink>
               </li>
               <li>
-                <FooterLink href={SERVICE_LINKS.terms}>이용약관</FooterLink>
+                <FooterLink href={SERVICE_LINKS.terms} external>
+                  이용약관
+                </FooterLink>
               </li>
               <li>
-                <FooterLink href={SERVICE_LINKS.privacy} className="font-bold text-ink">
+                <FooterLink
+                  href={SERVICE_LINKS.privacy}
+                  external
+                  className="font-bold text-ink"
+                >
                   개인정보처리방침
                 </FooterLink>
               </li>
