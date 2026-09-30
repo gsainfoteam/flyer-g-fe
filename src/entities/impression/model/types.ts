@@ -51,7 +51,9 @@ export function impressionRange(
   today: Date,
 ): Required<Pick<ImpressionStatsParams, "from" | "to">> {
   return {
-    from: toSeoulDateInputValue(new Date(today.getTime() - (days - 1) * DAY_MS)),
+    from: toSeoulDateInputValue(
+      new Date(today.getTime() - (days - 1) * DAY_MS),
+    ),
     to: toSeoulDateInputValue(today),
   };
 }

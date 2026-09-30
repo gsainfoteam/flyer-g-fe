@@ -61,9 +61,7 @@ export function RecentDecisionsPanel({
         <ul className="flex flex-col divide-y divide-line/70">
           {decisions.data.map((record) => {
             const decision = (
-              <span
-                className={cn("font-bold", DECISION_TONE[record.decision])}
-              >
+              <span className={cn("font-bold", DECISION_TONE[record.decision])}>
                 {DECISION_LABEL[record.decision]}
               </span>
             );

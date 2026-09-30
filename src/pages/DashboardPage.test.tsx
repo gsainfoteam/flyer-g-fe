@@ -7,7 +7,9 @@ import { createFixedClock } from "@/shared/lib/clock";
 import { TEST_NOW, renderRoute } from "@/test/render-route";
 
 function repositoriesWithForbiddenReviews() {
-  const repositories = createMockRepositories({ clock: createFixedClock(TEST_NOW) });
+  const repositories = createMockRepositories({
+    clock: createFixedClock(TEST_NOW),
+  });
   // 실제 서버는 게시자에게 승인 대기 목록을 403으로 거절한다.
   const listPending = vi.fn(async () => {
     throw new ApiError({
@@ -30,7 +32,9 @@ describe("대시보드", () => {
       await screen.findByRole("link", { name: "새 게시 신청" }),
     ).toBeInTheDocument();
     expect(listPending).not.toHaveBeenCalled();
-    expect(screen.queryByText("내용을 불러오지 못했어요")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("내용을 불러오지 못했어요"),
+    ).not.toBeInTheDocument();
   });
 
   it("TV 미리보기 링크는 운영 모드가 아니라 미리보기 모드로 연다", async () => {
@@ -85,7 +89,6 @@ describe("대시보드", () => {
   });
 });
 
-
 describe("게시자 홈", () => {
   it("반려·중단 건은 관리자가 남긴 사유와 고치러 가는 버튼을 보여준다", async () => {
     renderRoute("/", { role: "SUBMITTER" });
@@ -132,9 +135,9 @@ describe("게시자 홈", () => {
     ).closest("section")!;
     const items = await within(feed).findAllByRole("listitem");
     expect(items.length).toBeGreaterThan(0);
-    expect(
-      within(feed).getByText("게시 중단").closest("p"),
-    ).toHaveTextContent("슈퍼-피셜 드로잉 원데이 클래스 게시 중단");
+    expect(within(feed).getByText("게시 중단").closest("p")).toHaveTextContent(
+      "슈퍼-피셜 드로잉 원데이 클래스 게시 중단",
+    );
   });
 
   it("지난 신청에는 끝난 날과 노출 수를, 취소한 신청은 취소했다고 적는다", async () => {

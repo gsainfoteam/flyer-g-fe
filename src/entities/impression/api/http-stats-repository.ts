@@ -35,9 +35,7 @@ function parseItem(payload: unknown, index: number): ImpressionStatsItem {
   };
 }
 
-export function createHttpStatsRepository(
-  client: HttpClient,
-): StatsRepository {
+export function createHttpStatsRepository(client: HttpClient): StatsRepository {
   return {
     async getImpressions({ from, to, scope = "me" }, signal) {
       const body = readObject(

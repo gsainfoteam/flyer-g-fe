@@ -154,9 +154,7 @@ function FeedItem({
         <p className="mt-0.5 text-label font-normal text-ink">
           {sentenceOf(event.type, name)}
         </p>
-        {quote && (
-          <p className="mt-1 text-caption text-ink-muted">“{quote}”</p>
-        )}
+        {quote && <p className="mt-1 text-caption text-ink-muted">“{quote}”</p>}
       </div>
     </li>
   );

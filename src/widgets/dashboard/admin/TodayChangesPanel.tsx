@@ -52,9 +52,7 @@ export function TodayChangesPanel({
   const today = changes.filter((change) => seoulDayDiff(now, change.at) === 0);
   const starting = today.filter((change) => change.kind === "start");
   const ending = today.filter((change) => change.kind === "end");
-  const next = changes.find(
-    (change) => seoulDayDiff(now, change.at) > 0,
-  );
+  const next = changes.find((change) => seoulDayDiff(now, change.at) > 0);
 
   return (
     <Panel

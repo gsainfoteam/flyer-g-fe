@@ -103,9 +103,7 @@ export function ActiveSubmissionCard({
 
         <dl className="mt-3.5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 border-t border-line/70 pt-3 text-caption">
           {impressionLine(submission, impressions, now)}
-          {places !== null && (
-            <MetaRow label="걸리는 곳">{places}</MetaRow>
-          )}
+          {places !== null && <MetaRow label="걸리는 곳">{places}</MetaRow>}
           <MetaRow label="QR 연결">
             {submission.detailUrl ? (
               <a
@@ -162,11 +160,9 @@ function sentenceOf(submission: SubmissionView, now: Date): ReactNode {
         submission.submittedAt ?? submission.createdAt,
         now,
       );
-      return submission.startAt.getTime() > now.getTime() ? (
-        `검토 대기 ${waited}째 · 승인 시 ${formatSeoulShortDateTime(submission.startAt)} 자동 게시`
-      ) : (
-        `검토 대기 ${waited}째 · 승인 즉시 게시`
-      );
+      return submission.startAt.getTime() > now.getTime()
+        ? `검토 대기 ${waited}째 · 승인 시 ${formatSeoulShortDateTime(submission.startAt)} 자동 게시`
+        : `검토 대기 ${waited}째 · 승인 즉시 게시`;
     }
     case "REJECTED":
       return "반려됨 · 수정 후 다시 제출";
@@ -185,9 +181,7 @@ function impressionLine(
 ): ReactNode {
   const onAir = submission.status === "PUBLISHED";
   if (!impressions) {
-    return onAir ? (
-      <MetaRow label="TV에 나온 횟수">집계 전</MetaRow>
-    ) : null;
+    return onAir ? <MetaRow label="TV에 나온 횟수">집계 전</MetaRow> : null;
   }
   const parts = [`${impressions.impressions.toLocaleString("ko-KR")}회`];
   if (onAir) {
@@ -212,9 +206,7 @@ function impressionLine(
 function FixRequest({ submission }: { submission: SubmissionView }) {
   const history = useReviewHistory(submission.id);
   const decision = history.data
-    ?.filter(
-      (event) => event.type === "REJECTED" || event.type === "SUSPENDED",
-    )
+    ?.filter((event) => event.type === "REJECTED" || event.type === "SUSPENDED")
     .at(-1);
 
   return (

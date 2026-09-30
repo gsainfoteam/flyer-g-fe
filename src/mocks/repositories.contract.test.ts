@@ -700,9 +700,9 @@ describe("처리 이력과 최근 처리", () => {
       comment: "마감일을 확인해 주세요.",
     });
 
-    expect(
-      (await repos.submissions.getById("notice-003")).lastDecision,
-    ).toBe("REJECTED");
+    expect((await repos.submissions.getById("notice-003")).lastDecision).toBe(
+      "REJECTED",
+    );
   });
 
   it("반려 뒤 다시 낸 검토 대기 건은 최근 결정이 반려다", async () => {

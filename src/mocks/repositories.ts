@@ -793,7 +793,12 @@ export function createMockRepositories(
     if (!ON_AIR_ONCE.includes(status)) return [];
     const stoppedAt =
       status === "SUSPENDED" ? suspendedAtOf(dto) : toIsoUtc(clock.now());
-    const system = { reasonCode: null, comment: null, actorId: "", actorName: "" };
+    const system = {
+      reasonCode: null,
+      comment: null,
+      actorId: "",
+      actorName: "",
+    };
     const events: SubmissionEventDto[] = [];
     if (dto.startAt < stoppedAt) {
       events.push({
@@ -855,18 +860,16 @@ export function createMockRepositories(
         )
         .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
         .slice(0, limit)
-        .map(
-          (event): DecisionRecord => ({
-            id: event.id,
-            submissionId: event.submissionId,
-            submissionTitle:
-              store.all().find((item) => item.id === event.submissionId)
-                ?.title ?? null,
-            decision: event.type as ReviewDecision,
-            actorName: event.actorName,
-            occurredAt: parseIsoUtc(event.occurredAt),
-          }),
-        );
+        .map((event): DecisionRecord => ({
+          id: event.id,
+          submissionId: event.submissionId,
+          submissionTitle:
+            store.all().find((item) => item.id === event.submissionId)?.title ??
+            null,
+          decision: event.type as ReviewDecision,
+          actorName: event.actorName,
+          occurredAt: parseIsoUtc(event.occurredAt),
+        }));
     },
 
     async approve(input: ApproveInput, mutationOptions?: MutationOptions) {
@@ -1232,7 +1235,9 @@ export function createMockRepositories(
       (seed) =>
         seed.isActive &&
         (dto.targetGroupIds.length === 0 ||
-          seed.groupIds.some((groupId) => dto.targetGroupIds.includes(groupId))),
+          seed.groupIds.some((groupId) =>
+            dto.targetGroupIds.includes(groupId),
+          )),
     ).length;
     const perDeviceHour = 6 + spread(dto.id, 5);
     const impressions = Math.round(

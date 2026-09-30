@@ -110,7 +110,12 @@ export function ErrorState({
         {trace && <p className="text-caption text-ink-subtle">{trace}</p>}
       </div>
       {onRetry && (
-        <Button variant="secondary" size="sm" onClick={onRetry} className="mt-1">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onRetry}
+          className="mt-1"
+        >
           {retryLabel}
         </Button>
       )}

@@ -67,7 +67,10 @@ export interface SubmissionEventDto {
   occurredAt: string;
 }
 
-export interface SubmissionEvent extends Omit<SubmissionEventDto, "occurredAt"> {
+export interface SubmissionEvent extends Omit<
+  SubmissionEventDto,
+  "occurredAt"
+> {
   occurredAt: Date;
 }
 

@@ -52,11 +52,7 @@ describe("isRenderStalled", () => {
 
   it("연결은 됐는데 10분 넘게 정상 재생이 없으면 멈춘 것이다", () => {
     expect(
-      isRenderStalled(
-        { status: "ONLINE", lastRenderOkAt: ago(11) },
-        now,
-        true,
-      ),
+      isRenderStalled({ status: "ONLINE", lastRenderOkAt: ago(11) }, now, true),
     ).toBe(true);
     expect(
       isRenderStalled({ status: "ONLINE", lastRenderOkAt: ago(2) }, now, true),

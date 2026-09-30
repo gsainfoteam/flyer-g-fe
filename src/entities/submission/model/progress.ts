@@ -13,9 +13,8 @@ export interface ProgressStep {
   state: ProgressStepState;
 }
 
-const steps = (
-  ...entries: [string, ProgressStepState][]
-): ProgressStep[] => entries.map(([label, state]) => ({ label, state }));
+const steps = (...entries: [string, ProgressStepState][]): ProgressStep[] =>
+  entries.map(([label, state]) => ({ label, state }));
 
 export function getProgressSteps(status: SubmissionStatus): ProgressStep[] {
   switch (status) {

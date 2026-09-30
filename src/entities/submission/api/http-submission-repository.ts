@@ -63,7 +63,10 @@ function readDecision(
     typeof value !== "string" ||
     !(SUBMISSION_DECISIONS as readonly string[]).includes(value)
   ) {
-    throw invalidResponse(path, `${SUBMISSION_DECISIONS.join(" | ")} 또는 null`);
+    throw invalidResponse(
+      path,
+      `${SUBMISSION_DECISIONS.join(" | ")} 또는 null`,
+    );
   }
   return value as SubmissionDecision;
 }

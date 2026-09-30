@@ -392,7 +392,8 @@ export function createEventFixtures(now: Date): SubmissionEventDto[] {
           revision: 1,
           type: "REJECTED",
           reasonCode: "LOW_RESOLUTION",
-          comment: "포스터 글자가 작아 TV에서 읽기 어렵습니다. 크게 다시 올려 주세요.",
+          comment:
+            "포스터 글자가 작아 TV에서 읽기 어렵습니다. 크게 다시 올려 주세요.",
           ...REVIEWER,
           occurredAt: toIsoUtc(new Date(created + REJECTED_AFTER_MS)),
         },

@@ -116,12 +116,17 @@ describe("formatElapsed", () => {
   });
 
   it("분·시간·일 단위로 읽는다", () => {
-    expect(formatElapsed(new Date(now.getTime() - 5 * 60_000), now)).toBe("5분");
-    expect(formatElapsed(new Date(now.getTime() - 3 * 3_600_000), now)).toBe("3시간");
-    expect(formatElapsed(new Date(now.getTime() - 2 * 86_400_000), now)).toBe("2일");
+    expect(formatElapsed(new Date(now.getTime() - 5 * 60_000), now)).toBe(
+      "5분",
+    );
+    expect(formatElapsed(new Date(now.getTime() - 3 * 3_600_000), now)).toBe(
+      "3시간",
+    );
+    expect(formatElapsed(new Date(now.getTime() - 2 * 86_400_000), now)).toBe(
+      "2일",
+    );
   });
 });
-
 
 describe("서울 달력 기준 날짜 차이와 가까운 시각", () => {
   // 2026-09-29 13:01 KST

@@ -130,8 +130,8 @@ function BoardRow({
           )}
         </p>
         <p className="text-caption text-ink-subtle">
-          포스터 {rotation.posterCount}장 · {LAYOUT_LABEL[device.layout.type]}{" "}
-          · {rotation.rotationSeconds}초마다 넘김
+          포스터 {rotation.posterCount}장 · {LAYOUT_LABEL[device.layout.type]} ·{" "}
+          {rotation.rotationSeconds}초마다 넘김
         </p>
       </div>
       <div className="text-right max-sm:basis-full max-sm:text-left">
@@ -143,9 +143,7 @@ function BoardRow({
         ) : rotation.cycleSeconds === null ? (
           <>
             <p className="text-label font-bold text-ink">넘기지 않음</p>
-            <p className="text-caption text-ink-subtle">
-              한 화면에 모두 표시
-            </p>
+            <p className="text-caption text-ink-subtle">한 화면에 모두 표시</p>
           </>
         ) : (
           <>

@@ -100,9 +100,7 @@ export function OperatorHome() {
   );
 }
 
-const accent = (value: string) => (
-  <span className="text-accent">{value}</span>
-);
+const accent = (value: string) => <span className="text-accent">{value}</span>;
 
 /**
  * 끊긴 TV만 있으면 "연결 끊긴 TV", 재생이 멈춘 TV도 있으면 둘을 묶어
@@ -110,12 +108,11 @@ const accent = (value: string) => (
  */
 function titleOf(pending: number, offline: number, stalled: number): ReactNode {
   const troubled = offline + stalled;
-  const tv =
-    troubled > 0 && (
-      <>
-        {stalled > 0 ? "확인할 TV" : "연결 끊긴 TV"} {accent(`${troubled}대`)}
-      </>
-    );
+  const tv = troubled > 0 && (
+    <>
+      {stalled > 0 ? "확인할 TV" : "연결 끊긴 TV"} {accent(`${troubled}대`)}
+    </>
+  );
   if (pending > 0 && tv) {
     return (
       <>
