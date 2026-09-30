@@ -522,7 +522,7 @@
     },
     "/signage/target-groups": {
       "get": {
-        "description": "신청 폼의 \"대상 위치\" 선택지. 노출 순서대로 준다. 신청의 targetGroupIds가 비어 있으면 전체 기기가 대상이다.",
+        "description": "신청 폼의 \"대상 위치\"와 기기 폼의 \"위치 그룹\" 선택지. 이름순으로 준다.\n신청의 targetGroupIds가 비어 있으면 전체 기기가 대상이다.\n\n**숨긴 그룹(isHidden: true)도 준다.** 과거 신청·기기의 그룹 ID를 이름으로 바꿔 보여 줄 때 필요하다.\n새로 고르는 선택 목록에서는 프론트가 숨긴 그룹을 빼야 한다. 숨긴 그룹을 새로 추가하면 422다.",
         "operationId": "TargetGroupsController_findAll",
         "parameters": [],
         "responses": {
@@ -556,6 +556,231 @@
           }
         ],
         "summary": "대상 위치 그룹 목록",
+        "tags": [
+          "Reference"
+        ]
+      },
+      "post": {
+        "description": "ID는 서버가 정한다(grp_xxx). 새 그룹은 숨기지 않은 상태, deviceCount 0으로 만들어진다. 감사 로그 GROUP_CREATED",
+        "operationId": "TargetGroupsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTargetGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TargetGroupDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SUPER_ADMIN만 쓸 수 있다",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "이름 검증 실패: 비었거나 40자 초과, 대소문자를 무시하고 다른 그룹(숨긴 그룹 포함)과 중복. 모두 fields.name",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "대상 위치 그룹 추가",
+        "tags": [
+          "Reference"
+        ]
+      }
+    },
+    "/signage/target-groups/{id}": {
+      "patch": {
+        "description": "보낸 필드만 바꾼다. 실제로 바뀐 필드가 있을 때만 감사 로그 GROUP_UPDATED를 남긴다.\n\n숨김(`isHidden: true`)은 쓰는 곳이 있어도 된다. 기기·신청에 새로 추가하는 것만 막히고,\n이미 연결된 기기·신청과 편성 대상 판정은 그대로다. `isHidden: false`로 다시 보이게 할 수 있다.",
+        "operationId": "TargetGroupsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "그룹 ID",
+            "schema": {
+              "example": "grp_house_a",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTargetGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TargetGroupDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SUPER_ADMIN만 쓸 수 있다",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없는 그룹",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "이름 검증 실패: 비었거나 40자 초과, 대소문자를 무시하고 다른 그룹(숨긴 그룹 포함)과 중복. 모두 fields.name",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "대상 위치 그룹 수정 (이름 변경·숨김)",
+        "tags": [
+          "Reference"
+        ]
+      },
+      "delete": {
+        "description": "오타로 만든 그룹을 지우는 용도. 어떤 기기의 groupIds에도, 어떤 신청의 targetGroupIds에도\n(취소·종료된 신청 포함) 들어 있지 않아야 지울 수 있다. 쓰는 곳이 있으면 409이고, 그때는 숨김을 쓴다.\n감사 로그 GROUP_DELETED",
+        "operationId": "TargetGroupsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "그룹 ID",
+            "schema": {
+              "example": "grp_house_a",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "삭제됨"
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SUPER_ADMIN만 쓸 수 있다",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없는 그룹",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "기기나 신청이 쓰고 있는 그룹 (code CONFLICT)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "대상 위치 그룹 삭제",
         "tags": [
           "Reference"
         ]
@@ -1314,7 +1539,8 @@
               "type": "string",
               "enum": [
                 "SUBMISSION",
-                "DEVICE"
+                "DEVICE",
+                "GROUP"
               ]
             }
           },
@@ -1322,7 +1548,7 @@
             "name": "targetId",
             "required": false,
             "in": "query",
-            "description": "대상 ID (신청 ID, 기기 ID)",
+            "description": "대상 ID (신청 ID, 기기 ID, 그룹 ID)",
             "schema": {
               "example": "8d2f4a1e-3c5b-4e21-9a0c-1d8e5f6b2c34",
               "type": "string"
@@ -2031,7 +2257,7 @@
             }
           },
           "422": {
-            "description": "입력 검증 실패. 없는·숨긴 위치 그룹은 fields.groupIds",
+            "description": "입력 검증 실패. 새로 추가한 그룹 중 없거나 숨긴 그룹이 있으면 fields.groupIds (이미 연결된 숨긴 그룹은 그대로 둘 수 있다)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2185,7 +2411,7 @@
             }
           },
           "422": {
-            "description": "입력 검증 실패. 없는·숨긴 위치 그룹은 fields.groupIds",
+            "description": "입력 검증 실패. 새로 추가한 그룹 중 없거나 숨긴 그룹이 있으면 fields.groupIds (이미 연결된 숨긴 그룹은 그대로 둘 수 있다)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2980,7 +3206,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "그룹 ID",
+            "description": "그룹 ID. 관리 화면에서 만든 그룹은 서버가 정한다",
             "example": "grp_house_a"
           },
           "name": {
@@ -2992,13 +3218,51 @@
             "type": "number",
             "description": "그룹에 속한 활성 기기 수 (비활성 기기는 세지 않는다)",
             "example": 2
+          },
+          "isHidden": {
+            "type": "boolean",
+            "description": "숨긴 그룹. 기기·신청에 새로 고를 수 없지만, 이미 연결된 기기·신청과 편성은 그대로다. 선택 목록에서는 빼고, 과거 신청의 그룹 이름을 보여 줄 때는 쓴다",
+            "example": false
           }
         },
         "required": [
           "id",
           "name",
-          "deviceCount"
+          "deviceCount",
+          "isHidden"
         ]
+      },
+      "CreateTargetGroupDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "표시 이름. 앞뒤 공백을 지운 뒤 1~40자. 대소문자를 무시하고 다른 그룹(숨긴 그룹 포함)과 겹치면 422 fields.name",
+            "example": "학사기숙사 A동",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateTargetGroupDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "표시 이름. 앞뒤 공백을 지운 뒤 1~40자. 대소문자를 무시하고 다른 그룹(숨긴 그룹 포함)과 겹치면 422 fields.name",
+            "example": "학사기숙사 A동",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "isHidden": {
+            "type": "boolean",
+            "description": "true면 숨긴다. 숨겨도 이미 연결된 기기·신청과 편성은 그대로이고, 기기·신청에 새로 추가하는 것만 막힌다",
+            "example": true
+          }
+        }
       },
       "PresignAssetRequestDto": {
         "type": "object",
@@ -3234,7 +3498,7 @@
             "example": "2026-08-06T14:59:59.000Z"
           },
           "targetGroupIds": {
-            "description": "GET /signage/target-groups의 id 목록. 비우면 전체 기기가 대상",
+            "description": "GET /signage/target-groups의 id 목록(숨긴 그룹 제외). 비우면 전체 기기가 대상",
             "example": [],
             "default": [],
             "type": "array",
@@ -3784,7 +4048,8 @@
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "description": "대상 위치를 통째로 바꾼다. 새로 추가한 그룹 중 없거나 숨긴 그룹이 있으면 422 fields.targetGroupIds. 이미 연결된 숨긴 그룹은 그대로 둘 수 있다"
           }
         },
         "required": [
@@ -3835,14 +4100,15 @@
           },
           "action": {
             "type": "string",
-            "description": "행위. 신청: SUBMISSION_CREATED, _UPDATED, _RESUBMITTED, _CANCELED, _APPROVED, _REJECTED, _SUSPENDED, _SCHEDULED, _PUBLISHED, _ENDED\n기기: DEVICE_REGISTERED, DEVICE_UPDATED, DEVICE_TOKEN_ROTATED",
+            "description": "행위. 신청: SUBMISSION_CREATED, _UPDATED, _RESUBMITTED, _CANCELED, _APPROVED, _REJECTED, _SUSPENDED, _SCHEDULED, _PUBLISHED, _ENDED\n기기: DEVICE_REGISTERED, DEVICE_UPDATED, DEVICE_TOKEN_ROTATED\n위치 그룹: GROUP_CREATED, GROUP_UPDATED, GROUP_DELETED\n\n- GROUP_* metadata: _CREATED·_DELETED는 { name }, _UPDATED는 { changes: { name?: { from, to }, isHidden?: { from, to } } }",
             "example": "SUBMISSION_APPROVED"
           },
           "targetType": {
             "type": "string",
             "enum": [
               "SUBMISSION",
-              "DEVICE"
+              "DEVICE",
+              "GROUP"
             ],
             "example": "SUBMISSION"
           },
@@ -4210,7 +4476,7 @@
             "nullable": true
           },
           "groupIds": {
-            "description": "기기가 속한 위치 그룹 (GET /signage/target-groups의 id)",
+            "description": "기기가 속한 위치 그룹 (GET /signage/target-groups의 id). 수정할 때는 통째로 바꾼다. 숨긴 그룹은 새로 추가할 수 없지만 이미 연결된 것은 그대로 둘 수 있다",
             "example": [
               "grp_house_a"
             ],
@@ -4394,7 +4660,7 @@
             "nullable": true
           },
           "groupIds": {
-            "description": "기기가 속한 위치 그룹 (GET /signage/target-groups의 id)",
+            "description": "기기가 속한 위치 그룹 (GET /signage/target-groups의 id). 수정할 때는 통째로 바꾼다. 숨긴 그룹은 새로 추가할 수 없지만 이미 연결된 것은 그대로 둘 수 있다",
             "example": [
               "grp_house_a"
             ],
