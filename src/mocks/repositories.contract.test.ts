@@ -575,3 +575,66 @@ describe("요약과 참조 데이터", () => {
     expect(categories.map((category) => category.id)).toContain("performance");
   });
 });
+
+describe("노출 통계", () => {
+  let repos: Repositories;
+  let signInAs: (user: SessionUser | null) => void;
+
+  beforeEach(() => {
+    ({ repos, signInAs } = setup());
+  });
+
+  it("게시자는 기본 범위(me)로 자기 게시물의 노출만 받는다. 노출이 많은 순이다", async () => {
+    const stats = await repos.stats.getImpressions({});
+    const own = await repos.submissions.list({ scope: "me", limit: 50 });
+    const ownIds = new Set(own.items.map((item) => item.id));
+
+    expect(stats.items.length).toBeGreaterThan(0);
+    expect(stats.items.every((item) => ownIds.has(item.submissionId))).toBe(
+      true,
+    );
+    const counts = stats.items.map((item) => item.impressions);
+    expect(counts).toEqual([...counts].sort((a, b) => b - a));
+    // 기간을 비우면 오늘(2026-06-08 서울)까지 30일이다.
+    expect(stats).toMatchObject({ from: "2026-05-10", to: "2026-06-08" });
+  });
+
+  it("게시되지 않은 신청(승인 대기·반려·취소)은 노출이 없다", async () => {
+    const stats = await repos.stats.getImpressions({});
+    const ids = stats.items.map((item) => item.submissionId);
+
+    expect(ids).not.toContain("notice-905");
+    expect(ids).not.toContain("notice-901");
+    expect(ids).not.toContain("notice-902");
+  });
+
+  it("전체 범위(all)는 검토자만 쓴다", async () => {
+    expect(await statusOf(repos.stats.getImpressions({ scope: "all" }))).toBe(
+      403,
+    );
+
+    signInAs(MOCK_USERS.REVIEWER);
+    const all = await repos.stats.getImpressions({ scope: "all" });
+    expect(all.items.some((item) => item.submissionId === "notice-002")).toBe(
+      true,
+    );
+  });
+
+  it("끝까지 나온 횟수는 노출 수를 넘지 않는다", async () => {
+    signInAs(MOCK_USERS.REVIEWER);
+    const all = await repos.stats.getImpressions({ scope: "all" });
+
+    for (const item of all.items) {
+      expect(item.completedImpressions).toBeLessThanOrEqual(item.impressions);
+      expect(item.deviceCount).toBeGreaterThan(0);
+    }
+  });
+
+  it("시작 날짜가 끝 날짜보다 늦으면 422다", async () => {
+    expect(
+      await statusOf(
+        repos.stats.getImpressions({ from: "2026-06-08", to: "2026-06-01" }),
+      ),
+    ).toBe(422);
+  });
+});

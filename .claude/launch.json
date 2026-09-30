@@ -32,7 +32,8 @@
         "VITE_API_MODE_SUBMISSIONS": "real",
         "VITE_API_MODE_REVIEWS": "real",
         "VITE_API_MODE_DEVICES": "real",
-        "VITE_API_MODE_DISPLAY": "real"
+        "VITE_API_MODE_DISPLAY": "real",
+        "VITE_API_MODE_STATS": "real"
       },
       "port": 5173
     },

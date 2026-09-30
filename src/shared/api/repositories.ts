@@ -12,6 +12,10 @@ import type {
 } from "@/entities/submission/model/policy";
 import type { Playlist } from "@/entities/playlist/model/types";
 import type {
+  ImpressionStats,
+  ImpressionStatsParams,
+} from "@/entities/impression/model/types";
+import type {
   RejectionReasonCode,
   SubmissionEvent,
 } from "@/entities/review/model/types";
@@ -204,10 +208,20 @@ export interface ReferenceRepository {
   listTargetGroups(signal?: AbortSignal): Promise<TargetGroup[]>;
 }
 
+/** 노출 통계. 사람이 본 횟수가 아니라 기기가 포스터를 정상으로 띄운 횟수다. */
+export interface StatsRepository {
+  /** 기간 안의 게시물별 노출. 노출이 많은 순이다. `scope: "all"`은 검토자만. */
+  getImpressions(
+    params: ImpressionStatsParams,
+    signal?: AbortSignal,
+  ): Promise<ImpressionStats>;
+}
+
 export interface Repositories {
   submissions: SubmissionRepository;
   reviews: ReviewRepository;
   displays: DisplayRepository;
   devices: DeviceRepository;
   reference: ReferenceRepository;
+  stats: StatsRepository;
 }
