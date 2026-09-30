@@ -216,4 +216,25 @@ describe("createHttpSubmissionRepository", () => {
       message: expect.stringContaining("items[0].startAt"),
     });
   });
+
+  it("최근 검토 결정은 아직 오지 않으면 null이고, 오면 알려진 값만 받는다", async () => {
+    expect(
+      (await fakeClient(SUBMISSION).repository.getById("sub_01")).lastDecision,
+    ).toBeNull();
+    expect(
+      (
+        await fakeClient({
+          ...SUBMISSION,
+          lastDecision: "REJECTED",
+        }).repository.getById("sub_01")
+      ).lastDecision,
+    ).toBe("REJECTED");
+    await expect(
+      fakeClient({ ...SUBMISSION, lastDecision: "HOLD" }).repository.getById(
+        "sub_01",
+      ),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining("신청.lastDecision"),
+    });
+  });
 });

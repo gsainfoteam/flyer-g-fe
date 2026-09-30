@@ -53,6 +53,12 @@ interface EmptyStateProps {
   className?: string;
 }
 
+/**
+ * 비어 있는 이유와 다음 행동. 글만으로 말한다.
+ *
+ * 아이콘이나 큰 제목을 두지 않는다. 비어 있는 칸이 화면에서 가장 눈에 띄면 안 된다.
+ * 제목은 본문 크기로 한 줄, 설명은 그보다 흐리게 둔다.
+ */
 export function EmptyState({
   title,
   description,
@@ -60,12 +66,14 @@ export function EmptyState({
   className,
 }: EmptyStateProps) {
   return (
-    <div className={cn("flex flex-col items-start gap-3 py-6", className)}>
-      <h3 className="text-title text-ink">{title}</h3>
+    <div className={cn("flex flex-col items-start py-5", className)}>
+      <h3 className="text-body font-bold text-ink">{title}</h3>
       {description && (
-        <p className="text-body text-ink-muted">{description}</p>
+        <p className="mt-1 text-label font-normal text-ink-muted">
+          {description}
+        </p>
       )}
-      {action && <div className="pt-1">{action}</div>}
+      {action && <div className="mt-3.5">{action}</div>}
     </div>
   );
 }
@@ -102,7 +110,12 @@ export function ErrorState({
         {trace && <p className="text-caption text-ink-subtle">{trace}</p>}
       </div>
       {onRetry && (
-        <Button variant="secondary" size="sm" onClick={onRetry} className="mt-1">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onRetry}
+          className="mt-1"
+        >
           {retryLabel}
         </Button>
       )}

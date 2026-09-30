@@ -3,6 +3,7 @@ import type { AuthAdapter } from "@/features/auth/api/auth-adapter";
 import { isHttpAuthAdapter } from "@/features/auth/api/http-auth-adapter";
 import { isMockAuthAdapter } from "@/features/auth/api/mock-auth";
 import { createHttpDeviceRepository } from "@/entities/device/api/http-device-repository";
+import { createHttpStatsRepository } from "@/entities/impression/api/http-stats-repository";
 import { createHttpDisplayRepository } from "@/entities/playlist/api/http-display-repository";
 import { createHttpReviewRepository } from "@/entities/review/api/http-review-repository";
 import { createHttpReferenceRepository } from "@/entities/submission/api/http-reference-repository";
@@ -66,6 +67,7 @@ const REPOSITORY_UNITS = {
   displays: "display",
   devices: "devices",
   reference: "reference",
+  stats: "stats",
 } as const satisfies Record<keyof Repositories, ApiUnit>;
 
 /**
@@ -93,6 +95,7 @@ function createRepositories(
     submissions: createHttpSubmissionRepository,
     reviews: createHttpReviewRepository,
     devices: createHttpDeviceRepository,
+    stats: createHttpStatsRepository,
     displays: (client) =>
       createHttpDisplayRepository({
         // TV 요청은 사용자 세션과 무관하다. 기기 토큰만 싣는다.
@@ -111,5 +114,6 @@ function createRepositories(
     displays: pick("displays"),
     devices: pick("devices"),
     reference: pick("reference"),
+    stats: pick("stats"),
   };
 }

@@ -1,4 +1,5 @@
 import type { SubmissionListParams } from "@/entities/submission/model/types";
+import type { ImpressionStatsParams } from "@/entities/impression/model/types";
 import type { PendingReviewParams } from "./repositories";
 
 /**
@@ -25,6 +26,8 @@ export const queryKeys = {
       ["reviews", "pending-infinite", params] as const,
     history: (submissionId: string) =>
       ["reviews", "history", submissionId] as const,
+    recentDecisions: (limit: number) =>
+      ["reviews", "recent-decisions", limit] as const,
   },
   displays: {
     all: () => ["displays"] as const,
@@ -33,6 +36,11 @@ export const queryKeys = {
   devices: {
     all: () => ["devices"] as const,
     list: () => ["devices", "list"] as const,
+  },
+  stats: {
+    all: () => ["stats"] as const,
+    impressions: (params: ImpressionStatsParams) =>
+      ["stats", "impressions", params] as const,
   },
   reference: {
     all: () => ["reference"] as const,

@@ -10,6 +10,9 @@ import { parseIsoUtc } from "@/shared/lib/datetime";
  *
  * SUSPENDED는 명세 6.4의 decision enum(APPROVED/REJECTED)에 없지만, 중단 사유를
  * 게시자에게 보여주려면(FR-REV-05) 여기에 함께 온다고 가정한다.
+ *
+ * PUBLISHED·ENDED는 사람이 아니라 서버의 주기 작업이 남긴다(게시 시작·종료). 이때
+ * `actorId`·`actorName`은 빈 문자열이다.
  */
 export const SUBMISSION_EVENT_TYPES = [
   "SUBMITTED",
@@ -18,6 +21,8 @@ export const SUBMISSION_EVENT_TYPES = [
   "REJECTED",
   "SUSPENDED",
   "CANCELED",
+  "PUBLISHED",
+  "ENDED",
 ] as const;
 export type SubmissionEventType = (typeof SUBMISSION_EVENT_TYPES)[number];
 
@@ -62,7 +67,33 @@ export interface SubmissionEventDto {
   occurredAt: string;
 }
 
-export interface SubmissionEvent extends Omit<SubmissionEventDto, "occurredAt"> {
+export interface SubmissionEvent extends Omit<
+  SubmissionEventDto,
+  "occurredAt"
+> {
+  occurredAt: Date;
+}
+
+/** 서버가 남긴 일인가(게시 시작·종료). 화면에 사람 이름을 붙이지 않는다. */
+export function isSystemEvent(event: Pick<SubmissionEvent, "type">): boolean {
+  return event.type === "PUBLISHED" || event.type === "ENDED";
+}
+
+/** 검토자의 결정 */
+export const REVIEW_DECISIONS = ["APPROVED", "REJECTED", "SUSPENDED"] as const;
+export type ReviewDecision = (typeof REVIEW_DECISIONS)[number];
+
+/**
+ * 누가 어떤 신청을 어떻게 처리했는지 한 줄. 관리자 홈의 "최근 처리"에 쓴다.
+ * 여러 신청에 걸친 기록이라 신청 제목을 함께 담는다.
+ */
+export interface DecisionRecord {
+  id: string;
+  submissionId: string;
+  /** 신청의 지금 제목. 신청이 지워졌으면 null */
+  submissionTitle: string | null;
+  decision: ReviewDecision;
+  actorName: string;
   occurredAt: Date;
 }
 

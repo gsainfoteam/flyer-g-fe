@@ -34,6 +34,23 @@ export function usePendingReviews(
   });
 }
 
+/**
+ * 모든 신청에 걸친 최근 검토 결정. 관리자 홈의 "최근 처리"에 쓴다.
+ * 검토자 전용이다. 게시자 세션에서는 부르지 않는다.
+ */
+export function useRecentDecisions(
+  limit: number,
+  { enabled = true }: { enabled?: boolean } = {},
+) {
+  const { reviews } = useRepositories();
+
+  return useQuery({
+    queryKey: queryKeys.reviews.recentDecisions(limit),
+    enabled,
+    queryFn: ({ signal }) => reviews.listRecentDecisions({ limit }, signal),
+  });
+}
+
 /** 승인 대기 목록 화면의 한 페이지 크기 */
 export const PENDING_PAGE_SIZE = 20;
 

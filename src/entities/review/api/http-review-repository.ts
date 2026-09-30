@@ -15,9 +15,12 @@ import {
 } from "@/shared/api/parse";
 import type { JsonObject } from "@/shared/api/parse";
 import type { ReviewRepository } from "@/shared/api/repositories";
+import { normalizeApiError } from "@/shared/api/error";
 import { REJECTION_REASON_CODES } from "../model/types";
 import type {
+  DecisionRecord,
   RejectionReasonCode,
+  ReviewDecision,
   SubmissionEvent,
   SubmissionEventType,
 } from "../model/types";
@@ -32,6 +35,7 @@ import type {
  * | reject | `POST /signage/submissions/{id}/reject` (`{ revision, reasonCode, comment }`, Idempotency-Key) |
  * | suspend | `POST /signage/submissions/{id}/suspend` (`{ reason }`, Idempotency-Key) |
  * | listHistory | `GET /signage/submissions/{id}/reviews` + `GET /signage/audit-logs` |
+ * | listRecentDecisions | `GET /signage/audit-logs?targetType=SUBMISSION` (검토자) |
  *
  * 처리 이력은 두 API를 합친다(`API-FOLLOWUP-2026-09.md` 3절). 검토 결정(승인·반려·
  * 중단)은 사유 코드와 게시자에게 공개되는 의견이 있는 `/reviews`에서, 게시자 행동
@@ -81,6 +85,7 @@ function parseReview(payload: unknown, index: number): SubmissionEvent {
  * - `SUBMISSION_RESUBMITTED` → 다시 신청 (반려 뒤 재검토 요청)
  * - `SUBMISSION_UPDATED` 중 승인 건이 검토 대기로 돌아간 것 → 다시 신청 (재승인)
  * - `SUBMISSION_CANCELED` → 신청 취소
+ * - `SUBMISSION_PUBLISHED`·`_ENDED` → 게시 시작·종료 (서버 주기 작업, `actorType: SYSTEM`)
  */
 function auditTypeOf(
   action: string,
@@ -93,6 +98,10 @@ function auditTypeOf(
       return "RESUBMITTED";
     case "SUBMISSION_CANCELED":
       return "CANCELED";
+    case "SUBMISSION_PUBLISHED":
+      return "PUBLISHED";
+    case "SUBMISSION_ENDED":
+      return "ENDED";
     case "SUBMISSION_UPDATED":
       return metadata?.toStatus === "PENDING_REVIEW" &&
         metadata.fromStatus !== "PENDING_REVIEW"
@@ -119,6 +128,7 @@ function parseAuditEvent(
     metadata,
   );
   if (type === null) return null;
+  const bySystem = body.actorType === "SYSTEM";
   return {
     id: readString(body, "id", `${path}.id`),
     submissionId,
@@ -126,8 +136,50 @@ function parseAuditEvent(
     type,
     reasonCode: null,
     comment: null,
-    actorId: readNullableString(body, "actorId", `${path}.actorId`) ?? "",
-    // 탈퇴한 사용자는 이름이 없다.
+    actorId: bySystem
+      ? ""
+      : (readNullableString(body, "actorId", `${path}.actorId`) ?? ""),
+    // 서버 작업은 사람이 아니다. 탈퇴한 사용자는 이름이 없다.
+    actorName: bySystem
+      ? ""
+      : (readNullableString(body, "actorName", `${path}.actorName`) ??
+        "알 수 없음"),
+    occurredAt: readIsoDate(body, "createdAt", `${path}.createdAt`),
+  };
+}
+
+const DECISION_BY_ACTION: Record<string, ReviewDecision> = {
+  SUBMISSION_APPROVED: "APPROVED",
+  SUBMISSION_REJECTED: "REJECTED",
+  SUBMISSION_SUSPENDED: "SUSPENDED",
+};
+
+/**
+ * 최근 처리 기록을 찾으려고 한 번에 받는 로그 수. 서버 최대값이다.
+ *
+ * 지금 `action`은 값 하나만 받아서 결정(승인·반려·중단)만 골라 받을 수 없다. 한
+ * 페이지를 받아 여기서 거른다. 백엔드가 여러 값을 받게 되면
+ * (`API-FOLLOWUP-2026-09-30.md` 1-3) `action`으로 거르고 `limit`만큼만 받는다.
+ */
+const DECISION_SCAN_LIMIT = 100;
+
+function parseDecisionLog(
+  payload: unknown,
+  index: number,
+): (DecisionRecord & { needsTitle: boolean }) | null {
+  const path = `items[${index}]`;
+  const body = readObject(payload, path);
+  const decision =
+    DECISION_BY_ACTION[readString(body, "action", `${path}.action`)];
+  if (!decision || body.targetType !== "SUBMISSION") return null;
+  // 대상 제목은 백엔드가 곧 넣어 준다(1-2). 없으면 신청을 따로 불러 채운다.
+  const hasTitle = typeof body.targetTitle === "string";
+  return {
+    id: readString(body, "id", `${path}.id`),
+    submissionId: readString(body, "targetId", `${path}.targetId`),
+    submissionTitle: hasTitle ? (body.targetTitle as string) : null,
+    needsTitle: !hasTitle && body.targetTitle !== null,
+    decision,
     actorName:
       readNullableString(body, "actorName", `${path}.actorName`) ??
       "알 수 없음",
@@ -198,6 +250,46 @@ export function createHttpReviewRepository(
       const decisions = readArray(reviews).map(parseReview);
       return [...audits, ...decisions].sort(
         (a, b) => a.occurredAt.getTime() - b.occurredAt.getTime(),
+      );
+    },
+
+    async listRecentDecisions({ limit }, signal) {
+      const body = readObject(
+        await client.request({
+          path: "/signage/audit-logs",
+          query: { targetType: "SUBMISSION", limit: DECISION_SCAN_LIMIT },
+          signal,
+        }),
+      );
+      const records = readArray(body.items, "items")
+        .map(parseDecisionLog)
+        .filter((record) => record !== null)
+        .slice(0, limit);
+      return Promise.all(
+        records.map(async ({ needsTitle, ...record }) => {
+          if (!needsTitle) return record;
+          try {
+            const submission = parseSubmission(
+              await client.request({
+                path: submissionPath(record.submissionId),
+                signal,
+              }),
+            );
+            return { ...record, submissionTitle: submission.title };
+          } catch (error) {
+            // 제목은 부가 정보다. 한 건의 제목을 못 불러왔다고 이미 받은 기록을
+            // 모두 버리지 않는다(지워진 신청의 404 포함). 다만 요청 취소는 그대로
+            // 끝내고, 세션 만료(401)는 알려야 로그인 만료 처리가 돈다.
+            const apiError = normalizeApiError(error);
+            if (
+              apiError.kind === "canceled" ||
+              apiError.code === "UNAUTHENTICATED"
+            ) {
+              throw error;
+            }
+            return record;
+          }
+        }),
       );
     },
 

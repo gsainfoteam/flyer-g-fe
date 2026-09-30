@@ -29,13 +29,22 @@ async function expectNoViolations(container: HTMLElement) {
 describe("접근성 자동 검사", () => {
   it("대시보드 (게시자)", async () => {
     const { container } = renderRoute("/", { role: "SUBMITTER" });
-    await screen.findByRole("heading", { name: "내 신청" });
+    await screen.findByRole("heading", { name: /진행 중인 신청/ });
+    await screen.findByText(/게시 시작/);
     await expectNoViolations(container);
   });
 
   it("대시보드 (관리자)", async () => {
     const { container } = renderRoute("/", { role: "REVIEWER" });
-    await screen.findByRole("heading", { name: "오래 기다린 순" });
+    await screen.findByRole("heading", { name: /검토 대기/ });
+    await screen.findByText("게시 중단");
+    await expectNoViolations(container);
+  });
+
+  it("대시보드 (운영자)", async () => {
+    const { container } = renderRoute("/", { role: "SUPER_ADMIN" });
+    await screen.findByRole("heading", { name: "게시판 현황" });
+    await screen.findByText(/한 바퀴/);
     await expectNoViolations(container);
   });
 

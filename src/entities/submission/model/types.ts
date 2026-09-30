@@ -14,6 +14,14 @@ export const SUBMISSION_STATUSES = [
 
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
 
+/** 검토자의 결정. 처리 이력(`entities/review`)의 결정과 같은 값이다. */
+export const SUBMISSION_DECISIONS = [
+  "APPROVED",
+  "REJECTED",
+  "SUSPENDED",
+] as const;
+export type SubmissionDecision = (typeof SUBMISSION_DECISIONS)[number];
+
 /** 명세 6.1 콘텐츠 유형. MVP는 POSTER만 사용한다. */
 export const CONTENT_TYPES = ["POSTER", "VIDEO", "MESSAGE", "SYSTEM"] as const;
 export type ContentType = (typeof CONTENT_TYPES)[number];
@@ -48,6 +56,12 @@ export interface SignageSubmissionDto {
    */
   submittedAt: string | null;
   version: number;
+  /**
+   * 가장 최근 검토 결정. 한 번도 검토되지 않았으면 null이다. 검토 대기 건이
+   * 처음 낸 것인지, 반려·중단 뒤 고쳐서 다시 낸 것인지 가른다.
+   * (`API-FOLLOWUP-2026-09-30.md` 1-1. 백엔드가 아직 주지 않으면 null로 읽는다.)
+   */
+  lastDecision: SubmissionDecision | null;
 }
 
 /** 전송 모델을 Date로 해석한 도메인 모델. 계산과 비교는 이 타입으로 한다. */
@@ -114,6 +128,8 @@ export interface SubmissionView {
   targetGroupIds: string[];
   /** 화면이 본 버전. 취소·검토 요청에 실어 동시 수정 충돌을 판정한다. */
   version: number;
+  /** 가장 최근 검토 결정. 검토된 적 없으면 null */
+  lastDecision: SubmissionDecision | null;
 }
 
 export interface SubmissionSummary {

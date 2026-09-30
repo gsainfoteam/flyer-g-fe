@@ -12,6 +12,11 @@ import type {
 } from "@/entities/submission/model/policy";
 import type { Playlist } from "@/entities/playlist/model/types";
 import type {
+  ImpressionStats,
+  ImpressionStatsParams,
+} from "@/entities/impression/model/types";
+import type {
+  DecisionRecord,
   RejectionReasonCode,
   SubmissionEvent,
 } from "@/entities/review/model/types";
@@ -149,11 +154,20 @@ export interface ReviewRepository {
     signal?: AbortSignal,
   ): Promise<Page<SignageSubmissionExpanded>>;
 
-  /** 신청의 처리 이력. 제출·재제출·검토 결정·취소를 시간 순으로 준다. */
+  /**
+   * 신청의 처리 이력. 제출·재제출·검토 결정·취소와 게시 시작·종료를 시간 순으로
+   * 준다.
+   */
   listHistory(
     submissionId: string,
     signal?: AbortSignal,
   ): Promise<SubmissionEvent[]>;
+
+  /** 모든 신청에 걸친 최근 검토 결정(승인·반려·중단). 최신순. 검토자만. */
+  listRecentDecisions(
+    params: { limit: number },
+    signal?: AbortSignal,
+  ): Promise<DecisionRecord[]>;
 
   approve(
     input: ApproveInput,
@@ -204,10 +218,20 @@ export interface ReferenceRepository {
   listTargetGroups(signal?: AbortSignal): Promise<TargetGroup[]>;
 }
 
+/** 노출 통계. 사람이 본 횟수가 아니라 기기가 포스터를 정상으로 띄운 횟수다. */
+export interface StatsRepository {
+  /** 기간 안의 게시물별 노출. 노출이 많은 순이다. `scope: "all"`은 검토자만. */
+  getImpressions(
+    params: ImpressionStatsParams,
+    signal?: AbortSignal,
+  ): Promise<ImpressionStats>;
+}
+
 export interface Repositories {
   submissions: SubmissionRepository;
   reviews: ReviewRepository;
   displays: DisplayRepository;
   devices: DeviceRepository;
   reference: ReferenceRepository;
+  stats: StatsRepository;
 }

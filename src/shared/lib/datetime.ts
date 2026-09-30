@@ -168,3 +168,36 @@ export function formatSeoulShortDate(date: Date): string {
   const { month, day } = getSeoulParts(date);
   return `${pad(month)}. ${pad(day)}.`;
 }
+
+/** 서울 달력으로 `from`의 날에서 `to`의 날까지 며칠인가. 같은 날이면 0이다. */
+export function seoulDayDiff(from: Date, to: Date): number {
+  const dayNumber = (date: Date) => {
+    const { year, month, day } = getSeoulParts(date);
+    return Date.UTC(year, month - 1, day) / 86_400_000;
+  };
+  return dayNumber(to) - dayNumber(from);
+}
+
+/** "09. 30.(수)" — 요일을 붙인 짧은 날짜 */
+export function formatSeoulShortDateWithWeekday(date: Date): string {
+  return `${formatSeoulShortDate(date)}(${getSeoulParts(date).weekday})`;
+}
+
+/**
+ * 일이 일어난 때를 가까울수록 짧게 읽는다. "오늘 14:10", "어제 18:40",
+ * "09. 22. 00:00". 소식 목록처럼 최근 일을 늘어놓을 때 쓴다.
+ */
+export function formatSeoulDayTime(date: Date, now: Date): string {
+  const { hour24, minute } = getSeoulParts(date);
+  const time = `${pad(hour24)}:${pad(minute)}`;
+  const diff = seoulDayDiff(date, now);
+  if (diff === 0) return `오늘 ${time}`;
+  if (diff === 1) return `어제 ${time}`;
+  return `${formatSeoulShortDate(date)} ${time}`;
+}
+
+/** "10. 03.(토) 23:59" — 요일을 붙인 짧은 날짜와 시각 */
+export function formatSeoulShortDateTime(date: Date): string {
+  const { hour24, minute } = getSeoulParts(date);
+  return `${formatSeoulShortDateWithWeekday(date)} ${pad(hour24)}:${pad(minute)}`;
+}

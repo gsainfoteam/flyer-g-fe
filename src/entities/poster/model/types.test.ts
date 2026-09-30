@@ -24,6 +24,7 @@ const view: SubmissionView = {
   description: "업사이클링 워크숍",
   targetGroupIds: [],
   version: 1,
+  lastDecision: null,
 };
 
 describe("fromSubmissionView", () => {

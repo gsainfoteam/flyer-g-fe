@@ -10,6 +10,8 @@ export interface HeartbeatRecord {
   at: string;
   appVersion: string;
   resolution: { width: number; height: number };
+  /** 마지막으로 포스터를 정상 재생한 시각(ISO). 띄운 적 없으면 null */
+  lastRenderOkAt?: string | null;
 }
 
 export interface HeartbeatLog {
