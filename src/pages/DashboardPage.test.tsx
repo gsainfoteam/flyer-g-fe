@@ -81,15 +81,5 @@ describe("대시보드", () => {
       await screen.findByRole("link", { name: "순서대로 검토 시작" }),
     ).toHaveAttribute("href", "/reviews/notice-003");
   });
-
-  it("관리자의 상태별 건수는 전체 신청 목록으로 이어진다", async () => {
-    renderRoute("/", { role: "REVIEWER" });
-
-    const published = await screen.findByRole("link", { name: /게시 중/ });
-    expect(published).toHaveAttribute(
-      "href",
-      "/submissions?scope=all&status=published",
-    );
-  });
 });
 

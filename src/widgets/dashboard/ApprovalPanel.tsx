@@ -3,7 +3,7 @@ import { to } from "@/shared/config/routes";
 import { getStatusSentence } from "@/entities/submission";
 import type { SubmissionView } from "@/entities/submission/model/types";
 import { EmptyState, Panel } from "@/shared/components";
-import { formatElapsed, formatSeoulDateTime } from "@/shared/lib/datetime";
+import { formatElapsed } from "@/shared/lib/datetime";
 import { Button } from "@/shared/ui/button";
 import { SubmissionRow } from "@/entities/submission/ui/SubmissionRow";
 
@@ -41,13 +41,7 @@ export function ApprovalPanel({
       {submissions.length === 0 ? (
         <EmptyState
           title="처리할 신청이 없어요"
-          description={
-            <>
-              새 신청이 들어오면 여기에 가장 먼저 보여드려요.
-              <br />
-              {formatSeoulDateTime(now)} 기준.
-            </>
-          }
+          description="새 신청이 들어오면 여기에 가장 먼저 보여드려요."
           className="px-3"
         />
       ) : (

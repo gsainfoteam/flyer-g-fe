@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { renderRoute } from "@/test/render-route";
 
@@ -7,26 +7,28 @@ import { renderRoute } from "@/test/render-route";
  * (Phase 00 인수 조건 "App.tsx가 도메인 fixture와 비즈니스 계산을 직접 소유하지 않는다")
  */
 describe("대시보드", () => {
-  it("주입한 repository의 상태별 건수를 보여준다", async () => {
+  it("주입한 repository의 승인 대기 건수를 제목에 보여준다", async () => {
     renderRoute("/", { role: "REVIEWER" });
 
-    const counts = await screen.findByRole("group", { name: "상태별 건수" });
-    for (const label of ["승인 대기", "게시 중", "예약됨", "종료됨"]) {
-      expect(within(counts).getByText(label)).toBeInTheDocument();
-    }
+    // fixture의 승인 대기: 기자단 모집, 하우스오피스 공지, 가을 전시
+    expect(
+      await screen.findByRole("heading", {
+        name: "검토를 기다리는 신청 3건",
+      }),
+    ).toBeInTheDocument();
   });
 
-  it("통계의 기준 시각을 함께 표시한다", async () => {
+  it("홈 머리에 날짜와 기준 시각을 두지 않는다", async () => {
     renderRoute("/", { role: "REVIEWER" });
-    // 2026-06-08T03:00Z == 2026. 06. 08. 12:00 KST
-    expect(
-      await screen.findByText(/2026\. 06\. 08\. 12:00 · 서버 시각 기준/),
-    ).toBeInTheDocument();
+    await screen.findByRole("heading", { name: /검토를 기다리는 신청/ });
+
+    expect(screen.queryByText(/서버 시각 기준/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/2026\. 06\. 08\./)).not.toBeInTheDocument();
   });
 
   it("의미가 불명확한 조회수와 증감률을 보여주지 않는다", async () => {
     renderRoute("/", { role: "REVIEWER" });
-    await screen.findByRole("group", { name: "상태별 건수" });
+    await screen.findByRole("heading", { name: /검토를 기다리는 신청/ });
 
     expect(screen.queryByText(/총 조회수/)).not.toBeInTheDocument();
     expect(screen.queryByText(/지난 7일 대비/)).not.toBeInTheDocument();

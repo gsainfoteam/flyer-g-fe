@@ -5,10 +5,9 @@ import { ApprovalPanel } from "@/widgets/dashboard/ApprovalPanel";
 import { RecentContentSection } from "@/widgets/dashboard/RecentContentSection";
 import { PREVIEW_DEVICE_ID } from "@/entities/playlist/model/types";
 import { DeviceStatusPanel } from "@/widgets/dashboard/DeviceStatusPanel";
-import { StatusCountBar } from "@/widgets/dashboard/StatusCountBar";
+import { DashboardHeader } from "@/widgets/dashboard/DashboardHeader";
 import { useSessionUser } from "@/features/auth/model/auth-context";
 import { hasAnyRole } from "@/features/auth/model/types";
-import { useTargetGroups } from "@/entities/device/api/queries";
 import { usePendingReviews } from "@/features/reviews/api/queries";
 import {
   useSubmissionSummary,
@@ -19,7 +18,6 @@ import type { SubmissionView } from "@/entities/submission/model/types";
 import { EmptyState, PageState, Panel } from "@/shared/components";
 import {
   formatElapsed,
-  formatSeoulDateTime,
   formatSeoulShortDate,
 } from "@/shared/lib/datetime";
 import { Button } from "@/shared/ui/button";
@@ -40,10 +38,6 @@ export function DashboardPage() {
   // 승인 대기는 관리자 전용 API다. 게시자 세션에서는 조회하지 않고,
   // 로딩·오류 판정에서도 뺀다.
   const pending = usePendingReviews(5, { enabled: isReviewer });
-  const targetGroups = useTargetGroups();
-  const locationLabel = targetGroups.data
-    ?.map((group) => group.name)
-    .join(", ");
 
   const isLoading =
     summary.isPending ||
@@ -65,9 +59,6 @@ export function DashboardPage() {
   const needsFix = summary.data
     ? summary.data.byStatus.REJECTED + summary.data.byStatus.SUSPENDED
     : 0;
-  const listHref = (groupKey?: string) =>
-    to.submissions(groupKey, isReviewer ? { scope: "all" } : undefined);
-
   return (
     <PageState
       isLoading={isLoading}
@@ -77,91 +68,51 @@ export function DashboardPage() {
     >
       {summary.data && published.data && (!isReviewer || pending.data) && (
         <>
-          <div className="flex flex-wrap items-end gap-6">
-            <div className="min-w-0 flex-1">
-              <p className="text-label text-ink-muted">
-                {formatSeoulDateTime(summary.data.calculatedAt)} · 서버 시각
-                기준
-                {locationLabel && <> · {locationLabel}</>}
-              </p>
-              <h1 className="mt-1.5 text-display text-ink">
-                {isReviewer ? (
-                  summary.data.pendingReview > 0 ? (
-                    <>
-                      검토를 기다리는 신청{" "}
-                      <span className="text-accent">
-                        {summary.data.pendingReview}건
-                      </span>
-                      {oldest && (
-                        <>
-                          , 가장 오래된 건{" "}
-                          <span className="text-accent">
-                            {formatElapsed(
-                              oldest.submittedAt ?? oldest.createdAt,
-                              summary.data.calculatedAt,
-                            )}
-                          </span>{" "}
-                          됐어요
-                        </>
-                      )}
-                    </>
-                  ) : (
-                    "지금 처리할 신청이 없어요"
-                  )
-                ) : needsFix > 0 ? (
+          <DashboardHeader
+            title={
+              isReviewer ? (
+                summary.data.pendingReview > 0 ? (
                   <>
-                    고쳐야 할 신청이{" "}
-                    <span className="text-accent">{needsFix}건</span> 있어요
+                    검토를 기다리는 신청{" "}
+                    <span className="text-accent">
+                      {summary.data.pendingReview}건
+                    </span>
                   </>
                 ) : (
-                  `안녕하세요, ${user.displayName}님`
-                )}
-              </h1>
-            </div>
-            {isReviewer ? (
-              // 가장 오래 기다린 건부터 연다. 결정하면 다음 건으로 이어진다.
-              oldest && (
+                  "지금 처리할 신청이 없어요"
+                )
+              ) : needsFix > 0 ? (
+                <>
+                  고쳐야 할 신청이{" "}
+                  <span className="text-accent">{needsFix}건</span> 있어요
+                </>
+              ) : (
+                `안녕하세요, ${user.displayName}님`
+              )
+            }
+            description={
+              isReviewer && oldest
+                ? `가장 오래된 건 ${formatElapsed(
+                    oldest.submittedAt ?? oldest.createdAt,
+                    summary.data.calculatedAt,
+                  )}째 기다리고 있어요.`
+                : undefined
+            }
+            action={
+              isReviewer ? (
+                // 가장 오래 기다린 건부터 연다. 결정하면 다음 건으로 이어진다.
+                oldest && (
+                  <Button asChild>
+                    <Link to={to.reviewDetail(oldest.id)}>
+                      순서대로 검토 시작
+                    </Link>
+                  </Button>
+                )
+              ) : (
                 <Button asChild>
-                  <Link to={to.reviewDetail(oldest.id)}>
-                    순서대로 검토 시작
-                  </Link>
+                  <Link to={to.studio()}>새 게시 신청</Link>
                 </Button>
               )
-            ) : (
-              <Button asChild>
-                <Link to={to.studio()}>새 게시 신청</Link>
-              </Button>
-            )}
-          </div>
-
-          <StatusCountBar
-            counts={[
-              {
-                label: "승인 대기",
-                value: summary.data.pendingReview,
-                emphasis: isReviewer,
-                href: isReviewer ? to.reviews() : listHref("pending"),
-              },
-              {
-                label: "게시 중",
-                value: summary.data.published,
-                href: listHref("published"),
-              },
-              {
-                label: "예약됨",
-                value: summary.data.scheduled,
-                href: listHref("approved"),
-              },
-              {
-                label: "종료됨",
-                value: summary.data.ended,
-                href: listHref("ended"),
-              },
-            ]}
-            trailing={
-              <Button variant="link" size="xs" asChild>
-                <Link to={listHref()}>전체 {summary.data.total}건 →</Link>
-              </Button>
             }
           />
 
