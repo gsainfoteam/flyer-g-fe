@@ -58,6 +58,7 @@ export function createMockTelemetryAdapter(
         at: new Date().toISOString(),
         appVersion: payload.appVersion,
         resolution: payload.resolution,
+        lastRenderOkAt: payload.lastRenderOkAt,
       });
     },
     async sendPlayEvents() {},

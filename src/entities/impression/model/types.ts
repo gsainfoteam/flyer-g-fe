@@ -62,10 +62,3 @@ export function indexImpressions(
 ): Map<string, ImpressionStatsItem> {
   return new Map(stats?.items.map((item) => [item.submissionId, item]) ?? []);
 }
-
-/** 여러 게시물의 노출 합계 */
-export function totalImpressions(
-  items: readonly ImpressionStatsItem[],
-): number {
-  return items.reduce((sum, item) => sum + item.impressions, 0);
-}

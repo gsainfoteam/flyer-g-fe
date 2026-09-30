@@ -1076,11 +1076,24 @@ export function createMockRepositories(
     const candidates = [heartbeatAt, simulated].filter(Number.isFinite);
     const lastSeen = candidates.length > 0 ? Math.max(...candidates) : null;
 
+    // 흉내 낸 기기는 연결이 살아 있는 동안 계속 정상 재생한다. 실제 TV 탭은 자기가
+    // 알린 재생 시각을 쓴다.
+    const simulatedRender = Number.isFinite(simulated)
+      ? toIsoUtc(new Date(simulated))
+      : device.lastRenderOkAt;
+    const fromTab =
+      heartbeat !== undefined &&
+      (!Number.isFinite(simulated) || heartbeatAt >= simulated);
+    const lastRenderOkAt = fromTab
+      ? (heartbeat.lastRenderOkAt ?? null)
+      : simulatedRender;
+
     const dto: DisplayDeviceDto = {
       ...device,
       appVersion: heartbeat?.appVersion ?? device.appVersion,
       resolution: heartbeat?.resolution ?? device.resolution,
       lastSeenAt: lastSeen === null ? null : toIsoUtc(new Date(lastSeen)),
+      lastRenderOkAt,
       status: !isActive
         ? "DISABLED"
         : lastSeen !== null && now.getTime() - lastSeen <= ONLINE_WINDOW_MS

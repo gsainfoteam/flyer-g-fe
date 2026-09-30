@@ -1,5 +1,4 @@
 import { screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { summarizeSubmissions } from "@/entities/submission";
 import { createMockRepositories } from "@/mocks/repositories";
@@ -272,6 +271,8 @@ describe("하우스 관리자 홈", () => {
         items: devices.items.map((device) => ({
           ...device,
           status: "ONLINE" as const,
+          lastSeenAt: devices.serverTime,
+          lastRenderOkAt: devices.serverTime,
         })),
       };
     };
@@ -313,48 +314,68 @@ describe("운영자 홈", () => {
     ).toBeInTheDocument();
   });
 
-  it("노출 통계는 전체 범위로 7일을 먼저 보여주고, 기간을 바꿔 다시 묻는다", async () => {
+  it("게시판 현황은 TV마다 걸린 장수와 한 바퀴 시간을 지금 편성으로 계산한다", async () => {
+    renderRoute("/", { role: "SUPER_ADMIN" });
+
+    const panel = (
+      await screen.findByRole("heading", { name: "게시판 현황" })
+    ).closest("section")!;
+    const row = (await within(panel).findByText("A동 로비")).closest("li")!;
+    // fixture: 게시 중 2건 모두 대상 위치가 없어 모든 TV에 걸린다. 한 장씩, 10초.
+    expect(row).toHaveTextContent("포스터 2장 · 한 장씩 · 10초마다 넘김");
+    expect(row).toHaveTextContent("한 바퀴 20초");
+    expect(row).toHaveTextContent("한 장이 한 시간에 약 180번 나와요");
+    expect(
+      within(panel).getByRole("link", { name: "화면 설정 →" }),
+    ).toHaveAttribute("href", "/displays");
+  });
+
+  it("운영자 홈은 누적 노출 통계를 부르지 않는다", async () => {
     const repositories = createMockRepositories({
       clock: createFixedClock(TEST_NOW),
     });
     const getImpressions = vi.spyOn(repositories.stats, "getImpressions");
     renderRoute("/", { role: "SUPER_ADMIN", repositories });
 
-    const panel = (
-      await screen.findByRole("heading", { name: "노출 통계" })
-    ).closest("section")!;
-    expect(
-      await within(panel).findByText(/사람이 본 횟수가 아니에요/),
-    ).toBeInTheDocument();
-    expect(
-      within(panel).getByRole("button", { name: "7일" }),
-    ).toHaveAttribute("aria-pressed", "true");
-    expect(getImpressions).toHaveBeenLastCalledWith(
-      { from: "2026-06-02", to: "2026-06-08", scope: "all" },
-      expect.anything(),
-    );
-    expect(
-      within(panel).getAllByRole("row").length,
-    ).toBeGreaterThan(1);
-
-    await userEvent.click(within(panel).getByRole("button", { name: "30일" }));
-    expect(getImpressions).toHaveBeenLastCalledWith(
-      { from: "2026-05-10", to: "2026-06-08", scope: "all" },
-      expect.anything(),
-    );
+    await screen.findByRole("heading", { name: "게시판 현황" });
+    expect(getImpressions).not.toHaveBeenCalled();
   });
 
-  it("하우스 관리자 홈은 전체 노출 통계를 부르지 않는다", async () => {
+  it("연결은 됐는데 재생이 멈춘 TV를 알리고, 제목에서 확인할 TV로 센다", async () => {
     const repositories = createMockRepositories({
       clock: createFixedClock(TEST_NOW),
     });
-    const getImpressions = vi.spyOn(repositories.stats, "getImpressions");
-    renderRoute("/", { role: "REVIEWER", repositories });
+    const list = repositories.devices.list;
+    repositories.devices.list = async (signal) => {
+      const devices = await list(signal);
+      return {
+        ...devices,
+        items: devices.items.map((device) =>
+          device.status === "ONLINE"
+            ? {
+                ...device,
+                lastRenderOkAt: new Date(
+                  devices.serverTime.getTime() - 30 * 60_000,
+                ),
+              }
+            : device,
+        ),
+      };
+    };
+    renderRoute("/", { role: "SUPER_ADMIN", repositories });
 
-    await screen.findByRole("heading", { name: "최근 처리" });
-    expect(getImpressions).not.toHaveBeenCalled();
     expect(
-      screen.queryByRole("heading", { name: "노출 통계" }),
-    ).not.toBeInTheDocument();
+      await screen.findByRole("heading", {
+        name: "검토 대기 3건 · 확인할 TV 2대",
+      }),
+    ).toBeInTheDocument();
+    const warning = (await screen.findByText("30분째 재생 멈춤")).closest(
+      "li",
+    )!;
+    expect(warning).toHaveTextContent("A동 로비");
+    expect(warning).toHaveTextContent(
+      "연결은 되어 있지만 포스터를 띄우지 못하고 있어요.",
+    );
+    expect(warning).toHaveTextContent("TV 화면을 확인하고 다시 켜 보세요.");
   });
 });

@@ -1,6 +1,8 @@
 import { Link } from "react-router";
 import type { DisplayDevice } from "@/entities/device/model/types";
 import { useDevices } from "@/entities/device/api/queries";
+import { isRenderStalled, isTargetedTo } from "@/entities/device/model/board";
+import type { SubmissionView } from "@/entities/submission/model/types";
 import {
   EmptyState,
   ErrorState,
@@ -20,14 +22,20 @@ import { PanelCount } from "../DashboardColumns";
  * 기기가 있으면 그 기기를 맨 위에 경고로 펼친다. 끊겨도 TV는 마지막으로 받은 편성을
  * 계속 틀기 때문에, 급한 일인지 아닌지를 함께 알린다.
  *
+ * 연결은 살아 있어도 포스터를 오래 못 띄우고 있으면(재생 멈춤) 같은 자리에 알린다.
+ * 연결 여부만 보면 화면이 멈춘 TV를 정상으로 오해한다.
+ *
  * 하우스 관리자는 기기를 고칠 수 없어 운영자에게 알리라고 안내하고, 운영자에게는
  * 기기 관리로 가는 링크를 준다(`manageable`).
  *
  * "N분 전"은 목록과 함께 온 서버 시각으로 센다. 클라이언트 시계로 대신하지 않는다.
  */
 export function DeviceStatusPanel({
+  published,
   manageable = false,
 }: {
+  /** 게시 중인 신청. 띄울 포스터가 있는 TV만 재생 멈춤을 따진다. */
+  published: SubmissionView[];
   manageable?: boolean;
 }) {
   const devices = useDevices();
@@ -55,8 +63,16 @@ export function DeviceStatusPanel({
   }
 
   const { items, serverTime } = devices.data;
-  const offline = items.filter((device) => device.status === "OFFLINE");
-  const others = items.filter((device) => device.status !== "OFFLINE");
+  const stalled = (device: DisplayDevice) =>
+    isRenderStalled(
+      device,
+      serverTime,
+      published.some((item) => isTargetedTo(device, item.targetGroupIds)),
+    );
+  const troubled = items.filter(
+    (device) => device.status === "OFFLINE" || stalled(device),
+  );
+  const others = items.filter((device) => !troubled.includes(device));
 
   if (items.length === 0) {
     return (
@@ -82,7 +98,10 @@ export function DeviceStatusPanel({
   }
 
   // 모두 정상이면 한 줄로 접는다.
-  if (offline.length === 0 && others.every((device) => device.status === "ONLINE")) {
+  if (
+    troubled.length === 0 &&
+    others.every((device) => device.status === "ONLINE")
+  ) {
     return (
       <section
         aria-label="디스플레이"
@@ -108,36 +127,64 @@ export function DeviceStatusPanel({
       action={manageLink}
     >
       <ul className="flex flex-col gap-3.5">
-        {offline.map((device) => (
-          <li
+        {troubled.map((device) => (
+          <TroubleRow
             key={device.id}
-            className="rounded-control border border-accent-200 bg-attention-subtle px-3.5 py-3"
-          >
-            <p className="flex items-baseline justify-between gap-2 text-label">
-              <span className="min-w-0 truncate font-bold text-ink">
-                {device.name}
-              </span>
-              <span className="shrink-0 font-bold text-attention-strong">
-                {device.lastSeenAt
-                  ? `${formatElapsed(device.lastSeenAt, serverTime)}째 끊김`
-                  : "연결된 적 없음"}
-              </span>
-            </p>
-            <p className="mt-1 text-caption text-ink-muted">
-              {device.lastSeenAt
-                ? "마지막으로 받은 편성을 계속 틀고 있어요. "
-                : ""}
-              {manageable
-                ? "전원과 네트워크를 확인해 주세요."
-                : "오래 이어지면 운영자에게 알려 주세요."}
-            </p>
-          </li>
+            device={device}
+            now={serverTime}
+            manageable={manageable}
+          />
         ))}
         {others.map((device) => (
           <DeviceRow key={device.id} device={device} now={serverTime} />
         ))}
       </ul>
     </Panel>
+  );
+}
+
+/** 끊겼거나 재생이 멈춘 TV. 무엇이 문제이고 누가 무엇을 하면 되는지 적는다. */
+function TroubleRow({
+  device,
+  now,
+  manageable,
+}: {
+  device: DisplayDevice;
+  now: Date;
+  manageable: boolean;
+}) {
+  const offline = device.status === "OFFLINE";
+  const label = offline
+    ? device.lastSeenAt
+      ? `${formatElapsed(device.lastSeenAt, now)}째 끊김`
+      : "연결된 적 없음"
+    : `${formatElapsed(device.lastRenderOkAt!, now)}째 재생 멈춤`;
+  const cause = offline
+    ? device.lastSeenAt
+      ? "마지막으로 받은 편성을 계속 틀고 있어요. "
+      : ""
+    : "연결은 되어 있지만 포스터를 띄우지 못하고 있어요. ";
+  const next = manageable
+    ? offline
+      ? "전원과 네트워크를 확인해 주세요."
+      : "TV 화면을 확인하고 다시 켜 보세요."
+    : "오래 이어지면 운영자에게 알려 주세요.";
+
+  return (
+    <li className="rounded-control border border-accent-200 bg-attention-subtle px-3.5 py-3">
+      <p className="flex items-baseline justify-between gap-2 text-label">
+        <span className="min-w-0 truncate font-bold text-ink">
+          {device.name}
+        </span>
+        <span className="shrink-0 font-bold text-attention-strong">
+          {label}
+        </span>
+      </p>
+      <p className="mt-1 text-caption text-ink-muted">
+        {cause}
+        {next}
+      </p>
+    </li>
   );
 }
 

@@ -73,7 +73,7 @@ export function ReviewerHome() {
             }
             side={
               <>
-                <DeviceStatusPanel />
+                <DeviceStatusPanel published={ready.published} />
                 <TodayChangesPanel submissions={ready.board} now={ready.now} />
                 <RecentDecisionsPanel limit={DECISION_LIMIT} now={ready.now} />
               </>
