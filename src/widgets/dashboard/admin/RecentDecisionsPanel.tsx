@@ -82,11 +82,12 @@ export function RecentDecisionsPanel({
             return wide ? (
               <li
                 key={record.id}
-                className="flex items-baseline gap-3 px-5 py-3 text-label"
+                className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-5 py-3 text-label"
               >
                 <span className="w-16 shrink-0">{decision}</span>
                 <span className="flex min-w-0 flex-1">{title}</span>
-                <span className="shrink-0 text-caption text-ink-subtle tabular-nums">
+                {/* 좁은 화면에서는 사람과 시각을 다음 줄로 내린다. */}
+                <span className="shrink-0 text-caption text-ink-subtle tabular-nums max-sm:basis-full max-sm:pl-19">
                   {who}
                 </span>
               </li>

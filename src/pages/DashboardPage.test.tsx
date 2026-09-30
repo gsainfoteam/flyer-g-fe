@@ -1,4 +1,5 @@
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { summarizeSubmissions } from "@/entities/submission";
 import { createMockRepositories } from "@/mocks/repositories";
@@ -279,5 +280,81 @@ describe("하우스 관리자 홈", () => {
     expect(
       await screen.findByRole("heading", { name: "디스플레이 2대 모두 정상" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("운영자 홈", () => {
+  it("제목에 검토 대기와 끊긴 TV를 한 줄로 말한다", async () => {
+    renderRoute("/", { role: "SUPER_ADMIN" });
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "검토 대기 3건 · 연결 끊긴 TV 1대",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("하우스 관리자 홈의 칸을 모두 두고 기기 관리로 가는 길을 더한다", async () => {
+    renderRoute("/", { role: "SUPER_ADMIN" });
+
+    for (const name of [
+      /^검토 대기 \d+$/,
+      "오늘 바뀌는 것",
+      "최근 처리",
+      /^지금 게시 중 \d+$/,
+    ]) {
+      expect(await screen.findByRole("heading", { name })).toBeInTheDocument();
+    }
+    expect(
+      await screen.findByRole("link", { name: "기기 관리 →" }),
+    ).toHaveAttribute("href", "/displays");
+    expect(
+      await screen.findByText(/전원과 네트워크를 확인해 주세요/),
+    ).toBeInTheDocument();
+  });
+
+  it("노출 통계는 전체 범위로 7일을 먼저 보여주고, 기간을 바꿔 다시 묻는다", async () => {
+    const repositories = createMockRepositories({
+      clock: createFixedClock(TEST_NOW),
+    });
+    const getImpressions = vi.spyOn(repositories.stats, "getImpressions");
+    renderRoute("/", { role: "SUPER_ADMIN", repositories });
+
+    const panel = (
+      await screen.findByRole("heading", { name: "노출 통계" })
+    ).closest("section")!;
+    expect(
+      await within(panel).findByText(/사람이 본 횟수가 아니에요/),
+    ).toBeInTheDocument();
+    expect(
+      within(panel).getByRole("button", { name: "7일" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(getImpressions).toHaveBeenLastCalledWith(
+      { from: "2026-06-02", to: "2026-06-08", scope: "all" },
+      expect.anything(),
+    );
+    expect(
+      within(panel).getAllByRole("row").length,
+    ).toBeGreaterThan(1);
+
+    await userEvent.click(within(panel).getByRole("button", { name: "30일" }));
+    expect(getImpressions).toHaveBeenLastCalledWith(
+      { from: "2026-05-10", to: "2026-06-08", scope: "all" },
+      expect.anything(),
+    );
+  });
+
+  it("하우스 관리자 홈은 전체 노출 통계를 부르지 않는다", async () => {
+    const repositories = createMockRepositories({
+      clock: createFixedClock(TEST_NOW),
+    });
+    const getImpressions = vi.spyOn(repositories.stats, "getImpressions");
+    renderRoute("/", { role: "REVIEWER", repositories });
+
+    await screen.findByRole("heading", { name: "최근 처리" });
+    expect(getImpressions).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("heading", { name: "노출 통계" }),
+    ).not.toBeInTheDocument();
   });
 });

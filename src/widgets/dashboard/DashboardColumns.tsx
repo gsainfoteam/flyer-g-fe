@@ -19,11 +19,14 @@ export function DashboardColumns({
   );
 }
 
-/** 패널 제목 옆의 건수 */
+/** 패널 제목 옆의 건수. 보조기기가 "검토 대기3"으로 붙여 읽지 않게 띄어 둔다. */
 export function PanelCount({ value }: { value: number }) {
   return (
-    <span className="ml-1.5 font-semibold text-ink-subtle tabular-nums">
-      {value}
-    </span>
+    <>
+      {" "}
+      <span className="ml-0.5 font-semibold text-ink-subtle tabular-nums">
+        {value}
+      </span>
+    </>
   );
 }

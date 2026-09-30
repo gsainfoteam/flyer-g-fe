@@ -81,8 +81,10 @@ export function ReviewQueuePanel({
                   size="sm"
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="flex min-w-0 items-center gap-2 text-body font-bold text-ink">
-                    <span className="truncate">{submission.title}</span>
+                  <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-body font-bold text-ink">
+                    <span className="max-w-full truncate">
+                      {submission.title}
+                    </span>
                     {tag && (
                       <span className="shrink-0 rounded-pill bg-info-subtle px-2 py-0.5 text-overline text-info-strong">
                         {tag}
@@ -90,6 +92,8 @@ export function ReviewQueuePanel({
                     )}
                   </p>
                   <p className="truncate text-caption text-ink-subtle">
+                    {/* 좁은 화면에서는 대기 시간을 오른쪽 대신 여기에 둔다. */}
+                    <span className="sm:hidden">{waited} 대기 · </span>
                     {submission.requesterName} · {submission.categoryName} ·
                     게시 희망 {formatSeoulShortDate(submission.startAt)} ~{" "}
                     {formatSeoulShortDate(submission.endAt)}
@@ -97,7 +101,7 @@ export function ReviewQueuePanel({
                 </div>
                 <span
                   className={cn(
-                    "shrink-0 text-label whitespace-nowrap",
+                    "shrink-0 text-label whitespace-nowrap max-sm:hidden",
                     oldest
                       ? "font-bold text-attention-strong"
                       : "font-normal text-ink-subtle",

@@ -41,6 +41,13 @@ describe("접근성 자동 검사", () => {
     await expectNoViolations(container);
   });
 
+  it("대시보드 (운영자)", async () => {
+    const { container } = renderRoute("/", { role: "SUPER_ADMIN" });
+    await screen.findByRole("heading", { name: "노출 통계" });
+    await screen.findByText(/사람이 본 횟수가 아니에요/);
+    await expectNoViolations(container);
+  });
+
   it("신청 목록", async () => {
     const { container } = renderRoute("/submissions", { role: "SUBMITTER" });
     await screen.findByText(/신청 \d+건/);
