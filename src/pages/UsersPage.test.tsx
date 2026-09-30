@@ -22,13 +22,14 @@ function operatorRepositories() {
   });
 }
 
-const section = (name: RegExp) =>
-  screen.getByRole("heading", { name }).closest("section")!;
-
-const namesIn = (element: HTMLElement) =>
-  within(element)
+/** 표의 행을 "이름 역할"로 위에서부터 읽는다. */
+const tableRows = () =>
+  within(screen.getByRole("table"))
     .getAllByRole("combobox")
-    .map((box) => box.getAttribute("aria-label")!.replace(/ 역할$/, ""));
+    .map(
+      (box) =>
+        `${box.getAttribute("aria-label")!.replace(/ 역할$/, "")} ${box.textContent}`,
+    );
 
 async function chooseRole(name: string, role: string, index = 0) {
   const user = userEvent.setup();
@@ -59,19 +60,17 @@ describe("사용자 권한", () => {
     expect(screen.queryByRole("link", { name: "권한" })).toBeNull();
   });
 
-  it("검색어가 없으면 권한을 가진 사람을 역할별로 보여 준다", async () => {
+  it("검색어가 없으면 권한을 가진 사람을 운영자부터 한 표로 보여 준다", async () => {
     renderRoute("/users", { role: "SUPER_ADMIN" });
 
-    await screen.findByRole("heading", { name: "시스템 운영자 2명" });
-    expect(namesIn(section(/^시스템 운영자/))).toEqual(["김도윤", "최인준"]);
-    // 두 역할을 다 가진 최인준은 운영자 칸에만 있다.
-    expect(
-      await screen.findByRole("heading", { name: "하우스 관리자 3명" }),
-    ).toBeInTheDocument();
-    expect(namesIn(section(/^하우스 관리자/))).toEqual([
-      "문태오",
-      "오세린",
-      "이수현",
+    expect(await screen.findByText("권한 있는 사용자 5명")).toBeInTheDocument();
+    // 두 역할을 다 가진 최인준은 한 번만, 운영자로 나온다.
+    expect(tableRows()).toEqual([
+      "김도윤 시스템 운영자",
+      "최인준 시스템 운영자",
+      "문태오 하우스 관리자",
+      "오세린 하우스 관리자",
+      "이수현 하우스 관리자",
     ]);
   });
 
@@ -80,31 +79,30 @@ describe("사용자 권한", () => {
 
     const own = await screen.findByRole("combobox", { name: "김도윤 역할" });
     expect(own).toBeDisabled();
-    expect(
-      screen.getByText("본인 역할은 다른 운영자가 바꿔야 해요"),
-    ).toBeInTheDocument();
+    expect(own).toHaveAccessibleDescription(
+      "본인 역할은 다른 운영자가 바꿔야 해요",
+    );
     expect(screen.getByRole("combobox", { name: "최인준 역할" })).toBeEnabled();
   });
 
   it("검색하면 전체 사용자에서 찾고 동명이인을 이메일·학번으로 구분한다", async () => {
     const user = userEvent.setup();
     renderRoute("/users", { role: "SUPER_ADMIN" });
-    await screen.findByRole("heading", { name: "시스템 운영자 2명" });
+    await screen.findByText("권한 있는 사용자 5명");
 
     await user.type(
       screen.getByRole("searchbox", { name: "사용자 검색" }),
       "김지스트",
     );
 
-    expect(
-      await screen.findByRole("heading", { name: "검색 결과 2명" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("gist.kim@gm.gist.ac.kr · 20245001"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("jiseu.kim@gm.gist.ac.kr · 20211093"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("검색 결과 2명")).toBeInTheDocument();
+    const rows = within(screen.getByRole("table")).getAllByRole("row");
+    // 머리글 한 줄과 사람 두 줄
+    expect(rows).toHaveLength(3);
+    expect(rows[1]).toHaveTextContent("gist.kim@gm.gist.ac.kr");
+    expect(rows[1]).toHaveTextContent("20245001");
+    expect(rows[2]).toHaveTextContent("jiseu.kim@gm.gist.ac.kr");
+    expect(rows[2]).toHaveTextContent("20211093");
   });
 
   it("찾는 사람이 없으면 로그인한 사람만 찾을 수 있다고 알려 준다", async () => {
@@ -140,8 +138,13 @@ describe("사용자 권한", () => {
     expect(
       await screen.findByText("문태오님을 시스템 운영자로 바꿨어요"),
     ).toBeInTheDocument();
-    await screen.findByRole("heading", { name: "시스템 운영자 3명" });
-    expect(namesIn(section(/^시스템 운영자/))).toContain("문태오");
+    await waitFor(() =>
+      expect(tableRows().slice(0, 3)).toEqual([
+        "김도윤 시스템 운영자",
+        "문태오 시스템 운영자",
+        "최인준 시스템 운영자",
+      ]),
+    );
   });
 
   it("취소하면 역할을 바꾸지 않는다", async () => {
@@ -156,7 +159,7 @@ describe("사용자 권한", () => {
     expect(operators.totalCount).toBe(2);
   });
 
-  it("운영자를 하우스 관리자로 내리면 하우스 관리자 칸으로 옮겨 간다", async () => {
+  it("운영자를 하우스 관리자로 내리면 하우스 관리자 사이로 옮겨 간다", async () => {
     const repositories = operatorRepositories();
     renderRoute("/users", { role: "SUPER_ADMIN", repositories });
 
@@ -165,8 +168,15 @@ describe("사용자 권한", () => {
     expect(
       await screen.findByText("최인준님을 하우스 관리자로 바꿨어요"),
     ).toBeInTheDocument();
-    await screen.findByRole("heading", { name: "시스템 운영자 1명" });
-    expect(namesIn(section(/^하우스 관리자/))).toContain("최인준");
+    await waitFor(() =>
+      expect(tableRows()).toEqual([
+        "김도윤 시스템 운영자",
+        "문태오 하우스 관리자",
+        "오세린 하우스 관리자",
+        "이수현 하우스 관리자",
+        "최인준 하우스 관리자",
+      ]),
+    );
     const [moved] = (await repositories.users.list({ q: "injun" })).items;
     expect(moved!.grantedRoles).toEqual(["REVIEWER"]);
   });
@@ -179,8 +189,8 @@ describe("사용자 권한", () => {
 
     await chooseRole("오세린", "게시자");
 
-    await screen.findByRole("heading", { name: "하우스 관리자 2명" });
-    expect(namesIn(section(/^하우스 관리자/))).not.toContain("오세린");
+    expect(await screen.findByText("권한 있는 사용자 4명")).toBeInTheDocument();
+    expect(tableRows().join()).not.toContain("오세린");
   });
 
   it("바꾸지 못하면 이유를 알리고 원래 역할로 돌아간다", async () => {

@@ -84,7 +84,7 @@ describe("접근성 자동 검사", () => {
 
   it("사용자 권한", async () => {
     const { container } = renderRoute("/users", { role: "SUPER_ADMIN" });
-    await screen.findByRole("heading", { name: /하우스 관리자 \d+명/ });
+    await screen.findByText(/권한 있는 사용자 \d+명/);
     await expectNoViolations(container);
   });
 

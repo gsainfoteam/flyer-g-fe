@@ -15,8 +15,10 @@ import {
 } from "@/shared/ui/select";
 import { useChangeUserRole } from "../model/use-change-user-role";
 
+const SELF_HINT = "본인 역할은 다른 운영자가 바꿔야 해요";
+
 /**
- * 사용자 한 명과 역할 선택.
+ * 표의 한 줄. 사용자 한 명과 역할 선택.
  *
  * 역할은 셋 중 하나를 고른다. 시스템 운영자로 올리기 전에는 한 번 묻는다 — 받은 사람은
  * 다른 사람의 역할까지 바꿀 수 있다. 본인 행은 바꿀 수 없다. 서버도 본인 회수를 403으로
@@ -51,62 +53,81 @@ export function UserRoleRow({ user, isSelf, serverNow }: UserRoleRowProps) {
     run(target).catch((error: ApiError) => notifyFailure(error));
   };
 
-  const contact = [user.email, user.studentId].filter(Boolean).join(" · ");
+  const cell = "px-4 py-2.5 first:pl-5 last:pr-5";
+  const selfHintId = `${user.id}-self-hint`;
 
   return (
-    <li className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-label font-bold text-ink">
+    <tr className="text-label text-ink">
+      <td className={cell}>
+        <p className="truncate font-bold">
           {user.name}
           {isSelf && (
-            <span className="ml-1.5 font-medium text-ink-muted">(나)</span>
+            <span className="ml-1.5 font-normal text-ink-muted">(나)</span>
           )}
         </p>
-        <p className="mt-1 truncate text-caption text-ink-muted">{contact}</p>
-        <p className="mt-0.5 text-caption text-ink-subtle">
-          {isSelf
-            ? "본인 역할은 다른 운영자가 바꿔야 해요"
-            : `마지막 로그인 ${formatTimeAgo(user.lastLoginAt, serverNow)}`}
+        {/* 좁은 화면에서는 이메일 칸이 빠진다. 동명이인을 가릴 수 있게 이름 아래에 둔다. */}
+        <p className="truncate text-caption text-ink-muted md:hidden">
+          {user.email}
         </p>
-      </div>
-      <Select
-        value={shown}
-        onValueChange={handleSelect}
-        disabled={isSelf || change.isPending}
+      </td>
+      <td className={`${cell} hidden truncate text-ink-muted md:table-cell`}>
+        {user.email}
+      </td>
+      <td
+        className={`${cell} hidden text-ink-muted tabular-nums lg:table-cell`}
       >
-        <SelectTrigger
-          size="sm"
-          aria-label={`${user.name} 역할`}
-          className="w-full shrink-0 sm:w-40"
+        {user.studentId ?? "—"}
+      </td>
+      <td className={`${cell} hidden text-ink-muted lg:table-cell`}>
+        {formatTimeAgo(user.lastLoginAt, serverNow)}
+      </td>
+      <td className={cell}>
+        <Select
+          value={shown}
+          onValueChange={handleSelect}
+          disabled={isSelf || change.isPending}
         >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {ROLES.map((role) => (
-            <SelectItem key={role} value={role}>
-              {getRoleLabel(role)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          <SelectTrigger
+            size="sm"
+            aria-label={`${user.name} 역할`}
+            aria-describedby={isSelf ? selfHintId : undefined}
+            title={isSelf ? SELF_HINT : undefined}
+            className="w-full"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ROLES.map((role) => (
+              <SelectItem key={role} value={role}>
+                {getRoleLabel(role)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {isSelf && (
+          <span id={selfHintId} className="sr-only">
+            {SELF_HINT}
+          </span>
+        )}
 
-      <ConfirmActionDialog
-        open={confirming}
-        onOpenChange={setConfirming}
-        title={`${user.name}님을 시스템 운영자로 바꿀까요?`}
-        description="시스템 운영자는 기기와 위치 그룹을 관리하고, 다른 사람의 역할도 바꿀 수 있어요."
-        confirmLabel="시스템 운영자로 바꾸기"
-        onConfirm={() => run("SUPER_ADMIN")}
-        onError={(error) => {
-          const apiError = error as ApiError;
-          // 권한이 사라졌거나 사람이 없으면 다시 눌러도 같다. 대화상자를 닫는다.
-          if (apiError.status === 403 || apiError.status === 404) {
-            setConfirming(false);
-          }
-          notifyFailure(apiError);
-        }}
-      />
-    </li>
+        <ConfirmActionDialog
+          open={confirming}
+          onOpenChange={setConfirming}
+          title={`${user.name}님을 시스템 운영자로 바꿀까요?`}
+          description="시스템 운영자는 기기와 위치 그룹을 관리하고, 다른 사람의 역할도 바꿀 수 있어요."
+          confirmLabel="시스템 운영자로 바꾸기"
+          onConfirm={() => run("SUPER_ADMIN")}
+          onError={(error) => {
+            const apiError = error as ApiError;
+            // 권한이 사라졌거나 사람이 없으면 다시 눌러도 같다. 대화상자를 닫는다.
+            if (apiError.status === 403 || apiError.status === 404) {
+              setConfirming(false);
+            }
+            notifyFailure(apiError);
+          }}
+        />
+      </td>
+    </tr>
   );
 }
 
