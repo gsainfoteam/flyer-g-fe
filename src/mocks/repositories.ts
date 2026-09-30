@@ -74,6 +74,7 @@ import {
   toSeoulDateInputValue,
 } from "@/shared/lib/datetime";
 import type { ImpressionStatsItem } from "@/entities/impression/model/types";
+import { serverTextLength } from "@/shared/lib/text-length";
 import { ziggleNoticeIdOf } from "@/shared/lib/ziggle-url";
 import type { DeviceSeed, TargetGroupSeed } from "./fixtures";
 import {
@@ -1165,7 +1166,7 @@ export function createMockRepositories(
     if (name.length === 0) {
       throwIfInvalid({ name: "그룹 이름을 입력하세요." });
     }
-    if (name.length > max) {
+    if (serverTextLength(name) > max) {
       throwIfInvalid({ name: `그룹 이름은 ${max}자 이하여야 합니다.` });
     }
     const groups = groupSeeds.map(toTargetGroup);

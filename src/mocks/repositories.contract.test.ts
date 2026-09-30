@@ -774,7 +774,18 @@ describe("위치 그룹 관리", () => {
       isHidden: false,
     });
 
-    for (const name of ["   ", "가".repeat(41), "main lobby", "옛 도서관"]) {
+    // 이모지는 서버처럼 한 글자로 센다.
+    await expect(
+      repos.reference.createTargetGroup({ name: "😀".repeat(40) }),
+    ).resolves.toMatchObject({ name: "😀".repeat(40) });
+
+    for (const name of [
+      "   ",
+      "가".repeat(41),
+      "😀".repeat(41),
+      "main lobby",
+      "옛 도서관",
+    ]) {
       const error = await errorOf(repos.reference.createTargetGroup({ name }));
       expect(error?.status).toBe(422);
       expect(error?.fields?.name).toBeTruthy();

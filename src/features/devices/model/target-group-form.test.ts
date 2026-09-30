@@ -17,6 +17,13 @@ describe("validateGroupName", () => {
     expect(validateGroupName(` ${"가".repeat(40)} `, GROUPS)).toBeNull();
   });
 
+  it("이모지는 서버처럼 한 글자로 센다", () => {
+    // UTF-16으로는 42·80단위지만 서버는 21·40자로 보고 받는다.
+    expect(validateGroupName("😀".repeat(21), GROUPS)).toBeNull();
+    expect(validateGroupName("😀".repeat(40), GROUPS)).toBeNull();
+    expect(validateGroupName("😀".repeat(41), GROUPS)).toContain("40자");
+  });
+
   it("대소문자를 무시하고 겹치는 이름을 막는다. 숨긴 그룹이면 다시 표시하라고 알린다", () => {
     expect(validateGroupName("main lobby", GROUPS)).toBe(
       "같은 이름의 그룹이 이미 있어요.",
