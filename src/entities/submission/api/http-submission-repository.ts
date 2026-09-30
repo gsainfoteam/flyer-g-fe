@@ -17,12 +17,17 @@ import type {
   UpdateSubmissionInput,
 } from "@/shared/api/repositories";
 import { toIsoUtc } from "@/shared/lib/datetime";
-import { CONTENT_TYPES, SUBMISSION_STATUSES } from "../model/types";
+import {
+  CONTENT_TYPES,
+  SUBMISSION_DECISIONS,
+  SUBMISSION_STATUSES,
+} from "../model/types";
 import type {
   ContentType,
   Page,
   SignageSubmissionExpanded,
   SubmissionListParams,
+  SubmissionDecision,
   SubmissionStatus,
   SubmissionSummary,
 } from "../model/types";
@@ -43,6 +48,25 @@ import type {
  * 응답은 화면이 쓰는 필드를 검증해 도메인 모델로 옮긴다. 승인 대기 목록(8.5)도 같은
  * 신청 객체를 주므로 파싱 함수를 함께 쓴다.
  */
+
+/**
+ * 가장 최근 검토 결정. 백엔드가 아직 주지 않는 동안은 null로 읽는다
+ * (`API-FOLLOWUP-2026-09-30.md` 1-1). 값이 오면 알려진 값만 받는다.
+ */
+function readDecision(
+  object: JsonObject,
+  path: string,
+): SubmissionDecision | null {
+  const value = object.lastDecision;
+  if (value === null || value === undefined) return null;
+  if (
+    typeof value !== "string" ||
+    !(SUBMISSION_DECISIONS as readonly string[]).includes(value)
+  ) {
+    throw invalidResponse(path, `${SUBMISSION_DECISIONS.join(" | ")} 또는 null`);
+  }
+  return value as SubmissionDecision;
+}
 
 function readEnum<T extends string>(
   object: JsonObject,
@@ -117,6 +141,7 @@ export function parseSubmission(
     submittedAt: readNullableIsoDate(body, "submittedAt", at("submittedAt")),
     createdAt: readIsoDate(body, "createdAt", at("createdAt")),
     updatedAt: readIsoDate(body, "updatedAt", at("updatedAt")),
+    lastDecision: readDecision(body, at("lastDecision")),
   };
 }
 

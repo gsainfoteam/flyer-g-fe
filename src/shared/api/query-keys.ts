@@ -26,6 +26,8 @@ export const queryKeys = {
       ["reviews", "pending-infinite", params] as const,
     history: (submissionId: string) =>
       ["reviews", "history", submissionId] as const,
+    recentDecisions: (limit: number) =>
+      ["reviews", "recent-decisions", limit] as const,
   },
   displays: {
     all: () => ["displays"] as const,

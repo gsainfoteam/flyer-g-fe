@@ -5,6 +5,7 @@ import type {
 import type { SubmissionEventDto } from "@/entities/review/model/types";
 import type {
   SignageSubmissionExpandedDto,
+  SubmissionDecision,
   SubmissionStatus,
 } from "@/entities/submission/model/types";
 import { toIsoUtc } from "@/shared/lib/datetime";
@@ -73,6 +74,8 @@ interface SubmissionSeed {
   location: string | null;
   description: string | null;
   targetGroupIds?: string[];
+  /** 한 번 반려된 뒤 고쳐서 다시 낸 신청. 검토 대기의 "고쳐서 다시 냄"을 확인한다. */
+  resubmitted?: boolean;
 }
 
 const SEEDS: readonly SubmissionSeed[] = [
@@ -265,6 +268,7 @@ const SEEDS: readonly SubmissionSeed[] = [
     subtitle: "동아리 부원 20명의 드로잉",
     location: "학생회관 1층 갤러리",
     description: null,
+    resubmitted: true,
   },
 ];
 
@@ -281,9 +285,25 @@ function versionOf(status: SubmissionStatus): number {
   return 1;
 }
 
+/** 가장 최근 검토 결정. 승인을 거친 상태는 승인이다. */
+function lastDecisionOf(seed: SubmissionSeed): SubmissionDecision | null {
+  if (seed.resubmitted || seed.status === "REJECTED") return "REJECTED";
+  if (seed.status === "SUSPENDED") return "SUSPENDED";
+  return APPROVED_ONCE.includes(seed.status) ? "APPROVED" : null;
+}
+
+/** 다시 낸 신청의 반려·재제출 시각. 처음 낸 뒤 몇 시간 안에 오갔다. */
+const REJECTED_AFTER_MS = 60 * MINUTE_MS;
+const RESUBMITTED_AFTER_MS = 2 * 60 * MINUTE_MS;
+
 function toDto(seed: SubmissionSeed, now: Date): SignageSubmissionExpandedDto {
   const [startOffset, endOffset] = PERIOD_BY_STATUS[seed.status] ?? [7, 21];
-  const createdAt = toIsoUtc(days(now, startOffset - 7));
+  const created = days(now, startOffset - 7);
+  const createdAt = toIsoUtc(created);
+  // 다시 내면 대기 시간은 다시 낸 때부터 센다.
+  const submittedAt = seed.resubmitted
+    ? toIsoUtc(new Date(created.getTime() + RESUBMITTED_AFTER_MS))
+    : createdAt;
 
   return {
     id: seed.id,
@@ -303,10 +323,12 @@ function toDto(seed: SubmissionSeed, now: Date): SignageSubmissionExpandedDto {
     priority: 0,
     targetGroupIds: seed.targetGroupIds ?? [],
     createdAt,
-    updatedAt: createdAt,
+    updatedAt: submittedAt,
     // 서버는 만들 때 바로 검토에 낸다.
-    submittedAt: createdAt,
-    version: versionOf(seed.status),
+    submittedAt,
+    // 반려(+1)와 수정·재제출(+1)을 거쳤다.
+    version: versionOf(seed.status) + (seed.resubmitted ? 2 : 0),
+    lastDecision: lastDecisionOf(seed),
     categoryName: categoryNameOf(seed.categoryId),
     organizerName: seed.organization.name,
     posterUrl: seed.posterUrl,
@@ -361,7 +383,34 @@ export function createEventFixtures(now: Date): SubmissionEventDto[] {
       occurredAt: toIsoUtc(days(now, startOffset - 7)),
     });
 
-    // 승인을 거친 신청에는 시작 하루 전 승인 기록을 남긴다.
+    if (seed.resubmitted) {
+      const created = days(now, startOffset - 7).getTime();
+      events.push(
+        {
+          id: `event-reject-${seed.id}`,
+          submissionId: seed.id,
+          revision: 1,
+          type: "REJECTED",
+          reasonCode: "LOW_RESOLUTION",
+          comment: "포스터 글자가 작아 TV에서 읽기 어렵습니다. 크게 다시 올려 주세요.",
+          ...REVIEWER,
+          occurredAt: toIsoUtc(new Date(created + REJECTED_AFTER_MS)),
+        },
+        {
+          id: `event-resubmit-${seed.id}`,
+          submissionId: seed.id,
+          revision: 3,
+          type: "RESUBMITTED",
+          reasonCode: null,
+          comment: null,
+          ...submitter,
+          occurredAt: toIsoUtc(new Date(created + RESUBMITTED_AFTER_MS)),
+        },
+      );
+    }
+
+    // 승인을 거친 신청에는 시작 하루 전 승인 기록을 남긴다. 아직 시작하지 않은
+    // 신청도 승인은 이미 지난 일이라 하루 반 전으로 둔다.
     if (APPROVED_ONCE.includes(seed.status)) {
       events.push({
         id: `event-approve-${seed.id}`,
@@ -371,7 +420,7 @@ export function createEventFixtures(now: Date): SubmissionEventDto[] {
         reasonCode: null,
         comment: null,
         ...REVIEWER,
-        occurredAt: toIsoUtc(days(now, startOffset - 1)),
+        occurredAt: toIsoUtc(days(now, Math.min(startOffset - 1, -1.5))),
       });
     }
   }

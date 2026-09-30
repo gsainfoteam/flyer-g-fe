@@ -638,3 +638,82 @@ describe("노출 통계", () => {
     ).toBe(422);
   });
 });
+
+describe("처리 이력과 최근 처리", () => {
+  it("게시가 시작·종료된 신청의 이력에는 서버가 남긴 기록이 이름 없이 붙는다", async () => {
+    const { repos } = setup(MOCK_USERS.SUBMITTER);
+
+    const published = await repos.reviews.listHistory("notice-001");
+    expect(published.map((event) => event.type)).toEqual([
+      "SUBMITTED",
+      "APPROVED",
+      "PUBLISHED",
+    ]);
+    expect(published.at(-1)).toMatchObject({ actorId: "", actorName: "" });
+
+    const ended = await repos.reviews.listHistory("notice-904");
+    expect(ended.map((event) => event.type).slice(-2)).toEqual([
+      "PUBLISHED",
+      "ENDED",
+    ]);
+  });
+
+  it("중단된 게시물은 중단 전에 걸렸던 기록까지만 남는다", async () => {
+    const { repos } = setup(MOCK_USERS.SUBMITTER);
+
+    const history = await repos.reviews.listHistory("notice-903");
+    expect(history.map((event) => event.type)).toEqual([
+      "SUBMITTED",
+      "APPROVED",
+      "PUBLISHED",
+      "SUSPENDED",
+    ]);
+  });
+
+  it("최근 처리는 검토자만 보고, 결정만 최신순으로 제목과 함께 준다", async () => {
+    const { repos, signInAs } = setup(MOCK_USERS.SUBMITTER);
+    expect(
+      await statusOf(repos.reviews.listRecentDecisions({ limit: 3 })),
+    ).toBe(403);
+
+    signInAs(MOCK_USERS.REVIEWER);
+    const records = await repos.reviews.listRecentDecisions({ limit: 3 });
+    expect(records).toHaveLength(3);
+    expect(records[0]).toMatchObject({
+      decision: "SUSPENDED",
+      submissionId: "notice-903",
+      submissionTitle: "슈퍼-피셜 드로잉 원데이 클래스",
+    });
+    const times = records.map((record) => record.occurredAt.getTime());
+    expect(times).toEqual([...times].sort((a, b) => b - a));
+  });
+
+  it("검토 결정은 신청의 최근 결정(lastDecision)에 바로 반영된다", async () => {
+    const { repos } = setup(MOCK_USERS.REVIEWER);
+    const target = await repos.submissions.getById("notice-003");
+    expect(target.lastDecision).toBeNull();
+
+    await repos.reviews.reject({
+      submissionId: "notice-003",
+      revision: target.version,
+      reasonCode: "OTHER",
+      comment: "마감일을 확인해 주세요.",
+    });
+
+    expect(
+      (await repos.submissions.getById("notice-003")).lastDecision,
+    ).toBe("REJECTED");
+  });
+
+  it("반려 뒤 다시 낸 검토 대기 건은 최근 결정이 반려다", async () => {
+    const { repos } = setup(MOCK_USERS.REVIEWER);
+    const pending = await repos.reviews.listPending({ limit: 20 });
+
+    expect(
+      pending.items.find((item) => item.id === "notice-905")?.lastDecision,
+    ).toBe("REJECTED");
+    expect(
+      pending.items.find((item) => item.id === "notice-003")?.lastDecision,
+    ).toBeNull();
+  });
+});

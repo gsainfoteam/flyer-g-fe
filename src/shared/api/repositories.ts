@@ -16,6 +16,7 @@ import type {
   ImpressionStatsParams,
 } from "@/entities/impression/model/types";
 import type {
+  DecisionRecord,
   RejectionReasonCode,
   SubmissionEvent,
 } from "@/entities/review/model/types";
@@ -153,11 +154,20 @@ export interface ReviewRepository {
     signal?: AbortSignal,
   ): Promise<Page<SignageSubmissionExpanded>>;
 
-  /** 신청의 처리 이력. 제출·재제출·검토 결정·취소를 시간 순으로 준다. */
+  /**
+   * 신청의 처리 이력. 제출·재제출·검토 결정·취소와 게시 시작·종료를 시간 순으로
+   * 준다.
+   */
   listHistory(
     submissionId: string,
     signal?: AbortSignal,
   ): Promise<SubmissionEvent[]>;
+
+  /** 모든 신청에 걸친 최근 검토 결정(승인·반려·중단). 최신순. 검토자만. */
+  listRecentDecisions(
+    params: { limit: number },
+    signal?: AbortSignal,
+  ): Promise<DecisionRecord[]>;
 
   approve(
     input: ApproveInput,

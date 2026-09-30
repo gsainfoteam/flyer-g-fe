@@ -1,6 +1,15 @@
-import { Ban, Check, OctagonPause, RotateCcw, Send, X } from "lucide-react";
+import {
+  Ban,
+  CalendarX,
+  Check,
+  OctagonPause,
+  RotateCcw,
+  Send,
+  Tv,
+  X,
+} from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
-import { getRejectionReasonLabel } from "@/entities/review";
+import { getRejectionReasonLabel, isSystemEvent } from "@/entities/review";
 import type {
   SubmissionEvent,
   SubmissionEventType,
@@ -28,6 +37,8 @@ const EVENT_META: Record<SubmissionEventType, EventMeta> = {
   REJECTED: { label: "반려", icon: X, attention: true },
   SUSPENDED: { label: "게시 중단", icon: OctagonPause, attention: true },
   CANCELED: { label: "신청 취소", icon: Ban, attention: false },
+  PUBLISHED: { label: "TV에 걸림", icon: Tv, attention: false },
+  ENDED: { label: "게시 종료", icon: CalendarX, attention: false },
 };
 
 interface SubmissionHistoryProps {
@@ -57,7 +68,12 @@ export function SubmissionHistory({ events }: SubmissionHistoryProps) {
         return (
           <TimelineRow
             key={event.id}
-            label={`${meta.label} · ${event.actorName}`}
+            // 서버가 남긴 일(게시 시작·종료)에는 사람 이름이 없다.
+            label={
+              isSystemEvent(event)
+                ? meta.label
+                : `${meta.label} · ${event.actorName}`
+            }
             detail={
               reason || event.comment ? (
                 <>

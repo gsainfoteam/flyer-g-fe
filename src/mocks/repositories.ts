@@ -26,8 +26,13 @@ import type {
   SubmissionStatus,
   SubmissionSummary,
 } from "@/entities/submission/model/types";
-import { toSubmissionEvent } from "@/entities/review/model/types";
+import {
+  REVIEW_DECISIONS,
+  toSubmissionEvent,
+} from "@/entities/review/model/types";
 import type {
+  DecisionRecord,
+  ReviewDecision,
   SubmissionEvent,
   SubmissionEventDto,
   SubmissionEventType,
@@ -201,6 +206,10 @@ class MockStore {
       .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
   }
 
+  allEvents(): SubmissionEventDto[] {
+    return this.events;
+  }
+
   addEvent(event: SubmissionEventDto): void {
     this.events = [...this.events, event];
   }
@@ -355,6 +364,13 @@ export function createMockRepositories(
   /** 저장된 값이 아니라 지금 서버 시각 기준 실제 상태로 전이를 판단한다. */
   const effectiveOf = (dto: SignageSubmissionExpandedDto): SubmissionStatus =>
     resolveEffectiveStatus(toSignageSubmissionExpanded(dto), clock.now());
+
+  /** 중단한 시각. 이력의 마지막 중단 기록이고, 없으면 마지막으로 바뀐 때다. */
+  const suspendedAtOf = (dto: SignageSubmissionExpandedDto): string =>
+    store
+      .eventsOf(dto.id)
+      .filter((event) => event.type === "SUSPENDED")
+      .at(-1)?.occurredAt ?? dto.updatedAt;
 
   /** 요청한 사람. 세션을 연결하지 않았으면 null이며 권한을 검사하지 않는다. */
   const actor = (): SessionUser | null => {
@@ -521,6 +537,7 @@ export function createMockRepositories(
       updatedAt: toIsoUtc(now),
       submittedAt: toIsoUtc(now),
       version: 1,
+      lastDecision: null,
       categoryName: categoryNameOf(input.categoryId),
       organizerName: optionalText(input.organizerName),
       posterUrl,
@@ -765,6 +782,42 @@ export function createMockRepositories(
     },
   };
 
+  /**
+   * 서버 주기 작업이 남기는 게시 시작·종료 기록. mock은 따로 돌지 않으니 게시 기간과
+   * 지금 상태로 만든다. 중단된 게시물은 중단 전에 시작했을 때만 걸렸다.
+   */
+  const postingEventsOf = (
+    dto: SignageSubmissionExpandedDto,
+  ): SubmissionEventDto[] => {
+    const status = effectiveOf(dto);
+    if (!ON_AIR_ONCE.includes(status)) return [];
+    const stoppedAt =
+      status === "SUSPENDED" ? suspendedAtOf(dto) : toIsoUtc(clock.now());
+    const system = { reasonCode: null, comment: null, actorId: "", actorName: "" };
+    const events: SubmissionEventDto[] = [];
+    if (dto.startAt < stoppedAt) {
+      events.push({
+        id: `event-publish-${dto.id}`,
+        submissionId: dto.id,
+        revision: dto.version,
+        type: "PUBLISHED",
+        ...system,
+        occurredAt: dto.startAt,
+      });
+    }
+    if (status === "ENDED") {
+      events.push({
+        id: `event-end-${dto.id}`,
+        submissionId: dto.id,
+        revision: dto.version,
+        type: "ENDED",
+        ...system,
+        occurredAt: dto.endAt,
+      });
+    }
+    return events;
+  };
+
   const reviews: ReviewRepository = {
     async listPending(params, signal) {
       await settle(signal);
@@ -786,10 +839,34 @@ export function createMockRepositories(
 
     async listHistory(submissionId, signal) {
       await settle(signal);
-      findVisible(submissionId);
-      return store
-        .eventsOf(submissionId)
+      const submission = findVisible(submissionId);
+      return [...store.eventsOf(submissionId), ...postingEventsOf(submission)]
+        .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt))
         .map((event): SubmissionEvent => toSubmissionEvent(event));
+    },
+
+    async listRecentDecisions({ limit }, signal) {
+      await settle(signal);
+      requireReviewer();
+      return store
+        .allEvents()
+        .filter((event) =>
+          (REVIEW_DECISIONS as readonly string[]).includes(event.type),
+        )
+        .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+        .slice(0, limit)
+        .map(
+          (event): DecisionRecord => ({
+            id: event.id,
+            submissionId: event.submissionId,
+            submissionTitle:
+              store.all().find((item) => item.id === event.submissionId)
+                ?.title ?? null,
+            decision: event.type as ReviewDecision,
+            actorName: event.actorName,
+            occurredAt: parseIsoUtc(event.occurredAt),
+          }),
+        );
     },
 
     async approve(input: ApproveInput, mutationOptions?: MutationOptions) {
@@ -817,7 +894,7 @@ export function createMockRepositories(
       store.addEvent(eventOf(current, "APPROVED", reviewer, now));
       return decided(
         "approve",
-        touch(current, now, { status }),
+        touch(current, now, { status, lastDecision: "APPROVED" }),
         mutationOptions,
       );
     },
@@ -849,7 +926,7 @@ export function createMockRepositories(
       );
       return decided(
         "reject",
-        touch(current, now, { status: "REJECTED" }),
+        touch(current, now, { status: "REJECTED", lastDecision: "REJECTED" }),
         mutationOptions,
       );
     },
@@ -878,7 +955,10 @@ export function createMockRepositories(
       );
       return decided(
         "suspend",
-        touch(current, now, { status: "SUSPENDED" }),
+        touch(current, now, {
+          status: "SUSPENDED",
+          lastDecision: "SUSPENDED",
+        }),
         mutationOptions,
       );
     },
@@ -1118,7 +1198,7 @@ export function createMockRepositories(
    * 대상 기기 수로 그럴듯한 값을 계산한다. 같은 조건이면 늘 같은 값이 나온다.
    *
    * 기기 한 대가 한 시간에 6~10번 띄운다고 본다(전환 10초, 한 바퀴 여러 장).
-   * 중단된 게시물은 중단한 시각(마지막 수정)까지만 센다.
+   * 중단된 게시물은 중단한 시각까지만 센다.
    */
   const impressionsOf = (
     dto: SignageSubmissionExpandedDto,
@@ -1129,7 +1209,7 @@ export function createMockRepositories(
     if (!ON_AIR_ONCE.includes(status)) return null;
     const stoppedAt =
       status === "SUSPENDED"
-        ? parseIsoUtc(dto.updatedAt).getTime()
+        ? parseIsoUtc(suspendedAtOf(dto)).getTime()
         : Number.POSITIVE_INFINITY;
     const start = Math.max(parseIsoUtc(dto.startAt).getTime(), rangeStart);
     const end = Math.min(parseIsoUtc(dto.endAt).getTime(), rangeEnd, stoppedAt);

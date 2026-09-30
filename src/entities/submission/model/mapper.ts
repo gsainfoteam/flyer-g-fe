@@ -79,5 +79,6 @@ export function toSubmissionView(
     description: submission.description,
     targetGroupIds: submission.targetGroupIds,
     version: submission.version,
+    lastDecision: submission.lastDecision,
   };
 }
