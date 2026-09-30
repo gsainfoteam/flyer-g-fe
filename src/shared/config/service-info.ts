@@ -5,7 +5,7 @@ import { ZIGGLE_ORIGIN } from "@/shared/lib/ziggle-url";
  */
 export const SERVICE_OPERATOR = "GSA Infoteam";
 
-export const SERVICE_CONTACT_EMAIL = "flyer@gistory.me";
+export const SERVICE_CONTACT_EMAIL = "flyer-g@gistory.me";
 
 export const SERVICE_LINKS = {
   ziggle: ZIGGLE_ORIGIN,
