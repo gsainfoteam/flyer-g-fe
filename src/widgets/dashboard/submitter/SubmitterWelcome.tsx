@@ -1,5 +1,4 @@
 import { Link } from "react-router";
-import { useTargetGroups } from "@/entities/device/api/queries";
 import { EmptyState, Panel } from "@/shared/components";
 import { to } from "@/shared/config/routes";
 import { Button } from "@/shared/ui/button";
@@ -64,44 +63,14 @@ export function SubmitterWelcome() {
         </Panel>
       }
       side={
-        <>
-          <Panel title="최근 소식">
-            <EmptyState
-              title="아직 소식이 없어요"
-              description="신청하면 검토 결과와 게시 시작·종료 소식이 여기에 쌓여요."
-              className="py-1"
-            />
-          </Panel>
-          <PlacesPanel />
-        </>
+        <Panel title="최근 소식">
+          <EmptyState
+            title="아직 소식이 없어요"
+            description="신청하면 검토 결과와 게시 시작·종료 소식이 여기에 쌓여요."
+            className="py-1"
+          />
+        </Panel>
       }
     />
-  );
-}
-
-/** 포스터가 걸리는 곳과 곳마다의 TV 대수. 대상 위치가 없으면 칸을 그리지 않는다. */
-function PlacesPanel() {
-  const groups = useTargetGroups();
-  if (!groups.data || groups.data.length === 0) return null;
-
-  return (
-    <Panel title="포스터가 걸리는 곳" flush bodyClassName="p-0">
-      <ul className="flex flex-col divide-y divide-line/70 px-5 py-1.5">
-        {groups.data.map((group) => (
-          <li
-            key={group.id}
-            className="flex items-center justify-between gap-3 py-2.5 text-label"
-          >
-            <span className="font-semibold text-ink">{group.name}</span>
-            <span className="font-normal text-ink-subtle tabular-nums">
-              TV {group.deviceCount}대
-            </span>
-          </li>
-        ))}
-      </ul>
-      <p className="border-t border-line px-5 py-3 text-caption text-ink-subtle">
-        신청할 때 걸 곳을 고를 수 있어요. 고르지 않으면 모든 곳에 걸려요.
-      </p>
-    </Panel>
   );
 }

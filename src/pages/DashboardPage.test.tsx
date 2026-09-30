@@ -152,7 +152,7 @@ describe("게시자 홈", () => {
     ).toBeInTheDocument();
   });
 
-  it("신청이 하나도 없으면 같은 칸에 신청 안내와 걸리는 곳을 채운다", async () => {
+  it("신청이 하나도 없으면 같은 칸에 신청 안내를 채운다", async () => {
     const repositories = createMockRepositories({
       clock: createFixedClock(TEST_NOW),
     });
@@ -179,7 +179,6 @@ describe("게시자 홈", () => {
       screen.queryByRole("link", { name: "새 게시 신청" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("아직 소식이 없어요")).toBeInTheDocument();
-    expect(await screen.findByText("학사기숙사 A동")).toBeInTheDocument();
   });
 });
 
