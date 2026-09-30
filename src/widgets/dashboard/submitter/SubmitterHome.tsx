@@ -2,9 +2,11 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { useImpressionStats } from "@/entities/impression/api/queries";
 import {
+  countedWindowOf,
   impressionRange,
   indexImpressions,
 } from "@/entities/impression/model/types";
+import type { CountedWindow } from "@/entities/impression/model/types";
 import type {
   SubmissionStatus,
   SubmissionSummary,
@@ -107,6 +109,10 @@ export function SubmitterHome() {
                 <ActiveSubmissions
                   submissions={active.data.items}
                   impressions={indexImpressions(stats.data)}
+                  counted={
+                    stats.data &&
+                    countedWindowOf(stats.data, active.data.serverTime)
+                  }
                   now={active.data.serverTime}
                 />
               }
@@ -134,10 +140,13 @@ export function SubmitterHome() {
 function ActiveSubmissions({
   submissions,
   impressions,
+  counted,
   now,
 }: {
   submissions: SubmissionView[];
   impressions: ReturnType<typeof indexImpressions>;
+  /** 노출을 센 기간. 통계를 받기 전에는 없다. */
+  counted: CountedWindow | undefined;
   now: Date;
 }) {
   const ordered = [...submissions].sort(
@@ -176,6 +185,7 @@ function ActiveSubmissions({
               key={submission.id}
               submission={submission}
               impressions={impressions.get(submission.id)}
+              counted={counted}
               now={now}
             />
           ))}

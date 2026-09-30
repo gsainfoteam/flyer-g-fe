@@ -1,4 +1,4 @@
-import { toSeoulDateInputValue } from "@/shared/lib/datetime";
+import { fromSeoulInput, toSeoulDateInputValue } from "@/shared/lib/datetime";
 
 /**
  * 노출 통계 (`GET /signage/stats/impressions`).
@@ -63,4 +63,38 @@ export function indexImpressions(
   stats: ImpressionStats | undefined,
 ): Map<string, ImpressionStatsItem> {
   return new Map(stats?.items.map((item) => [item.submissionId, item]) ?? []);
+}
+
+/** 노출을 센 기간. 조회 시작일 00:00(서울)부터 서버가 마지막으로 모은 시각까지 */
+export interface CountedWindow {
+  from: Date;
+  until: Date;
+}
+
+/**
+ * 응답이 실제로 센 기간. 서버는 `aggregatedAt` 뒤의 기록을 아직 세지 않았으므로
+ * 거기서 끊는다. 한 번도 모으지 않았으면(`null`) 서버 시각까지로 본다.
+ */
+export function countedWindowOf(
+  stats: ImpressionStats,
+  now: Date,
+): CountedWindow {
+  return { from: fromSeoulInput(stats.from), until: stats.aggregatedAt ?? now };
+}
+
+/**
+ * 게시 중인 포스터의 하루 평균 노출. 노출 수와 같은 기간으로 나눈다 — 게시 시작과
+ * 조회 시작 중 늦은 때부터 마지막으로 모은 시각까지.
+ *
+ * 센 기간이 하루가 안 되면 null이다. 몇 시간치를 하루로 치면 평균이 크게 낮게
+ * 나오고, 하루로 늘려 잡으면 부풀려진다.
+ */
+export function dailyImpressionAverage(
+  impressions: number,
+  startAt: Date,
+  window: CountedWindow,
+): number | null {
+  const since = Math.max(startAt.getTime(), window.from.getTime());
+  const days = (window.until.getTime() - since) / DAY_MS;
+  return days >= 1 ? Math.round(impressions / days) : null;
 }

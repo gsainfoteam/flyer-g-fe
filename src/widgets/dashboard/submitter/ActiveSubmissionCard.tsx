@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { useTargetGroupLabel } from "@/entities/device/api/queries";
-import type { ImpressionStatsItem } from "@/entities/impression/model/types";
+import { dailyImpressionAverage } from "@/entities/impression/model/types";
+import type {
+  CountedWindow,
+  ImpressionStatsItem,
+} from "@/entities/impression/model/types";
 import { PREVIEW_DEVICE_ID } from "@/entities/playlist/model/types";
 import { fromSubmissionView } from "@/entities/poster";
 import { PosterThumb } from "@/entities/poster/ui/PosterThumb";
@@ -27,12 +31,12 @@ import { Button } from "@/shared/ui/button";
  *
  * 반려·중단 건은 관리자가 남긴 사유를 그대로 보여주고 고치러 가는 버튼을 둔다.
  */
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 interface ActiveSubmissionCardProps {
   submission: SubmissionView;
   /** 이 게시물의 노출. 기간 안에 노출이 없으면 없다. */
   impressions: ImpressionStatsItem | undefined;
+  /** 노출을 센 기간. 하루 평균을 같은 기간으로 나눈다. */
+  counted: CountedWindow | undefined;
   /** 서버 시각 */
   now: Date;
 }
@@ -40,6 +44,7 @@ interface ActiveSubmissionCardProps {
 export function ActiveSubmissionCard({
   submission,
   impressions,
+  counted,
   now,
 }: ActiveSubmissionCardProps) {
   const needsFix =
@@ -102,7 +107,7 @@ export function ActiveSubmissionCard({
         {needsFix && <FixRequest submission={submission} />}
 
         <dl className="mt-3.5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 border-t border-line/70 pt-3 text-caption">
-          {impressionLine(submission, impressions, now)}
+          {impressionLine(submission, impressions, counted)}
           {places !== null && <MetaRow label="걸리는 곳">{places}</MetaRow>}
           <MetaRow label="QR 연결">
             {submission.detailUrl ? (
@@ -177,21 +182,24 @@ function sentenceOf(submission: SubmissionView, now: Date): ReactNode {
 function impressionLine(
   submission: SubmissionView,
   impressions: ImpressionStatsItem | undefined,
-  now: Date,
+  counted: CountedWindow | undefined,
 ): ReactNode {
   const onAir = submission.status === "PUBLISHED";
   if (!impressions) {
     return onAir ? <MetaRow label="TV에 나온 횟수">집계 전</MetaRow> : null;
   }
   const parts = [`${impressions.impressions.toLocaleString("ko-KR")}회`];
-  if (onAir) {
-    const days = Math.max(
-      1,
-      (now.getTime() - submission.startAt.getTime()) / DAY_MS,
-    );
-    parts.push(
-      `하루 평균 약 ${Math.round(impressions.impressions / days).toLocaleString("ko-KR")}회`,
-    );
+  // 하루 넘게 센 뒤에만 평균을 낸다.
+  const average =
+    onAir && counted
+      ? dailyImpressionAverage(
+          impressions.impressions,
+          submission.startAt,
+          counted,
+        )
+      : null;
+  if (average !== null) {
+    parts.push(`하루 평균 약 ${average.toLocaleString("ko-KR")}회`);
   }
   parts.push(`TV ${impressions.deviceCount}대`);
   return (
