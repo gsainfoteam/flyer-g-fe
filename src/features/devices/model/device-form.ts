@@ -2,6 +2,7 @@ import { DEVICE_LIMITS } from "@/entities/device/model/types";
 import type {
   DeviceInput,
   DisplayDevice,
+  TargetGroup,
   UpdateDeviceInput,
 } from "@/entities/device/model/types";
 import type { LayoutType } from "@/entities/playlist/model/types";
@@ -114,6 +115,48 @@ export function toDeviceInput(draft: DeviceDraft): DeviceInput {
 export function toUpdateDeviceInput(draft: DeviceDraft): UpdateDeviceInput {
   return { ...toDeviceInput(draft), isActive: draft.isActive };
 }
+
+export interface GroupOption {
+  id: string;
+  label: string;
+  /** 숨겼거나 지워서 새로 고를 수 없다. 선택을 풀어야 저장할 수 있다. */
+  unavailable: boolean;
+}
+
+/**
+ * 위치 그룹 체크박스. 숨기지 않은 그룹과, 숨김·삭제 여부와 상관없이 지금 고른 그룹을
+ * 모두 보여 준다. 고른 것이 목록에서 사라지면 풀 수 없는 id가 남아 저장이 계속 실패한다.
+ *
+ * - 이 기기에 원래 연결된 숨긴 그룹은 그대로 둘 수 있다(서버 허용). 풀었다가 다시
+ *   고를 수 있게 선택하지 않았어도 남긴다.
+ * - 새로 고른 숨긴 그룹과 목록에 없는(지운) 그룹은 `unavailable`이다.
+ */
+export function groupOptionsFor(
+  groups: readonly TargetGroup[],
+  selectedIds: readonly string[],
+  attachedIds: readonly string[] = [],
+): GroupOption[] {
+  const listed = groups
+    .filter(
+      (group) =>
+        !group.isHidden ||
+        selectedIds.includes(group.id) ||
+        attachedIds.includes(group.id),
+    )
+    .map((group) => ({
+      id: group.id,
+      label: group.isHidden ? `${group.name} (숨김)` : group.name,
+      unavailable: group.isHidden && !attachedIds.includes(group.id),
+    }));
+  const missing = selectedIds
+    .filter((id) => !groups.some((group) => group.id === id))
+    .map((id) => ({ id, label: "삭제된 그룹", unavailable: true }));
+  return [...listed, ...missing];
+}
+
+/** 새로 고를 수 없는 그룹이 선택에 남아 있을 때의 안내 */
+export const UNAVAILABLE_GROUP_MESSAGE =
+  "숨겼거나 지운 그룹이 있어요. 표시된 그룹의 선택을 풀어 주세요.";
 
 /** 서버 422의 `fields`에서 폼 칸에 붙일 것만 고른다. */
 export function toDeviceFieldErrors(

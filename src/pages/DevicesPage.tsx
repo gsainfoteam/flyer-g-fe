@@ -103,7 +103,7 @@ export function DevicesPage() {
             if (!open) setEditing(null);
           }}
           device={editing === "new" ? null : editing}
-          groups={groupList}
+          groups={groups.data}
           onCreated={({ device, token }) =>
             setSetupLink({
               deviceId: device.id,
