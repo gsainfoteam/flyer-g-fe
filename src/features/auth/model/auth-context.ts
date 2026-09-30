@@ -16,6 +16,13 @@ export interface AuthContextValue {
    * guard가 지금 경로를 `returnTo`로 붙여 로그인으로 보낸다.
    */
   expireSession: () => void;
+  /**
+   * 세션(`GET /auth/session`)을 다시 불러와 역할을 맞춘다. 서버가 403을 주면 부른다 —
+   * 다른 운영자가 내 역할을 바꿨으면 메뉴와 화면 권한이 그제야 바뀐다.
+   *
+   * 여러 곳에서 한꺼번에 불러도 요청은 하나다. 불러오지 못하면 지금 세션을 그대로 둔다.
+   */
+  reloadSession: () => Promise<void>;
   /** 개발용 역할 전환. mock 세션이 아닐 때는 null이다. */
   switchRole: ((role: Role) => void) | null;
   availableRoles: readonly Role[];

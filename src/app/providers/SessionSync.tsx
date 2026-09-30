@@ -9,9 +9,11 @@ import { normalizeApiError } from "@/shared/api/error";
  * - 사용자가 바뀌면(로그아웃, 역할 전환) 이전 사용자의 응답을 버린다. 캐시 key에
  *   사용자가 없어서, 남겨 두면 다음 사용자에게 staleTime 동안 남의 목록이 보인다.
  * - 어떤 요청이든 401이 오면 세션이 끝난 것이다. 로그인 화면으로 보낸다.
+ * - 403이 오면 다른 운영자가 내 역할을 바꿨을 수 있다. 세션을 다시 불러와 메뉴와 화면
+ *   권한을 맞춘다. 권한이 사라졌으면 route guard가 권한 없음 화면으로 바꾼다.
  */
 export function SessionSync() {
-  const { state, expireSession } = useAuth();
+  const { state, expireSession, reloadSession } = useAuth();
   const queryClient = useQueryClient();
   const userId = state.status === "authenticated" ? state.user.id : null;
   const previousUserId = useRef<string | null | undefined>(undefined);
@@ -34,27 +36,24 @@ export function SessionSync() {
   useEffect(() => {
     if (userId === null) return;
 
-    const isUnauthenticated = (error: unknown) =>
-      normalizeApiError(error).code === "UNAUTHENTICATED";
+    const handleError = (error: unknown) => {
+      const { code } = normalizeApiError(error);
+      if (code === "UNAUTHENTICATED") expireSession();
+      else if (code === "FORBIDDEN") void reloadSession();
+    };
 
-    const unsubscribeQueries = queryClient.getQueryCache().subscribe((event) => {
-      if (
-        event.type === "updated" &&
-        event.action.type === "error" &&
-        isUnauthenticated(event.action.error)
-      ) {
-        expireSession();
-      }
-    });
+    const unsubscribeQueries = queryClient
+      .getQueryCache()
+      .subscribe((event) => {
+        if (event.type === "updated" && event.action.type === "error") {
+          handleError(event.action.error);
+        }
+      });
     const unsubscribeMutations = queryClient
       .getMutationCache()
       .subscribe((event) => {
-        if (
-          event.type === "updated" &&
-          event.action.type === "error" &&
-          isUnauthenticated(event.action.error)
-        ) {
-          expireSession();
+        if (event.type === "updated" && event.action.type === "error") {
+          handleError(event.action.error);
         }
       });
 
@@ -62,7 +61,7 @@ export function SessionSync() {
       unsubscribeQueries();
       unsubscribeMutations();
     };
-  }, [queryClient, userId, expireSession]);
+  }, [queryClient, userId, expireSession, reloadSession]);
 
   return null;
 }
