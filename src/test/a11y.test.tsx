@@ -36,7 +36,8 @@ describe("접근성 자동 검사", () => {
 
   it("대시보드 (관리자)", async () => {
     const { container } = renderRoute("/", { role: "REVIEWER" });
-    await screen.findByRole("heading", { name: "오래 기다린 순" });
+    await screen.findByRole("heading", { name: /검토 대기/ });
+    await screen.findByText("게시 중단");
     await expectNoViolations(container);
   });
 

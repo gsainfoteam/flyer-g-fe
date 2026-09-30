@@ -36,13 +36,13 @@ describe("대시보드", () => {
 
   it("대시보드에서 바로 승인하지 않고 검토 상세로 보낸다", async () => {
     renderRoute("/", { role: "REVIEWER" });
-    await screen.findByRole("heading", { name: "오래 기다린 순" });
+    await screen.findByRole("heading", { name: /검토 대기/ });
 
     // 근거 없이 누르는 원클릭 승인 버튼은 두지 않는다. (명세 FR-REV-02)
     expect(
       screen.queryByRole("button", { name: "승인하기" }),
     ).not.toBeInTheDocument();
-    const reviewLinks = screen.getAllByRole("link", { name: "검토" });
+    const reviewLinks = screen.getAllByRole("link", { name: / 검토$/ });
     expect(reviewLinks.length).toBeGreaterThan(0);
     expect(reviewLinks[0]!.getAttribute("href")).toMatch(/^\/reviews\//);
   });

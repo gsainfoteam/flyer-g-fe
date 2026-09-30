@@ -36,22 +36,25 @@ describe("대시보드", () => {
   it("TV 미리보기 링크는 운영 모드가 아니라 미리보기 모드로 연다", async () => {
     renderRoute("/", { role: "REVIEWER" });
 
-    const link = await screen.findByRole("link", { name: "미리보기 →" });
+    const link = await screen.findByRole("link", { name: "TV 미리보기 →" });
     expect(link.getAttribute("href")).toContain("preview=1");
   });
 
-  it("관리자에게 기기 연결 상태를 보여준다", async () => {
+  it("하우스 관리자에게 끊긴 기기를 펼쳐 보여주고, 운영자에게 알리라고 안내한다", async () => {
     renderRoute("/", { role: "REVIEWER" });
 
-    const panel = (
-      await screen.findByRole("heading", { name: "디스플레이 2대" })
-    ).closest("section")!;
+    const panel = (await screen.findByText("26분째 끊김")).closest("section")!;
     const rows = within(panel).getAllByRole("listitem");
-    expect(rows[0]).toHaveTextContent("A동 로비");
-    expect(rows[0]).toHaveTextContent("온라인");
-    expect(rows[1]).toHaveTextContent("B동 로비");
-    expect(rows[1]).toHaveTextContent("26분 전");
-    expect(rows[1]).toHaveTextContent("오프라인");
+    // 끊긴 기기가 맨 위다.
+    expect(rows[0]).toHaveTextContent("B동 로비");
+    expect(rows[0]).toHaveTextContent("26분째 끊김");
+    expect(rows[0]).toHaveTextContent("오래 이어지면 운영자에게 알려 주세요.");
+    expect(rows[1]).toHaveTextContent("A동 로비");
+    expect(rows[1]).toHaveTextContent("정상");
+    // 하우스 관리자는 기기를 고칠 수 없다.
+    expect(
+      within(panel).queryByRole("link", { name: "기기 관리 →" }),
+    ).not.toBeInTheDocument();
   });
 
   it("게시자에게는 기기 상태를 조회하지도 보여주지도 않는다", async () => {
@@ -174,5 +177,107 @@ describe("게시자 홈", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText("아직 소식이 없어요")).toBeInTheDocument();
     expect(await screen.findByText("학사기숙사 A동")).toBeInTheDocument();
+  });
+});
+
+describe("하우스 관리자 홈", () => {
+  it("검토 대기에서 고쳐서 다시 낸 신청을 알린다", async () => {
+    renderRoute("/", { role: "REVIEWER" });
+
+    const queue = (
+      await screen.findByRole("heading", { name: /검토 대기/ })
+    ).closest("section")!;
+    const resubmitted = within(queue)
+      .getByText("슈퍼-피셜 가을 전시 〈선 긋기〉")
+      .closest("li")!;
+    expect(resubmitted).toHaveTextContent("고쳐서 다시 냄");
+    const first = within(queue)
+      .getByText("지스트신문 22기 기자단 모집")
+      .closest("li")!;
+    expect(first).not.toHaveTextContent("다시 냄");
+  });
+
+  it("지금 게시 중은 곧 내려가는 것부터 보여준다", async () => {
+    renderRoute("/", { role: "REVIEWER" });
+
+    const onAir = (
+      await screen.findByRole("heading", { name: /지금 게시 중/ })
+    ).closest("section")!;
+    const days = within(onAir)
+      .getAllByText(/일 남음$/)
+      .map((node) => Number.parseInt(node.textContent ?? "", 10));
+    expect(days.length).toBeGreaterThan(0);
+    expect(days).toEqual([...days].sort((a, b) => a - b));
+  });
+
+  it("최근 처리는 결정과 처리한 사람을 최신순으로 보여준다", async () => {
+    renderRoute("/", { role: "REVIEWER" });
+
+    const panel = (
+      await screen.findByRole("heading", { name: "최근 처리" })
+    ).closest("section")!;
+    const rows = await within(panel).findAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("슈퍼-피셜 드로잉 원데이 클래스");
+    expect(rows[0]).toHaveTextContent("게시 중단 · 이수현");
+  });
+
+  it("오늘 바뀌는 게 없으면 다음 변경이 언제인지 알린다", async () => {
+    renderRoute("/", { role: "REVIEWER" });
+
+    expect(
+      await screen.findByText("오늘은 바뀌는 게 없어요"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/^다음 변경은 .+(걸려요|내려가요)\.$/)).toBeInTheDocument();
+  });
+
+  it("처리할 신청이 없으면 제목이 바뀌고 전체 신청 목록으로 안내한다", async () => {
+    const repositories = createMockRepositories({
+      clock: createFixedClock(TEST_NOW),
+    });
+    repositories.reviews.listPending = async () => ({
+      items: [],
+      nextCursor: null,
+      totalCount: 0,
+      serverTime: TEST_NOW,
+    });
+    const getSummary = repositories.submissions.getSummary;
+    repositories.submissions.getSummary = async (params, signal) => ({
+      ...(await getSummary(params, signal)),
+      pendingReview: 0,
+    });
+    renderRoute("/", { role: "REVIEWER", repositories });
+
+    expect(
+      await screen.findByRole("heading", { name: "지금 처리할 신청이 없어요" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/^포스터 \d+장이 게시 중이에요\.$/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "전체 신청 보기" }),
+    ).toHaveAttribute("href", "/submissions?scope=all");
+    expect(
+      screen.getByText("검토할 신청을 모두 처리했어요"),
+    ).toBeInTheDocument();
+  });
+
+  it("기기가 모두 정상이면 한 줄로 접는다", async () => {
+    const repositories = createMockRepositories({
+      clock: createFixedClock(TEST_NOW),
+    });
+    const list = repositories.devices.list;
+    repositories.devices.list = async (signal) => {
+      const devices = await list(signal);
+      return {
+        ...devices,
+        items: devices.items.map((device) => ({
+          ...device,
+          status: "ONLINE" as const,
+        })),
+      };
+    };
+    renderRoute("/", { role: "REVIEWER", repositories });
+
+    expect(
+      await screen.findByRole("heading", { name: "디스플레이 2대 모두 정상" }),
+    ).toBeInTheDocument();
   });
 });
