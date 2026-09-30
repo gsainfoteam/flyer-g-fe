@@ -33,7 +33,6 @@ type PeriodKey = (typeof PERIODS)[number]["key"];
 const TOP_ROWS = 5;
 
 const count = (value: number) => value.toLocaleString("ko-KR");
-const percent = (ratio: number) => `${Math.round(ratio * 100)}%`;
 
 export function ImpressionStatsPanel({ now }: { now: Date }) {
   const [periodKey, setPeriodKey] = useState<PeriodKey>("week");
@@ -105,14 +104,8 @@ export function ImpressionStatsPanel({ now }: { now: Date }) {
       ) : (
         <>
           <dl className="flex flex-wrap gap-x-10 gap-y-3 border-b border-line px-5 py-4">
-            <Figure label="전체 노출" value={`${count(total.impressions)}회`} />
+            <Figure label="전체 노출" value={`${count(total)}회`} />
             <Figure label="나온 포스터" value={`${items.length}건`} />
-            {total.completionRate !== null && (
-              <Figure
-                label="끝까지 나온 비율"
-                value={percent(total.completionRate)}
-              />
-            )}
           </dl>
           <table className="w-full table-fixed text-label">
             <thead>
@@ -125,12 +118,6 @@ export function ImpressionStatsPanel({ now }: { now: Date }) {
                   className="w-56 px-5 py-2.5 text-right font-semibold max-md:w-28"
                 >
                   노출
-                </th>
-                <th
-                  scope="col"
-                  className="w-20 px-5 py-2.5 text-right font-semibold max-sm:hidden"
-                >
-                  끝까지
                 </th>
                 <th
                   scope="col"
@@ -168,9 +155,6 @@ export function ImpressionStatsPanel({ now }: { now: Date }) {
                         {count(item.impressions)}
                       </span>
                     </div>
-                  </td>
-                  <td className="px-5 py-2.5 text-right tabular-nums max-sm:hidden">
-                    {percent(item.completedImpressions / item.impressions)}
                   </td>
                   <td className="px-5 py-2.5 text-right tabular-nums max-sm:hidden">
                     {item.deviceCount}대

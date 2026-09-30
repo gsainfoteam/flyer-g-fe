@@ -63,18 +63,9 @@ export function indexImpressions(
   return new Map(stats?.items.map((item) => [item.submissionId, item]) ?? []);
 }
 
-/** 여러 게시물의 합계. 끝까지 나온 비율은 노출이 없으면 null이다. */
-export function totalImpressions(items: readonly ImpressionStatsItem[]): {
-  impressions: number;
-  completionRate: number | null;
-} {
-  const impressions = items.reduce((sum, item) => sum + item.impressions, 0);
-  const completed = items.reduce(
-    (sum, item) => sum + item.completedImpressions,
-    0,
-  );
-  return {
-    impressions,
-    completionRate: impressions > 0 ? completed / impressions : null,
-  };
+/** 여러 게시물의 노출 합계 */
+export function totalImpressions(
+  items: readonly ImpressionStatsItem[],
+): number {
+  return items.reduce((sum, item) => sum + item.impressions, 0);
 }
