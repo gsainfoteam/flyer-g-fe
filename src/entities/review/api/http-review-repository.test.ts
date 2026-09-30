@@ -279,6 +279,25 @@ describe("createHttpReviewRepository", () => {
       expect(calls[0]!.query).toEqual({ targetType: "SUBMISSION", limit: 100 });
     });
 
+    it("역할 변경처럼 모르는 대상·행위가 섞여도 깨지지 않고 건너뛴다", async () => {
+      const { repository } = fakeClient({
+        "/signage/audit-logs": () =>
+          page([
+            log("log_10", "USER_ROLE_GRANTED", "2026-09-27T10:00:00.000Z", {
+              targetType: "USER",
+              targetId: "user_02",
+              targetTitle: "김지스트",
+              metadata: { role: "REVIEWER" },
+            }),
+            ...decisionLogs,
+          ]),
+      });
+
+      const records = await repository.listRecentDecisions({ limit: 1 });
+
+      expect(records.map((record) => record.id)).toEqual(["log_08"]);
+    });
+
     it("로그에 제목이 없으면 신청을 불러 채우고, 지워진 신청은 제목 없이 둔다", async () => {
       const { repository } = fakeClient({
         "/signage/audit-logs": () => page(decisionLogs),
