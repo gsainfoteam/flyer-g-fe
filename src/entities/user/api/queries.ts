@@ -14,6 +14,12 @@ const HOLDERS_MAX_PAGES = 5;
 
 export const USER_SEARCH_PAGE_SIZE = 20;
 
+export interface RoleHolders {
+  items: AdminUser[];
+  /** 첫 페이지를 만든 서버 시각. "마지막 로그인 N일 전"을 센다. */
+  serverTime: Date;
+}
+
 /**
  * 한 역할을 받은 사람 전부. 이름순이다.
  *
@@ -24,8 +30,9 @@ export function useRoleHolders(role: GrantableRole) {
 
   return useQuery({
     queryKey: queryKeys.users.holders(role),
-    queryFn: async ({ signal }): Promise<AdminUser[]> => {
+    queryFn: async ({ signal }): Promise<RoleHolders> => {
       const items: AdminUser[] = [];
+      let serverTime: Date | null = null;
       let cursor: string | null = null;
       for (let page = 0; page < HOLDERS_MAX_PAGES; page += 1) {
         const result = await users.list(
@@ -33,10 +40,11 @@ export function useRoleHolders(role: GrantableRole) {
           signal,
         );
         items.push(...result.items);
+        serverTime ??= result.serverTime;
         cursor = result.nextCursor;
         if (cursor === null) break;
       }
-      return items;
+      return { items, serverTime: serverTime! };
     },
   });
 }

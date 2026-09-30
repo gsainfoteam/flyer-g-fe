@@ -11,6 +11,7 @@ export const paths = {
   reviews: "/reviews",
   reviewDetail: "/reviews/:submissionId",
   displays: "/displays",
+  users: "/users",
   display: "/display/:deviceId",
   login: "/login",
   /** 로그인 제공자에서 돌아오는 곳. `VITE_AUTH_REDIRECT_URI`의 경로와 같아야 한다. */
@@ -38,6 +39,7 @@ export const to = {
   reviewDetail: (submissionId: string) =>
     `/reviews/${encodeURIComponent(submissionId)}`,
   displays: () => "/displays",
+  users: () => "/users",
   display: (deviceId: string, options?: { preview?: boolean }) =>
     `/display/${encodeURIComponent(deviceId)}${options?.preview ? "?preview=1" : ""}`,
   login: (returnTo?: string) =>
