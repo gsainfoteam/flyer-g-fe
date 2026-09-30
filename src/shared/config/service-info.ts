@@ -10,7 +10,7 @@ export const SERVICE_CONTACT_EMAIL = "flyer@gistory.me";
 export const SERVICE_LINKS = {
   ziggle: ZIGGLE_ORIGIN,
   // 약관은 gsainfoteam/terms 레포에서 관리한다. 개정하면 새 버전(시행일 YYMMDD)으로 바꾼다.
-  terms: "https://terms.gistory.me/flyer-g/tos/260929",
-  privacy: "https://terms.gistory.me/flyer-g/privacy/260929",
+  terms: "https://terms.gistory.me/flyer-g/tos/260929/",
+  privacy: "https://terms.gistory.me/flyer-g/privacy/260929/",
   contact: `mailto:${SERVICE_CONTACT_EMAIL}`,
 } as const;
