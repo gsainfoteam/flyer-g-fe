@@ -47,13 +47,15 @@ describe("대시보드", () => {
     expect(reviewLinks[0]!.getAttribute("href")).toMatch(/^\/reviews\//);
   });
 
-  it("진행 중인 신청마다 지금 상황과 다음에 일어날 일을 한 문장으로 둔다", async () => {
+  it("진행 중인 신청마다 지금 상황과 다음에 일어날 일을 한 줄로 둔다", async () => {
     renderRoute("/", { role: "SUBMITTER" });
     await screen.findByRole("heading", { name: /진행 중인 신청/ });
 
-    expect(await screen.findByText(/TV에 걸려 있어요/)).toBeInTheDocument();
+    expect(await screen.findByText(/^게시 중 ·/)).toHaveTextContent(
+      /자동 종료 · \d+일 남음$/,
+    );
     expect(
-      screen.getByText(/관리자 검토를 기다린 지 .+째예요/),
+      screen.getByText(/^검토 대기 .+째 · 승인 시 .+ 자동 게시$/),
     ).toBeInTheDocument();
   });
 

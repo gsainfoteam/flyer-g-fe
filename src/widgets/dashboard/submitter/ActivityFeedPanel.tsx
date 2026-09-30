@@ -14,11 +14,11 @@ import {
 } from "@/shared/components";
 import { to } from "@/shared/config/routes";
 import { formatSeoulDayTime } from "@/shared/lib/datetime";
-import { josa } from "@/shared/lib/josa";
 import { cn } from "@/shared/lib/utils";
 
 /**
- * 게시자 홈의 "최근 소식". 내 신청에 일어난 일을 최신순으로 한 줄씩.
+ * 게시자 홈의 "최근 소식". 내 신청에 일어난 일을 최신순으로 한 줄씩. 기록이라
+ * "제목 + 일" 명사형으로 짧게 쓴다.
  *
  * 홈에 다시 왔을 때 "그사이 무엇이 바뀌었나"에 답한다. 반려·중단에는 관리자가 남긴
  * 사유를 그대로 붙인다. 최근에 움직인 신청 몇 건의 이력만 모은다 — 게시자는 신청이
@@ -152,7 +152,7 @@ function FeedItem({
           {formatSeoulDayTime(event.occurredAt, now)}
         </p>
         <p className="mt-0.5 text-label font-normal text-ink">
-          {sentenceOf(event.type, title, name)}
+          {sentenceOf(event.type, name)}
         </p>
         {quote && (
           <p className="mt-1 text-caption text-ink-muted">“{quote}”</p>
@@ -162,44 +162,36 @@ function FeedItem({
   );
 }
 
-function sentenceOf(
-  type: SubmissionEventType,
-  title: string,
-  name: ReactNode,
-): ReactNode {
+function sentenceOf(type: SubmissionEventType, name: ReactNode): ReactNode {
   switch (type) {
     case "SUBMITTED":
-      return <>{name}{josa(title, "을/를")} 신청했어요</>;
+      return <>{name} 신청</>;
     case "RESUBMITTED":
-      return <>{name}{josa(title, "을/를")} 고쳐서 다시 냈어요</>;
+      return <>{name} 수정 후 다시 제출</>;
     case "APPROVED":
       return (
         <>
-          {name}
-          {josa(title, "이/가")}{" "}
-          <span className="font-bold text-success-strong">승인</span>됐어요
+          {name} <span className="font-bold text-success-strong">승인</span>
         </>
       );
     case "REJECTED":
       return (
         <>
-          {name}
-          {josa(title, "이/가")}{" "}
-          <span className="font-bold text-attention-strong">반려</span>됐어요
+          {name} <span className="font-bold text-attention-strong">반려</span>
         </>
       );
     case "SUSPENDED":
       return (
         <>
-          {name} 게시가{" "}
-          <span className="font-bold text-attention-strong">중단</span>됐어요
+          {name}{" "}
+          <span className="font-bold text-attention-strong">게시 중단</span>
         </>
       );
     case "CANCELED":
-      return <>{name} 신청을 취소했어요</>;
+      return <>{name} 신청 취소</>;
     case "PUBLISHED":
-      return <>{name}{josa(title, "이/가")} TV에 걸렸어요</>;
+      return <>{name} 게시 시작</>;
     case "ENDED":
-      return <>{name}{josa(title, "이/가")} 내려갔어요</>;
+      return <>{name} 게시 종료</>;
   }
 }

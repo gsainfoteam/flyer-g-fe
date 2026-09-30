@@ -48,11 +48,11 @@ export function ReviewerHome() {
             }
             description={
               ready.oldest
-                ? `가장 오래된 건 ${formatElapsed(
+                ? `가장 오래된 신청 ${formatElapsed(
                     ready.oldest.submittedAt ?? ready.oldest.createdAt,
                     ready.now,
-                  )}째 기다리고 있어요.`
-                : `포스터 ${ready.published.length}장이 게시 중이에요.`
+                  )}째 대기`
+                : `게시 중 ${ready.published.length}장`
             }
             action={<QueueAction oldestId={ready.oldest?.id} />}
           />

@@ -48,7 +48,7 @@ describe("대시보드", () => {
     // 끊긴 기기가 맨 위다.
     expect(rows[0]).toHaveTextContent("B동 로비");
     expect(rows[0]).toHaveTextContent("26분째 끊김");
-    expect(rows[0]).toHaveTextContent("오래 이어지면 운영자에게 알려 주세요.");
+    expect(rows[0]).toHaveTextContent("계속되면 운영자에게 알려 주세요");
     expect(rows[1]).toHaveTextContent("A동 로비");
     expect(rows[1]).toHaveTextContent("정상");
     // 하우스 관리자는 기기를 고칠 수 없다.
@@ -132,9 +132,9 @@ describe("게시자 홈", () => {
     ).closest("section")!;
     const items = await within(feed).findAllByRole("listitem");
     expect(items.length).toBeGreaterThan(0);
-    expect(within(feed).getByText(/게시가/)).toHaveTextContent(
-      "슈퍼-피셜 드로잉 원데이 클래스 게시가 중단됐어요",
-    );
+    expect(
+      within(feed).getByText("게시 중단").closest("p"),
+    ).toHaveTextContent("슈퍼-피셜 드로잉 원데이 클래스 게시 중단");
   });
 
   it("지난 신청에는 끝난 날과 노출 수를, 취소한 신청은 취소했다고 적는다", async () => {
@@ -227,7 +227,9 @@ describe("하우스 관리자 홈", () => {
     expect(
       await screen.findByText("오늘은 바뀌는 게 없어요"),
     ).toBeInTheDocument();
-    expect(screen.getByText(/^다음 변경은 .+(걸려요|내려가요)\.$/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/^다음 변경: .+ 게시 (시작|종료)$/),
+    ).toBeInTheDocument();
   });
 
   it("처리할 신청이 없으면 제목이 바뀌고 전체 신청 목록으로 안내한다", async () => {
@@ -250,7 +252,7 @@ describe("하우스 관리자 홈", () => {
     expect(
       await screen.findByRole("heading", { name: "지금 처리할 신청이 없어요" }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/^포스터 \d+장이 게시 중이에요\.$/)).toBeInTheDocument();
+    expect(screen.getByText(/^게시 중 \d+장$/)).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "전체 신청 보기" }),
     ).toHaveAttribute("href", "/submissions?scope=all");
@@ -310,7 +312,7 @@ describe("운영자 홈", () => {
       await screen.findByRole("link", { name: "기기 관리 →" }),
     ).toHaveAttribute("href", "/displays");
     expect(
-      await screen.findByText(/전원과 네트워크를 확인해 주세요/),
+      await screen.findByText(/전원·네트워크 확인 필요/),
     ).toBeInTheDocument();
   });
 
@@ -324,7 +326,7 @@ describe("운영자 홈", () => {
     // fixture: 게시 중 2건 모두 대상 위치가 없어 모든 TV에 걸린다. 한 장씩, 10초.
     expect(row).toHaveTextContent("포스터 2장 · 한 장씩 · 10초마다 넘김");
     expect(row).toHaveTextContent("한 바퀴 20초");
-    expect(row).toHaveTextContent("한 장이 한 시간에 약 180번 나와요");
+    expect(row).toHaveTextContent("포스터당 시간당 약 180회");
     expect(
       within(panel).getByRole("link", { name: "화면 설정 →" }),
     ).toHaveAttribute("href", "/displays");
@@ -374,8 +376,7 @@ describe("운영자 홈", () => {
     )!;
     expect(warning).toHaveTextContent("A동 로비");
     expect(warning).toHaveTextContent(
-      "연결은 되어 있지만 포스터를 띄우지 못하고 있어요.",
+      "연결은 정상, 포스터 표시 안 됨 · TV 화면 확인 필요",
     );
-    expect(warning).toHaveTextContent("TV 화면을 확인하고 다시 켜 보세요.");
   });
 });

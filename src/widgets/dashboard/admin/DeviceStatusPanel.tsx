@@ -161,14 +161,15 @@ function TroubleRow({
     : `${formatElapsed(device.lastRenderOkAt!, now)}째 재생 멈춤`;
   const cause = offline
     ? device.lastSeenAt
-      ? "마지막으로 받은 편성을 계속 틀고 있어요. "
-      : ""
-    : "연결은 되어 있지만 포스터를 띄우지 못하고 있어요. ";
+      ? "마지막 편성으로 계속 재생 중"
+      : null
+    : "연결은 정상, 포스터 표시 안 됨";
+  // 운영자는 직접 손보고, 하우스 관리자는 운영자에게 넘긴다.
   const next = manageable
     ? offline
-      ? "전원과 네트워크를 확인해 주세요."
-      : "TV 화면을 확인하고 다시 켜 보세요."
-    : "오래 이어지면 운영자에게 알려 주세요.";
+      ? "전원·네트워크 확인 필요"
+      : "TV 화면 확인 필요"
+    : "계속되면 운영자에게 알려 주세요";
 
   return (
     <li className="rounded-control border border-accent-200 bg-attention-subtle px-3.5 py-3">
@@ -181,8 +182,7 @@ function TroubleRow({
         </span>
       </p>
       <p className="mt-1 text-caption text-ink-muted">
-        {cause}
-        {next}
+        {[cause, next].filter(Boolean).join(" · ")}
       </p>
     </li>
   );

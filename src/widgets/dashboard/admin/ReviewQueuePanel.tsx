@@ -53,7 +53,7 @@ export function ReviewQueuePanel({
       {submissions.length === 0 ? (
         <EmptyState
           title="검토할 신청을 모두 처리했어요"
-          description="새 신청이 들어오면 상단 ‘승인 대기’에 숫자로 표시돼요."
+          description="새 신청은 상단 ‘승인 대기’에 숫자로 표시돼요."
           className="px-5"
         />
       ) : (

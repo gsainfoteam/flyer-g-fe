@@ -53,7 +53,7 @@ export function OnAirPanel({
       {shown.length === 0 ? (
         <EmptyState
           title="지금 게시 중인 포스터가 없어요"
-          description="TV에는 Ziggle에서 신청하라는 안내가 나오고 있어요."
+          description="TV에는 기본 안내 화면이 나와요."
           className="px-5"
         />
       ) : (

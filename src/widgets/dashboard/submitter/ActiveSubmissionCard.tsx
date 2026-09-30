@@ -117,7 +117,7 @@ export function ActiveSubmissionCard({
                 {submission.detailUrl.replace(/^https?:\/\//, "")}
               </a>
             ) : (
-              "QR 없이 게시해요"
+              "없음"
             )}
           </MetaRow>
         </dl>
@@ -135,17 +135,16 @@ function MetaRow({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** 지금 상황과 다음에 일어날 일을 한 문장으로. */
+/** 지금 상황과 다음에 일어날 일을 한 줄로. 정보라서 문장으로 풀지 않는다. */
 function sentenceOf(submission: SubmissionView, now: Date): ReactNode {
   switch (submission.status) {
     case "PUBLISHED": {
       const left = seoulDayDiff(now, submission.endAt);
       return (
         <>
-          TV에 걸려 있어요.{" "}
-          <strong>{formatSeoulShortDateTime(submission.endAt)}</strong>에
-          알아서 내려가요.{" "}
-          {left <= 0 ? "오늘이 마지막 날이에요." : `${left}일 남았어요.`}
+          게시 중 ·{" "}
+          <strong>{formatSeoulShortDateTime(submission.endAt)}</strong> 자동
+          종료 · {left <= 0 ? "오늘 종료" : `${left}일 남음`}
         </>
       );
     }
@@ -153,9 +152,9 @@ function sentenceOf(submission: SubmissionView, now: Date): ReactNode {
     case "SCHEDULED":
       return (
         <>
-          승인됐어요.{" "}
-          <strong>{formatSeoulShortDateTime(submission.startAt)}</strong>에
-          자동으로 걸려요.
+          승인됨 ·{" "}
+          <strong>{formatSeoulShortDateTime(submission.startAt)}</strong> 자동
+          게시
         </>
       );
     case "PENDING_REVIEW": {
@@ -164,18 +163,15 @@ function sentenceOf(submission: SubmissionView, now: Date): ReactNode {
         now,
       );
       return submission.startAt.getTime() > now.getTime() ? (
-        <>
-          관리자 검토를 기다린 지 {waited}째예요. 승인되면{" "}
-          {formatSeoulShortDateTime(submission.startAt)}에 자동으로 걸려요.
-        </>
+        `검토 대기 ${waited}째 · 승인 시 ${formatSeoulShortDateTime(submission.startAt)} 자동 게시`
       ) : (
-        `관리자 검토를 기다린 지 ${waited}째예요. 승인되면 바로 걸려요.`
+        `검토 대기 ${waited}째 · 승인 즉시 게시`
       );
     }
     case "REJECTED":
-      return "관리자가 반려했어요. 사유를 보고 고쳐서 다시 낼 수 있어요.";
+      return "반려됨 · 수정 후 다시 제출";
     case "SUSPENDED":
-      return "관리자가 게시를 중단했어요. 고쳐서 다시 내면 다시 검토해요.";
+      return "게시 중단됨 · 수정 후 다시 제출하면 재검토";
     default:
       return null;
   }
@@ -190,7 +186,7 @@ function impressionLine(
   const onAir = submission.status === "PUBLISHED";
   if (!impressions) {
     return onAir ? (
-      <MetaRow label="TV에 나온 횟수">아직 모으는 중이에요</MetaRow>
+      <MetaRow label="TV에 나온 횟수">집계 전</MetaRow>
     ) : null;
   }
   const parts = [`${impressions.impressions.toLocaleString("ko-KR")}회`];

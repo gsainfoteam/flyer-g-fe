@@ -75,7 +75,7 @@ export function BoardStatusPanel({
       ) : !active || active.length === 0 ? (
         <EmptyState
           title="쓰고 있는 TV가 없어요"
-          description="기기를 등록하면 TV마다 편성이 여기에 보여요."
+          description="기기를 등록하면 TV별 편성이 여기에 보여요."
           className="px-5"
         />
       ) : (
@@ -93,8 +93,7 @@ export function BoardStatusPanel({
             ))}
           </ul>
           <p className="border-t border-line px-5 py-3 text-caption text-ink-subtle">
-            지금 편성으로 계산한 값이에요. TV는 포스터를 건너뛰지 않고 차례로
-            돌려요.
+            현재 편성 기준
           </p>
         </>
       )}
@@ -139,13 +138,13 @@ function BoardRow({
         {rotation.posterCount === 0 ? (
           <>
             <p className="text-label font-bold text-ink">안내 화면</p>
-            <p className="text-caption text-ink-subtle">걸린 포스터가 없어요</p>
+            <p className="text-caption text-ink-subtle">걸린 포스터 없음</p>
           </>
         ) : rotation.cycleSeconds === null ? (
           <>
             <p className="text-label font-bold text-ink">넘기지 않음</p>
             <p className="text-caption text-ink-subtle">
-              한 화면에 모두 계속 보여요
+              한 화면에 모두 표시
             </p>
           </>
         ) : (
@@ -154,7 +153,7 @@ function BoardRow({
               한 바퀴 {formatSeconds(rotation.cycleSeconds)}
             </p>
             <p className="text-caption text-ink-subtle tabular-nums">
-              한 장이 한 시간에 약 {rotation.timesPerHour}번 나와요
+              포스터당 시간당 약 {rotation.timesPerHour}회
             </p>
           </>
         )}

@@ -197,7 +197,7 @@ function describe(summary: SubmissionSummary): ReactNode {
   ].filter((part): part is string => Boolean(part));
   const needsFix = byStatus.REJECTED + byStatus.SUSPENDED;
 
-  if (parts.length === 0 && needsFix === 0) return "진행 중인 신청이 없어요.";
+  if (parts.length === 0 && needsFix === 0) return "진행 중인 신청 없음";
   return (
     <>
       {parts.join(" · ")}

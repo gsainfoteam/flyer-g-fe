@@ -10,7 +10,6 @@ import {
   getSeoulParts,
   seoulDayDiff,
 } from "@/shared/lib/datetime";
-import { josa } from "@/shared/lib/josa";
 import { Button } from "@/shared/ui/button";
 
 /**
@@ -73,8 +72,8 @@ export function TodayChangesPanel({
           title="오늘은 바뀌는 게 없어요"
           description={
             next
-              ? `다음 변경은 ${formatSeoulShortDateTime(next.at)}, ${next.submission.title}${josa(next.submission.title, "이/가")} ${next.kind === "start" ? "걸려요" : "내려가요"}.`
-              : "예정된 게시가 없어요."
+              ? `다음 변경: ${formatSeoulShortDateTime(next.at)} ${next.submission.title} ${next.kind === "start" ? "게시 시작" : "게시 종료"}`
+              : "예정된 게시 없음"
           }
           className="py-1"
         />
