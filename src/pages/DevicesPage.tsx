@@ -9,6 +9,7 @@ import type { SetupLinkResult } from "@/features/devices/model/setup-link";
 import { useRotateDeviceToken } from "@/features/devices/model/use-device-mutations";
 import { DeviceFormDialog } from "@/features/devices/ui/DeviceFormDialog";
 import { DeviceSetupLinkDialog } from "@/features/devices/ui/DeviceSetupLinkDialog";
+import { TargetGroupsSection } from "@/features/devices/ui/TargetGroupsSection";
 import { isApiError, toUserMessage } from "@/shared/api/error";
 import {
   ConfirmActionDialog,
@@ -24,7 +25,8 @@ import { Button } from "@/shared/ui/button";
  * 기기 관리 (`API-CHANGES-BACKEND.md` 11.1). 시스템 운영자만 본다.
  *
  * 로비 TV를 등록하고, 화면 설정(레이아웃·전환 간격·갱신 주기)을 바꾸고, 토큰을
- * 재발급한다. 등록·재발급하면 TV를 연결할 설정 링크를 한 번만 보여준다.
+ * 재발급한다. 등록·재발급하면 TV를 연결할 설정 링크를 한 번만 보여준다. 아래에서
+ * TV를 묶는 위치 그룹을 관리한다.
  *
  * "마지막 연결 N분 전"은 목록과 함께 온 서버 시각으로 센다.
  */
@@ -82,6 +84,13 @@ export function DevicesPage() {
               </ul>
             )}
           </Panel>
+
+          <TargetGroupsSection
+            groups={groups.data}
+            isLoading={groups.isPending}
+            error={groups.error}
+            onRetry={() => void groups.refetch()}
+          />
         </>
       )}
 
@@ -94,7 +103,7 @@ export function DevicesPage() {
             if (!open) setEditing(null);
           }}
           device={editing === "new" ? null : editing}
-          groups={groupList}
+          groups={groups.data}
           onCreated={({ device, token }) =>
             setSetupLink({
               deviceId: device.id,

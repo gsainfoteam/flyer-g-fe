@@ -1,7 +1,11 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { renderRoute } from "@/test/render-route";
+import { createMemoryHeartbeatLog } from "@/mocks/heartbeats";
+import { createMockRepositories } from "@/mocks/repositories";
+import { MOCK_USERS } from "@/mocks/users";
+import { createFixedClock } from "@/shared/lib/clock";
+import { TEST_NOW, renderRoute } from "@/test/render-route";
 
 /** 기기 관리 (`API-CHANGES-BACKEND.md` 11.1). 시스템 운영자만 본다. */
 describe("기기 관리", () => {
@@ -97,6 +101,51 @@ describe("기기 관리", () => {
       await screen.findByRole("dialog", {
         name: "A동 로비 토큰을 재발급했어요",
       }),
+    ).toBeInTheDocument();
+  });
+
+  it("고른 그룹이 저장 전에 지워지면 표시해 두고, 선택을 풀면 저장된다", async () => {
+    const user = userEvent.setup();
+    const repositories = createMockRepositories({
+      clock: createFixedClock(TEST_NOW),
+      session: () => MOCK_USERS.SUPER_ADMIN,
+      heartbeats: createMemoryHeartbeatLog(),
+    });
+    const created = await repositories.reference.createTargetGroup({
+      name: "학사기숙사 C동",
+    });
+    renderRoute("/displays", { role: "SUPER_ADMIN", repositories });
+    await screen.findByRole("heading", { name: /디스플레이 기기/ });
+
+    await user.click(screen.getByRole("button", { name: "기기 등록" }));
+    const form = await screen.findByRole("dialog");
+    await user.type(
+      within(form).getByRole("textbox", { name: /기기 이름/ }),
+      "C동 로비",
+    );
+    await user.click(
+      within(form).getByRole("checkbox", { name: "학사기숙사 C동" }),
+    );
+
+    // 다른 운영자가 그 사이에 그룹을 지웠다.
+    await repositories.reference.deleteTargetGroup(created.id);
+    await user.click(within(form).getByRole("button", { name: "등록" }));
+
+    const gone = await within(form).findByRole("checkbox", {
+      name: "삭제된 그룹",
+    });
+    expect(gone).toBeChecked();
+    expect(
+      within(form).getByText(/표시된 그룹의 선택을 풀어 주세요/),
+    ).toBeInTheDocument();
+
+    await user.click(gone);
+    expect(
+      within(form).queryByRole("checkbox", { name: "삭제된 그룹" }),
+    ).toBeNull();
+    await user.click(within(form).getByRole("button", { name: "등록" }));
+    expect(
+      await screen.findByRole("dialog", { name: "C동 로비 기기를 등록했어요" }),
     ).toBeInTheDocument();
   });
 });

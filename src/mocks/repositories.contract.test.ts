@@ -717,3 +717,155 @@ describe("처리 이력과 최근 처리", () => {
     ).toBeNull();
   });
 });
+
+describe("위치 그룹 관리", () => {
+  const namesOf = (groups: { name: string }[]) =>
+    groups.map((group) => group.name);
+
+  it("목록은 이름순이고 숨긴 그룹도 준다. 기기 수는 사용 중인 기기만 센다", async () => {
+    const { repos, signInAs } = setup(MOCK_USERS.SUBMITTER);
+
+    const groups = await repos.reference.listTargetGroups();
+    expect(
+      groups.map(({ name, deviceCount, isHidden }) => [
+        name,
+        deviceCount,
+        isHidden,
+      ]),
+    ).toEqual([
+      ["옛 도서관", 0, true],
+      ["학사기숙사 A동", 1, false],
+      ["학사기숙사 B동", 1, false],
+    ]);
+
+    signInAs(MOCK_USERS.SUPER_ADMIN);
+    await repos.devices.update("house-a-lobby", { isActive: false });
+    const after = await repos.reference.listTargetGroups();
+    expect(
+      after.find((group) => group.id === "group-house-a")?.deviceCount,
+    ).toBe(0);
+  });
+
+  it("추가·수정·삭제는 시스템 운영자만 한다", async () => {
+    const { repos } = setup(MOCK_USERS.REVIEWER);
+
+    expect(
+      await statusOf(repos.reference.createTargetGroup({ name: "C동" })),
+    ).toBe(403);
+    expect(
+      await statusOf(
+        repos.reference.updateTargetGroup("group-house-a", { isHidden: true }),
+      ),
+    ).toBe(403);
+    expect(
+      await statusOf(repos.reference.deleteTargetGroup("group-old-library")),
+    ).toBe(403);
+  });
+
+  it("이름은 앞뒤 공백을 지운 1~40자이고, 대소문자를 무시하고 숨긴 그룹과도 겹치면 안 된다", async () => {
+    const { repos } = setup(MOCK_USERS.SUPER_ADMIN);
+
+    const created = await repos.reference.createTargetGroup({
+      name: "  Main Lobby  ",
+    });
+    expect(created).toMatchObject({
+      name: "Main Lobby",
+      deviceCount: 0,
+      isHidden: false,
+    });
+
+    // 이모지는 서버처럼 한 글자로 센다.
+    await expect(
+      repos.reference.createTargetGroup({ name: "😀".repeat(40) }),
+    ).resolves.toMatchObject({ name: "😀".repeat(40) });
+
+    for (const name of [
+      "   ",
+      "가".repeat(41),
+      "😀".repeat(41),
+      "main lobby",
+      "옛 도서관",
+    ]) {
+      const error = await errorOf(repos.reference.createTargetGroup({ name }));
+      expect(error?.status).toBe(422);
+      expect(error?.fields?.name).toBeTruthy();
+    }
+
+    // 자기 이름과는 겹쳐도 된다.
+    await expect(
+      repos.reference.updateTargetGroup(created.id, { name: "MAIN LOBBY" }),
+    ).resolves.toMatchObject({ name: "MAIN LOBBY" });
+    expect(
+      await statusOf(repos.reference.updateTargetGroup("nope", { name: "x" })),
+    ).toBe(404);
+  });
+
+  it("숨긴 그룹은 새로 고를 수 없지만, 이미 연결된 기기는 그대로 고칠 수 있다", async () => {
+    const { repos } = setup(MOCK_USERS.SUPER_ADMIN);
+    await repos.reference.updateTargetGroup("group-house-a", {
+      isHidden: true,
+    });
+
+    // A동 로비는 이미 A동 그룹이다. 다른 필드를 고치거나 그룹을 빼는 것은 된다.
+    await expect(
+      repos.devices.update("house-a-lobby", {
+        name: "A동 로비 TV",
+        groupIds: ["group-house-a"],
+      }),
+    ).resolves.toMatchObject({ groupIds: ["group-house-a"] });
+
+    const addToB = await errorOf(
+      repos.devices.update("house-b-lobby", {
+        groupIds: ["group-house-b", "group-house-a"],
+      }),
+    );
+    expect(addToB?.status).toBe(422);
+    expect(addToB?.fields?.groupIds).toContain("group-house-a");
+
+    const created = await errorOf(
+      repos.devices.create({
+        name: "C동 로비",
+        location: null,
+        groupIds: ["group-house-a"],
+        orientation: "LANDSCAPE",
+        layout: "SINGLE",
+        rotationSeconds: 10,
+        refreshAfterSeconds: 60,
+      }),
+    );
+    expect(created?.fields?.groupIds).toBeTruthy();
+  });
+
+  it("숨긴 그룹을 대상으로 새 신청을 만들 수 없다", async () => {
+    const { repos, signInAs } = setup(MOCK_USERS.SUPER_ADMIN);
+    await repos.reference.updateTargetGroup("group-house-a", {
+      isHidden: true,
+    });
+
+    signInAs(MOCK_USERS.SUBMITTER);
+    const error = await errorOf(
+      repos.submissions.create(
+        createInput({ targetGroupIds: ["group-house-a"] }),
+      ),
+    );
+    expect(error?.status).toBe(422);
+    expect(error?.fields?.targetGroupIds).toBeTruthy();
+  });
+
+  it("아무도 쓰지 않은 그룹만 지운다. 기기나 신청이 쓰면 409다", async () => {
+    const { repos } = setup(MOCK_USERS.SUPER_ADMIN);
+
+    await repos.reference.deleteTargetGroup("group-old-library");
+    expect(namesOf(await repos.reference.listTargetGroups())).not.toContain(
+      "옛 도서관",
+    );
+
+    const error = await errorOf(
+      repos.reference.deleteTargetGroup("group-house-a"),
+    );
+    expect(error).toMatchObject({ status: 409, code: "CONFLICT" });
+    expect(namesOf(await repos.reference.listTargetGroups())).toContain(
+      "학사기숙사 A동",
+    );
+  });
+});

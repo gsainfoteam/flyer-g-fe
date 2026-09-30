@@ -67,6 +67,17 @@ export function readNumber(
   return value;
 }
 
+export function readBoolean(
+  object: JsonObject,
+  key: string,
+  path = key,
+): boolean {
+  const value = object[key];
+  if (typeof value !== "boolean")
+    throw invalidResponse(path, "true 또는 false");
+  return value;
+}
+
 export function readStringArray(
   object: JsonObject,
   key: string,

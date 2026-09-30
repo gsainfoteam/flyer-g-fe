@@ -4,7 +4,9 @@ import type {
   DeviceWithToken,
   DisplayDevice,
   TargetGroup,
+  TargetGroupInput,
   UpdateDeviceInput,
+  UpdateTargetGroupInput,
 } from "@/entities/device/model/types";
 import type {
   Category,
@@ -208,14 +210,30 @@ export interface DeviceRepository {
   rotateToken(id: string, signal?: AbortSignal): Promise<DeviceWithToken>;
 }
 
-/** 참조 데이터와 운영 설정. 로그인한 누구나. (`API-REQUIREMENTS.md` 10절) */
+/**
+ * 참조 데이터와 운영 설정. 조회는 로그인한 누구나. (`API-REQUIREMENTS.md` 10절)
+ * 위치 그룹 관리만 SUPER_ADMIN이 한다.
+ */
 export interface ReferenceRepository {
   /** 게시 운영 제한값. 폼이 서버와 같은 규칙으로 미리 막는다. */
   getConfig(signal?: AbortSignal): Promise<SignageConfig>;
   /** 게시 카테고리. 숨긴 카테고리는 빠진다. */
   listCategories(signal?: AbortSignal): Promise<Category[]>;
-  /** 게시 대상 위치 묶음 */
+  /** 위치 그룹. 이름순이고 숨긴 그룹도 온다. 선택 목록에서는 화면이 거른다. */
   listTargetGroups(signal?: AbortSignal): Promise<TargetGroup[]>;
+  /** 그룹 추가. 대소문자를 무시하고 이름이 겹치면 422 `fields.name`. */
+  createTargetGroup(
+    input: TargetGroupInput,
+    signal?: AbortSignal,
+  ): Promise<TargetGroup>;
+  /** 이름 변경·숨김. 숨겨도 이미 연결된 기기·신청은 그대로다. */
+  updateTargetGroup(
+    id: string,
+    input: UpdateTargetGroupInput,
+    signal?: AbortSignal,
+  ): Promise<TargetGroup>;
+  /** 삭제. 기기나 신청(취소·종료 포함)이 쓰고 있으면 409다. */
+  deleteTargetGroup(id: string, signal?: AbortSignal): Promise<void>;
 }
 
 /** 노출 통계. 사람이 본 횟수가 아니라 기기가 포스터를 정상으로 띄운 횟수다. */

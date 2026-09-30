@@ -2,9 +2,15 @@ import type {
   DeviceList,
   DisplayDevice,
   DisplayDeviceDto,
+  TargetGroup,
   UpdateDeviceInput,
 } from "@/entities/device/model/types";
-import { DEVICE_LIMITS, toDisplayDevice } from "@/entities/device/model/types";
+import {
+  DEVICE_LIMITS,
+  TARGET_GROUP_LIMITS,
+  findSameNameGroup,
+  toDisplayDevice,
+} from "@/entities/device/model/types";
 import {
   canReviewerDecide,
   canReviewerSuspend,
@@ -68,8 +74,9 @@ import {
   toSeoulDateInputValue,
 } from "@/shared/lib/datetime";
 import type { ImpressionStatsItem } from "@/entities/impression/model/types";
+import { serverTextLength } from "@/shared/lib/text-length";
 import { ziggleNoticeIdOf } from "@/shared/lib/ziggle-url";
-import type { DeviceSeed } from "./fixtures";
+import type { DeviceSeed, TargetGroupSeed } from "./fixtures";
 import {
   DEVICE_FIXTURES,
   TARGET_GROUP_FIXTURES,
@@ -351,6 +358,8 @@ export function createMockRepositories(
   const startedAt = clock.now();
   const store = new MockStore(startedAt);
   let deviceSeeds: DeviceSeed[] = [...DEVICE_FIXTURES];
+  let groupSeeds: TargetGroupSeed[] = [...TARGET_GROUP_FIXTURES];
+  let createdGroupCount = 0;
   const config = SIGNAGE_CONFIG_FIXTURE;
 
   const settle = async (signal?: AbortSignal): Promise<void> => {
@@ -466,6 +475,27 @@ export function createMockRepositories(
     return trimmed ? trimmed : null;
   };
 
+  const toTargetGroup = (seed: TargetGroupSeed): TargetGroup => ({
+    ...seed,
+    deviceCount: deviceSeeds.filter(
+      (device) => device.isActive && device.groupIds.includes(seed.id),
+    ).length,
+  });
+
+  /**
+   * 새로 추가한 그룹 중 없거나 숨긴 것. 이미 연결된 그룹(`current`)은 숨겼어도 그대로
+   * 둘 수 있다. (`flyer-g-be` PR 16)
+   */
+  const unselectableGroupIds = (
+    next: readonly string[] | undefined,
+    current: readonly string[] = [],
+  ): string[] =>
+    (next ?? []).filter(
+      (id) =>
+        !current.includes(id) &&
+        !groupSeeds.some((group) => group.id === id && !group.isHidden),
+    );
+
   const checkReferences = (
     input: Pick<UpdateSubmissionInput, "title" | "categoryId">,
     errors: Record<string, string>,
@@ -510,6 +540,10 @@ export function createMockRepositories(
       ...checkSchedule(input.startAt, input.endAt, now, config),
     };
     checkReferences(input, errors);
+    const badGroups = unselectableGroupIds(input.targetGroupIds);
+    if (badGroups.length > 0) {
+      errors.targetGroupIds = `선택할 수 없는 대상 위치가 있습니다: ${badGroups.join(", ")}`;
+    }
     const detail = parseDetail(input.detailUrl, errors);
     throwIfInvalid(errors);
     assertNoticeFree(detail?.noticeId ?? null);
@@ -640,6 +674,13 @@ export function createMockRepositories(
 
       const errors: Record<string, string> = {};
       checkReferences(input, errors);
+      const badGroups = unselectableGroupIds(
+        input.targetGroupIds,
+        current.targetGroupIds,
+      );
+      if (badGroups.length > 0) {
+        errors.targetGroupIds = `선택할 수 없는 대상 위치가 있습니다: ${badGroups.join(", ")}`;
+      }
       const changes: Partial<SignageSubmissionExpandedDto> = {};
       const setIfChanged = <K extends keyof SignageSubmissionExpandedDto>(
         key: K,
@@ -1022,7 +1063,10 @@ export function createMockRepositories(
   };
 
   /** 서버 DTO와 같은 범위로 검사한다. (`flyer-g-be` `device-input.dto.ts`) */
-  const checkDeviceInput = (input: UpdateDeviceInput) => {
+  const checkDeviceInput = (
+    input: UpdateDeviceInput,
+    currentGroupIds: readonly string[] = [],
+  ) => {
     const errors: Record<string, string> = {};
     if (input.name !== undefined) {
       const name = input.name.trim();
@@ -1050,12 +1094,9 @@ export function createMockRepositories(
     ) {
       errors.refreshAfterSeconds = `갱신 주기는 ${DEVICE_LIMITS.refreshAfterSeconds.min}~${DEVICE_LIMITS.refreshAfterSeconds.max}초여야 합니다.`;
     }
-    if (
-      input.groupIds?.some(
-        (id) => !TARGET_GROUP_FIXTURES.some((group) => group.id === id),
-      )
-    ) {
-      errors.groupIds = "선택할 수 없는 위치 그룹이 있습니다.";
+    const badGroups = unselectableGroupIds(input.groupIds, currentGroupIds);
+    if (badGroups.length > 0) {
+      errors.groupIds = `선택할 수 없는 위치 그룹이 있습니다: ${badGroups.join(", ")}`;
     }
     throwIfInvalid(errors);
   };
@@ -1112,6 +1153,29 @@ export function createMockRepositories(
     return found;
   };
 
+  const findGroup = (id: string): TargetGroupSeed => {
+    const found = groupSeeds.find((group) => group.id === id);
+    if (!found) throw httpError(404, `그룹을 찾을 수 없습니다: ${id}`);
+    return found;
+  };
+
+  /** 서버와 같은 규칙: 앞뒤 공백을 지운 뒤 1~40자, 대소문자를 무시하고 중복 금지. */
+  const checkGroupName = (raw: string, exceptId?: string): string => {
+    const name = raw.trim();
+    const max = TARGET_GROUP_LIMITS.nameMaxLength;
+    if (name.length === 0) {
+      throwIfInvalid({ name: "그룹 이름을 입력하세요." });
+    }
+    if (serverTextLength(name) > max) {
+      throwIfInvalid({ name: `그룹 이름은 ${max}자 이하여야 합니다.` });
+    }
+    const groups = groupSeeds.map(toTargetGroup);
+    if (findSameNameGroup(groups, name, exceptId)) {
+      throwIfInvalid({ name: "같은 이름의 그룹이 이미 있습니다." });
+    }
+    return name;
+  };
+
   const devices: DeviceRepository = {
     async list(signal): Promise<DeviceList> {
       await settle(signal);
@@ -1151,8 +1215,8 @@ export function createMockRepositories(
     async update(id, input, signal) {
       await settle(signal);
       requireSuperAdmin();
-      checkDeviceInput(input);
       const current = findDevice(id);
+      checkDeviceInput(input, current.groupIds);
       const next: DeviceSeed = {
         ...current,
         ...(input.name !== undefined ? { name: input.name.trim() } : {}),
@@ -1205,7 +1269,50 @@ export function createMockRepositories(
     async listTargetGroups(signal) {
       await settle(signal);
       actor();
-      return TARGET_GROUP_FIXTURES.map((group) => ({ ...group }));
+      return [...groupSeeds]
+        .sort((a, b) => a.name.localeCompare(b.name, "ko"))
+        .map(toTargetGroup);
+    },
+
+    async createTargetGroup(input, signal) {
+      await settle(signal);
+      requireSuperAdmin();
+      const name = checkGroupName(input.name);
+      const seed: TargetGroupSeed = {
+        id: `grp_mock_${++createdGroupCount}`,
+        name,
+        isHidden: false,
+      };
+      groupSeeds = [...groupSeeds, seed];
+      return toTargetGroup(seed);
+    },
+
+    async updateTargetGroup(id, input, signal) {
+      await settle(signal);
+      requireSuperAdmin();
+      const current = findGroup(id);
+      const next: TargetGroupSeed = {
+        ...current,
+        ...(input.name !== undefined
+          ? { name: checkGroupName(input.name, id) }
+          : {}),
+        ...(input.isHidden !== undefined ? { isHidden: input.isHidden } : {}),
+      };
+      groupSeeds = groupSeeds.map((group) => (group.id === id ? next : group));
+      return toTargetGroup(next);
+    },
+
+    async deleteTargetGroup(id, signal) {
+      await settle(signal);
+      requireSuperAdmin();
+      findGroup(id);
+      const inUse =
+        deviceSeeds.some((device) => device.groupIds.includes(id)) ||
+        store.all().some((dto) => dto.targetGroupIds.includes(id));
+      if (inUse) {
+        throw conflict("기기나 신청이 쓰고 있는 그룹은 지울 수 없습니다.");
+      }
+      groupSeeds = groupSeeds.filter((group) => group.id !== id);
     },
   };
 

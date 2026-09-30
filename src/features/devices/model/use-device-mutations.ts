@@ -13,13 +13,18 @@ import { useRepositories } from "@/shared/api/repositories-context";
 /**
  * 기기 등록·수정·토큰 재발급 (`API-CHANGES-BACKEND.md` 11.1). SUPER_ADMIN만 한다.
  *
- * 성공하면 기기 목록(대시보드 패널 포함)을 다시 받는다. 등록·재발급 응답의 토큰은
- * 캐시에 두지 않고 호출부가 바로 설정 링크로 보여준 뒤 버린다.
+ * 성공하면 기기 목록(대시보드 패널 포함)을 다시 받는다. 그룹마다 센 활성 기기 수도
+ * 바뀌므로 그룹 목록도 다시 받는다. 등록·재발급 응답의 토큰은 캐시에 두지 않고
+ * 호출부가 바로 설정 링크로 보여준 뒤 버린다.
  */
 function useRefreshDevices() {
   const queryClient = useQueryClient();
-  return () =>
+  return () => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.devices.all() });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.reference.targetGroups(),
+    });
+  };
 }
 
 async function run<T>(request: () => Promise<T>): Promise<T> {

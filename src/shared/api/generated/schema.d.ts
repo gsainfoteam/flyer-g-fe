@@ -169,15 +169,52 @@ export interface paths {
         };
         /**
          * 대상 위치 그룹 목록
-         * @description 신청 폼의 "대상 위치" 선택지. 노출 순서대로 준다. 신청의 targetGroupIds가 비어 있으면 전체 기기가 대상이다.
+         * @description 신청 폼의 "대상 위치"와 기기 폼의 "위치 그룹" 선택지. 이름순으로 준다.
+         *     신청의 targetGroupIds가 비어 있으면 전체 기기가 대상이다.
+         *
+         *     **숨긴 그룹(isHidden: true)도 준다.** 과거 신청·기기의 그룹 ID를 이름으로 바꿔 보여 줄 때 필요하다.
+         *     새로 고르는 선택 목록에서는 프론트가 숨긴 그룹을 빼야 한다. 숨긴 그룹을 새로 추가하면 422다.
          */
         get: operations["TargetGroupsController_findAll"];
         put?: never;
-        post?: never;
+        /**
+         * 대상 위치 그룹 추가
+         * @description ID는 서버가 정한다(grp_xxx). 새 그룹은 숨기지 않은 상태, deviceCount 0으로 만들어진다. 감사 로그 GROUP_CREATED
+         */
+        post: operations["TargetGroupsController_create"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/signage/target-groups/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 대상 위치 그룹 삭제
+         * @description 오타로 만든 그룹을 지우는 용도. 어떤 기기의 groupIds에도, 어떤 신청의 targetGroupIds에도
+         *     (취소·종료된 신청 포함) 들어 있지 않아야 지울 수 있다. 쓰는 곳이 있으면 409이고, 그때는 숨김을 쓴다.
+         *     감사 로그 GROUP_DELETED
+         */
+        delete: operations["TargetGroupsController_remove"];
+        options?: never;
+        head?: never;
+        /**
+         * 대상 위치 그룹 수정 (이름 변경·숨김)
+         * @description 보낸 필드만 바꾼다. 실제로 바뀐 필드가 있을 때만 감사 로그 GROUP_UPDATED를 남긴다.
+         *
+         *     숨김(`isHidden: true`)은 쓰는 곳이 있어도 된다. 기기·신청에 새로 추가하는 것만 막히고,
+         *     이미 연결된 기기·신청과 편성 대상 판정은 그대로다. `isHidden: false`로 다시 보이게 할 수 있다.
+         */
+        patch: operations["TargetGroupsController_update"];
         trace?: never;
     };
     "/signage/assets/presign": {
@@ -851,7 +888,7 @@ export interface components {
         };
         TargetGroupDto: {
             /**
-             * @description 그룹 ID
+             * @description 그룹 ID. 관리 화면에서 만든 그룹은 서버가 정한다
              * @example grp_house_a
              */
             id: string;
@@ -865,6 +902,30 @@ export interface components {
              * @example 2
              */
             deviceCount: number;
+            /**
+             * @description 숨긴 그룹. 기기·신청에 새로 고를 수 없지만, 이미 연결된 기기·신청과 편성은 그대로다. 선택 목록에서는 빼고, 과거 신청의 그룹 이름을 보여 줄 때는 쓴다
+             * @example false
+             */
+            isHidden: boolean;
+        };
+        CreateTargetGroupDto: {
+            /**
+             * @description 표시 이름. 앞뒤 공백을 지운 뒤 1~40자. 대소문자를 무시하고 다른 그룹(숨긴 그룹 포함)과 겹치면 422 fields.name
+             * @example 학사기숙사 A동
+             */
+            name: string;
+        };
+        UpdateTargetGroupDto: {
+            /**
+             * @description 표시 이름. 앞뒤 공백을 지운 뒤 1~40자. 대소문자를 무시하고 다른 그룹(숨긴 그룹 포함)과 겹치면 422 fields.name
+             * @example 학사기숙사 A동
+             */
+            name?: string;
+            /**
+             * @description true면 숨긴다. 숨겨도 이미 연결된 기기·신청과 편성은 그대로이고, 기기·신청에 새로 추가하는 것만 막힌다
+             * @example true
+             */
+            isHidden?: boolean;
         };
         PresignAssetRequestDto: {
             /**
@@ -1032,7 +1093,7 @@ export interface components {
              */
             endAt: string;
             /**
-             * @description GET /signage/target-groups의 id 목록. 비우면 전체 기기가 대상
+             * @description GET /signage/target-groups의 id 목록(숨긴 그룹 제외). 비우면 전체 기기가 대상
              * @default []
              * @example []
              */
@@ -1329,6 +1390,7 @@ export interface components {
             /** @example 2026-08-07T14:59:59.000Z */
             endAt?: string;
             /**
+             * @description 대상 위치를 통째로 바꾼다. 새로 추가한 그룹 중 없거나 숨긴 그룹이 있으면 422 fields.targetGroupIds. 이미 연결된 숨긴 그룹은 그대로 둘 수 있다
              * @example [
              *       "grp_house_a"
              *     ]
@@ -1364,6 +1426,9 @@ export interface components {
             /**
              * @description 행위. 신청: SUBMISSION_CREATED, _UPDATED, _RESUBMITTED, _CANCELED, _APPROVED, _REJECTED, _SUSPENDED, _SCHEDULED, _PUBLISHED, _ENDED
              *     기기: DEVICE_REGISTERED, DEVICE_UPDATED, DEVICE_TOKEN_ROTATED
+             *     위치 그룹: GROUP_CREATED, GROUP_UPDATED, GROUP_DELETED
+             *
+             *     - GROUP_* metadata: _CREATED·_DELETED는 { name }, _UPDATED는 { changes: { name?: { from, to }, isHidden?: { from, to } } }
              * @example SUBMISSION_APPROVED
              */
             action: string;
@@ -1371,7 +1436,7 @@ export interface components {
              * @example SUBMISSION
              * @enum {string}
              */
-            targetType: "SUBMISSION" | "DEVICE";
+            targetType: "SUBMISSION" | "DEVICE" | "GROUP";
             /** @example 8d2f4a1e-3c5b-4e21-9a0c-1d8e5f6b2c34 */
             targetId: string;
             /**
@@ -1556,7 +1621,7 @@ export interface components {
              */
             location?: string | null;
             /**
-             * @description 기기가 속한 위치 그룹 (GET /signage/target-groups의 id)
+             * @description 기기가 속한 위치 그룹 (GET /signage/target-groups의 id). 수정할 때는 통째로 바꾼다. 숨긴 그룹은 새로 추가할 수 없지만 이미 연결된 것은 그대로 둘 수 있다
              * @example [
              *       "grp_house_a"
              *     ]
@@ -1662,7 +1727,7 @@ export interface components {
              */
             location?: string | null;
             /**
-             * @description 기기가 속한 위치 그룹 (GET /signage/target-groups의 id)
+             * @description 기기가 속한 위치 그룹 (GET /signage/target-groups의 id). 수정할 때는 통째로 바꾼다. 숨긴 그룹은 새로 추가할 수 없지만 이미 연결된 것은 그대로 둘 수 있다
              * @example [
              *       "grp_house_a"
              *     ]
@@ -2309,6 +2374,175 @@ export interface operations {
             };
         };
     };
+    TargetGroupsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTargetGroupDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetGroupDto"];
+                };
+            };
+            /** @description 로그인 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description SUPER_ADMIN만 쓸 수 있다 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description 이름 검증 실패: 비었거나 40자 초과, 대소문자를 무시하고 다른 그룹(숨긴 그룹 포함)과 중복. 모두 fields.name */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    TargetGroupsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 그룹 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 삭제됨 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 로그인 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description SUPER_ADMIN만 쓸 수 있다 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description 없는 그룹 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description 기기나 신청이 쓰고 있는 그룹 (code CONFLICT) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    TargetGroupsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 그룹 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTargetGroupDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetGroupDto"];
+                };
+            };
+            /** @description 로그인 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description SUPER_ADMIN만 쓸 수 있다 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description 없는 그룹 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description 이름 검증 실패: 비었거나 40자 초과, 대소문자를 무시하고 다른 그룹(숨긴 그룹 포함)과 중복. 모두 fields.name */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
     AssetsController_presign: {
         parameters: {
             query?: never;
@@ -2818,8 +3052,8 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description 대상 종류. 검토자가 아니면 SUBMISSION과 본인 신청의 targetId를 함께 보내야 한다 */
-                targetType?: "SUBMISSION" | "DEVICE";
-                /** @description 대상 ID (신청 ID, 기기 ID) */
+                targetType?: "SUBMISSION" | "DEVICE" | "GROUP";
+                /** @description 대상 ID (신청 ID, 기기 ID, 그룹 ID) */
                 targetId?: string;
                 /** @description 행위 필터 */
                 action?: string;
@@ -3283,7 +3517,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description 입력 검증 실패. 없는·숨긴 위치 그룹은 fields.groupIds */
+            /** @description 입력 검증 실패. 새로 추가한 그룹 중 없거나 숨긴 그룹이 있으면 fields.groupIds (이미 연결된 숨긴 그룹은 그대로 둘 수 있다) */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3394,7 +3628,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description 입력 검증 실패. 없는·숨긴 위치 그룹은 fields.groupIds */
+            /** @description 입력 검증 실패. 새로 추가한 그룹 중 없거나 숨긴 그룹이 있으면 fields.groupIds (이미 연결된 숨긴 그룹은 그대로 둘 수 있다) */
             422: {
                 headers: {
                     [name: string]: unknown;

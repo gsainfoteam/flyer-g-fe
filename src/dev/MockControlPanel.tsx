@@ -43,6 +43,9 @@ const OPERATIONS = [
   "reference.getConfig",
   "reference.listCategories",
   "reference.listTargetGroups",
+  "reference.createTargetGroup",
+  "reference.updateTargetGroup",
+  "reference.deleteTargetGroup",
 ] as const;
 
 const STATUSES = [401, 403, 404, 409, 413, 422, 429, 500] as const;

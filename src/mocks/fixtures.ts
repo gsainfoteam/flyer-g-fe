@@ -33,9 +33,14 @@ const MINUTE_MS = 60 * 1000;
 const days = (now: Date, offset: number) =>
   new Date(now.getTime() + offset * DAY_MS);
 
-export const TARGET_GROUP_FIXTURES: readonly TargetGroup[] = [
-  { id: "group-house-a", name: "학사기숙사 A동", deviceCount: 1 },
-  { id: "group-house-b", name: "학사기숙사 B동", deviceCount: 1 },
+/** 활성 기기 수(`deviceCount`)는 mock이 기기 목록으로 센다. */
+export type TargetGroupSeed = Omit<TargetGroup, "deviceCount">;
+
+/** 옛 도서관은 숨긴 그룹이다. 아무도 쓰지 않아 지울 수도 있다. */
+export const TARGET_GROUP_FIXTURES: readonly TargetGroupSeed[] = [
+  { id: "group-house-a", name: "학사기숙사 A동", isHidden: false },
+  { id: "group-house-b", name: "학사기숙사 B동", isHidden: false },
+  { id: "group-old-library", name: "옛 도서관", isHidden: true },
 ];
 
 /** 상태별 게시 기간. [시작 offset(일), 종료 offset(일)] */

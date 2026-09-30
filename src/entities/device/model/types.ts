@@ -98,12 +98,54 @@ export function toDisplayDevice(dto: DisplayDeviceDto): DisplayDevice {
 /**
  * 게시 대상 위치 묶음 (`API-REQUIREMENTS.md` 10.2).
  *
- * 신청의 `targetGroupIds`가 가리킨다. 비어 있으면 모든 위치에 게시한다.
+ * 신청의 `targetGroupIds`와 기기의 `groupIds`가 가리킨다. 신청 쪽이 비어 있으면 모든
+ * 위치에 게시한다. 목록은 이름순이고 숨긴 그룹도 온다.
  */
 export interface TargetGroup {
   id: string;
   name: string;
+  /** 그룹에 속한 활성 기기 수. 사용 안 함인 기기는 세지 않는다. */
   deviceCount: number;
+  /**
+   * 숨긴 그룹. 기기·신청에 새로 고를 수 없지만 이미 연결된 기기·신청과 편성은
+   * 그대로다. 과거 기록의 이름을 읽으려고 목록에 남아 있다.
+   */
+  isHidden: boolean;
+}
+
+/** 그룹 관리 입력. SUPER_ADMIN만 한다. 범위는 서버 DTO와 같다(`target-group-input.dto.ts`). */
+export const TARGET_GROUP_LIMITS = { nameMaxLength: 40 } as const;
+
+export interface TargetGroupInput {
+  name: string;
+}
+
+export interface UpdateTargetGroupInput {
+  name?: string;
+  isHidden?: boolean;
+}
+
+/**
+ * 새로 고를 수 있는 그룹. 숨긴 그룹은 빼되, 이미 고른 것(`keep`)은 남겨서 풀 수 있게 한다.
+ * 서버도 이미 연결된 숨긴 그룹은 그대로 두는 것을 허용한다.
+ */
+export function selectableTargetGroups(
+  groups: readonly TargetGroup[],
+  keep: readonly string[] = [],
+): TargetGroup[] {
+  return groups.filter((group) => !group.isHidden || keep.includes(group.id));
+}
+
+/** 대소문자를 무시한 같은 이름(숨긴 그룹 포함). 서버의 `lower(name)` unique와 같은 기준이다. */
+export function findSameNameGroup(
+  groups: readonly TargetGroup[],
+  name: string,
+  exceptId?: string,
+): TargetGroup | undefined {
+  const key = name.trim().toLowerCase();
+  return groups.find(
+    (group) => group.id !== exceptId && group.name.toLowerCase() === key,
+  );
 }
 
 /**
