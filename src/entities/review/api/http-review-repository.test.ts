@@ -329,5 +329,73 @@ describe("createHttpReviewRepository", () => {
         ["SUSPENDED", null],
       ]);
     });
+
+    const failWith =
+      (init: ConstructorParameters<typeof ApiError>[0]) => () => {
+        throw new ApiError(init);
+      };
+
+    it("제목 조회가 실패해도 이미 받은 기록은 버리지 않고 제목만 비운다", async () => {
+      const { repository } = fakeClient({
+        "/signage/audit-logs": () => page(decisionLogs),
+        "/signage/submissions/sub_02": failWith({
+          kind: "http",
+          code: "SERVER_ERROR",
+          message: "서버 오류",
+          status: 500,
+        }),
+        "/signage/submissions/sub_03": failWith({
+          kind: "timeout",
+          code: "TIMEOUT",
+          message: "시간 초과",
+        }),
+      });
+
+      const records = await repository.listRecentDecisions({ limit: 3 });
+
+      expect(
+        records.map((record) => [record.decision, record.submissionTitle]),
+      ).toEqual([
+        ["REJECTED", "겨울 정기 공연"],
+        ["APPROVED", null],
+        ["SUSPENDED", null],
+      ]);
+    });
+
+    it("요청 취소와 세션 만료(401)는 그대로 알린다", async () => {
+      const canceled = fakeClient({
+        "/signage/audit-logs": () => page(decisionLogs),
+        "/signage/submissions/sub_02": failWith({
+          kind: "canceled",
+          code: "REQUEST_CANCELED",
+          message: "취소",
+        }),
+        "/signage/submissions/sub_03": () => {
+          throw new Error("취소되면 결과를 쓰지 않는다");
+        },
+      });
+      await expect(
+        canceled.repository.listRecentDecisions({ limit: 3 }),
+      ).rejects.toMatchObject({ kind: "canceled" });
+
+      const expired = fakeClient({
+        "/signage/audit-logs": () => page(decisionLogs),
+        "/signage/submissions/sub_02": failWith({
+          kind: "http",
+          code: "UNAUTHENTICATED",
+          message: "로그인 필요",
+          status: 401,
+        }),
+        "/signage/submissions/sub_03": failWith({
+          kind: "http",
+          code: "NOT_FOUND",
+          message: "없음",
+          status: 404,
+        }),
+      });
+      await expect(
+        expired.repository.listRecentDecisions({ limit: 3 }),
+      ).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
+    });
   });
 });

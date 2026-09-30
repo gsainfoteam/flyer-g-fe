@@ -15,7 +15,7 @@ import {
 } from "@/shared/api/parse";
 import type { JsonObject } from "@/shared/api/parse";
 import type { ReviewRepository } from "@/shared/api/repositories";
-import { ApiError } from "@/shared/api/error";
+import { normalizeApiError } from "@/shared/api/error";
 import { REJECTION_REASON_CODES } from "../model/types";
 import type {
   DecisionRecord,
@@ -277,11 +277,17 @@ export function createHttpReviewRepository(
             );
             return { ...record, submissionTitle: submission.title };
           } catch (error) {
-            // 지워진 신청은 제목 없이 둔다. 나머지 오류는 그대로 알린다.
-            if (error instanceof ApiError && error.status === 404) {
-              return record;
+            // 제목은 부가 정보다. 한 건의 제목을 못 불러왔다고 이미 받은 기록을
+            // 모두 버리지 않는다(지워진 신청의 404 포함). 다만 요청 취소는 그대로
+            // 끝내고, 세션 만료(401)는 알려야 로그인 만료 처리가 돈다.
+            const apiError = normalizeApiError(error);
+            if (
+              apiError.kind === "canceled" ||
+              apiError.code === "UNAUTHENTICATED"
+            ) {
+              throw error;
             }
-            throw error;
+            return record;
           }
         }),
       );
