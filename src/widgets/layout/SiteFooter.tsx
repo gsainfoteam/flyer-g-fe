@@ -34,7 +34,7 @@ export function SiteFooter() {
                 </FooterLink>
               </li>
               <li>
-                <FooterLink href={SERVICE_LINKS.terms} external>
+                <FooterLink href={SERVICE_LINKS.terms} external arrow={false}>
                   이용약관
                 </FooterLink>
               </li>
@@ -42,6 +42,7 @@ export function SiteFooter() {
                 <FooterLink
                   href={SERVICE_LINKS.privacy}
                   external
+                  arrow={false}
                   className="font-bold text-ink"
                 >
                   개인정보처리방침
@@ -67,14 +68,20 @@ export function SiteFooter() {
   );
 }
 
+/**
+ * `external`은 새 탭에서 연다. 화살표는 다른 서비스로 가는 링크(Ziggle)에만 붙이고,
+ * 약관처럼 서비스에 딸린 문서는 `arrow={false}`로 뺀다. 화면 낭독기용 "(새 창)"은 그대로 둔다.
+ */
 function FooterLink({
   href,
   external = false,
+  arrow = external,
   className,
   children,
 }: {
   href: string;
   external?: boolean;
+  arrow?: boolean;
   className?: string;
   children: ReactNode;
 }) {
@@ -88,12 +95,8 @@ function FooterLink({
       )}
     >
       {children}
-      {external && (
-        <>
-          <ArrowUpRight className="size-3.5" aria-hidden="true" />
-          <span className="sr-only">(새 창)</span>
-        </>
-      )}
+      {arrow && <ArrowUpRight className="size-3.5" aria-hidden="true" />}
+      {external && <span className="sr-only">(새 창)</span>}
     </a>
   );
 }
