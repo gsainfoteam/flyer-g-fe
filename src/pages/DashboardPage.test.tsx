@@ -1,5 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { summarizeSubmissions } from "@/entities/submission";
 import { createMockRepositories } from "@/mocks/repositories";
 import { ApiError } from "@/shared/api/error";
 import { createFixedClock } from "@/shared/lib/clock";
@@ -69,9 +70,7 @@ describe("대시보드", () => {
     renderRoute("/", { role: "SUBMITTER" });
 
     // 정하윤: 반려 1건 + 게시 중단 1건
-    expect(
-      await screen.findByRole("heading", { name: "고쳐야 할 신청이 2건 있어요" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("고쳐야 할 신청 2건")).toBeInTheDocument();
   });
 
   it("순서대로 검토 시작은 가장 오래 기다린 건의 검토 화면을 연다", async () => {
@@ -83,3 +82,97 @@ describe("대시보드", () => {
   });
 });
 
+
+describe("게시자 홈", () => {
+  it("반려·중단 건은 관리자가 남긴 사유와 고치러 가는 버튼을 보여준다", async () => {
+    renderRoute("/", { role: "SUBMITTER" });
+
+    // 카드와 최근 소식 양쪽에 같은 사유가 보인다.
+    expect(
+      (
+        await screen.findAllByText(
+          "“포스터의 신청 마감일과 Ziggle 공지 본문의 마감일이 다릅니다.”",
+        )
+      ).length,
+    ).toBeGreaterThan(0);
+    const fixLinks = await screen.findAllByRole("link", {
+      name: "고쳐서 다시 내기",
+    });
+    expect(fixLinks.map((link) => link.getAttribute("href"))).toEqual(
+      expect.arrayContaining([
+        "/studio?submissionId=notice-901",
+        "/studio?submissionId=notice-903",
+      ]),
+    );
+  });
+
+  it("게시 중인 카드는 TV에 나온 횟수와 TV 미리보기 링크를 둔다", async () => {
+    renderRoute("/", { role: "SUBMITTER" });
+
+    const card = (
+      await screen.findByRole("link", { name: "VESPER 피아노 정기공연" })
+    ).closest("li")!;
+    expect(
+      await within(card).findByText(/하루 평균 약 .+회/),
+    ).toBeInTheDocument();
+    expect(
+      within(card).getByRole("link", { name: "TV 화면으로 보기 →" }),
+    ).toHaveAttribute("href", expect.stringContaining("preview=1"));
+    expect(within(card).getByText("QR 연결")).toBeInTheDocument();
+  });
+
+  it("최근 소식은 내 신청에 일어난 일을 최신순으로 보여준다", async () => {
+    renderRoute("/", { role: "SUBMITTER" });
+
+    const feed = (
+      await screen.findByRole("heading", { name: "최근 소식" })
+    ).closest("section")!;
+    const items = await within(feed).findAllByRole("listitem");
+    expect(items.length).toBeGreaterThan(0);
+    expect(within(feed).getByText(/게시가/)).toHaveTextContent(
+      "슈퍼-피셜 드로잉 원데이 클래스 게시가 중단됐어요",
+    );
+  });
+
+  it("지난 신청에는 끝난 날과 노출 수를, 취소한 신청은 취소했다고 적는다", async () => {
+    renderRoute("/", { role: "SUBMITTER" });
+
+    const past = (
+      await screen.findByRole("heading", { name: /지난 신청/ })
+    ).closest("section")!;
+    expect(within(past).getByText("게시 전에 취소함")).toBeInTheDocument();
+    expect(
+      await within(past).findByText(/종료 · .+회 노출/),
+    ).toBeInTheDocument();
+  });
+
+  it("신청이 하나도 없으면 같은 칸에 신청 안내와 걸리는 곳을 채운다", async () => {
+    const repositories = createMockRepositories({
+      clock: createFixedClock(TEST_NOW),
+    });
+    repositories.submissions.getSummary = async () =>
+      summarizeSubmissions([], TEST_NOW);
+    repositories.submissions.list = async () => ({
+      items: [],
+      nextCursor: null,
+      totalCount: 0,
+      serverTime: TEST_NOW,
+    });
+    renderRoute("/", { role: "SUBMITTER", repositories });
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "포스터를 로비 TV에 걸어 보세요",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "첫 게시 신청하기" }),
+    ).toHaveAttribute("href", "/studio");
+    // 안내의 버튼과 겹치지 않게 머리의 신청 버튼은 두지 않는다.
+    expect(
+      screen.queryByRole("link", { name: "새 게시 신청" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("아직 소식이 없어요")).toBeInTheDocument();
+    expect(await screen.findByText("학사기숙사 A동")).toBeInTheDocument();
+  });
+});

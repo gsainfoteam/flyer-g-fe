@@ -1,6 +1,7 @@
 import {
   keepPreviousData,
   useInfiniteQuery,
+  useQueries,
   useQuery,
 } from "@tanstack/react-query";
 import { toSubmissionView } from "@/entities/submission";
@@ -116,12 +117,32 @@ export function useSubmissionDetail(submissionId: string | null | undefined) {
   });
 }
 
-/** 신청 하나의 검토 이력. 상세 타임라인에 쓴다. */
-export function useReviewHistory(submissionId: string) {
+/** 신청 하나의 검토 이력. 상세 타임라인과 홈의 반려·중단 사유에 쓴다. */
+export function useReviewHistory(
+  submissionId: string,
+  { enabled = true }: { enabled?: boolean } = {},
+) {
   const { reviews } = useRepositories();
 
   return useQuery({
     queryKey: queryKeys.reviews.history(submissionId),
+    enabled,
     queryFn: ({ signal }) => reviews.listHistory(submissionId, signal),
+  });
+}
+
+/**
+ * 여러 신청의 이력을 한꺼번에. 게시자 홈의 "최근 소식"이 합쳐서 보여준다.
+ * 신청마다 한 번씩 부른다(`API-FOLLOWUP-2026-09-30.md` 2-1 전까지).
+ */
+export function useReviewHistories(submissionIds: readonly string[]) {
+  const { reviews } = useRepositories();
+
+  return useQueries({
+    queries: submissionIds.map((submissionId) => ({
+      queryKey: queryKeys.reviews.history(submissionId),
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        reviews.listHistory(submissionId, signal),
+    })),
   });
 }

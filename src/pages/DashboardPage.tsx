@@ -7,7 +7,8 @@ import { PREVIEW_DEVICE_ID } from "@/entities/playlist/model/types";
 import { DeviceStatusPanel } from "@/widgets/dashboard/DeviceStatusPanel";
 import { DashboardHeader } from "@/widgets/dashboard/DashboardHeader";
 import { useSessionUser } from "@/features/auth/model/auth-context";
-import { hasAnyRole } from "@/features/auth/model/types";
+import { getPrimaryRole, hasAnyRole } from "@/features/auth/model/types";
+import { SubmitterHome } from "@/widgets/dashboard/submitter/SubmitterHome";
 import { usePendingReviews } from "@/features/reviews/api/queries";
 import {
   useSubmissionSummary,
@@ -22,7 +23,18 @@ import {
 } from "@/shared/lib/datetime";
 import { Button } from "@/shared/ui/button";
 
+/**
+ * 홈. 역할마다 여는 이유가 달라서 화면을 따로 둔다.
+ *
+ * - 게시자: 내 신청이 지금 어디쯤인지, 무엇이 바뀌었는지
+ * - 하우스 관리자·운영자: 처리할 신청과 게시판·기기 상태
+ */
 export function DashboardPage() {
+  const user = useSessionUser();
+  return getPrimaryRole(user) === "SUBMITTER" ? <SubmitterHome /> : <AdminHome />;
+}
+
+function AdminHome() {
   const user = useSessionUser();
   const isReviewer = hasAnyRole(user, ["REVIEWER", "SUPER_ADMIN"]);
 

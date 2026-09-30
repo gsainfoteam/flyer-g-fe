@@ -47,13 +47,14 @@ describe("대시보드", () => {
     expect(reviewLinks[0]!.getAttribute("href")).toMatch(/^\/reviews\//);
   });
 
-  it("상태 배지 옆에 지금 상황을 설명하는 문장을 함께 둔다", async () => {
+  it("진행 중인 신청마다 지금 상황과 다음에 일어날 일을 한 문장으로 둔다", async () => {
     renderRoute("/", { role: "SUBMITTER" });
-    await screen.findByRole("heading", { name: "내 신청" });
+    await screen.findByRole("heading", { name: /진행 중인 신청/ });
 
+    expect(await screen.findByText(/TV에 걸려 있어요/)).toBeInTheDocument();
     expect(
-      (await screen.findAllByText(/TV에 나오고 있어요/)).length,
-    ).toBeGreaterThan(0);
+      screen.getByText(/관리자 검토를 기다린 지 .+째예요/),
+    ).toBeInTheDocument();
   });
 
   it("역할에 따라 첫 문장이 달라진다", async () => {
@@ -65,7 +66,7 @@ describe("대시보드", () => {
 
     renderRoute("/", { role: "SUBMITTER" });
     expect(
-      await screen.findByRole("heading", { name: /고쳐야 할 신청이/ }),
+      await screen.findByRole("heading", { name: "안녕하세요, 정하윤님" }),
     ).toBeInTheDocument();
   });
 });

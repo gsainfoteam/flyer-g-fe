@@ -29,7 +29,8 @@ async function expectNoViolations(container: HTMLElement) {
 describe("접근성 자동 검사", () => {
   it("대시보드 (게시자)", async () => {
     const { container } = renderRoute("/", { role: "SUBMITTER" });
-    await screen.findByRole("heading", { name: "내 신청" });
+    await screen.findByRole("heading", { name: /진행 중인 신청/ });
+    await screen.findByText(/TV에 걸렸어요/);
     await expectNoViolations(container);
   });
 

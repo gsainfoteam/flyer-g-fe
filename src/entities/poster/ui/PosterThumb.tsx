@@ -8,6 +8,8 @@ import { PosterArtwork } from "@/entities/poster/ui/PosterArtwork";
 const sizeClass = {
   sm: "w-10",
   md: "w-12",
+  /** 게시자 홈의 신청 카드 */
+  card: "w-28",
   lg: "w-[150px]",
 } as const;
 

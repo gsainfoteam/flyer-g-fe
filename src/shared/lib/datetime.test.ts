@@ -5,11 +5,14 @@ import {
   formatSeoulDate,
   formatSeoulDateTime,
   formatSeoulDateWithWeekday,
+  formatSeoulDayTime,
   formatSeoulPeriod,
+  formatSeoulShortDateWithWeekday,
   formatTimeAgo,
   fromSeoulInput,
   getSeoulParts,
   parseIsoUtc,
+  seoulDayDiff,
   toIsoUtc,
   toSeoulDateInputValue,
   toSeoulDateTimeInputValue,
@@ -119,3 +122,33 @@ describe("formatElapsed", () => {
   });
 });
 
+
+describe("서울 달력 기준 날짜 차이와 가까운 시각", () => {
+  // 2026-09-29 13:01 KST
+  const now = parseIsoUtc("2026-09-29T04:01:00.000Z");
+
+  it("시각이 아니라 서울 날짜로 센다", () => {
+    // 09-29 23:59 KST는 같은 날, 09-30 00:00 KST는 다음 날
+    expect(seoulDayDiff(now, parseIsoUtc("2026-09-29T14:59:00.000Z"))).toBe(0);
+    expect(seoulDayDiff(now, parseIsoUtc("2026-09-29T15:00:00.000Z"))).toBe(1);
+    expect(seoulDayDiff(now, parseIsoUtc("2026-09-27T00:00:00.000Z"))).toBe(-2);
+  });
+
+  it("오늘과 어제는 말로, 그 전은 날짜로 읽는다", () => {
+    expect(
+      formatSeoulDayTime(parseIsoUtc("2026-09-29T01:10:00.000Z"), now),
+    ).toBe("오늘 10:10");
+    expect(
+      formatSeoulDayTime(parseIsoUtc("2026-09-28T09:40:00.000Z"), now),
+    ).toBe("어제 18:40");
+    expect(
+      formatSeoulDayTime(parseIsoUtc("2026-09-21T15:00:00.000Z"), now),
+    ).toBe("09. 22. 00:00");
+  });
+
+  it("요일을 붙인 짧은 날짜", () => {
+    expect(
+      formatSeoulShortDateWithWeekday(parseIsoUtc("2026-10-03T14:59:00.000Z")),
+    ).toBe("10. 03.(토)");
+  });
+});
