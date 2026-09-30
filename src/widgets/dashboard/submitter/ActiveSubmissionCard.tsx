@@ -50,14 +50,18 @@ export function ActiveSubmissionCard({
     submission.status === "PENDING_REVIEW" || submission.status === "REJECTED";
 
   return (
-    <li className="flex gap-5 border-b border-line p-5 last:border-b-0 max-sm:flex-col">
+    <li className="flex gap-4 border-b border-line p-5 last:border-b-0 sm:gap-5">
       <Link
         to={detailHref}
         tabIndex={-1}
         aria-hidden="true"
         className="self-start"
       >
-        <PosterThumb poster={fromSubmissionView(submission)} size="card" />
+        <PosterThumb
+          poster={fromSubmissionView(submission)}
+          size="card"
+          className="max-sm:w-16"
+        />
       </Link>
 
       <div className="min-w-0 flex-1">
@@ -220,7 +224,7 @@ function FixRequest({ submission }: { submission: SubmissionView }) {
   return (
     <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
       {decision?.comment ? (
-        <blockquote className="min-w-0 flex-1 rounded-control border border-accent-200 bg-surface px-3.5 py-2.5">
+        <blockquote className="min-w-0 flex-1 rounded-control border border-accent-200 bg-surface px-3.5 py-2.5 max-sm:basis-full">
           <p className="text-caption font-bold text-attention-strong">
             {submission.status === "REJECTED" ? "반려 사유" : "중단 사유"} ·{" "}
             {decision.actorName}
