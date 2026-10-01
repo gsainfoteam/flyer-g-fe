@@ -44,6 +44,8 @@ export function TopNav({ user, pendingCount = 0 }: TopNavProps) {
     },
     // 기기 등록·설정은 시스템 운영자만 한다.
     { label: "기기", href: to.displays(), allow: ["SUPER_ADMIN"] },
+    // 하우스 관리자·시스템 운영자 지정도 시스템 운영자만 한다.
+    { label: "권한", href: to.users(), allow: ["SUPER_ADMIN"] },
   ];
 
   const visible = items.filter(

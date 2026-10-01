@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { normalizeApiError } from "@/shared/api/error";
 import type { AuthAdapter } from "../api/auth-adapter";
 import { isMockAuthAdapter } from "../api/mock-auth";
 import { AuthContext } from "../model/auth-context";
 import type { AuthContextValue } from "../model/auth-context";
-import type { AuthState, Role } from "../model/types";
+import type { AuthState, Role, SessionUser } from "../model/types";
 
 /**
  * 세션 상태를 앱 전체에 공급한다.
@@ -94,6 +94,30 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
     setState({ status: "unauthenticated", reason: "expired" });
   }, [adapter]);
 
+  const reloading = useRef<Promise<void> | null>(null);
+  const reloadSession = useCallback(() => {
+    reloading.current ??= adapter
+      .restore()
+      .then((user) => {
+        setState((current) => {
+          // 그사이 로그아웃했거나 다른 사람으로 들어왔으면 덮어쓰지 않는다.
+          if (current.status !== "authenticated") return current;
+          if (user === null)
+            return { status: "unauthenticated", reason: "expired" };
+          if (user.id !== current.user.id) return current;
+          return isSameSessionUser(current.user, user)
+            ? current
+            : { status: "authenticated", user };
+        });
+      })
+      // 일시 실패면 지금 세션을 둔다. 서버가 다시 403을 주면 그때 또 부른다.
+      .catch(() => undefined)
+      .finally(() => {
+        reloading.current = null;
+      });
+    return reloading.current;
+  }, [adapter]);
+
   const switchRole = useMemo(() => {
     if (!isMockAuthAdapter(adapter)) return null;
     return (role: Role) => {
@@ -113,6 +137,7 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
       completeSignIn,
       signOut,
       expireSession,
+      reloadSession,
       switchRole,
       availableRoles,
     }),
@@ -122,10 +147,21 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
       completeSignIn,
       signOut,
       expireSession,
+      reloadSession,
       switchRole,
       availableRoles,
     ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+/** 바뀐 것이 없으면 같은 상태를 두어 화면 전체를 다시 그리지 않는다. */
+function isSameSessionUser(a: SessionUser, b: SessionUser): boolean {
+  return (
+    a.id === b.id &&
+    a.displayName === b.displayName &&
+    a.roles.length === b.roles.length &&
+    a.roles.every((role) => b.roles.includes(role))
+  );
 }

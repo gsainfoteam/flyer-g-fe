@@ -1,7 +1,10 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import type { AuthAdapter } from "@/features/auth/api/auth-adapter";
+import { createMockAuthAdapter } from "@/features/auth/api/mock-auth";
 import { createMockRepositories } from "@/mocks/repositories";
+import { MOCK_USERS } from "@/mocks/users";
 import { ApiError } from "@/shared/api/error";
 import { createFixedClock } from "@/shared/lib/clock";
 import { TEST_NOW, currentPath, renderRoute } from "@/test/render-route";
@@ -11,6 +14,7 @@ import { TEST_NOW, currentPath, renderRoute } from "@/test/render-route";
  *
  * - 어떤 조회든 401이면 세션이 끝난 것이다. 보던 경로를 기억해 로그인으로 보낸다.
  * - 역할을 바꾸면 이전 사용자의 목록이 남지 않는다.
+ * - 403이면 세션을 다시 불러와 바뀐 역할에 맞춘다.
  */
 describe("세션 동기화", () => {
   it("조회가 401이면 로그인 화면으로 보내고 만료를 알린다", async () => {
@@ -60,5 +64,43 @@ describe("세션 동기화", () => {
         main().queryByText(/2026학년도 2학기 기숙사 디지털 게시판/),
       ).toBeNull();
     });
+  });
+
+  it("403을 받으면 세션을 다시 불러와 사라진 권한의 메뉴와 화면을 거둔다", async () => {
+    // 다른 운영자가 이 사람의 운영자 권한을 회수한 뒤다. 서버 세션은 이제 하우스 관리자다.
+    let revoked = false;
+    const demoted = {
+      ...MOCK_USERS.SUPER_ADMIN,
+      roles: MOCK_USERS.REVIEWER.roles,
+    };
+    const base = createMockAuthAdapter({ initialRole: "SUPER_ADMIN" });
+    const authAdapter: AuthAdapter = {
+      restore: async (signal) => (revoked ? demoted : base.restore(signal)),
+      signIn: base.signIn,
+      completeSignIn: base.completeSignIn,
+      signOut: base.signOut,
+    };
+    const repositories = createMockRepositories({
+      clock: createFixedClock(TEST_NOW),
+      session: () => (revoked ? demoted : MOCK_USERS.SUPER_ADMIN),
+    });
+    repositories.devices.list = async () => {
+      revoked = true;
+      throw new ApiError({
+        kind: "http",
+        code: "FORBIDDEN",
+        message: "Insufficient role",
+        status: 403,
+      });
+    };
+
+    renderRoute("/displays", { authAdapter, repositories });
+
+    expect(
+      await screen.findByText("이 화면을 볼 권한이 없어요"),
+    ).toBeInTheDocument();
+    const nav = within(screen.getByRole("navigation", { name: "주요 메뉴" }));
+    expect(nav.queryByRole("link", { name: "기기" })).toBeNull();
+    expect(nav.getByRole("link", { name: /승인 대기/ })).toBeInTheDocument();
   });
 });

@@ -23,6 +23,7 @@ import { paths } from "./routes";
  * - `devices`: 기기 목록과 관리 (11.1절)
  * - `display`: TV 편성과 상태 보고 (8, 9절). 사용자 세션이 아니라 기기 토큰을 쓴다
  * - `stats`: 노출 통계 (`GET /signage/stats/impressions`)
+ * - `users`: 사용자 역할 관리 (`/signage/users`)
  */
 export const API_UNITS = [
   "upload",
@@ -32,6 +33,7 @@ export const API_UNITS = [
   "devices",
   "display",
   "stats",
+  "users",
 ] as const;
 export type ApiUnit = (typeof API_UNITS)[number];
 

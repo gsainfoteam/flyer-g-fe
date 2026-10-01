@@ -1,5 +1,6 @@
 import type { SubmissionListParams } from "@/entities/submission/model/types";
 import type { ImpressionStatsParams } from "@/entities/impression/model/types";
+import type { UserListParams } from "@/entities/user/model/types";
 import type { PendingReviewParams } from "./repositories";
 
 /**
@@ -41,6 +42,14 @@ export const queryKeys = {
     all: () => ["stats"] as const,
     impressions: (params: ImpressionStatsParams) =>
       ["stats", "impressions", params] as const,
+  },
+  users: {
+    all: () => ["users"] as const,
+    /** 한 역할을 받은 사람 전부 (여러 페이지를 이어 받은 결과) */
+    holders: (role: UserListParams["role"]) =>
+      ["users", "holders", role] as const,
+    infinite: (params: Omit<UserListParams, "cursor">) =>
+      ["users", "infinite", params] as const,
   },
   reference: {
     all: () => ["reference"] as const,

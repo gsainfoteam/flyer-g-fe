@@ -58,6 +58,9 @@ const reviewDetailPage = lazyPage(() =>
 const devicesPage = lazyPage(() =>
   import("@/pages/DevicesPage").then((m) => ({ default: m.DevicesPage })),
 );
+const usersPage = lazyPage(() =>
+  import("@/pages/UsersPage").then((m) => ({ default: m.UsersPage })),
+);
 const studioPage = lazyPage(() =>
   import("@/pages/StudioPage").then((m) => ({ default: m.StudioPage })),
 );
@@ -143,7 +146,7 @@ export const routeTree = [
                   },
                 ],
               },
-              // 기기 관리는 운영자만 볼 수 있다.
+              // 기기 관리와 사용자 권한은 운영자만 볼 수 있다.
               {
                 element: <RequireRole allow={["SUPER_ADMIN"]} />,
                 children: [
@@ -151,6 +154,11 @@ export const routeTree = [
                     path: paths.displays,
                     handle: title("기기 관리"),
                     element: devicesPage,
+                  },
+                  {
+                    path: paths.users,
+                    handle: title("사용자 권한"),
+                    element: usersPage,
                   },
                 ],
               },

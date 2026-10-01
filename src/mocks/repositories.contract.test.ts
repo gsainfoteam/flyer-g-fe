@@ -869,3 +869,131 @@ describe("위치 그룹 관리", () => {
     );
   });
 });
+
+describe("사용자 역할 관리", () => {
+  const OTHER_OPERATOR = "user-operator-2";
+
+  it("시스템 운영자만 쓸 수 있다", async () => {
+    const { repos, signInAs } = setup(MOCK_USERS.REVIEWER);
+
+    expect(await statusOf(repos.users.list({}))).toBe(403);
+    expect(
+      await statusOf(repos.users.grantRole("user-student-1", "REVIEWER")),
+    ).toBe(403);
+
+    signInAs(null);
+    expect(await statusOf(repos.users.list({}))).toBe(401);
+  });
+
+  it("이름·이메일·학번 부분 일치로 찾고 이름순으로 준다", async () => {
+    const { repos } = setup(MOCK_USERS.SUPER_ADMIN);
+
+    const byName = await repos.users.list({ q: " 김지스트 " });
+    expect(byName.items.map((user) => user.email)).toEqual([
+      "gist.kim@gm.gist.ac.kr",
+      "jiseu.kim@gm.gist.ac.kr",
+    ]);
+    expect(
+      (await repos.users.list({ q: "SUHYUN" })).items.map((user) => user.id),
+    ).toEqual([MOCK_USERS.REVIEWER.id]);
+    expect((await repos.users.list({ q: "20245001" })).totalCount).toBe(1);
+
+    const all = await repos.users.list({ limit: 100 });
+    const names = all.items.map((user) => user.name);
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, "ko")));
+  });
+
+  it("받은 역할 그대로 거른다", async () => {
+    const { repos } = setup(MOCK_USERS.SUPER_ADMIN);
+
+    const reviewers = await repos.users.list({ role: "REVIEWER" });
+    const operators = await repos.users.list({ role: "SUPER_ADMIN" });
+
+    // 운영자만 가진 사람은 REVIEWER로 거르면 빠진다.
+    expect(reviewers.items.map((user) => user.id)).not.toContain(
+      MOCK_USERS.SUPER_ADMIN.id,
+    );
+    expect(reviewers.items.map((user) => user.id)).toContain(OTHER_OPERATOR);
+    expect(operators.items.map((user) => user.id).sort()).toEqual(
+      [MOCK_USERS.SUPER_ADMIN.id, OTHER_OPERATOR].sort(),
+    );
+  });
+
+  it("cursor로 이어 받는다", async () => {
+    const { repos } = setup(MOCK_USERS.SUPER_ADMIN);
+
+    const first = await repos.users.list({ limit: 10 });
+    const second = await repos.users.list({
+      limit: 10,
+      cursor: first.nextCursor,
+    });
+
+    expect(first.items).toHaveLength(10);
+    expect(second.items[0]!.id).not.toBe(first.items[0]!.id);
+    expect(first.totalCount).toBe(second.totalCount);
+  });
+
+  it("잘못된 검색어·limit·cursor를 서버처럼 거절한다", async () => {
+    const { repos } = setup(MOCK_USERS.SUPER_ADMIN);
+
+    const long = await errorOf(repos.users.list({ q: "가".repeat(101) }));
+    expect(long).toMatchObject({ status: 422, code: "VALIDATION_FAILED" });
+    expect(long?.fields?.q).toBeTruthy();
+
+    const limit = await errorOf(repos.users.list({ limit: 0 }));
+    expect(limit?.fields?.limit).toBeTruthy();
+
+    const cursor = await errorOf(repos.users.list({ cursor: "abc" }));
+    expect(cursor).toMatchObject({ status: 400, code: "INVALID_REQUEST" });
+  });
+
+  it("부여·회수는 같은 요청을 다시 보내도 결과가 같다", async () => {
+    const { repos } = setup(MOCK_USERS.SUPER_ADMIN);
+
+    const once = await repos.users.grantRole("user-student-1", "REVIEWER");
+    const twice = await repos.users.grantRole("user-student-1", "REVIEWER");
+    expect(once.grantedRoles).toEqual(["REVIEWER"]);
+    expect(twice.grantedRoles).toEqual(["REVIEWER"]);
+
+    await repos.users.revokeRole("user-student-1", "REVIEWER");
+    await repos.users.revokeRole("user-student-1", "REVIEWER");
+    const [after] = (await repos.users.list({ q: "minseo.kang" })).items;
+    expect(after!.grantedRoles).toEqual([]);
+  });
+
+  it("본인 역할은 회수할 수 없다", async () => {
+    const { repos } = setup(MOCK_USERS.SUPER_ADMIN);
+
+    const error = await errorOf(
+      repos.users.revokeRole(MOCK_USERS.SUPER_ADMIN.id, "SUPER_ADMIN"),
+    );
+
+    expect(error).toMatchObject({ status: 403, code: "FORBIDDEN" });
+  });
+
+  it("마지막 운영자는 회수할 수 없다", async () => {
+    // 목록에 없는 운영자로 들어와야 본인 회수 규칙을 피해 마지막 한 명에 닿는다.
+    const { repos } = setup({ ...MOCK_USERS.SUPER_ADMIN, id: "user-outsider" });
+
+    await repos.users.revokeRole(OTHER_OPERATOR, "SUPER_ADMIN");
+    const error = await errorOf(
+      repos.users.revokeRole(MOCK_USERS.SUPER_ADMIN.id, "SUPER_ADMIN"),
+    );
+
+    expect(error).toMatchObject({ status: 409, code: "CONFLICT" });
+  });
+
+  it("없는 사용자는 404, 부여할 수 없는 역할은 422다", async () => {
+    const { repos } = setup(MOCK_USERS.SUPER_ADMIN);
+
+    expect(await statusOf(repos.users.grantRole("nope", "REVIEWER"))).toBe(404);
+    const role = await errorOf(
+      repos.users.grantRole(
+        "user-student-1",
+        "SUBMITTER" as unknown as "REVIEWER",
+      ),
+    );
+    expect(role).toMatchObject({ status: 422 });
+    expect(role?.fields?.role).toBeTruthy();
+  });
+});

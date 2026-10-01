@@ -96,6 +96,7 @@ describe("역할 기반 접근", () => {
     expect(nav).toHaveTextContent("내 신청");
     expect(nav).not.toHaveTextContent("승인 대기");
     expect(nav).not.toHaveTextContent("기기");
+    expect(nav).not.toHaveTextContent("권한");
   });
 });
 

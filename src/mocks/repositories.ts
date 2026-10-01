@@ -45,6 +45,8 @@ import type {
 } from "@/entities/review/model/types";
 import { toPlaylist } from "@/entities/playlist";
 import type { Playlist } from "@/entities/playlist/model/types";
+import { USER_QUERY_MAX_LENGTH, isGrantableRole } from "@/entities/user";
+import type { AdminUser, GrantableRole } from "@/entities/user";
 import { hasAnyRole } from "@/features/auth/model/types";
 import type { SessionUser } from "@/features/auth/model/types";
 import { getMockAssetUrl } from "@/features/media-upload/api/fake-upload-service";
@@ -61,6 +63,7 @@ import type {
   ReviewRepository,
   StatsRepository,
   SubmissionRepository,
+  UserRepository,
   SubmissionVersionInput,
   SuspendInput,
   UpdateSubmissionInput,
@@ -91,7 +94,8 @@ import {
   SIGNAGE_CONFIG_FIXTURE,
   categoryNameOf,
 } from "./reference";
-import { MOCK_USERS } from "./users";
+import { MOCK_ACCOUNTS, MOCK_USERS } from "./users";
+import type { MockAccountSeed } from "./users";
 
 /**
  * 개발·테스트용 in-memory 구현. 실제 서버 대신 같은 repository 인터페이스를 만족한다.
@@ -360,6 +364,10 @@ export function createMockRepositories(
   let deviceSeeds: DeviceSeed[] = [...DEVICE_FIXTURES];
   let groupSeeds: TargetGroupSeed[] = [...TARGET_GROUP_FIXTURES];
   let createdGroupCount = 0;
+  let accountSeeds: MockAccountSeed[] = MOCK_ACCOUNTS.map((seed) => ({
+    ...seed,
+    grantedRoles: [...seed.grantedRoles],
+  }));
   const config = SIGNAGE_CONFIG_FIXTURE;
 
   const settle = async (signal?: AbortSignal): Promise<void> => {
@@ -1404,6 +1412,130 @@ export function createMockRepositories(
     },
   };
 
+  /**
+   * 역할 관리. 서버(`flyer-g-be` `user-roles.service.ts`) 규칙을 따른다: 이름순, 받은
+   * 역할 그대로 거르기, 같은 요청 반복 허용, 본인 회수 403, 마지막 운영자 회수 409.
+   *
+   * mock 세션은 역할마다 고정이라, 여기서 역할을 바꿔도 그 사람의 mock 세션은 그대로다.
+   */
+  const toAdminUser = (seed: MockAccountSeed): AdminUser => ({
+    id: seed.id,
+    name: seed.name,
+    email: seed.email,
+    studentId: seed.studentId,
+    // 서버는 역할 이름순으로 준다.
+    grantedRoles: [...seed.grantedRoles].sort(),
+    lastLoginAt: new Date(
+      startedAt.getTime() - seed.lastLoginDaysAgo * 24 * HOUR_MS,
+    ),
+    createdAt: new Date(
+      startedAt.getTime() - seed.joinedDaysAgo * 24 * HOUR_MS,
+    ),
+  });
+
+  const findAccount = (id: string): MockAccountSeed => {
+    const found = accountSeeds.find((seed) => seed.id === id);
+    if (!found) throw httpError(404, "User not found");
+    return found;
+  };
+
+  const checkRole = (role: unknown): GrantableRole => {
+    if (!isGrantableRole(role)) {
+      throw invalid("입력값 검증에 실패했습니다.", {
+        role: "부여할 수 없는 역할입니다.",
+      });
+    }
+    return role;
+  };
+
+  const setRoles = (id: string, grantedRoles: GrantableRole[]) => {
+    accountSeeds = accountSeeds.map((seed) =>
+      seed.id === id ? { ...seed, grantedRoles } : seed,
+    );
+  };
+
+  const users: UserRepository = {
+    async list(params, signal) {
+      await settle(signal);
+      requireSuperAdmin();
+      const q = params.q?.trim().toLowerCase() ?? "";
+      const errors: Record<string, string> = {};
+      if (q.length > USER_QUERY_MAX_LENGTH) {
+        errors.q = `검색어는 ${USER_QUERY_MAX_LENGTH}자 이하여야 합니다.`;
+      }
+      if (params.role !== undefined && !isGrantableRole(params.role)) {
+        errors.role = "알 수 없는 역할입니다.";
+      }
+      const limit = params.limit ?? 20;
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+        errors.limit = "limit은 1~100이어야 합니다.";
+      }
+      throwIfInvalid(errors);
+      const offset = params.cursor ? Number(params.cursor) : 0;
+      if (!Number.isInteger(offset) || offset < 0) {
+        throw httpError(400, "잘못된 cursor입니다.", {
+          cursor: "잘못된 cursor입니다.",
+        });
+      }
+
+      const matched = accountSeeds
+        .filter(
+          (seed) =>
+            !q ||
+            seed.name.toLowerCase().includes(q) ||
+            seed.email.toLowerCase().includes(q) ||
+            (seed.studentId?.includes(q) ?? false),
+        )
+        .filter(
+          (seed) => !params.role || seed.grantedRoles.includes(params.role),
+        )
+        .sort((a, b) =>
+          a.name === b.name
+            ? a.id.localeCompare(b.id)
+            : a.name.localeCompare(b.name, "ko"),
+        );
+      const next = offset + limit;
+      return {
+        items: matched.slice(offset, next).map(toAdminUser),
+        nextCursor: next < matched.length ? String(next) : null,
+        totalCount: matched.length,
+        serverTime: clock.now(),
+      };
+    },
+
+    async grantRole(userId, role, signal) {
+      await settle(signal);
+      requireSuperAdmin();
+      checkRole(role);
+      const seed = findAccount(userId);
+      if (!seed.grantedRoles.includes(role)) {
+        setRoles(userId, [...seed.grantedRoles, role]);
+      }
+      return toAdminUser(findAccount(userId));
+    },
+
+    async revokeRole(userId, role, signal) {
+      await settle(signal);
+      const admin = requireSuperAdmin();
+      checkRole(role);
+      if (userId === admin.id) {
+        throw forbidden("Cannot revoke your own role");
+      }
+      const seed = findAccount(userId);
+      const remaining = seed.grantedRoles.filter((held) => held !== role);
+      if (
+        role === "SUPER_ADMIN" &&
+        !accountSeeds.some(
+          (other) =>
+            other.id !== userId && other.grantedRoles.includes("SUPER_ADMIN"),
+        )
+      ) {
+        throw conflict("Cannot revoke the last super admin");
+      }
+      setRoles(userId, remaining);
+    },
+  };
+
   // 개발 중 오류·지연을 화면에서 재현할 수 있게 주입 검사를 끼운다.
   return {
     submissions: withInjection("submissions", submissions),
@@ -1412,5 +1544,6 @@ export function createMockRepositories(
     devices: withInjection("devices", devices),
     reference: withInjection("reference", reference),
     stats: withInjection("stats", stats),
+    users: withInjection("users", users),
   };
 }

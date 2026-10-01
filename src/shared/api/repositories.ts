@@ -23,6 +23,11 @@ import type {
   SubmissionEvent,
 } from "@/entities/review/model/types";
 import type {
+  AdminUser,
+  GrantableRole,
+  UserListParams,
+} from "@/entities/user/model/types";
+import type {
   Page,
   SignageSubmissionExpanded,
   SubmissionListParams,
@@ -245,6 +250,32 @@ export interface StatsRepository {
   ): Promise<ImpressionStats>;
 }
 
+/**
+ * 사용자 역할 관리. 모두 SUPER_ADMIN만. (gsainfoteam/flyer-g-be#17)
+ *
+ * 부여·회수는 같은 요청을 다시 보내도 결과가 같다. Idempotency-Key가 필요 없다.
+ * 대상의 권한은 다음 요청부터 바로 바뀌고, 대상 화면의 메뉴는 그 사람이 세션을 다시
+ * 불러와야 바뀐다.
+ */
+export interface UserRepository {
+  /** 이름순. 한 번도 로그인하지 않은 사람은 없다. */
+  list(params: UserListParams, signal?: AbortSignal): Promise<Page<AdminUser>>;
+  /** 역할 부여. 부여한 뒤의 사용자를 돌려준다. 이미 가졌어도 성공이다. */
+  grantRole(
+    userId: string,
+    role: GrantableRole,
+    signal?: AbortSignal,
+  ): Promise<AdminUser>;
+  /**
+   * 역할 회수. 없는 역할이어도 성공이다. 본인 역할은 403, 마지막 운영자는 409다.
+   */
+  revokeRole(
+    userId: string,
+    role: GrantableRole,
+    signal?: AbortSignal,
+  ): Promise<void>;
+}
+
 export interface Repositories {
   submissions: SubmissionRepository;
   reviews: ReviewRepository;
@@ -252,4 +283,5 @@ export interface Repositories {
   devices: DeviceRepository;
   reference: ReferenceRepository;
   stats: StatsRepository;
+  users: UserRepository;
 }

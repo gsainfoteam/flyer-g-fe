@@ -418,6 +418,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/signage/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 사용자 목록 (역할 관리)
+         * @description 이름순. 역할을 줄 사람을 찾을 때 쓴다.
+         *     사용자는 첫 로그인 때 만들어지므로, 한 번도 로그인하지 않은 사람은 목록에 없고 역할도 줄 수 없다.
+         */
+        get: operations["UsersController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/signage/users/{id}/roles/{role}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * 역할 부여
+         * @description 이미 가진 역할이면 아무것도 바꾸지 않는다(감사 로그도 없음). 새로 부여하면 감사 로그 USER_ROLE_GRANTED.
+         *     대상의 다음 요청부터 바로 적용된다. 대상 화면의 메뉴는 세션(GET /auth/session)을 다시 불러와야 바뀐다.
+         *     SUPER_ADMIN도 부여할 수 있다.
+         */
+        put: operations["UsersController_grant"];
+        post?: never;
+        /**
+         * 역할 회수
+         * @description 없는 역할이면 아무것도 바꾸지 않는다(감사 로그도 없음). 회수하면 감사 로그 USER_ROLE_REVOKED.
+         *     대상의 다음 요청부터 바로 권한이 없어진다.
+         *
+         *     **본인의 역할은 회수할 수 없다(403).** 다른 SUPER_ADMIN이 회수해야 한다.
+         *     그래서 SUPER_ADMIN이 한 명도 남지 않는 일은 없다. 두 관리자가 동시에 서로를 회수하면 먼저 처리된 쪽만 성공하고,
+         *     다른 쪽은 이미 SUPER_ADMIN이 아니어서 403이다.
+         */
+        delete: operations["UsersController_revoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/signage/reviews": {
         parameters: {
             query?: never;
@@ -1436,7 +1488,7 @@ export interface components {
              * @example SUBMISSION
              * @enum {string}
              */
-            targetType: "SUBMISSION" | "DEVICE" | "GROUP";
+            targetType: "SUBMISSION" | "DEVICE" | "GROUP" | "USER";
             /** @example 8d2f4a1e-3c5b-4e21-9a0c-1d8e5f6b2c34 */
             targetId: string;
             /**
@@ -1461,6 +1513,39 @@ export interface components {
              * @example req_Xk3p7QaZ1bN9vT2c
              */
             requestId: string | null;
+        };
+        AdminUserDto: {
+            /** @example 6f1c2c1e-0000-4000-8000-000000000002 */
+            id: string;
+            /**
+             * @description IdP 이름
+             * @example 김지스트
+             */
+            name: string;
+            /**
+             * @description IdP 이메일
+             * @example gist@gm.gist.ac.kr
+             */
+            email: string;
+            /**
+             * @description 학번. IdP가 주지 않았으면 null
+             * @example 20245001
+             */
+            studentId: string | null;
+            /**
+             * @description 따로 부여된 역할. 로그인한 모두가 가지는 SUBMITTER는 넣지 않는다. SUPER_ADMIN은 REVIEWER 권한도 가진 것으로 본다
+             * @example [
+             *       "REVIEWER"
+             *     ]
+             */
+            grantedRoles: ("REVIEWER" | "SUPER_ADMIN")[];
+            /** @example 2026-09-30T08:00:00.000Z */
+            lastLoginAt: string;
+            /**
+             * @description 첫 로그인 시각
+             * @example 2026-03-02T01:00:00.000Z
+             */
+            createdAt: string;
         };
         ApproveSubmissionDto: {
             /**
@@ -3051,8 +3136,8 @@ export interface operations {
     AuditLogsController_list: {
         parameters: {
             query?: {
-                /** @description 대상 종류. 검토자가 아니면 SUBMISSION과 본인 신청의 targetId를 함께 보내야 한다 */
-                targetType?: "SUBMISSION" | "DEVICE" | "GROUP";
+                /** @description 대상 종류. 검토자가 아니면 SUBMISSION을 보내야 한다 (targetId를 비우면 본인 신청 전체). USER는 SUPER_ADMIN만 */
+                targetType?: "SUBMISSION" | "DEVICE" | "GROUP" | "USER";
                 /** @description 대상 ID (신청 ID, 기기 ID, 그룹 ID) */
                 targetId?: string;
                 /** @description 행위 필터 */
@@ -3097,6 +3182,192 @@ export interface operations {
                 };
             };
             /** @description 알 수 없는 대상 종류·행위 형식, 잘못된 limit */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    UsersController_list: {
+        parameters: {
+            query?: {
+                /** @description 이름·이메일·학번에 포함된 문자열 (대소문자 무시, 최대 100자). %와 _도 글자 그대로 찾는다 */
+                q?: string;
+                /** @description 이 역할을 부여받은 사용자만. 부여된 역할 그대로 거른다(REVIEWER로 거르면 REVIEWER 없이 SUPER_ADMIN만 가진 사용자는 빠진다) */
+                role?: "REVIEWER" | "SUPER_ADMIN";
+                /** @description 이전 응답의 nextCursor. 첫 페이지는 비운다 */
+                cursor?: string;
+                /** @description 한 페이지 항목 수 */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageEnvelopeDto"] & {
+                        items: components["schemas"]["AdminUserDto"][];
+                    };
+                };
+            };
+            /** @description 로그인 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description SUPER_ADMIN만 쓸 수 있다 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description 검색어가 너무 김, 알 수 없는 역할, 잘못된 limit */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    UsersController_grant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 사용자 ID */
+                id: string;
+                /** @description 역할. SUBMITTER는 모두가 가지므로 부여·회수할 수 없다 */
+                role: "REVIEWER" | "SUPER_ADMIN";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 부여 후의 사용자 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUserDto"];
+                };
+            };
+            /** @description 로그인 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description SUPER_ADMIN만 쓸 수 있다 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description 없는 사용자 (로그인한 적 없는 사람 포함) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description REVIEWER·SUPER_ADMIN이 아닌 역할 (fields.role) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+        };
+    };
+    UsersController_revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 사용자 ID */
+                id: string;
+                /** @description 역할. SUBMITTER는 모두가 가지므로 부여·회수할 수 없다 */
+                role: "REVIEWER" | "SUPER_ADMIN";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 회수됨 (원래 없던 역할이어도 204) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 로그인 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description SUPER_ADMIN이 아님(처리 도중 다른 관리자에게 회수된 경우 포함), 또는 본인의 역할을 회수하려 함 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description 없는 사용자 (로그인한 적 없는 사람 포함) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description 마지막 SUPER_ADMIN을 회수하려 함 (code CONFLICT). 위 규칙상 일어나지 않지만 안전장치로 막는다 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponseDto"];
+                };
+            };
+            /** @description REVIEWER·SUPER_ADMIN이 아닌 역할 (fields.role) */
             422: {
                 headers: {
                     [name: string]: unknown;
