@@ -51,7 +51,7 @@ export function DeviceSetupLinkDialog({
         if (!open) onClose();
       }}
     >
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {result?.reason === "rotated"
@@ -80,7 +80,7 @@ export function DeviceSetupLinkDialog({
         />
 
         <DialogFooter>
-          <Button variant="outline" asChild>
+          <Button variant="outline" className="sm:mr-auto" asChild>
             <a href={link} target="_blank" rel="noreferrer noopener">
               <ExternalLink aria-hidden="true" />이 브라우저에서 열기
             </a>
