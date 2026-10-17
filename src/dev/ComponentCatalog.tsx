@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { SUBMISSION_STATUSES } from "@/entities/submission";
 import { MockControlPanel } from "./MockControlPanel";
+import { TvRotationDemo } from "./TvRotationDemo";
 import { ApiError } from "@/shared/api/error";
 import { ConfirmActionDialog, EmptyState, ErrorState, FormField, LoadingState, Panel, SectionHeader } from "@/shared/components";
 import { StatusBadge } from "@/entities/submission/ui/StatusBadge";
@@ -168,6 +169,13 @@ export default function ComponentCatalog() {
         />
 
         <MockControlPanel />
+
+        <Section
+          title="TV 화면 전환"
+          description="비율이 섞인 예시 게시물 31건. 5초마다 넘긴다."
+        >
+          <TvRotationDemo />
+        </Section>
 
         <Section title="디자인 토큰" description="색, 타이포, 모서리, 그림자">
           <TokenSwatches />

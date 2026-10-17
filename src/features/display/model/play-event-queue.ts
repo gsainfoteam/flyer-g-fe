@@ -11,7 +11,7 @@ import type { DeviceTelemetryAdapter, PlayEvent } from "@/features/display/api/t
  * 상한이 있다. 몇 주 오프라인이던 기기가 저장 공간을 이벤트로 채우면 정작
  * 미디어 캐시가 밀려난다. 오래된 것부터 버린다.
  *
- * 저장소 읽기·쓰기는 한 번에 하나씩 한다. 4분할은 이벤트 4건이 동시에 들어오고,
+ * 저장소 읽기·쓰기는 한 번에 하나씩 한다. 벽은 이벤트 여러 건이 동시에 들어오고,
  * 전송 중에도 새 이벤트가 쌓인다. 각자 읽고 덮어쓰면 마지막 쓰기만 남는다.
  */
 const QUEUE_KEY = "play-events:queue";

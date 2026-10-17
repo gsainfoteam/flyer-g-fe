@@ -53,7 +53,8 @@ describe("createHttpDeviceRepository", () => {
       lastSeenAt: null,
       appVersion: null,
       status: "OFFLINE",
-      layout: { type: "FOUR_GRID", rotationSeconds: 10 },
+      // 백엔드가 아직 보내는 예전 값은 지금 값으로 바꿔 받는다.
+      layout: { type: "WALL", rotationSeconds: 10 },
       refreshAfterSeconds: 60,
       lastPlaylistVersion: null,
       lastRenderOkAt: null,
@@ -68,17 +69,18 @@ describe("createHttpDeviceRepository", () => {
       location: null,
       groupIds: ["grp_a"],
       orientation: "LANDSCAPE" as const,
-      layout: "FOUR_GRID" as const,
+      layout: "WALL" as const,
       rotationSeconds: 10,
       refreshAfterSeconds: 60,
     };
 
     const result = await repository.create(input);
 
+    // 백엔드가 WALL·STRIP을 받기 전까지 예전 값으로 보낸다.
     expect(calls[0]).toMatchObject({
       method: "POST",
       path: "/signage/devices",
-      body: input,
+      body: { ...input, layout: "FOUR_GRID" },
     });
     expect(result.token).toBe("fgd_new");
     expect(result.device.id).toBe("dev_01");

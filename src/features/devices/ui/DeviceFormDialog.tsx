@@ -8,6 +8,10 @@ import type {
   TargetGroup,
 } from "@/entities/device/model/types";
 import { LAYOUT_TYPES } from "@/entities/playlist/model/types";
+import {
+  LAYOUT_DESCRIPTIONS,
+  LAYOUT_LABELS,
+} from "@/entities/playlist/model/rotation";
 import { isApiError, toUserMessage } from "@/shared/api/error";
 import { queryKeys } from "@/shared/api/query-keys";
 import { ConfirmActionDialog, FormField } from "@/shared/components";
@@ -20,7 +24,6 @@ import {
   SelectValue,
 } from "@/shared/ui/select";
 import {
-  LAYOUT_LABELS,
   UNAVAILABLE_GROUP_MESSAGE,
   createEmptyDeviceDraft,
   draftFromDevice,
@@ -217,7 +220,10 @@ export function DeviceFormDialog({
           )}
         </fieldset>
 
-        <FormField label="레이아웃">
+        <FormField
+          label="화면 전환"
+          description={LAYOUT_DESCRIPTIONS[draft.layout]}
+        >
           {(control) => (
             <Select
               value={draft.layout}

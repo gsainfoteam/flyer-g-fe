@@ -5,6 +5,7 @@ import type {
   TargetGroup,
   UpdateDeviceInput,
 } from "@/entities/device/model/types";
+import { DEFAULT_LAYOUT_TYPE } from "@/entities/playlist/model/types";
 import type { LayoutType } from "@/entities/playlist/model/types";
 
 /**
@@ -27,18 +28,13 @@ export type DeviceFieldName =
 
 export type DeviceFieldErrors = Partial<Record<DeviceFieldName, string>>;
 
-export const LAYOUT_LABELS: Record<LayoutType, string> = {
-  SINGLE: "한 장씩",
-  FOUR_GRID: "네 장씩",
-};
-
-/** 서버 기본값과 같다(`flyer-g-be` 기기 등록 기본값: 네 장씩, 10초, 60초). */
+/** 서버 기본값과 같다(`flyer-g-be` 기기 등록 기본값: 네 장씩 → 모아 보기, 10초, 60초). */
 export function createEmptyDeviceDraft(): DeviceDraft {
   return {
     name: "",
     location: "",
     groupIds: [],
-    layout: "FOUR_GRID",
+    layout: DEFAULT_LAYOUT_TYPE,
     rotationSeconds: String(DEVICE_LIMITS.rotationSeconds.fallback),
     refreshAfterSeconds: String(DEVICE_LIMITS.refreshAfterSeconds.fallback),
     isActive: true,

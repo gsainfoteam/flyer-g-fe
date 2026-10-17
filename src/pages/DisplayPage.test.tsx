@@ -1,7 +1,7 @@
 import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { toIsoUtc } from "@/shared/lib/datetime";
-import type { Playlist } from "@/entities/playlist/model/types";
+import type { LayoutType, Playlist } from "@/entities/playlist/model/types";
 import { toPlaylist } from "@/entities/playlist";
 import { createMockRepositories } from "@/mocks/repositories";
 import type { Repositories } from "@/shared/api/repositories";
@@ -18,10 +18,11 @@ function playlistWith(
   items: {
     id: string;
     title: string;
-    layout?: "SINGLE" | "FOUR_GRID";
+    layout?: LayoutType;
   }[],
 ): Playlist {
-  const layout = items[0]?.layout ?? "SINGLE";
+  // 한 건씩 가운데에 오는 흐르는 띠로 돌려 제목(heading)을 하나씩 확인한다.
+  const layout = items[0]?.layout ?? "STRIP";
   return toPlaylist({
     serverTime: toIsoUtc(TEST_NOW),
     playlistVersion: "test:1",
@@ -38,6 +39,10 @@ function playlistWith(
       endsAt: toIsoUtc(new Date(TEST_NOW.getTime() + 1000 * 60 * 60 * 24)),
       priority: 0,
       checksum: `sha:${id}`,
+      kind: "IMAGE",
+      width: 1080,
+      height: 1440,
+      durationMs: null,
       subtitle: null,
       location: null,
       organizerName: "가상 조직",
@@ -95,7 +100,7 @@ describe("TV 플레이어", () => {
     ).toBeInTheDocument();
 
     // 다음 버튼으로 수동 순환한다.
-    fireEvent.click(screen.getByRole("button", { name: "다음 페이지" }));
+    fireEvent.click(screen.getByRole("button", { name: "다음 화면" }));
     expect(
       await screen.findByRole("heading", { name: "둘째 포스터" }),
     ).toBeInTheDocument();
@@ -110,8 +115,9 @@ describe("TV 플레이어", () => {
     );
     renderRoute("/display/device-preview", { repositories });
 
-    const image = await screen.findByAltText("깨진 포스터 포스터");
-    fireEvent.error(image);
+    // 띠는 양옆에도 같은 이미지를 그린다. 어느 칸에서 실패해도 항목을 뺀다.
+    const [image] = await screen.findAllByAltText("깨진 포스터 포스터");
+    fireEvent.error(image!);
 
     // 깨진 항목이 목록에서 빠지고 다음 항목이 나온다.
     expect(
@@ -134,14 +140,16 @@ describe("TV 플레이어", () => {
       .mockResolvedValue(next);
     renderRoute("/display/device-preview?preview=1", { repositories });
 
-    fireEvent.error(await screen.findByAltText("잠깐 실패한 포스터 포스터"));
+    const [flaky] = await screen.findAllByAltText("잠깐 실패한 포스터 포스터");
+    fireEvent.error(flaky!);
     await screen.findByRole("heading", { name: "정상 포스터" });
-    expect(screen.getByText("1 / 1")).toBeInTheDocument();
+    // 미리보기 컨트롤과 띠의 머리 줄이 같은 순서를 센다.
+    expect(screen.getAllByText("1 / 1")).not.toHaveLength(0);
 
     // 화면이 다시 보이면 편성을 새로 받는다. 버전이 바뀌었으니 다시 시도한다.
     fireEvent(window, new Event("visibilitychange"));
 
-    expect(await screen.findByText(/\/ 2$/)).toBeInTheDocument();
+    expect(await screen.findAllByText(/\/ 2$/)).not.toHaveLength(0);
   });
 
   it("만료된 항목은 서버가 보냈어도 방어적으로 거른다", async () => {

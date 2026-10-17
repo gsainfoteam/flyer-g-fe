@@ -99,7 +99,8 @@ describe("createHttpDisplayRepository", () => {
     expect(playlist).toMatchObject({
       deviceName: "A동 로비",
       playlistVersion: "a1b2c3d4e5f60718",
-      layout: { type: "FOUR_GRID", rotationSeconds: 10 },
+      // 백엔드가 아직 보내는 예전 값은 지금 값으로 바꿔 받는다.
+      layout: { type: "WALL", rotationSeconds: 10 },
     });
     expect(playlist.items[0]).toMatchObject({
       detailUrl: null,

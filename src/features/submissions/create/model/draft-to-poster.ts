@@ -31,6 +31,8 @@ export interface DraftPreviewInput {
   categories: readonly Category[];
   /** 업로드 전 로컬 blob URL이어도 된다. 없으면 포스터 자리를 비운다. */
   posterUrl: string | null;
+  /** 포스터 원본 크기. 모르면 null이고 세로 포스터 비율로 그린다. */
+  posterSize: { width: number; height: number } | null;
   /** 날짜를 읽지 못했을 때 대신 쓸 시각. 모르면 null. */
   now: Date | null;
 }
@@ -40,6 +42,7 @@ export function draftToPosterRenderModel({
   submissionId,
   categories,
   posterUrl,
+  posterSize,
   now,
 }: DraftPreviewInput): PosterRenderModel {
   // TV는 게시 기간을 그리지 않는다. 날짜는 표시 모델을 채우는 데만 쓴다.
@@ -55,6 +58,8 @@ export function draftToPosterRenderModel({
     organizerName: optionalText(draft.organizerName),
     location: optionalText(draft.location),
     posterUrl: posterUrl ?? "",
+    width: posterSize?.width ?? 0,
+    height: posterSize?.height ?? 0,
     detailUrl: optionalText(draft.detailUrl),
     startAt,
     endAt,

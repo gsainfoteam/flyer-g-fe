@@ -12,6 +12,8 @@ function poster(id: string, posterUrl: string): PosterRenderModel {
     organizerName: "피아노 동아리",
     location: null,
     posterUrl,
+    width: 0,
+    height: 0,
     detailUrl: "https://ziggle.gistory.me/notice/1",
     startAt: new Date("2026-09-01T00:00:00+09:00"),
     endAt: new Date("2026-09-30T00:00:00+09:00"),

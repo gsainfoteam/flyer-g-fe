@@ -5,6 +5,7 @@ import type { HttpClient } from "@/shared/api/http-client";
 import {
   readArray,
   readIsoDate,
+  readNullableNumber,
   readNullableString,
   readNumber,
   readObject,
@@ -14,10 +15,12 @@ import type { DisplayRepository } from "@/shared/api/repositories";
 import type { DeviceCredentials } from "@/shared/lib/device-credential";
 import {
   clampRotationSeconds,
-  LAYOUT_TYPES,
+  CONTENT_KINDS,
+  DEFAULT_LAYOUT_TYPE,
   PREVIEW_DEVICE_ID,
+  readLayoutType,
 } from "../model/types";
-import type { LayoutType, Playlist, PlaylistItem } from "../model/types";
+import type { ContentKind, Playlist, PlaylistItem } from "../model/types";
 
 /**
  * TV 편성의 실제 구현 (`API-CHANGES-BACKEND.md` 8절).
@@ -51,7 +54,7 @@ interface DeviceState {
   receivedAt: number;
 }
 
-const PREVIEW_LAYOUT = { type: "SINGLE" as LayoutType, rotationSeconds: 10 };
+const PREVIEW_LAYOUT = { type: DEFAULT_LAYOUT_TYPE, rotationSeconds: 10 };
 
 function deviceNotRegistered(): ApiError {
   return new ApiError({
@@ -78,12 +81,13 @@ function asDeviceError(error: unknown): unknown {
 export function parsePlaylist(payload: unknown): Playlist {
   const body = readObject(payload);
   const layout = readObject(body.layout, "layout");
-  const type = readString(layout, "type", "layout.type");
-  if (!(LAYOUT_TYPES as readonly string[]).includes(type)) {
+  const rawType = readString(layout, "type", "layout.type");
+  const type = readLayoutType(rawType);
+  if (type === null) {
     throw new ApiError({
       kind: "parse",
       code: "INVALID_RESPONSE",
-      message: `알 수 없는 레이아웃: ${type}`,
+      message: `알 수 없는 레이아웃: ${rawType}`,
     });
   }
   return {
@@ -92,7 +96,7 @@ export function parsePlaylist(payload: unknown): Playlist {
     deviceName: readString(body, "deviceName"),
     refreshAfterSeconds: readNumber(body, "refreshAfterSeconds"),
     layout: {
-      type: type as LayoutType,
+      type,
       rotationSeconds: clampRotationSeconds(
         readNumber(layout, "rotationSeconds", "layout.rotationSeconds"),
       ),
@@ -112,6 +116,11 @@ export function parsePlaylist(payload: unknown): Playlist {
         endsAt: readIsoDate(item, "endsAt", at("endsAt")),
         priority: readNumber(item, "priority", at("priority")),
         checksum: readString(item, "checksum", at("checksum")),
+        // 크기·종류가 빠졌다고 재생을 멈추지 않는다. 모르면 세로 포스터로 보고 그린다.
+        kind: readContentKind(item, at("kind")),
+        width: readNullableNumber(item, "width", at("width")) ?? 0,
+        height: readNullableNumber(item, "height", at("height")) ?? 0,
+        durationMs: readNullableNumber(item, "durationMs", at("durationMs")),
         subtitle: readNullableString(item, "subtitle", at("subtitle")),
         location: readNullableString(item, "location", at("location")),
         organizerName: readNullableString(
@@ -122,6 +131,22 @@ export function parsePlaylist(payload: unknown): Playlist {
       };
     }),
   };
+}
+
+function readContentKind(
+  item: Record<string, unknown>,
+  path: string,
+): ContentKind {
+  const value = readNullableString(item, "kind", path);
+  if (value === null) return "IMAGE";
+  if (!(CONTENT_KINDS as readonly string[]).includes(value)) {
+    throw new ApiError({
+      kind: "parse",
+      code: "INVALID_RESPONSE",
+      message: `알 수 없는 콘텐츠 종류: ${value}`,
+    });
+  }
+  return value as ContentKind;
 }
 
 /** 게시 중 신청 → 편성 항목. 포스터는 미리보기 변형(1280px 안)을 쓴다. */
@@ -138,6 +163,10 @@ function toPreviewItem(submission: SignageSubmissionExpanded): PlaylistItem {
     priority: submission.priority,
     // asset은 내용이 바뀌지 않는다. 포스터를 바꾸면 새 asset이 된다.
     checksum: submission.assetId,
+    kind: "IMAGE",
+    width: submission.posterWidth,
+    height: submission.posterHeight,
+    durationMs: null,
     subtitle: submission.subtitle,
     location: submission.location,
     organizerName: submission.organizerName,

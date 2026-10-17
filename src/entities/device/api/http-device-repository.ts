@@ -11,7 +11,7 @@ import {
   readStringArray,
 } from "@/shared/api/parse";
 import type { DeviceRepository } from "@/shared/api/repositories";
-import { LAYOUT_TYPES } from "@/entities/playlist/model/types";
+import { readLayoutType } from "@/entities/playlist/model/types";
 import type { LayoutType } from "@/entities/playlist/model/types";
 import type { JsonObject } from "@/shared/api/parse";
 import { DEVICE_ORIENTATIONS, DEVICE_STATUSES } from "../model/types";
@@ -48,6 +48,24 @@ function readOneOf<T extends string>(
     throw invalidResponse(path, allowed.join(" | "));
   }
   return value as T;
+}
+
+/**
+ * 화면 전환 방식의 전송 값. 백엔드는 아직 예전 값(FOUR_GRID·SINGLE)만 받는다.
+ * 1:1로 대응하므로 보낼 때 바꾸고, 받을 때는 둘 다 읽는다(`readLayoutType`).
+ * 백엔드가 WALL·STRIP을 받으면 이 변환을 지운다.
+ * (`docs/API-FOLLOWUP-2026-10-17.md` 1절)
+ */
+const WIRE_LAYOUT = {
+  WALL: "FOUR_GRID",
+  STRIP: "SINGLE",
+} as const satisfies Record<LayoutType, string>;
+
+function toWireInput<T extends { layout?: LayoutType }>(
+  input: T,
+): Omit<T, "layout"> & { layout?: (typeof WIRE_LAYOUT)[LayoutType] } {
+  const { layout, ...rest } = input;
+  return layout === undefined ? rest : { ...rest, layout: WIRE_LAYOUT[layout] };
 }
 
 function readNullableDate(
@@ -90,9 +108,8 @@ export function parseDevice(payload: unknown, path = "기기"): DisplayDevice {
       at("status"),
     ),
     layout: {
-      type: readOneOf<LayoutType>(
+      type: readDeviceLayout(
         readString(layout, "type", at("layout.type")),
-        LAYOUT_TYPES,
         at("layout.type"),
       ),
       rotationSeconds: readNumber(
@@ -118,6 +135,12 @@ export function parseDevice(payload: unknown, path = "기기"): DisplayDevice {
     ),
     tokenIssuedAt: readNullableDate(body, "tokenIssuedAt", at("tokenIssuedAt")),
   };
+}
+
+function readDeviceLayout(value: string, path: string): LayoutType {
+  const type = readLayoutType(value);
+  if (type === null) throw invalidResponse(path, "WALL | STRIP");
+  return type;
 }
 
 /** 등록·재발급 응답. 기기 필드와 `token`이 한 객체에 온다. */
@@ -149,7 +172,7 @@ export function createHttpDeviceRepository(
         await client.request({
           method: "POST",
           path: "/signage/devices",
-          body: input satisfies ApiRequestBody<"CreateDeviceDto">,
+          body: toWireInput(input) satisfies ApiRequestBody<"CreateDeviceDto">,
           signal,
         }),
       );
@@ -160,7 +183,7 @@ export function createHttpDeviceRepository(
         await client.request({
           method: "PATCH",
           path: devicePath(id),
-          body: input satisfies ApiRequestBody<"UpdateDeviceDto">,
+          body: toWireInput(input) satisfies ApiRequestBody<"UpdateDeviceDto">,
           signal,
         }),
       );

@@ -10,6 +10,7 @@ import type {
 } from "@/entities/submission/model/types";
 import { toIsoUtc } from "@/shared/lib/datetime";
 import { ZIGGLE_ORIGIN } from "@/shared/lib/ziggle-url";
+import { DEMO_SAMPLES, demoPosterUrl } from "./demo-content";
 import { categoryNameOf } from "./reference";
 import { MOCK_ORGANIZATIONS, MOCK_USERS } from "./users";
 
@@ -81,6 +82,8 @@ interface SubmissionSeed {
   targetGroupIds?: string[];
   /** 한 번 반려된 뒤 고쳐서 다시 낸 신청. 검토 대기의 "고쳐서 다시 냄"을 확인한다. */
   resubmitted?: boolean;
+  /** 포스터 원본 크기. 없으면 `POSTER_SIZES`에서 찾는다. */
+  posterSize?: { width: number; height: number };
 }
 
 const SEEDS: readonly SubmissionSeed[] = [
@@ -316,7 +319,8 @@ const POSTER_SIZES: Record<string, { width: number; height: number }> = {
 const DEFAULT_POSTER_SIZE = { width: 1080, height: 1440 };
 
 function toDto(seed: SubmissionSeed, now: Date): SignageSubmissionExpandedDto {
-  const posterSize = POSTER_SIZES[seed.posterUrl] ?? DEFAULT_POSTER_SIZE;
+  const posterSize =
+    seed.posterSize ?? POSTER_SIZES[seed.posterUrl] ?? DEFAULT_POSTER_SIZE;
   const [startOffset, endOffset] = PERIOD_BY_STATUS[seed.status] ?? [7, 21];
   const created = days(now, startOffset - 7);
   const createdAt = toIsoUtc(created);
@@ -365,6 +369,35 @@ export function createSubmissionFixtures(
   now: Date,
 ): SignageSubmissionExpandedDto[] {
   return SEEDS.map((seed) => toDto(seed, now));
+}
+
+/**
+ * 개발 서버 전용 예시 게시물(`demo-content.ts`). 모두 게시 중이고 모든 위치에 걸린다.
+ * 로그인할 수 있는 사람의 신청이 아니어서 게시자 화면에는 나오지 않는다.
+ */
+export function createDemoSubmissionFixtures(
+  now: Date,
+): SignageSubmissionExpandedDto[] {
+  return DEMO_SAMPLES.map((sample) =>
+    toDto(
+      {
+        id: `demo-${sample.file}`,
+        noticeSlug: `demo-${sample.file}`,
+        requesterId: "user-demo",
+        requesterName: "예시 게시자",
+        organization: { id: "org-demo", name: "예시 단체" },
+        title: sample.title,
+        categoryId: sample.categoryId,
+        status: "PUBLISHED",
+        posterUrl: demoPosterUrl(sample.file),
+        posterSize: { width: sample.width, height: sample.height },
+        subtitle: null,
+        location: sample.location,
+        description: null,
+      },
+      now,
+    ),
+  );
 }
 
 const SUBMITTER_OF: Record<string, { actorId: string; actorName: string }> = {
@@ -487,8 +520,8 @@ export function createEventFixtures(now: Date): SubmissionEventDto[] {
 /**
  * 기기 목록. `lastSeenAt`은 mock repository가 heartbeat 기록으로 덮어쓴다.
  *
- * - A동 로비: 1분마다 heartbeat를 보내는 정상 기기로 흉내 낸다.
- * - B동 로비: 26분 전부터 연락이 끊긴 기기다.
+ * - A동 로비: 1분마다 heartbeat를 보내는 정상 기기로 흉내 낸다. 모아 보기로 돈다.
+ * - B동 로비: 26분 전부터 연락이 끊긴 기기다. 흐르는 띠로 돈다.
  */
 export interface DeviceSeed extends Omit<
   DisplayDeviceDto,
@@ -504,7 +537,7 @@ export interface DeviceSeed extends Omit<
 }
 
 const SEED_DEVICE_SETTINGS = {
-  layout: { type: "SINGLE", rotationSeconds: 10 },
+  layout: { type: "WALL", rotationSeconds: 10 },
   refreshAfterSeconds: 60,
   lastPlaylistVersion: null,
   lastRenderOkAt: null,
@@ -535,5 +568,6 @@ export const DEVICE_FIXTURES: readonly DeviceSeed[] = [
     silentSinceMs: 26 * MINUTE_MS,
     tokenIssuedAt: "2026-06-01T00:00:00.000Z",
     ...SEED_DEVICE_SETTINGS,
+    layout: { type: "STRIP", rotationSeconds: 10 },
   },
 ];

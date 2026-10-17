@@ -117,8 +117,8 @@ export function StudioPage() {
   const upload = usePosterUpload({ limits: uploadLimits });
   const createSubmission = useCreateSubmission();
 
-  // 4분할 미리보기의 나머지 칸을 채울 내 게시 중 포스터와, 판정 기준이 되는 서버 시각.
-  const published = useSubmissionViews({ status: "PUBLISHED", limit: 4 });
+  // 벽·띠 미리보기의 나머지 자리를 채울 게시 중 포스터와, 판정 기준이 되는 서버 시각.
+  const published = useSubmissionViews({ status: "PUBLISHED", limit: 7 });
   const serverNow = useServerNow(
     published.data?.serverTime,
     published.dataUpdatedAt,
@@ -217,6 +217,14 @@ export function StudioPage() {
     submissionId: editingSubmission?.id ?? null,
     categories: categories.data ?? [],
     posterUrl: upload.state.previewUrl ?? editingSubmission?.posterUrl ?? null,
+    posterSize: upload.state.previewUrl
+      ? upload.state.dimensions
+      : editingSubmission
+        ? {
+            width: editingSubmission.posterWidth,
+            height: editingSubmission.posterHeight,
+          }
+        : null,
     now: serverNow,
   });
 

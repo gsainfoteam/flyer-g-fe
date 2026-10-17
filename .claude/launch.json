@@ -10,7 +10,8 @@
       ],
       "env": {
         "VITE_USE_MOCK_API": "true",
-        "VITE_USE_MOCK_AUTH": "true"
+        "VITE_USE_MOCK_AUTH": "true",
+        "VITE_MOCK_DEMO_CONTENT": "true"
       },
       "port": 5173,
       "autoPort": true

@@ -12,6 +12,8 @@ function poster(id: string): PosterRenderModel {
     organizerName: "가상 조직",
     location: null,
     posterUrl: `/posters/${id}.webp`,
+    width: 0,
+    height: 0,
     detailUrl: `https://ziggle.gistory.me/notice/${id}`,
     startAt: new Date("2026-06-01T00:00:00Z"),
     endAt: new Date("2026-06-30T00:00:00Z"),
