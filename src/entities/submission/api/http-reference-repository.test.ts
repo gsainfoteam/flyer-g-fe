@@ -17,7 +17,6 @@ function fakeClient(responses: Record<string, unknown>) {
 
 const CONFIG = {
   maxUploadBytes: 10485760,
-  minShortEdgePx: 1080,
   titleMaxLength: 80,
   maxPublishMonths: 3,
   minLeadTimeHours: 24,

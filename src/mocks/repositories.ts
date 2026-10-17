@@ -49,7 +49,7 @@ import { USER_QUERY_MAX_LENGTH, isGrantableRole } from "@/entities/user";
 import type { AdminUser, GrantableRole } from "@/entities/user";
 import { hasAnyRole } from "@/features/auth/model/types";
 import type { SessionUser } from "@/features/auth/model/types";
-import { getMockAssetUrl } from "@/features/media-upload/api/fake-upload-service";
+import { getMockAsset } from "@/features/media-upload/api/fake-upload-service";
 import { ApiError, codeForStatus } from "@/shared/api/error";
 import type {
   ApproveInput,
@@ -558,8 +558,9 @@ export function createMockRepositories(
 
     // 만들면 바로 검토 대기다(생성과 제출이 한 번). 서버는 만든 시각을 낸 시각으로 둔다.
     const id = `submission-${store.all().length + 1}-${now.getTime()}`;
-    // 실제 서버는 assetId로 저장소 URL을 돌려준다. mock은 방금 올린 미리보기를 쓴다.
-    const posterUrl = getMockAssetUrl(input.assetId) ?? "";
+    // 실제 서버는 assetId로 저장소 URL과 원본 크기를 돌려준다. mock은 방금 올린 미리보기를 쓴다.
+    const asset = getMockAsset(input.assetId);
+    const posterUrl = asset?.url ?? "";
     const created: SignageSubmissionExpandedDto = {
       id,
       ziggleNoticeId: detail?.noticeId ?? null,
@@ -584,6 +585,8 @@ export function createMockRepositories(
       organizerName: optionalText(input.organizerName),
       posterUrl,
       posterThumbUrl: posterUrl,
+      posterWidth: asset?.width ?? 0,
+      posterHeight: asset?.height ?? 0,
       subtitle: optionalText(input.subtitle),
       location: optionalText(input.location),
       description: optionalText(input.description),
@@ -751,9 +754,13 @@ export function createMockRepositories(
       }
 
       if (changes.assetId) {
-        const posterUrl = getMockAssetUrl(changes.assetId) ?? current.posterUrl;
-        changes.posterUrl = posterUrl;
-        changes.posterThumbUrl = posterUrl;
+        const asset = getMockAsset(changes.assetId);
+        if (asset) {
+          changes.posterUrl = asset.url;
+          changes.posterThumbUrl = asset.url;
+          changes.posterWidth = asset.width;
+          changes.posterHeight = asset.height;
+        }
       }
       if (changes.categoryId) {
         changes.categoryName = categoryNameOf(changes.categoryId);

@@ -856,7 +856,7 @@
     },
     "/signage/assets/{assetId}/complete": {
       "post": {
-        "description": "저장소에 올린 원본을 검증하고 공개용 이미지를 만든다.\n\n- 파일 내용(시그니처)으로 형식을 판별한다. 확장자·Content-Type은 믿지 않는다\n- JPEG·PNG·WebP만, 짧은 변 1080px 이상(EXIF 회전 적용 후), 움직이는 이미지 불가\n- EXIF(위치 정보 포함)를 제거한 webp 변형 이미지(thumb, preview, tv)를 만들고 원본은 지운다\n- 여러 번 불러도 결과가 같다. 이미 처리된 asset은 같은 응답(또는 같은 거절 사유)을 준다\n- 거절된 asset은 다시 쓸 수 없다. presign부터 새로 한다",
+        "description": "저장소에 올린 원본을 검증하고 공개용 이미지를 만든다.\n\n- 파일 내용(시그니처)으로 형식을 판별한다. 확장자·Content-Type은 믿지 않는다\n- JPEG·PNG·WebP만, 움직이는 이미지 불가. 해상도 하한은 없다(화질은 검토자가 판단한다)\n- EXIF(위치 정보 포함)를 제거한 webp 변형 이미지(thumb, preview, tv)를 만들고 원본은 지운다\n- 여러 번 불러도 결과가 같다. 이미 처리된 asset은 같은 응답(또는 같은 거절 사유)을 준다\n- 거절된 asset은 다시 쓸 수 없다. presign부터 새로 한다",
         "operationId": "AssetsController_complete",
         "parameters": [
           {
@@ -911,7 +911,7 @@
             }
           },
           "422": {
-            "description": "이미지 거절 (VALIDATION_FAILED). fields.file에 사용자에게 보여 줄 사유 (예: \"짧은 변이 1080px 이상이어야 합니다. (현재 800px)\")",
+            "description": "이미지 거절 (VALIDATION_FAILED). fields.file에 사용자에게 보여 줄 사유 (예: \"움직이는 이미지는 올릴 수 없습니다.\")",
             "content": {
               "application/json": {
                 "schema": {
@@ -3429,11 +3429,6 @@
             "description": "포스터 최대 용량(바이트)",
             "example": 10485760
           },
-          "minShortEdgePx": {
-            "type": "number",
-            "description": "포스터 짧은 변 최소 픽셀",
-            "example": 1080
-          },
           "titleMaxLength": {
             "type": "number",
             "description": "제목 최대 글자 수 (앞뒤 공백 제외)",
@@ -3479,7 +3474,6 @@
         },
         "required": [
           "maxUploadBytes",
-          "minShortEdgePx",
           "titleMaxLength",
           "maxPublishMonths",
           "minLeadTimeHours",
@@ -3876,6 +3870,31 @@
             "description": "포스터 썸네일 (400x400 안). 목록 카드용",
             "example": "https://gsainfoteam-icarus-flyer-g-production.s3.ap-northeast-2.amazonaws.com/assets/0f8e2c1a-.../thumb.webp"
           },
+          "posterKind": {
+            "type": "string",
+            "description": "포스터 종류. 지금은 IMAGE만 있다. VIDEO는 영상 업로드를 열면 생긴다",
+            "enum": [
+              "IMAGE",
+              "VIDEO"
+            ],
+            "example": "IMAGE"
+          },
+          "posterWidth": {
+            "type": "number",
+            "description": "포스터 원본 가로(px, EXIF 회전 적용 후). 미리보기는 1280px 안으로 줄였으므로 해상도 판단은 이 값으로 한다",
+            "example": 1536
+          },
+          "posterHeight": {
+            "type": "number",
+            "description": "포스터 원본 세로(px, EXIF 회전 적용 후)",
+            "example": 2048
+          },
+          "posterDurationMs": {
+            "type": "number",
+            "description": "영상 포스터의 길이(ms). 이미지는 null",
+            "nullable": true,
+            "example": null
+          },
           "detailUrl": {
             "type": "string",
             "nullable": true,
@@ -3977,6 +3996,10 @@
           "assetId",
           "posterUrl",
           "posterThumbUrl",
+          "posterKind",
+          "posterWidth",
+          "posterHeight",
+          "posterDurationMs",
           "detailUrl",
           "startAt",
           "endAt",
@@ -4076,6 +4099,31 @@
             "description": "포스터 썸네일 (400x400 안). 목록 카드용",
             "example": "https://gsainfoteam-icarus-flyer-g-production.s3.ap-northeast-2.amazonaws.com/assets/0f8e2c1a-.../thumb.webp"
           },
+          "posterKind": {
+            "type": "string",
+            "description": "포스터 종류. 지금은 IMAGE만 있다. VIDEO는 영상 업로드를 열면 생긴다",
+            "enum": [
+              "IMAGE",
+              "VIDEO"
+            ],
+            "example": "IMAGE"
+          },
+          "posterWidth": {
+            "type": "number",
+            "description": "포스터 원본 가로(px, EXIF 회전 적용 후). 미리보기는 1280px 안으로 줄였으므로 해상도 판단은 이 값으로 한다",
+            "example": 1536
+          },
+          "posterHeight": {
+            "type": "number",
+            "description": "포스터 원본 세로(px, EXIF 회전 적용 후)",
+            "example": 2048
+          },
+          "posterDurationMs": {
+            "type": "number",
+            "description": "영상 포스터의 길이(ms). 이미지는 null",
+            "nullable": true,
+            "example": null
+          },
           "detailUrl": {
             "type": "string",
             "nullable": true,
@@ -4172,6 +4220,10 @@
           "assetId",
           "posterUrl",
           "posterThumbUrl",
+          "posterKind",
+          "posterWidth",
+          "posterHeight",
+          "posterDurationMs",
           "detailUrl",
           "startAt",
           "endAt",
@@ -5134,6 +5186,31 @@
             "description": "카테고리 표시 이름",
             "example": "공연"
           },
+          "kind": {
+            "type": "string",
+            "description": "포스터 종류. 지금은 IMAGE만 있다. VIDEO는 영상 업로드를 열면 생긴다",
+            "enum": [
+              "IMAGE",
+              "VIDEO"
+            ],
+            "example": "IMAGE"
+          },
+          "width": {
+            "type": "number",
+            "description": "원본 가로(px, EXIF 회전 적용 후). assetUrl 이미지와 비율이 같으므로 이미지를 받기 전에 배치를 정하는 데 쓴다",
+            "example": 1536
+          },
+          "height": {
+            "type": "number",
+            "description": "원본 세로(px, EXIF 회전 적용 후)",
+            "example": 2048
+          },
+          "durationMs": {
+            "type": "number",
+            "description": "영상 길이(ms). 이미지는 null",
+            "nullable": true,
+            "example": null
+          },
           "assetUrl": {
             "type": "string",
             "description": "TV용 포스터(1920x1080 안, webp). fetch()로 읽을 수 있어야 한다(버킷 CORS에 GET 필요)",
@@ -5185,6 +5262,10 @@
           "revision",
           "title",
           "category",
+          "kind",
+          "width",
+          "height",
+          "durationMs",
           "assetUrl",
           "detailUrl",
           "startsAt",

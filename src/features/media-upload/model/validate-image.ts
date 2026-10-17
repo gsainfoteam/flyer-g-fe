@@ -17,8 +17,7 @@ export type ImageValidationCode =
   | "SIGNATURE_MISMATCH"
   | "TOO_LARGE"
   | "EMPTY_FILE"
-  | "DECODE_FAILED"
-  | "TOO_SMALL";
+  | "DECODE_FAILED";
 
 export interface ImageValidationFailure {
   ok: false;
@@ -117,22 +116,17 @@ export const decodeImageWithBrowser: ImageDecoder = async (file) => {
 export interface ValidateImageFileOptions {
   decode?: ImageDecoder;
   maxSizeBytes?: number;
-  minShortEdgePx?: number;
 }
 
 /**
- * 짧은 변이 기준보다 작으면 통과시키지 않는다.
- *
- * 1080px 미만은 TV에서 눈에 띄게 뭉개진다. 경고로 두면 그대로 올라가고 승인
- * 단계에서야 문제가 드러나므로, 명세 FR-SUB-01 인수 조건대로 업로드 전에 막는다.
+ * 해상도와 비율은 막지 않는다. 포스터·정방형 사진·가로 배너를 모두 받고, TV에
+ * 적합한 화질인지는 검토자가 판단한다. 크기는 미리보기 표시용으로만 잰다.
  */
 export async function validateImageFile(
   file: File,
   options: ValidateImageFileOptions = {},
 ): Promise<ImageValidationResult> {
   const maxSizeBytes = options.maxSizeBytes ?? MEDIA_CONSTRAINTS.maxSizeBytes;
-  const minShortEdgePx =
-    options.minShortEdgePx ?? MEDIA_CONSTRAINTS.minShortEdgePx;
   const decode = options.decode ?? decodeImageWithBrowser;
 
   if (file.size === 0) {
@@ -172,14 +166,6 @@ export async function validateImageFile(
     return fail(
       "DECODE_FAILED",
       "이미지를 열 수 없어요. 파일이 손상되었을 수 있습니다.",
-    );
-  }
-
-  const shortEdge = Math.min(dimensions.width, dimensions.height);
-  if (shortEdge < minShortEdgePx) {
-    return fail(
-      "TOO_SMALL",
-      `짧은 변이 ${minShortEdgePx}px 이상이어야 해요. 이 이미지는 ${dimensions.width}×${dimensions.height}입니다.`,
     );
   }
 

@@ -287,8 +287,8 @@ export default function ComponentCatalog() {
             </Alert>
             <Alert variant="warning">
               <TriangleAlert />
-              <AlertTitle>포스터 비율이 권장값과 다릅니다.</AlertTitle>
-              <AlertDescription>세로 3:4를 권장합니다.</AlertDescription>
+              <AlertTitle>포스터 해상도가 낮아요 (800×600)</AlertTitle>
+              <AlertDescription>TV에서 흐리게 보일 수 있어요.</AlertDescription>
             </Alert>
             <Alert variant="destructive">
               <TriangleAlert />

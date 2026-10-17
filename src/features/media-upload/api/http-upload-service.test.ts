@@ -115,7 +115,7 @@ describe("createHttpUploadService", () => {
       code: "VALIDATION_FAILED",
       message: "rejected",
       status: 422,
-      fields: { file: "짧은 변이 1080px 이상이어야 합니다. (현재 800px)" },
+      fields: { file: "움직이는 이미지는 올릴 수 없습니다." },
     });
     const { service } = setup({
       "/signage/assets/asset_01/complete": () => {

@@ -117,6 +117,8 @@ export function parseSubmission(
     assetId: readString(body, "assetId", at("assetId")),
     posterUrl: readString(body, "posterUrl", at("posterUrl")),
     posterThumbUrl: readString(body, "posterThumbUrl", at("posterThumbUrl")),
+    posterWidth: readNumber(body, "posterWidth", at("posterWidth")),
+    posterHeight: readNumber(body, "posterHeight", at("posterHeight")),
     detailUrl: readNullableString(body, "detailUrl", at("detailUrl")),
     startAt: readIsoDate(body, "startAt", at("startAt")),
     endAt: readIsoDate(body, "endAt", at("endAt")),

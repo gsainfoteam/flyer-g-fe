@@ -301,7 +301,22 @@ function lastDecisionOf(seed: SubmissionSeed): SubmissionDecision | null {
 const REJECTED_AFTER_MS = 60 * MINUTE_MS;
 const RESUBMITTED_AFTER_MS = 2 * 60 * MINUTE_MS;
 
+/**
+ * `public/posters` 이미지의 실제 크기. 서버는 원본 크기를 주지만 mock은 이 작은
+ * 이미지를 원본처럼 쓴다. 슈퍼-피셜은 긴 변이 1080px보다 짧아 검토 화면의 저해상도
+ * 경고를 확인할 수 있다. 포스터가 없는 seed는 흔한 세로 포스터 크기로 둔다.
+ */
+const POSTER_SIZES: Record<string, { width: number; height: number }> = {
+  "/posters/vesper.webp": { width: 828, height: 1171 },
+  "/posters/research-assistant.webp": { width: 828, height: 1175 },
+  "/posters/gist-news.webp": { width: 828, height: 1171 },
+  "/posters/rnd-officer.webp": { width: 828, height: 1171 },
+  "/posters/superficial.webp": { width: 640, height: 905 },
+};
+const DEFAULT_POSTER_SIZE = { width: 1080, height: 1440 };
+
 function toDto(seed: SubmissionSeed, now: Date): SignageSubmissionExpandedDto {
+  const posterSize = POSTER_SIZES[seed.posterUrl] ?? DEFAULT_POSTER_SIZE;
   const [startOffset, endOffset] = PERIOD_BY_STATUS[seed.status] ?? [7, 21];
   const created = days(now, startOffset - 7);
   const createdAt = toIsoUtc(created);
@@ -338,6 +353,8 @@ function toDto(seed: SubmissionSeed, now: Date): SignageSubmissionExpandedDto {
     organizerName: seed.organization.name,
     posterUrl: seed.posterUrl,
     posterThumbUrl: seed.posterUrl,
+    posterWidth: posterSize.width,
+    posterHeight: posterSize.height,
     subtitle: seed.subtitle,
     location: seed.location,
     description: seed.description,

@@ -313,6 +313,8 @@ describe("createHttpReviewRepository", () => {
           assetId: "asset_02",
           posterUrl: "https://cdn.example/p.webp",
           posterThumbUrl: "https://cdn.example/t.webp",
+          posterWidth: 1536,
+          posterHeight: 2048,
           detailUrl: null,
           startAt: "2026-09-28T00:00:00.000Z",
           endAt: "2026-10-05T00:00:00.000Z",

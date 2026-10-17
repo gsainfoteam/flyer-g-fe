@@ -204,7 +204,7 @@ describe("usePosterUpload", () => {
           code: "VALIDATION_FAILED",
           message: "rejected",
           status: 422,
-          fields: { file: "짧은 변이 1080px 이상이어야 합니다. (현재 800px)" },
+          fields: { file: "움직이는 이미지는 올릴 수 없습니다." },
         });
       },
     });
@@ -215,7 +215,7 @@ describe("usePosterUpload", () => {
 
     await waitFor(() => expect(result.current.state.status).toBe("failed"));
     expect(result.current.state.errorMessage).toBe(
-      "짧은 변이 1080px 이상이어야 합니다. (현재 800px)",
+      "움직이는 이미지는 올릴 수 없습니다.",
     );
   });
 
@@ -225,7 +225,7 @@ describe("usePosterUpload", () => {
       () =>
         usePosterUpload({
           validationOptions: { decode: decodeOk },
-          limits: { maxSizeBytes: 1024, minShortEdgePx: 1080 },
+          limits: { maxSizeBytes: 1024 },
         }),
       { wrapper: wrapper({ upload }) },
     );

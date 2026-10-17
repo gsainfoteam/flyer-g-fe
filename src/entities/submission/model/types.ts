@@ -88,6 +88,9 @@ export interface SignageSubmissionExpandedDto extends SignageSubmissionDto {
   posterUrl: string;
   /** 포스터 썸네일 (400x400 안). 목록 카드용 */
   posterThumbUrl: string;
+  /** 포스터 원본 크기(px). 미리보기는 줄인 이미지라 해상도 판단은 이 값으로 한다. */
+  posterWidth: number;
+  posterHeight: number;
   /** 주최. 신청자가 자유 입력한다. 조직 모델은 없다. */
   organizerName: string | null;
   subtitle: string | null;

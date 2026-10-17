@@ -15,6 +15,8 @@ const SUBMISSION = {
   assetId: "asset_01",
   posterUrl: "https://cdn.example/asset_01/preview.webp",
   posterThumbUrl: "https://cdn.example/asset_01/thumb.webp",
+  posterWidth: 1536,
+  posterHeight: 2048,
   detailUrl: "https://ziggle.gistory.me/notice/1041",
   startAt: "2026-10-01T00:00:00.000Z",
   endAt: "2026-10-08T09:00:00.000Z",
@@ -67,6 +69,8 @@ describe("createHttpSubmissionRepository", () => {
       id: "sub_01",
       organizerName: "페이드인",
       subtitle: null,
+      posterWidth: 1536,
+      posterHeight: 2048,
       startAt: new Date("2026-10-01T00:00:00.000Z"),
       submittedAt: new Date("2026-09-27T06:00:00.000Z"),
     });

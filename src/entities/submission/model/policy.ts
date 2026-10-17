@@ -8,7 +8,6 @@ import { addSeoulMonths } from "@/shared/lib/datetime";
  */
 export interface SignageConfig {
   maxUploadBytes: number;
-  minShortEdgePx: number;
   /** 제목 최대 글자 수(앞뒤 공백 제외) */
   titleMaxLength: number;
   /** 최대 게시 기간(개월, 서울 달력 기준) */

@@ -259,7 +259,7 @@ export interface paths {
          * @description 저장소에 올린 원본을 검증하고 공개용 이미지를 만든다.
          *
          *     - 파일 내용(시그니처)으로 형식을 판별한다. 확장자·Content-Type은 믿지 않는다
-         *     - JPEG·PNG·WebP만, 짧은 변 1080px 이상(EXIF 회전 적용 후), 움직이는 이미지 불가
+         *     - JPEG·PNG·WebP만, 움직이는 이미지 불가. 해상도 하한은 없다(화질은 검토자가 판단한다)
          *     - EXIF(위치 정보 포함)를 제거한 webp 변형 이미지(thumb, preview, tv)를 만들고 원본은 지운다
          *     - 여러 번 불러도 결과가 같다. 이미 처리된 asset은 같은 응답(또는 같은 거절 사유)을 준다
          *     - 거절된 asset은 다시 쓸 수 없다. presign부터 새로 한다
@@ -890,11 +890,6 @@ export interface components {
              */
             maxUploadBytes: number;
             /**
-             * @description 포스터 짧은 변 최소 픽셀
-             * @example 1080
-             */
-            minShortEdgePx: number;
-            /**
              * @description 제목 최대 글자 수 (앞뒤 공백 제외)
              * @example 80
              */
@@ -1192,6 +1187,27 @@ export interface components {
              * @example https://gsainfoteam-icarus-flyer-g-production.s3.ap-northeast-2.amazonaws.com/assets/0f8e2c1a-.../thumb.webp
              */
             posterThumbUrl: string;
+            /**
+             * @description 포스터 종류. 지금은 IMAGE만 있다. VIDEO는 영상 업로드를 열면 생긴다
+             * @example IMAGE
+             * @enum {string}
+             */
+            posterKind: "IMAGE" | "VIDEO";
+            /**
+             * @description 포스터 원본 가로(px, EXIF 회전 적용 후). 미리보기는 1280px 안으로 줄였으므로 해상도 판단은 이 값으로 한다
+             * @example 1536
+             */
+            posterWidth: number;
+            /**
+             * @description 포스터 원본 세로(px, EXIF 회전 적용 후)
+             * @example 2048
+             */
+            posterHeight: number;
+            /**
+             * @description 영상 포스터의 길이(ms). 이미지는 null
+             * @example null
+             */
+            posterDurationMs: number | null;
             /** @example https://ziggle.gistory.me/notice/1041 */
             detailUrl: string | null;
             /** @example 2026-07-30T00:00:00.000Z */
@@ -1303,6 +1319,27 @@ export interface components {
              * @example https://gsainfoteam-icarus-flyer-g-production.s3.ap-northeast-2.amazonaws.com/assets/0f8e2c1a-.../thumb.webp
              */
             posterThumbUrl: string;
+            /**
+             * @description 포스터 종류. 지금은 IMAGE만 있다. VIDEO는 영상 업로드를 열면 생긴다
+             * @example IMAGE
+             * @enum {string}
+             */
+            posterKind: "IMAGE" | "VIDEO";
+            /**
+             * @description 포스터 원본 가로(px, EXIF 회전 적용 후). 미리보기는 1280px 안으로 줄였으므로 해상도 판단은 이 값으로 한다
+             * @example 1536
+             */
+            posterWidth: number;
+            /**
+             * @description 포스터 원본 세로(px, EXIF 회전 적용 후)
+             * @example 2048
+             */
+            posterHeight: number;
+            /**
+             * @description 영상 포스터의 길이(ms). 이미지는 null
+             * @example null
+             */
+            posterDurationMs: number | null;
             /** @example https://ziggle.gistory.me/notice/1041 */
             detailUrl: string | null;
             /** @example 2026-07-30T00:00:00.000Z */
@@ -1881,6 +1918,27 @@ export interface components {
              * @example 공연
              */
             category: string;
+            /**
+             * @description 포스터 종류. 지금은 IMAGE만 있다. VIDEO는 영상 업로드를 열면 생긴다
+             * @example IMAGE
+             * @enum {string}
+             */
+            kind: "IMAGE" | "VIDEO";
+            /**
+             * @description 원본 가로(px, EXIF 회전 적용 후). assetUrl 이미지와 비율이 같으므로 이미지를 받기 전에 배치를 정하는 데 쓴다
+             * @example 1536
+             */
+            width: number;
+            /**
+             * @description 원본 세로(px, EXIF 회전 적용 후)
+             * @example 2048
+             */
+            height: number;
+            /**
+             * @description 영상 길이(ms). 이미지는 null
+             * @example null
+             */
+            durationMs: number | null;
             /**
              * @description TV용 포스터(1920x1080 안, webp). fetch()로 읽을 수 있어야 한다(버킷 CORS에 GET 필요)
              * @example https://gsainfoteam-icarus-flyer-g-production.s3.ap-northeast-2.amazonaws.com/assets/0f8e2c1a-.../tv.webp
@@ -2725,7 +2783,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponseDto"];
                 };
             };
-            /** @description 이미지 거절 (VALIDATION_FAILED). fields.file에 사용자에게 보여 줄 사유 (예: "짧은 변이 1080px 이상이어야 합니다. (현재 800px)") */
+            /** @description 이미지 거절 (VALIDATION_FAILED). fields.file에 사용자에게 보여 줄 사유 (예: "움직이는 이미지는 올릴 수 없습니다.") */
             422: {
                 headers: {
                     [name: string]: unknown;
