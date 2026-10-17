@@ -32,15 +32,36 @@ const defaultShouldFail = (file: File, attempt: number) =>
   attempt === 1 && file.name.toLowerCase().includes("fail");
 
 /**
- * assetId → 미리보기 URL.
+ * assetId → 미리보기 URL과 원본 크기.
  *
- * 실제 서버는 신청 응답에 포스터 URL을 담아 준다. mock 저장소에는 그 경로가 없어서
- * 개발 중에 만든 신청의 포스터가 빈칸이 된다. 개발 전용으로 둘을 이어 준다.
+ * 실제 서버는 신청 응답에 포스터 URL과 크기를 담아 준다. mock 저장소에는 그 경로가
+ * 없어서 개발 중에 만든 신청의 포스터가 빈칸이 된다. 개발 전용으로 둘을 이어 준다.
  */
-const uploadedAssetUrls = new Map<string, string>();
+export interface MockAsset {
+  url: string;
+  width: number;
+  height: number;
+}
 
-export function getMockAssetUrl(assetId: string): string | null {
-  return uploadedAssetUrls.get(assetId) ?? null;
+const uploadedAssets = new Map<string, MockAsset>();
+
+export function getMockAsset(assetId: string): MockAsset | null {
+  return uploadedAssets.get(assetId) ?? null;
+}
+
+/** 서버처럼 원본 크기를 잰다. 브라우저가 아니면(jsdom) 0으로 둔다. */
+async function measure(file: File): Promise<{ width: number; height: number }> {
+  if (typeof createImageBitmap !== "function") return { width: 0, height: 0 };
+  try {
+    const bitmap = await createImageBitmap(file);
+    try {
+      return { width: bitmap.width, height: bitmap.height };
+    } finally {
+      bitmap.close();
+    }
+  } catch {
+    return { width: 0, height: 0 };
+  }
 }
 
 function uploadFailed(): ApiError {
@@ -93,14 +114,14 @@ export function createFakeUploadService(
       sequence += 1;
       const assetId = `asset-mock-${sequence}`;
       const url = createObjectUrl(file);
-      uploadedAssetUrls.set(assetId, url);
+      const { width, height } = await measure(file);
+      uploadedAssets.set(assetId, { url, width, height });
 
       const asset: UploadedAsset = {
         assetId,
         url,
-        // 크기는 업로드 전 검증에서 이미 쟀다. 여기서는 서버가 돌려준 값을 흉내만 낸다.
-        width: 0,
-        height: 0,
+        width,
+        height,
         mimeType: file.type,
         sizeBytes: file.size,
       };

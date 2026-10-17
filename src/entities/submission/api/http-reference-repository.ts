@@ -31,7 +31,6 @@ export function parseSignageConfig(payload: unknown): SignageConfig {
   const body = readObject(payload);
   return {
     maxUploadBytes: readNumber(body, "maxUploadBytes"),
-    minShortEdgePx: readNumber(body, "minShortEdgePx"),
     titleMaxLength: readNumber(body, "titleMaxLength"),
     maxPublishMonths: readNumber(body, "maxPublishMonths"),
     minLeadTimeHours: readNumber(body, "minLeadTimeHours"),

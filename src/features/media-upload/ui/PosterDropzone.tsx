@@ -43,8 +43,6 @@ export function PosterDropzone({
   const maxMb = Math.floor(
     (limits?.maxSizeBytes ?? MEDIA_CONSTRAINTS.maxSizeBytes) / (1024 * 1024),
   );
-  const minShortEdgePx =
-    limits?.minShortEdgePx ?? MEDIA_CONSTRAINTS.minShortEdgePx;
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
@@ -126,7 +124,7 @@ export function PosterDropzone({
               : "이미지를 끌어다 놓거나 선택하세요"}
           </p>
           <p className="mt-1 text-caption text-ink-muted">
-            JPG, PNG, WebP · 최대 {maxMb}MB · 짧은 변 {minShortEdgePx}px 이상
+            JPG, PNG, WebP · 최대 {maxMb}MB
           </p>
           {!busy && (
             <span className="mt-3 rounded-control bg-ink px-3 py-1.5 text-caption text-surface">
@@ -179,7 +177,7 @@ export function PosterDropzone({
             <img
               src={state.previewUrl}
               alt="선택한 포스터 미리보기"
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain"
             />
           </div>
           <div className="flex items-center justify-between gap-2 bg-surface px-2.5 py-2">

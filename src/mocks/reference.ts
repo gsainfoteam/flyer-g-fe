@@ -18,7 +18,6 @@ export const CATEGORY_FIXTURES: readonly Category[] = [
 
 export const SIGNAGE_CONFIG_FIXTURE: SignageConfig = {
   maxUploadBytes: 10 * 1024 * 1024,
-  minShortEdgePx: 1080,
   titleMaxLength: 80,
   maxPublishMonths: 3,
   minLeadTimeHours: 24,

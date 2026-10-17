@@ -115,18 +115,15 @@ describe("validateImageFile", () => {
     expect(result).toMatchObject({ ok: false, code: "EMPTY_FILE" });
   });
 
-  it("짧은 변이 1080px 미만이면 막는다", async () => {
+  it.each([
+    ["낮은 해상도", 400, 300],
+    ["정방형", 1080, 1080],
+    ["가로 배너", 2400, 800],
+  ])("%s도 막지 않고 크기를 돌려준다", async (_, width, height) => {
     const result = await validateImageFile(validJpeg(), {
-      decode: decodeTo(1079, 4000),
+      decode: decodeTo(width, height),
     });
-    expect(result).toMatchObject({ ok: false, code: "TOO_SMALL" });
-  });
-
-  it("짧은 변이 정확히 1080px이면 통과한다", async () => {
-    const result = await validateImageFile(validJpeg(), {
-      decode: decodeTo(1080, 1440),
-    });
-    expect(result.ok).toBe(true);
+    expect(result).toMatchObject({ ok: true, width, height });
   });
 
   it("브라우저가 열지 못하는 파일은 막는다", async () => {

@@ -1,17 +1,16 @@
-import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import { MEDIA_CONSTRAINTS } from "@/entities/media";
-import { useSignageConfig } from "@/entities/submission/api/queries";
 import type { SignageSubmissionExpanded } from "@/entities/submission";
 import { isAllowedZiggleUrl } from "@/shared/lib/ziggle-url";
+import { isLowResolution } from "../model/poster-resolution";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
 
 /**
  * 검토 전 자동 경고 (명세 FR-REV-02).
  *
  * 관리자가 놓치기 쉬운 문제를 미리 짚는다: 공식이 아닌 링크, QR 없는 게시, 지난 기간, 없는
- * 포스터, 낮은 해상도, 3:4가 아닌 비율. 경고는 판단을 돕는 것이지 승인·반려를
- * 막지 않는다 — 최종 판단은 사람과 서버가 한다.
+ * 포스터, 낮은 해상도. 경고는 판단을 돕는 것이지 승인·반려를 막지 않는다 — 최종
+ * 판단은 사람과 서버가 한다. 비율은 경고하지 않는다. 포스터·정방형·가로 배너를
+ * 모두 받는다.
  */
 interface ReviewWarningsProps {
   submission: SignageSubmissionExpanded;
@@ -19,43 +18,11 @@ interface ReviewWarningsProps {
   serverNow: Date;
 }
 
-/** TV 칸은 세로 3:4다. 이만큼 벗어나면 위아래나 양옆이 크게 잘린다. */
-const POSTER_RATIO = 3 / 4;
-const RATIO_TOLERANCE = 0.08;
-
-/** 포스터 실제 크기를 잰다. 못 재면 null이고 크기 경고를 하지 않는다. */
-function usePosterSize(
-  posterUrl: string,
-): { width: number; height: number } | null {
-  const [size, setSize] = useState<{ width: number; height: number } | null>(
-    null,
-  );
-
-  useEffect(() => {
-    if (!posterUrl) return;
-    let alive = true;
-    const image = new Image();
-    image.onload = () => {
-      if (alive && image.naturalWidth > 0) {
-        setSize({ width: image.naturalWidth, height: image.naturalHeight });
-      }
-    };
-    image.src = posterUrl;
-    return () => {
-      alive = false;
-    };
-  }, [posterUrl]);
-
-  return size;
-}
-
 export function ReviewWarnings({ submission, serverNow }: ReviewWarningsProps) {
-  const size = usePosterSize(submission.posterUrl);
-  // 서버 설정값을 쓴다. 받기 전에는 기본값으로 먼저 본다.
-  const minShortEdgePx =
-    useSignageConfig().data?.minShortEdgePx ?? MEDIA_CONSTRAINTS.minShortEdgePx;
-  const shortEdge = size ? Math.min(size.width, size.height) : null;
-  const ratio = size ? size.width / size.height : null;
+  const size = {
+    width: submission.posterWidth,
+    height: submission.posterHeight,
+  };
   const now = serverNow.getTime();
 
   const warnings: { key: string; title: string; detail: string }[] = [];
@@ -95,24 +62,12 @@ export function ReviewWarnings({ submission, serverNow }: ReviewWarningsProps) {
       title: "포스터 이미지가 없어요",
       detail: "이미지 없이 승인하면 TV에 빈 칸이 나갑니다.",
     });
-  } else if (shortEdge !== null && shortEdge < minShortEdgePx) {
+  } else if (isLowResolution(size)) {
     warnings.push({
       key: "poster-small",
-      title: `포스터 해상도가 낮아요 (짧은 변 ${shortEdge}px)`,
-      detail: `TV 기준 ${minShortEdgePx}px 이상을 권장해요. 저해상도로 반려를 검토하세요.`,
-    });
-  }
-
-  if (
-    submission.posterUrl &&
-    ratio !== null &&
-    Math.abs(ratio - POSTER_RATIO) > RATIO_TOLERANCE
-  ) {
-    warnings.push({
-      key: "poster-ratio",
-      title: `포스터 비율이 세로 3:4와 달라요 (${size!.width}×${size!.height})`,
+      title: `포스터 해상도가 낮아요 (${size.width}×${size.height})`,
       detail:
-        "TV 칸에 맞추면서 가장자리가 잘려요. 미리보기에서 중요한 글자가 잘리지 않는지 확인하세요.",
+        "TV에서 늘려 그려 흐리게 보일 수 있어요. 글자가 읽히는지 확인하고, 어려우면 저해상도로 반려하세요.",
     });
   }
 

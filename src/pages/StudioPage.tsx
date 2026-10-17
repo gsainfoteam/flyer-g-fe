@@ -110,10 +110,7 @@ export function StudioPage() {
   const uploadLimits = useMemo(
     () =>
       config.data
-        ? {
-            maxSizeBytes: config.data.maxUploadBytes,
-            minShortEdgePx: config.data.minShortEdgePx,
-          }
+        ? { maxSizeBytes: config.data.maxUploadBytes }
         : null,
     [config.data],
   );
@@ -386,7 +383,7 @@ export function StudioPage() {
             <p className="mt-0.5 mb-2 text-caption text-ink-muted">
               {editingSubmission && !upload.state.previewUrl
                 ? "기존 포스터를 그대로 쓰거나 새로 올려서 바꿀 수 있어요"
-                : "세로 3:4 비율을 권장합니다"}
+                : "세로 포스터, 정사각형 사진, 가로 배너 모두 올릴 수 있어요"}
             </p>
             {editingSubmission?.posterUrl && !upload.state.previewUrl && (
               <div className="mb-3 overflow-hidden rounded-control ring-1 ring-line">
@@ -394,7 +391,7 @@ export function StudioPage() {
                   <img
                     src={editingSubmission.posterUrl}
                     alt="현재 포스터"
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain"
                   />
                 </div>
                 <p className="bg-surface px-2.5 py-1.5 text-caption text-ink-muted">

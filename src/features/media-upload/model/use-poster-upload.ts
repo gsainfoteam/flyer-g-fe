@@ -52,7 +52,6 @@ const IDLE_STATE: PosterUploadState = {
 /** 업로드 한도. 서버 운영 설정(`GET /signage/config`)에서 온다. */
 export interface UploadLimits {
   maxSizeBytes: number;
-  minShortEdgePx: number;
 }
 
 export interface UsePosterUploadOptions {
@@ -89,12 +88,7 @@ export function usePosterUpload(options: UsePosterUploadOptions = {}) {
   const limits = options.limits;
   const validationOptions = useMemo(
     () => ({
-      ...(limits
-        ? {
-            maxSizeBytes: limits.maxSizeBytes,
-            minShortEdgePx: limits.minShortEdgePx,
-          }
-        : {}),
+      ...(limits ? { maxSizeBytes: limits.maxSizeBytes } : {}),
       ...options.validationOptions,
     }),
     [limits, options.validationOptions],
