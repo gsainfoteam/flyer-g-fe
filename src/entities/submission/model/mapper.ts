@@ -74,6 +74,8 @@ export function toSubmissionView(
     requesterName: submission.requesterName,
     posterUrl: submission.posterUrl,
     posterThumbUrl: submission.posterThumbUrl,
+    posterWidth: submission.posterWidth,
+    posterHeight: submission.posterHeight,
     detailUrl: submission.detailUrl,
     location: submission.location,
     description: submission.description,

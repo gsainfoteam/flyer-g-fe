@@ -1,37 +1,37 @@
 import { describe, expect, it } from "vitest";
 import { boardRotationOf, isRenderStalled, isTargetedTo } from "./board";
 
-const single = { layout: { type: "SINGLE" as const, rotationSeconds: 10 } };
-const grid = { layout: { type: "FOUR_GRID" as const, rotationSeconds: 10 } };
+const wall = { layout: { type: "WALL" as const, rotationSeconds: 10 } };
+const strip = { layout: { type: "STRIP" as const, rotationSeconds: 10 } };
 
 describe("boardRotationOf", () => {
-  it("한 장씩이면 장수만큼 넘기고, 한 장이 한 시간에 몇 번 나오는지 센다", () => {
-    expect(boardRotationOf(single, 9)).toMatchObject({
+  it("흐르는 띠는 장수만큼 넘기고, 한 장이 한 시간에 몇 번 가운데 오는지 센다", () => {
+    expect(boardRotationOf(strip, 9)).toMatchObject({
       cycleSeconds: 90,
       timesPerHour: 40,
     });
   });
 
-  it("4분할은 네 장씩 한 화면이라 한 바퀴가 짧다", () => {
-    expect(boardRotationOf(grid, 9)).toMatchObject({
-      perScreen: 4,
-      cycleSeconds: 30,
-      timesPerHour: 120,
+  it("모아 보기는 크게 세 건마다 벽이 한 번 끼어 한 바퀴가 그만큼 길다", () => {
+    // 벽 3번 + 크게 9번
+    expect(boardRotationOf(wall, 9)).toMatchObject({
+      cycleSeconds: 120,
+      timesPerHour: 30,
     });
   });
 
-  it("한 화면에 다 들어가면 넘기지 않는다", () => {
-    expect(boardRotationOf(grid, 3)).toMatchObject({
+  it("한 건뿐이면 넘기지 않는다", () => {
+    expect(boardRotationOf(wall, 1)).toMatchObject({
       cycleSeconds: null,
       timesPerHour: null,
     });
-    expect(boardRotationOf(single, 1).cycleSeconds).toBeNull();
-    expect(boardRotationOf(single, 0).cycleSeconds).toBeNull();
+    expect(boardRotationOf(strip, 1).cycleSeconds).toBeNull();
+    expect(boardRotationOf(strip, 0).cycleSeconds).toBeNull();
   });
 
   it("서버가 보낸 전환 간격은 안전 범위로 맞춰 센다", () => {
     expect(
-      boardRotationOf({ layout: { type: "SINGLE", rotationSeconds: 1 } }, 2)
+      boardRotationOf({ layout: { type: "STRIP", rotationSeconds: 1 } }, 2)
         .rotationSeconds,
     ).toBe(5);
   });

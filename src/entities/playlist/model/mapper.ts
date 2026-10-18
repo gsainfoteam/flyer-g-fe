@@ -1,5 +1,9 @@
 import { parseIsoUtc, toIsoUtc } from "@/shared/lib/datetime";
-import { clampRotationSeconds } from "./types";
+import {
+  clampRotationSeconds,
+  DEFAULT_LAYOUT_TYPE,
+  readLayoutType,
+} from "./types";
 import type { Playlist, PlaylistDto, PlaylistItem, PlaylistItemDto } from "./types";
 
 function toPlaylistItem(dto: PlaylistItemDto): PlaylistItem {
@@ -7,6 +11,10 @@ function toPlaylistItem(dto: PlaylistItemDto): PlaylistItem {
     ...dto,
     startsAt: parseIsoUtc(dto.startsAt),
     endsAt: parseIsoUtc(dto.endsAt),
+    kind: dto.kind ?? "IMAGE",
+    width: dto.width ?? 0,
+    height: dto.height ?? 0,
+    durationMs: dto.durationMs ?? null,
   };
 }
 
@@ -17,7 +25,8 @@ export function toPlaylist(dto: PlaylistDto): Playlist {
     playlistVersion: dto.playlistVersion,
     refreshAfterSeconds: dto.refreshAfterSeconds,
     layout: {
-      type: dto.layout.type,
+      // 예전 값(SINGLE·FOUR_GRID)으로 저장한 오프라인 캐시도 읽는다.
+      type: readLayoutType(dto.layout.type) ?? DEFAULT_LAYOUT_TYPE,
       rotationSeconds: clampRotationSeconds(dto.layout.rotationSeconds),
     },
     items: dto.items.map(toPlaylistItem),

@@ -124,6 +124,9 @@ export interface SubmissionView {
   requesterName: string;
   posterUrl: string;
   posterThumbUrl: string;
+  /** 포스터 원본 크기(px) */
+  posterWidth: number;
+  posterHeight: number;
   detailUrl: string | null;
   location: string | null;
   description: string | null;

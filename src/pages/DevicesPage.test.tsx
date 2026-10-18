@@ -41,7 +41,7 @@ describe("기기 관리", () => {
     expect(rows).toHaveLength(2);
     expect(within(rows[0]!).getByText("A동 로비")).toBeInTheDocument();
     expect(
-      within(rows[0]!).getByText(/한 장씩 · 10초마다 넘김/),
+      within(rows[0]!).getByText(/모아 보기 · 10초마다 넘김/),
     ).toBeInTheDocument();
   });
 

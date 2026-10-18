@@ -325,10 +325,11 @@ describe("운영자 홈", () => {
       await screen.findByRole("heading", { name: "게시판 현황" })
     ).closest("section")!;
     const row = (await within(panel).findByText("A동 로비")).closest("li")!;
-    // fixture: 게시 중 2건 모두 대상 위치가 없어 모든 TV에 걸린다. 한 장씩, 10초.
-    expect(row).toHaveTextContent("포스터 2장 · 한 장씩 · 10초마다 넘김");
-    expect(row).toHaveTextContent("한 바퀴 20초");
-    expect(row).toHaveTextContent("포스터당 시간당 약 180회");
+    // fixture: 게시 중 2건 모두 대상 위치가 없어 모든 TV에 걸린다. 모아 보기, 10초.
+    // 벽 한 번 + 크게 두 번이 한 바퀴다.
+    expect(row).toHaveTextContent("포스터 2장 · 모아 보기 · 10초마다 넘김");
+    expect(row).toHaveTextContent("한 바퀴 30초");
+    expect(row).toHaveTextContent("포스터당 시간당 약 120회 크게");
     expect(
       within(panel).getByRole("link", { name: "화면 설정 →" }),
     ).toHaveAttribute("href", "/displays");

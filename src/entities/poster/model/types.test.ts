@@ -19,6 +19,8 @@ const view: SubmissionView = {
   requesterName: "홍길동",
   posterUrl: "/posters/a.png",
   posterThumbUrl: "/posters/a.png",
+  posterWidth: 1080,
+  posterHeight: 1440,
   detailUrl: "https://ziggle.gistory.me/notices/1",
   location: "제1학생회관",
   description: "업사이클링 워크숍",
@@ -35,6 +37,8 @@ describe("fromSubmissionView", () => {
       categoryName: "동아리",
       organizerName: "지구는 처음이야",
       location: "제1학생회관",
+      width: 1080,
+      height: 1440,
       detailUrl: "https://ziggle.gistory.me/notices/1",
     });
   });

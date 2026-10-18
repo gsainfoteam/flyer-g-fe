@@ -6,3 +6,7 @@ export const TV_STAGE_WIDTH = 1920;
 export const TV_STAGE_HEIGHT = 1080;
 /** 화면 가장자리 안전 여백. TV 오버스캔과 베젤을 감안한 값이다. */
 export const TV_STAGE_PADDING = 80;
+
+/** 머리 줄(로고·기기 이름·시계) 높이와 본문과의 간격 */
+export const STAGE_HEADER_HEIGHT = 56;
+export const STAGE_HEADER_GAP = 32;

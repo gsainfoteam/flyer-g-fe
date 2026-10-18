@@ -1,17 +1,14 @@
-import {
-  FOUR_GRID_SLOT_COUNT,
-  clampRotationSeconds,
-} from "@/entities/playlist/model/types";
-import type { LayoutType } from "@/entities/playlist/model/types";
+import { clampRotationSeconds } from "@/entities/playlist/model/types";
+import { framesPerCycle } from "@/entities/playlist/model/rotation";
 import type { DisplayDevice } from "./types";
 
 /**
  * TV 한 대의 편성을 게시 중 목록과 기기 설정으로 계산한다.
  *
  * TV는 받은 포스터를 건너뛰지 않고 차례로 돌린다. 그래서 포스터 한 장이 얼마나
- * 자주 나오는지는 기록을 모으지 않아도 지금 편성으로 정해진다 — 걸린 장수, 한
- * 화면에 몇 장(한 장씩·4분할), 전환 간격. 운영자는 기기 관리에서 화면 구성과 전환
- * 간격을 바꿀 수 있어, 이 값이 판단 근거가 된다.
+ * 자주 크게 나오는지는 기록을 모으지 않아도 지금 편성으로 정해진다 — 걸린 장수,
+ * 화면 전환 방식(모아 보기·흐르는 띠), 전환 간격. 운영자는 기기 관리에서 이 둘을
+ * 바꿀 수 있어, 이 값이 판단 근거가 된다.
  */
 
 /** 이 기기가 받는 게시물인가. 대상 위치가 비어 있으면 모든 기기다. 서버 편성과 같은 규칙이다. */
@@ -25,23 +22,17 @@ export function isTargetedTo(
   );
 }
 
-export function postersPerScreen(layout: LayoutType): number {
-  return layout === "FOUR_GRID" ? FOUR_GRID_SLOT_COUNT : 1;
-}
-
 export interface BoardRotation {
   /** 이 TV에 걸린 포스터 수 */
   posterCount: number;
-  /** 한 화면에 보이는 장수 */
-  perScreen: number;
   /** 한 화면이 머무는 시간(초). 서버 값을 안전 범위로 맞춘 값이다. */
   rotationSeconds: number;
   /**
-   * 모든 포스터가 한 번씩 나오는 데 걸리는 시간(초). 한 화면에 다 들어가 넘기지
-   * 않으면 null이다.
+   * 모든 포스터가 한 번씩 크게(띠의 가운데에) 나오는 데 걸리는 시간(초).
+   * 한 건뿐이라 넘기지 않으면 null이다.
    */
   cycleSeconds: number | null;
-  /** 포스터 한 장이 한 시간에 나오는 횟수. 넘기지 않거나 걸린 게 없으면 null */
+  /** 포스터 한 장이 한 시간에 크게 나오는 횟수. 넘기지 않거나 걸린 게 없으면 null */
   timesPerHour: number | null;
 }
 
@@ -49,14 +40,13 @@ export function boardRotationOf(
   device: Pick<DisplayDevice, "layout">,
   posterCount: number,
 ): BoardRotation {
-  const perScreen = postersPerScreen(device.layout.type);
   const rotationSeconds = clampRotationSeconds(device.layout.rotationSeconds);
-  const pages = Math.ceil(posterCount / perScreen);
-  const rotates = pages > 1;
-  const cycleSeconds = rotates ? pages * rotationSeconds : null;
+  const rotates = posterCount > 1;
+  const cycleSeconds = rotates
+    ? framesPerCycle(device.layout.type, posterCount) * rotationSeconds
+    : null;
   return {
     posterCount,
-    perScreen,
     rotationSeconds,
     cycleSeconds,
     timesPerHour: cycleSeconds ? Math.floor(3600 / cycleSeconds) : null,

@@ -44,6 +44,7 @@ import type {
   SubmissionEventType,
 } from "@/entities/review/model/types";
 import { toPlaylist } from "@/entities/playlist";
+import { DEFAULT_LAYOUT_TYPE } from "@/entities/playlist/model/types";
 import type { Playlist } from "@/entities/playlist/model/types";
 import { USER_QUERY_MAX_LENGTH, isGrantableRole } from "@/entities/user";
 import type { AdminUser, GrantableRole } from "@/entities/user";
@@ -84,6 +85,7 @@ import {
   DEVICE_FIXTURES,
   TARGET_GROUP_FIXTURES,
   createEventFixtures,
+  createDemoSubmissionFixtures,
   createSubmissionFixtures,
 } from "./fixtures";
 import { createStorageHeartbeatLog } from "./heartbeats";
@@ -184,8 +186,11 @@ class MockStore {
     Promise<SignageSubmissionExpanded>
   >();
 
-  constructor(now: Date) {
-    this.submissions = createSubmissionFixtures(now);
+  constructor(now: Date, demoContent = false) {
+    this.submissions = [
+      ...createSubmissionFixtures(now),
+      ...(demoContent ? createDemoSubmissionFixtures(now) : []),
+    ];
     this.events = createEventFixtures(now);
   }
 
@@ -351,6 +356,8 @@ export interface MockRepositoryOptions {
   session?: () => SessionUser | null;
   /** TV 탭이 남긴 heartbeat. 기본은 탭 사이에 공유되는 localStorage다. */
   heartbeats?: HeartbeatLog;
+  /** 비율이 섞인 예시 게시물을 더 싣는다. 개발 서버 전용이다(`demo-content.ts`). */
+  demoContent?: boolean;
 }
 
 export function createMockRepositories(
@@ -360,7 +367,7 @@ export function createMockRepositories(
   const latencyMs = options.latencyMs ?? 0;
   const heartbeats = options.heartbeats ?? createStorageHeartbeatLog();
   const startedAt = clock.now();
-  const store = new MockStore(startedAt);
+  const store = new MockStore(startedAt, options.demoContent);
   let deviceSeeds: DeviceSeed[] = [...DEVICE_FIXTURES];
   let groupSeeds: TargetGroupSeed[] = [...TARGET_GROUP_FIXTURES];
   let createdGroupCount = 0;
@@ -1048,7 +1055,10 @@ export function createMockRepositories(
         playlistVersion: hashPlaylist(playable),
         // 등록된 기기는 운영자가 정한 화면 설정을, 미리보기는 기본값을 쓴다.
         refreshAfterSeconds: device?.refreshAfterSeconds ?? 60,
-        layout: device?.layout ?? { type: "SINGLE", rotationSeconds: 10 },
+        layout: device?.layout ?? {
+          type: DEFAULT_LAYOUT_TYPE,
+          rotationSeconds: 10,
+        },
         items: playable.map((item) => ({
           submissionId: item.id,
           revision: item.version,
@@ -1060,6 +1070,10 @@ export function createMockRepositories(
           endsAt: toIsoUtc(item.endAt),
           priority: item.priority,
           checksum: `mock-${item.id}`,
+          kind: "IMAGE",
+          width: item.posterWidth,
+          height: item.posterHeight,
+          durationMs: null,
           subtitle: item.subtitle,
           location: item.location,
           organizerName: item.organizerName,

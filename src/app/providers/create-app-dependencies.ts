@@ -85,6 +85,10 @@ function createRepositories(
 ): Repositories {
   const mock = createMockRepositories({
     latencyMs: 200,
+    // 예시 이미지는 개발 서버가 소스 경로로 내준다. 그래서 개발 서버에서만 켠다.
+    demoContent:
+      import.meta.env.DEV &&
+      import.meta.env.VITE_MOCK_DEMO_CONTENT === "true",
     // mock 서버가 "누가 요청했는지" 알게 한다. 실제 서버는 Bearer 토큰으로 안다.
     session: isMockAuthAdapter(authAdapter)
       ? () => authAdapter.peekUser()

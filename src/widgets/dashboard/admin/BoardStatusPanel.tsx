@@ -6,6 +6,7 @@ import {
   isTargetedTo,
 } from "@/entities/device/model/board";
 import type { DisplayDevice } from "@/entities/device/model/types";
+import { LAYOUT_LABELS } from "@/entities/playlist/model/rotation";
 import type { SubmissionView } from "@/entities/submission/model/types";
 import {
   EmptyState,
@@ -22,10 +23,9 @@ import { Button } from "@/shared/ui/button";
  *
  * 노출 기록을 모은 값이 아니라 지금 편성으로 계산한 값이다. TV는 포스터를
  * 건너뛰지 않으므로 노출 수는 걸린 시간에 비례할 뿐이고, 운영자가 손쓸 수 있는 건
- * 붐비는 정도다. 한 바퀴가 길어지면 기기 관리에서 4분할로 바꾸거나 전환 간격을
- * 줄인다.
+ * 붐비는 정도다. 한 바퀴가 길어지면 기기 관리에서 전환 간격을 줄이거나 벽이 끼지
+ * 않는 흐르는 띠로 바꾼다.
  */
-const LAYOUT_LABEL = { SINGLE: "한 장씩", FOUR_GRID: "4분할" } as const;
 
 /** "30초", "1분", "1분 30초" */
 function formatSeconds(total: number): string {
@@ -130,7 +130,7 @@ function BoardRow({
           )}
         </p>
         <p className="text-caption text-ink-subtle">
-          포스터 {rotation.posterCount}장 · {LAYOUT_LABEL[device.layout.type]} ·{" "}
+          포스터 {rotation.posterCount}장 · {LAYOUT_LABELS[device.layout.type]} ·{" "}
           {rotation.rotationSeconds}초마다 넘김
         </p>
       </div>
@@ -143,7 +143,7 @@ function BoardRow({
         ) : rotation.cycleSeconds === null ? (
           <>
             <p className="text-label font-bold text-ink">넘기지 않음</p>
-            <p className="text-caption text-ink-subtle">한 화면에 모두 표시</p>
+            <p className="text-caption text-ink-subtle">한 건을 계속 크게 표시</p>
           </>
         ) : (
           <>
@@ -151,7 +151,7 @@ function BoardRow({
               한 바퀴 {formatSeconds(rotation.cycleSeconds)}
             </p>
             <p className="text-caption text-ink-subtle tabular-nums">
-              포스터당 시간당 약 {rotation.timesPerHour}회
+              포스터당 시간당 약 {rotation.timesPerHour}회 크게
             </p>
           </>
         )}

@@ -12,7 +12,11 @@ import {
   usePrefetchImages,
 } from "@/features/display";
 import { useRotation } from "@/features/display/model/use-rotation";
-import { PREVIEW_DEVICE_ID } from "@/entities/playlist/model/types";
+import {
+  DEFAULT_LAYOUT_TYPE,
+  PREVIEW_DEVICE_ID,
+} from "@/entities/playlist/model/types";
+import { exposedPosters, imagesOf } from "@/entities/poster/model/frames";
 import { toUserMessage } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
 import { captureDeviceTokenFromUrl } from "@/shared/lib/device-credential";
@@ -69,7 +73,7 @@ export function DisplayPage() {
     [feed.playlist, failedIds],
   );
 
-  const layout = feed.playlist?.layout.type ?? "SINGLE";
+  const layout = feed.playlist?.layout.type ?? DEFAULT_LAYOUT_TYPE;
   const rotationSeconds = feed.playlist?.layout.rotationSeconds ?? 10;
   const serverTime = feed.playlist?.serverTime ?? null;
 
@@ -81,13 +85,9 @@ export function DisplayPage() {
     paused: isPreview && paused,
   });
 
-  const nextPage =
-    rotation.pageCount > 1
-      ? rotation.pages[(rotation.pageIndex + 1) % rotation.pageCount]
-      : undefined;
-  usePrefetchImages(nextPage?.map((poster) => poster.posterUrl) ?? []);
+  usePrefetchImages(imagesOf(rotation.nextFrame, posters));
 
-  // 실제로 그려진 이미지. 노출 기록과 정상 렌더링 보고는 뜬 페이지만 센다.
+  // 실제로 그려진 이미지. 노출 기록과 정상 렌더링 보고는 뜬 화면만 센다.
   const [loadedIds, setLoadedIds] = useState<ReadonlySet<string>>(new Set());
   const handlePosterLoad = useCallback((posterId: string) => {
     setLoadedIds((current) =>
@@ -106,17 +106,23 @@ export function DisplayPage() {
     [playlistVersion],
   );
 
+  const exposed = rotation.currentFrame
+    ? exposedPosters(rotation.currentFrame, posters)
+    : [];
   usePlaybackReporting({
-    page: rotation.currentPage,
+    page: exposed,
     rendered:
-      rotation.currentPage.length > 0 &&
-      rotation.currentPage.every((poster) => loadedIds.has(poster.id)),
+      exposed.length > 0 &&
+      exposed.every((poster) => loadedIds.has(poster.id)),
     rotationSeconds,
     recordExposure: telemetry.recordExposure,
     reportRenderOk: telemetry.reportRenderOk,
   });
 
-  const pageKey = rotation.currentPage.map((poster) => poster.id).join("|");
+  // 화면이 바뀔 때 새로 그려 부드럽게 나타나게 한다. 띠는 한 덩어리로 두고
+  // 칸만 미끄러지게 한다.
+  const frame = rotation.currentFrame;
+  const frameKey = frame?.kind === "strip" ? "strip" : (frame?.key ?? "");
 
   return (
     <div className="relative h-full">
@@ -128,15 +134,13 @@ export function DisplayPage() {
             <Logo size="tv" />
             <p className="text-[30px] text-ink-subtle">편성을 불러오는 중</p>
           </div>
-        ) : posters.length === 0 ? (
+        ) : posters.length === 0 || !frame ? (
           <EmptyDisplay deviceLabel={deviceLabel} serverTime={serverTime} />
         ) : (
-          // 페이지가 바뀔 때 새로 그려 부드럽게 나타나게 한다.
-          <div key={pageKey} className="h-full animate-in duration-500 fade-in">
+          <div key={frameKey} className="h-full animate-in duration-500 fade-in">
             <DisplayStage
-              layout={layout}
-              posters={rotation.currentPage}
-              totalCount={posters.length}
+              frame={frame}
+              posters={posters}
               deviceLabel={deviceLabel}
               serverTime={serverTime}
               clockTicking
@@ -173,13 +177,13 @@ export function DisplayPage() {
             size="sm"
             className="text-ink-inverse hover:bg-white/15 hover:text-ink-inverse"
             onClick={rotation.advance}
-            disabled={rotation.pageCount <= 1}
-            aria-label="다음 페이지"
+            disabled={rotation.frameCount <= 1}
+            aria-label="다음 화면"
           >
             <SkipForward aria-hidden="true" />
           </Button>
           <span className="text-caption tabular-nums text-white/70">
-            {rotation.pageIndex + 1} / {Math.max(rotation.pageCount, 1)}
+            {rotation.frameIndex + 1} / {Math.max(rotation.frameCount, 1)}
           </span>
         </div>
       )}

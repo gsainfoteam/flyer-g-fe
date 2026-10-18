@@ -67,6 +67,19 @@ export function readNumber(
   return value;
 }
 
+export function readNullableNumber(
+  object: JsonObject,
+  key: string,
+  path = key,
+): number | null {
+  const value = object[key];
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw invalidResponse(path, "숫자 또는 null");
+  }
+  return value;
+}
+
 export function readBoolean(
   object: JsonObject,
   key: string,

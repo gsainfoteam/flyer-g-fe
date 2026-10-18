@@ -828,7 +828,7 @@ describe("위치 그룹 관리", () => {
         location: null,
         groupIds: ["group-house-a"],
         orientation: "LANDSCAPE",
-        layout: "SINGLE",
+        layout: "STRIP",
         rotationSeconds: 10,
         refreshAfterSeconds: 60,
       }),

@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { useDevices, useTargetGroups } from "@/entities/device/api/queries";
 import type { DisplayDevice, TargetGroup } from "@/entities/device/model/types";
 import { DeviceStatusBadge } from "@/entities/device/ui/DeviceStatusBadge";
-import { LAYOUT_LABELS } from "@/features/devices/model/device-form";
+import { LAYOUT_LABELS } from "@/entities/playlist/model/rotation";
 import type { SetupLinkResult } from "@/features/devices/model/setup-link";
 import { useRotateDeviceToken } from "@/features/devices/model/use-device-mutations";
 import { DeviceFormDialog } from "@/features/devices/ui/DeviceFormDialog";
