@@ -130,6 +130,8 @@ export function parsePlaylist(payload: unknown): Playlist {
         ),
       };
     }),
+    // 백엔드에 위젯이 아직 없다. 계약이 생기면 여기서 `widgets`를 읽는다.
+    widgets: [],
   };
 }
 
@@ -216,6 +218,7 @@ export function createHttpDisplayRepository({
       refreshAfterSeconds: 60,
       layout: PREVIEW_LAYOUT,
       items,
+      widgets: [],
     };
   };
 

@@ -152,7 +152,7 @@ export function TvRotationDemo() {
         </span>
       </div>
       <DisplayPreviewFrame className="max-w-[960px]">
-        {frame && (
+        {frame && frame.kind !== "widget" && (
           <div
             key={frame.kind === "strip" ? "strip" : frame.key}
             className="h-full animate-in duration-500 fade-in"

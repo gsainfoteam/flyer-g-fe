@@ -1,3 +1,4 @@
+import type { WidgetSlot } from "@/entities/widget/model/types";
 import type { PosterRenderModel } from "@/entities/poster";
 import type { LayoutType } from "@/entities/playlist/model/types";
 
@@ -24,4 +25,5 @@ export interface DisplayPlaylist {
   refreshAfterSeconds: number;
   layout: { type: LayoutType; rotationSeconds: number };
   posters: PosterRenderModel[];
+  widgets: WidgetSlot[];
 }

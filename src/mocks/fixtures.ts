@@ -1,3 +1,4 @@
+import type { WidgetSlotDto } from "@/entities/widget/model/types";
 import type {
   DisplayDeviceDto,
   TargetGroup,
@@ -535,6 +536,29 @@ export interface DeviceSeed extends Omit<
   /** false면 사용 안 함(DISABLED) */
   isActive: boolean;
 }
+
+/**
+ * 모든 기기 편성에 끼우는 위젯. 백엔드에 위젯이 생기기 전까지 mock만 보낸다.
+ * 날짜는 서울 자정을 UTC로 적는다.
+ */
+export const WIDGET_SEEDS: WidgetSlotDto[] = [
+  {
+    id: "widget-dday-semester-end",
+    type: "DDAY",
+    params: { label: "종강", date: "2026-12-18T15:00:00.000Z" },
+  },
+  {
+    id: "widget-exam-final",
+    type: "EXAM_CHEER",
+    params: {
+      label: "기말고사",
+      startsAt: "2026-12-13T15:00:00.000Z",
+      endsAt: "2026-12-18T15:00:00.000Z",
+    },
+  },
+  { id: "widget-fortune", type: "FORTUNE", everyFrames: 6 },
+  { id: "widget-meal", type: "MEAL_PICK", everyFrames: 5 },
+];
 
 const SEED_DEVICE_SETTINGS = {
   layout: { type: "WALL", rotationSeconds: 10 },

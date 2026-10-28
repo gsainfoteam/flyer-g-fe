@@ -17,6 +17,9 @@ import {
   PREVIEW_DEVICE_ID,
 } from "@/entities/playlist/model/types";
 import { exposedPosters, imagesOf } from "@/entities/poster/model/frames";
+import { buildWidgetContent } from "@/entities/widget/model/content";
+import type { PlayerFrame } from "@/entities/widget/model/schedule";
+import { WidgetDisplay } from "@/entities/widget/ui/WidgetDisplay";
 import { toUserMessage } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
 import { captureDeviceTokenFromUrl } from "@/shared/lib/device-credential";
@@ -77,15 +80,30 @@ export function DisplayPage() {
   const rotationSeconds = feed.playlist?.layout.rotationSeconds ?? 10;
   const serverTime = feed.playlist?.serverTime ?? null;
 
+  // 지금 보여 줄 내용이 있는 위젯만 돈다. 지난 D-day, 시험 기간이 아닌 응원은 빠진다.
+  const widgets = useMemo(
+    () =>
+      serverTime
+        ? (feed.playlist?.widgets ?? []).filter(
+            (slot) => buildWidgetContent(slot, serverTime) !== null,
+          )
+        : [],
+    [feed.playlist, serverTime],
+  );
+
   const [paused, setPaused] = useState(false);
   const rotation = useRotation({
     posters,
     layout,
     rotationSeconds,
+    widgets,
     paused: isPreview && paused,
   });
 
-  usePrefetchImages(imagesOf(rotation.nextFrame, posters));
+  const nextFrame = rotation.nextFrame;
+  usePrefetchImages(
+    nextFrame && nextFrame.kind !== "widget" ? imagesOf(nextFrame, posters) : [],
+  );
 
   // 실제로 그려진 이미지. 노출 기록과 정상 렌더링 보고는 뜬 화면만 센다.
   const [loadedIds, setLoadedIds] = useState<ReadonlySet<string>>(new Set());
@@ -106,9 +124,11 @@ export function DisplayPage() {
     [playlistVersion],
   );
 
-  const exposed = rotation.currentFrame
-    ? exposedPosters(rotation.currentFrame, posters)
-    : [];
+  // 위젯 화면은 게시물 노출이 아니다. 노출 기록에서 뺀다.
+  const exposed =
+    rotation.currentFrame && rotation.currentFrame.kind !== "widget"
+      ? exposedPosters(rotation.currentFrame, posters)
+      : [];
   usePlaybackReporting({
     page: exposed,
     rendered:
@@ -134,8 +154,15 @@ export function DisplayPage() {
             <Logo size="tv" />
             <p className="text-[30px] text-ink-subtle">편성을 불러오는 중</p>
           </div>
-        ) : posters.length === 0 || !frame ? (
+        ) : !frame ? (
           <EmptyDisplay deviceLabel={deviceLabel} serverTime={serverTime} />
+        ) : frame.kind === "widget" ? (
+          <WidgetFrame
+            key={frameKey}
+            frame={frame}
+            deviceLabel={deviceLabel}
+            serverTime={serverTime}
+          />
         ) : (
           <div key={frameKey} className="h-full animate-in duration-500 fade-in">
             <DisplayStage
@@ -187,6 +214,33 @@ export function DisplayPage() {
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+function WidgetFrame({
+  frame,
+  deviceLabel,
+  serverTime,
+}: {
+  frame: Extract<PlayerFrame, { kind: "widget" }>;
+  deviceLabel: string | null;
+  serverTime: Date;
+}) {
+  // 거르는 시점과 그리는 시점 사이에 날이 바뀌면 내용이 없을 수 있다. 다음 화면까지
+  // 빈 칸 대신 안내 화면을 둔다.
+  const content = buildWidgetContent(frame.slot, serverTime);
+  if (!content) {
+    return <EmptyDisplay deviceLabel={deviceLabel} serverTime={serverTime} />;
+  }
+  return (
+    <div className="h-full animate-in duration-500 fade-in">
+      <WidgetDisplay
+        content={content}
+        deviceLabel={deviceLabel}
+        serverTime={serverTime}
+        clockTicking
+      />
     </div>
   );
 }
