@@ -87,7 +87,7 @@ import {
   createEventFixtures,
   createDemoSubmissionFixtures,
   createSubmissionFixtures,
-  WIDGET_SEEDS,
+  createWidgetSeeds,
 } from "./fixtures";
 import { createStorageHeartbeatLog } from "./heartbeats";
 import type { HeartbeatLog } from "./heartbeats";
@@ -1079,7 +1079,7 @@ export function createMockRepositories(
           location: item.location,
           organizerName: item.organizerName,
         })),
-        widgets: WIDGET_SEEDS,
+        widgets: createWidgetSeeds(now),
       });
     },
   };

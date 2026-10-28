@@ -1,4 +1,14 @@
 import { getSeoulParts, parseIsoUtc, seoulDayDiff } from "@/shared/lib/datetime";
+import {
+  buildCafeteriaContent,
+  buildRestaurantContent,
+  buildWeatherContent,
+} from "./data-content";
+import type {
+  CafeteriaContent,
+  RestaurantContent,
+  WeatherContent,
+} from "./data-content";
 import type { WidgetSlot } from "./types";
 
 /**
@@ -18,7 +28,10 @@ export type WidgetContent =
       message: string;
     }
   | { type: "FORTUNE"; dateKey: string; fortunes: ZodiacFortune[] }
-  | { type: "MEAL_PICK"; meal: "LUNCH" | "DINNER"; menu: string; alternatives: string[] };
+  | { type: "MEAL_PICK"; meal: "LUNCH" | "DINNER"; menu: string; alternatives: string[] }
+  | CafeteriaContent
+  | WeatherContent
+  | RestaurantContent;
 
 export interface ZodiacFortune {
   animal: string;
@@ -229,6 +242,18 @@ export function buildWidgetContent(
         picked.push(pool.splice(Math.floor(random() * pool.length), 1)[0]!);
       }
       return { type: "MEAL_PICK", meal, menu: picked[0]!, alternatives: picked.slice(1) };
+    }
+    case "CAFETERIA":
+      return buildCafeteriaContent(slot.params, now);
+    case "WEATHER":
+      return buildWeatherContent(slot.params, now);
+    case "RESTAURANT": {
+      // 한 시간마다 다른 가게를 보여 준다. 그 안에서는 모든 TV가 같다.
+      const { hour24 } = getSeoulParts(now);
+      return buildRestaurantContent(
+        slot.params,
+        seededRandom(`restaurant:${dateKey}:${hour24}`),
+      );
     }
   }
 }

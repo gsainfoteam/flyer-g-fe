@@ -4,8 +4,20 @@
  *
  * 백엔드에는 아직 위젯이 없다. 편성 응답에 `widgets`가 오면 읽고, 없으면 빈 목록이다.
  * 지금은 mock 편성만 보낸다.
+ *
+ * 외부 데이터(학식·날씨·맛집)는 TV가 직접 받지 않는다. 서버가 주기적으로 모아
+ * 슬롯의 `params.data`에 실어 보낸다. API 키를 TV에 두지 않고, 편성과 함께 오프라인
+ * 캐시에 남는다.
  */
-export const WIDGET_TYPES = ["DDAY", "EXAM_CHEER", "FORTUNE", "MEAL_PICK"] as const;
+export const WIDGET_TYPES = [
+  "DDAY",
+  "EXAM_CHEER",
+  "FORTUNE",
+  "MEAL_PICK",
+  "CAFETERIA",
+  "WEATHER",
+  "RESTAURANT",
+] as const;
 export type WidgetType = (typeof WIDGET_TYPES)[number];
 
 /**
@@ -17,6 +29,9 @@ export const DEFAULT_WIDGET_DURATION: Record<WidgetType, number> = {
   EXAM_CHEER: 10,
   FORTUNE: 30,
   MEAL_PICK: 10,
+  CAFETERIA: 10,
+  WEATHER: 10,
+  RESTAURANT: 10,
 };
 
 /** 위젯 머무는 시간의 안전 범위. 포스터 노출을 너무 오래 막지 않게 한다. */
