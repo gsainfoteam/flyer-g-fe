@@ -37,7 +37,7 @@ export function ClickBattlePlayPage() {
   const { roomId = "lobby" } = useParams();
   const [searchParams] = useSearchParams();
   const team = readTeam(searchParams.get("team"));
-  const player = useBattlePlayer(roomId);
+  const player = useBattlePlayer(roomId, { hostPeerId: searchParams.get("peer") });
   const [name, setName] = useState("");
   const now = useNow();
   const style = TEAM_STYLE[team];
@@ -49,7 +49,7 @@ export function ClickBattlePlayPage() {
     return (
       <Notice
         title="TV에 연결하는 중이에요"
-        description="TV 화면의 QR을 다시 찍어 보세요. 개발 환경에서는 같은 브라우저에서 TV 탭을 열어 두어야 해요."
+        description="TV와 같은 와이파이에 있는지 확인하고, 계속 안 되면 TV 화면의 QR을 다시 찍어 보세요."
       />
     );
   }

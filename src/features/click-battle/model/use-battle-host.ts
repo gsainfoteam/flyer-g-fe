@@ -11,6 +11,8 @@ import type {
 } from "@/entities/game/model/click-battle";
 import { createBroadcastGameChannel } from "@/shared/lib/game-channel";
 import type { GameChannel } from "@/shared/lib/game-channel";
+import { createPeerHostChannel } from "@/shared/lib/peer-game-channel";
+import type { PeerStatus } from "@/shared/lib/peer-game-channel";
 
 /**
  * TV 쪽 클릭 배틀. 상태의 원본을 들고 폰 메시지를 받아 심판한다.
@@ -22,14 +24,24 @@ const FRAME_MS = 200;
 /** 바뀐 것이 없어도 이만큼마다 상태를 보낸다. 폰은 이 신호로 연결을 확인한다. */
 const HEARTBEAT_MS = 1_000;
 
+/**
+ * 폰과 잇는 방법. `webrtc`는 실제 폰이 붙는다. `local`은 같은 브라우저 탭끼리만
+ * 통해 개발 중에 시그널링 서버 없이 확인할 때 쓴다.
+ */
+export type BattleTransport = "webrtc" | "local";
+
 export interface UseBattleHostOptions {
+  transport?: BattleTransport;
   /** 테스트 주입용 */
   channel?: GameChannel<BattleClientMessage, BattleHostMessage>;
   now?: () => number;
 }
 
 export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}) {
-  const { channel: injected, now = Date.now } = options;
+  const { channel: injected, now = Date.now, transport = "webrtc" } = options;
+  /** 폰이 붙을 TV의 id. WebRTC에서만 생기고, 시그널링 서버가 정해 준다. */
+  const [peerId, setPeerId] = useState<string | null>(null);
+  const [status, setStatus] = useState<PeerStatus | null>(null);
   const [state, setState] = useState<BattleState>(initialBattle);
   const stateRef = useRef<BattleState>(state);
   const [clock, setClock] = useState(() => now());
@@ -37,7 +49,14 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
   useEffect(() => {
     const channel =
       injected ??
-      createBroadcastGameChannel<BattleClientMessage, BattleHostMessage>(roomId);
+      (transport === "webrtc"
+        ? createPeerHostChannel<BattleClientMessage, BattleHostMessage>({
+            onReady: setPeerId,
+            onStatus: (next) => setStatus(next),
+            // 탭을 닫은 폰은 "나간다"를 못 보낸다. 연결이 끊기면 대신 내보낸다.
+            onDisconnect: (last) => ({ kind: "leave", playerId: last.playerId }),
+          })
+        : createBroadcastGameChannel<BattleClientMessage, BattleHostMessage>(roomId));
     let dirty = true;
     let sentAt = 0;
 
@@ -81,7 +100,7 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
       unsubscribe();
       if (!injected) channel.close();
     };
-  }, [roomId, injected, now]);
+  }, [roomId, injected, now, transport]);
 
-  return { state, now: clock };
+  return { state, now: clock, peerId, status };
 }

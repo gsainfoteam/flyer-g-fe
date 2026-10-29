@@ -1,8 +1,9 @@
-import { useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 import { BATTLE_RULES, TEAMS, secondsLeft } from "@/entities/game/model/click-battle";
 import type { BattleState, Team } from "@/entities/game/model/click-battle";
 import { ScaledStage } from "@/entities/poster/ui/ScaledStage";
 import { useBattleHost } from "@/features/click-battle/model/use-battle-host";
+import type { PeerStatus } from "@/shared/lib/peer-game-channel";
 import { Logo } from "@/shared/components/Logo";
 import { QRCodeBox } from "@/shared/components/QRCodeBox";
 import { to } from "@/shared/config/routes";
@@ -42,7 +43,12 @@ function statusOf(state: BattleState, seconds: number | null): { title: string; 
 
 export function ClickBattleTvPage() {
   const { roomId = "lobby" } = useParams();
-  const { state, now } = useBattleHost(roomId);
+  const [searchParams] = useSearchParams();
+  // 기본은 WebRTC다. `?transport=local`은 시그널링 서버 없이 같은 브라우저 탭끼리 확인한다.
+  const transport = searchParams.get("transport") === "local" ? "local" : "webrtc";
+  const { state, now, peerId, status: link } = useBattleHost(roomId, { transport });
+  // WebRTC는 TV id를 받아야 QR을 만들 수 있다. 그전에는 QR 자리에 연결 상태를 보여 준다.
+  const linkReady = transport === "local" || peerId !== null;
   const seconds = secondsLeft(state, now);
   const status = statusOf(state, seconds);
   const joinable = state.phase === "LOBBY" || state.phase === "COUNTDOWN";
@@ -58,6 +64,7 @@ export function ClickBattleTvPage() {
           <span className="ml-auto text-[26px] text-ink-subtle tabular-nums">
             {state.round}번째 판
           </span>
+          <LinkBadge transport={transport} status={link} />
         </header>
 
         <div className="flex shrink-0 items-baseline gap-8">
@@ -81,10 +88,11 @@ export function ClickBattleTvPage() {
               team={team}
               state={state}
               joinUrl={
-                joinable
-                  ? `${window.location.origin}${to.playClickBattle(roomId, team)}`
+                joinable && linkReady
+                  ? `${window.location.origin}${to.playClickBattle(roomId, team, peerId)}`
                   : null
               }
+              closedLabel={joinable ? "연결 준비 중이에요" : "경기 중에는\n입장이 마감돼요"}
             />
           ))}
         </div>
@@ -99,14 +107,43 @@ export function ClickBattleTvPage() {
   );
 }
 
+function LinkBadge({
+  transport,
+  status,
+}: {
+  transport: "webrtc" | "local";
+  status: PeerStatus | null;
+}) {
+  if (transport === "local") {
+    return <span className="text-[22px] text-ink-subtle">같은 브라우저 전용</span>;
+  }
+  const label =
+    status === "open" ? "폰 연결 가능" : status === "error" ? "연결 오류 · 다시 시도 중" : "연결 준비 중";
+  return (
+    <span className="flex items-center gap-2 text-[22px] text-ink-subtle">
+      <span
+        aria-hidden="true"
+        className={cn(
+          "size-3 rounded-pill",
+          status === "open" ? "bg-success" : status === "error" ? "bg-danger" : "bg-warning",
+        )}
+      />
+      {label}
+    </span>
+  );
+}
+
 function TeamPanel({
   team,
   state,
   joinUrl,
+  closedLabel,
 }: {
   team: Team;
   state: BattleState;
   joinUrl: string | null;
+  /** QR을 보여 줄 수 없을 때 그 자리에 적는다. */
+  closedLabel: string;
 }) {
   const style = TEAM_STYLE[team];
   const players = state.players.filter((player) => player.team === team);
@@ -163,10 +200,8 @@ function TeamPanel({
             <p className={cn("text-[32px] font-extrabold", style.text)}>{team}팀으로 참가</p>
           </>
         ) : (
-          <p className="text-center text-[26px] leading-snug text-ink-subtle">
-            경기 중에는
-            <br />
-            입장이 마감돼요
+          <p className="text-center text-[26px] leading-snug whitespace-pre-line text-ink-subtle">
+            {closedLabel}
           </p>
         )}
       </div>
