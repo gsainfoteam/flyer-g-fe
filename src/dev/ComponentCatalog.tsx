@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { SUBMISSION_STATUSES } from "@/entities/submission";
 import { MockControlPanel } from "./MockControlPanel";
 import { TvRotationDemo } from "./TvRotationDemo";
+import { WidgetGallery } from "./WidgetGallery";
 import { ApiError } from "@/shared/api/error";
 import { ConfirmActionDialog, EmptyState, ErrorState, FormField, LoadingState, Panel, SectionHeader } from "@/shared/components";
 import { StatusBadge } from "@/entities/submission/ui/StatusBadge";
@@ -175,6 +176,13 @@ export default function ComponentCatalog() {
           description="비율이 섞인 예시 게시물 31건. 5초마다 넘긴다."
         >
           <TvRotationDemo />
+        </Section>
+
+        <Section
+          title="TV 위젯"
+          description="넘치기 쉬운 값을 모은 경계 사례. 각 칸은 1920x1080 TV 화면을 줄인 것이다."
+        >
+          <WidgetGallery />
         </Section>
 
         <Section title="디자인 토큰" description="색, 타이포, 모서리, 그림자">

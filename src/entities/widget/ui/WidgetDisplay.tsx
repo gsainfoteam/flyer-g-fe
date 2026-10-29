@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { Cloud, CloudRain, CloudSun, Snowflake, Sun } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { StageHeader } from "@/entities/poster/ui/StageHeader";
 import { STAGE_HEADER_GAP } from "@/entities/poster/ui/stage-metrics";
 import { formatSeoulDateWithWeekday } from "@/shared/lib/datetime";
@@ -63,7 +65,9 @@ function WidgetBody({ content }: { content: WidgetContent }): ReactNode {
       return (
         <div className="flex flex-1 flex-col justify-center gap-10">
           <Eyebrow>D-day</Eyebrow>
-          <p className="text-[64px] font-extrabold text-ink">{content.label}까지</p>
+          <p className="line-clamp-2 text-[64px] leading-tight font-extrabold text-ink">
+            {content.label}까지
+          </p>
           <p className="text-[240px] leading-none font-extrabold tracking-tight text-ink tabular-nums">
             {content.days === 0 ? "D-DAY" : `D-${content.days}`}
           </p>
@@ -168,6 +172,9 @@ const MEAL_LABEL: Record<MealType, string> = {
   DINNER: "저녁",
 };
 
+/** 끼니마다 보여 줄 메뉴 수. 넘치면 "외 N가지"로 줄인다. 카드 높이에 맞춘 값이다. */
+const MAX_MENUS = 7;
+
 function CafeteriaBody({ content }: { content: CafeteriaContent }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-10">
@@ -214,11 +221,14 @@ function CafeteriaBody({ content }: { content: CafeteriaContent }) {
                   isCurrent ? "font-bold text-ink" : "text-ink-muted",
                 )}
               >
-                {meal.menus.map((menu) => (
+                {meal.menus.slice(0, MAX_MENUS).map((menu) => (
                   <li key={menu} className="truncate">
                     {menu}
                   </li>
                 ))}
+                {meal.menus.length > MAX_MENUS && (
+                  <li className="text-ink-subtle">외 {meal.menus.length - MAX_MENUS}가지</li>
+                )}
               </ul>
             </li>
           );
@@ -228,12 +238,16 @@ function CafeteriaBody({ content }: { content: CafeteriaContent }) {
   );
 }
 
-const SKY_LABEL: Record<Sky, { text: string; emoji: string }> = {
-  CLEAR: { text: "맑음", emoji: "☀️" },
-  PARTLY_CLOUDY: { text: "구름 조금", emoji: "⛅" },
-  CLOUDY: { text: "흐림", emoji: "☁️" },
-  RAIN: { text: "비", emoji: "🌧️" },
-  SNOW: { text: "눈", emoji: "❄️" },
+/**
+ * 하늘 상태 아이콘. 이모지는 쓰지 않는다. 사이니지 OS(Tizen·라즈베리파이)에 컬러 이모지
+ * 글꼴이 없으면 빈 네모로 나온다. SVG 아이콘은 어디서나 같게 그려진다.
+ */
+const SKY_LABEL: Record<Sky, { text: string; icon: LucideIcon; tone: string }> = {
+  CLEAR: { text: "맑음", icon: Sun, tone: "text-warning" },
+  PARTLY_CLOUDY: { text: "구름 조금", icon: CloudSun, tone: "text-warning" },
+  CLOUDY: { text: "흐림", icon: Cloud, tone: "text-ink-muted" },
+  RAIN: { text: "비", icon: CloudRain, tone: "text-info" },
+  SNOW: { text: "눈", icon: Snowflake, tone: "text-info" },
 };
 
 function WeatherBody({ content }: { content: WeatherContent }) {
@@ -248,9 +262,7 @@ function WeatherBody({ content }: { content: WeatherContent }) {
       </div>
       <div className="flex flex-1 items-center gap-24">
         <div className="flex items-center gap-10">
-          <span aria-hidden="true" className="text-[180px] leading-none">
-            {sky.emoji}
-          </span>
+          <sky.icon aria-hidden="true" strokeWidth={1.5} className={cn("size-[180px]", sky.tone)} />
           <div>
             <p className="text-[180px] leading-none font-extrabold tracking-tight text-ink tabular-nums">
               {content.temperature}°
@@ -279,9 +291,7 @@ function WeatherBody({ content }: { content: WeatherContent }) {
               <span className="text-[26px] text-ink-subtle tabular-nums">
                 {getSeoulParts(hour.at).hour24}시
               </span>
-              <span aria-hidden="true" className="text-[40px] leading-none">
-                {SKY_LABEL[hour.sky].emoji}
-              </span>
+              <HourIcon sky={hour.sky} />
               <span className="text-[32px] font-bold text-ink tabular-nums">
                 {hour.temperature}°
               </span>
@@ -293,6 +303,14 @@ function WeatherBody({ content }: { content: WeatherContent }) {
   );
 }
 
+function HourIcon({ sky }: { sky: Sky }) {
+  const { icon: Icon, tone } = SKY_LABEL[sky];
+  return <Icon aria-hidden="true" strokeWidth={2} className={cn("size-10", tone)} />;
+}
+
+/** 이 길이를 넘는 가게 이름은 한 단계 작게 써서 두 줄 안에 담는다. */
+const LONG_PLACE_NAME = 9;
+
 function RestaurantBody({ content }: { content: RestaurantContent }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-10">
@@ -303,7 +321,12 @@ function RestaurantBody({ content }: { content: RestaurantContent }) {
             {content.featured.category}
           </p>
         )}
-        <p className="text-[150px] leading-none font-extrabold tracking-tight text-ink">
+        <p
+          className={cn(
+            "line-clamp-2 leading-[1.05] font-extrabold tracking-tight text-ink",
+            content.featured.name.length > LONG_PLACE_NAME ? "text-[110px]" : "text-[150px]",
+          )}
+        >
           {content.featured.name}
         </p>
         {content.featured.address && (
@@ -328,7 +351,7 @@ function FortuneCell({ fortune }: { fortune: ZodiacFortune }) {
   return (
     <li className="flex min-h-0 flex-col justify-center gap-2 overflow-hidden rounded-tv-poster bg-surface-muted px-8 py-4">
       <p className="text-[32px] font-extrabold text-ink">
-        <span aria-hidden="true">{fortune.emoji}</span> {fortune.animal}띠
+        {fortune.animal}띠
       </p>
       <p className="line-clamp-2 text-[24px] leading-snug text-ink">{fortune.message}</p>
       <p className="text-[22px] text-ink-subtle">행운의 색 · {fortune.luckyColor}</p>
