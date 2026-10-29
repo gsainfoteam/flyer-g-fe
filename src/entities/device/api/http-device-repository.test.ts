@@ -59,6 +59,8 @@ describe("createHttpDeviceRepository", () => {
       lastPlaylistVersion: null,
       lastRenderOkAt: null,
       tokenIssuedAt: new Date("2026-09-27T09:00:00.000Z"),
+      // 백엔드에 위젯 설정이 없어 화면이 위젯 설정을 막는다.
+      widgets: null,
     });
   });
 

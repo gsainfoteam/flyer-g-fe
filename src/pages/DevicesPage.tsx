@@ -10,6 +10,9 @@ import { useRotateDeviceToken } from "@/features/devices/model/use-device-mutati
 import { DeviceFormDialog } from "@/features/devices/ui/DeviceFormDialog";
 import { DeviceSetupLinkDialog } from "@/features/devices/ui/DeviceSetupLinkDialog";
 import { TargetGroupsSection } from "@/features/devices/ui/TargetGroupsSection";
+import { summarizeWidgets } from "@/features/devices/model/widget-settings-form";
+import { WidgetSettingsDialog } from "@/features/devices/ui/WidgetSettingsDialog";
+import type { WidgetSetting } from "@/entities/widget/model/settings";
 import { isApiError, toUserMessage } from "@/shared/api/error";
 import {
   ConfirmActionDialog,
@@ -24,8 +27,8 @@ import { Button } from "@/shared/ui/button";
 /**
  * 기기 관리 (`API-CHANGES-BACKEND.md` 11.1). 시스템 운영자만 본다.
  *
- * 로비 TV를 등록하고, 화면 설정(레이아웃·전환 간격·갱신 주기)을 바꾸고, 토큰을
- * 재발급한다. 등록·재발급하면 TV를 연결할 설정 링크를 한 번만 보여준다. 아래에서
+ * 로비 TV를 등록하고, 화면 설정(레이아웃·전환 간격·갱신 주기)과 포스터 사이에 끼울
+ * 위젯을 바꾸고, 토큰을 재발급한다. 등록·재발급하면 TV를 연결할 설정 링크를 한 번만 보여준다. 아래에서
  * TV를 묶는 위치 그룹을 관리한다.
  *
  * "마지막 연결 N분 전"은 목록과 함께 온 서버 시각으로 센다.
@@ -37,6 +40,9 @@ export function DevicesPage() {
 
   const [editing, setEditing] = useState<DisplayDevice | "new" | null>(null);
   const [rotating, setRotating] = useState<DisplayDevice | null>(null);
+  const [widgetsOf, setWidgetsOf] = useState<
+    (DisplayDevice & { widgets: WidgetSetting[] }) | null
+  >(null);
   const [setupLink, setSetupLink] = useState<SetupLinkResult | null>(null);
 
   const groupList = groups.data ?? [];
@@ -79,6 +85,11 @@ export function DevicesPage() {
                     serverNow={devices.data.serverTime}
                     onEdit={() => setEditing(device)}
                     onRotate={() => setRotating(device)}
+                    onWidgets={
+                      device.widgets
+                        ? () => setWidgetsOf({ ...device, widgets: device.widgets! })
+                        : null
+                    }
                   />
                 ))}
               </ul>
@@ -143,6 +154,14 @@ export function DevicesPage() {
         }
       />
 
+      {widgetsOf && (
+        <WidgetSettingsDialog
+          key={widgetsOf.id}
+          device={widgetsOf}
+          onClose={() => setWidgetsOf(null)}
+        />
+      )}
+
       <DeviceSetupLinkDialog
         result={setupLink}
         onClose={() => setSetupLink(null)}
@@ -168,16 +187,20 @@ function DeviceRow({
   serverNow,
   onEdit,
   onRotate,
+  onWidgets,
 }: {
   device: DisplayDevice;
   groups: readonly TargetGroup[];
   serverNow: Date;
   onEdit: () => void;
   onRotate: () => void;
+  /** 서버가 위젯 설정을 지원하지 않으면 null이고 버튼을 막는다. */
+  onWidgets: (() => void) | null;
 }) {
   const facts = [
     `${LAYOUT_LABELS[device.layout.type]} · ${device.layout.rotationSeconds}초마다 넘김`,
     `${device.refreshAfterSeconds}초마다 편성 확인`,
+    summarizeWidgets(device.widgets),
     device.lastSeenAt
       ? `마지막 연결 ${formatTimeAgo(device.lastSeenAt, serverNow)}`
       : "아직 연결된 적 없음",
@@ -207,6 +230,15 @@ function DeviceRow({
       <div className="flex shrink-0 gap-2">
         <Button variant="secondary" size="sm" onClick={onEdit}>
           수정
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onWidgets ?? undefined}
+          disabled={!onWidgets}
+          title={onWidgets ? undefined : "서버가 아직 위젯 설정을 지원하지 않아요"}
+        >
+          위젯
         </Button>
         <Button variant="outline" size="sm" onClick={onRotate}>
           토큰 재발급
