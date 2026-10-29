@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams } from "react-router";
+import { useMemo } from "react";
+import { useLocation, useParams } from "react-router";
 import { BATTLE_RULES, TEAMS, secondsLeft } from "@/entities/game/model/click-battle";
 import type { BattleState, Team } from "@/entities/game/model/click-battle";
 import { ScaledStage } from "@/entities/poster/ui/ScaledStage";
@@ -51,8 +51,14 @@ export function ClickBattleTvPage() {
   const { roomId = "lobby" } = useParams();
   // 방 id는 기기 id다. 기기 설정 링크(`#token=`)로 열면 토큰을 저장하고 주소에서 지운다.
   // 플레이어 화면에서 이미 연결한 TV라면 저장된 토큰을 그대로 쓴다.
-  useState(() => captureDeviceTokenFromUrl(roomId));
-  const [token] = useState(() => deviceCredentials.get(roomId));
+  // 같은 탭에 새 설정 링크를 붙여 넣으면 `#` 뒤만 바뀌어 페이지가 다시 뜨지 않는다.
+  // 주소의 hash가 바뀔 때마다 다시 읽어야 재발급한 토큰이 바로 쓰인다.
+  const { hash } = useLocation();
+  const token = useMemo(() => {
+    captureDeviceTokenFromUrl(roomId);
+    return deviceCredentials.get(roomId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hash가 바뀌면 설정 링크를 다시 읽는다
+  }, [roomId, hash]);
   const socketBase = gameSocketBase();
   const { state, now, status: link } = useBattleHost(roomId, { socketBase, token });
   // 서버 중계는 방이 열려야(TV 인증) QR을 보여 준다. 그전에 찍으면 붙을 곳이 없다.
