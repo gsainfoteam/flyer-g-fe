@@ -8,7 +8,8 @@ import type {
 } from "@/entities/game/model/click-battle";
 import { createBroadcastGameChannel } from "@/shared/lib/game-channel";
 import type { GameChannel } from "@/shared/lib/game-channel";
-import { createPeerClientChannel } from "@/shared/lib/peer-game-channel";
+import { createWsClientChannel } from "@/shared/lib/ws-game-channel";
+import type { GameLinkStatus } from "@/shared/lib/ws-game-channel";
 
 /**
  * 폰 쪽 클릭 배틀. 로그인 없이 이름만 받아 참가한다.
@@ -45,14 +46,15 @@ function playerIdOf(roomId: string): string {
 }
 
 export interface UseBattlePlayerOptions {
-  /** TV의 WebRTC id(QR의 `peer`). 없으면 같은 브라우저 탭끼리 잇는다. */
-  hostPeerId?: string | null;
+  /** 백엔드 게임 중계 주소. 없으면 같은 브라우저 탭끼리 잇는다(개발용). */
+  socketBase?: string | null;
   /** 테스트 주입용 */
   channel?: GameChannel<BattleHostMessage, BattleClientMessage>;
 }
 
 export function useBattlePlayer(roomId: string, options: UseBattlePlayerOptions = {}) {
-  const { channel: injected, hostPeerId = null } = options;
+  const { channel: injected, socketBase = null } = options;
+  const [link, setLink] = useState<GameLinkStatus | null>(null);
   const [playerId] = useState(() => playerIdOf(roomId));
   const [state, setState] = useState<BattleState | null>(null);
   const [rejection, setRejection] = useState<JoinRejection | null>(null);
@@ -65,8 +67,10 @@ export function useBattlePlayer(roomId: string, options: UseBattlePlayerOptions 
   useEffect(() => {
     const channel =
       injected ??
-      (hostPeerId
-        ? createPeerClientChannel<BattleHostMessage, BattleClientMessage>(hostPeerId)
+      (socketBase
+        ? createWsClientChannel<BattleHostMessage, BattleClientMessage>(socketBase, roomId, {
+            onStatus: setLink,
+          })
         : createBroadcastGameChannel<BattleHostMessage, BattleClientMessage>(roomId));
     channelRef.current = channel;
 
@@ -100,7 +104,7 @@ export function useBattlePlayer(roomId: string, options: UseBattlePlayerOptions 
       if (!injected) channel.close();
       channelRef.current = null;
     };
-  }, [roomId, injected, playerId, hostPeerId]);
+  }, [roomId, injected, playerId, socketBase]);
 
   const join = useCallback(
     (name: string, team: Team) => {
@@ -117,5 +121,5 @@ export function useBattlePlayer(roomId: string, options: UseBattlePlayerOptions 
 
   const me = state?.players.find((player) => player.id === playerId) ?? null;
 
-  return { playerId, state, me, rejection, connected, localTaps, join, tap };
+  return { playerId, state, me, rejection, connected, link, localTaps, join, tap };
 }

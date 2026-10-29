@@ -1,9 +1,15 @@
-import { useParams, useSearchParams } from "react-router";
+import { useState } from "react";
+import { useParams } from "react-router";
 import { BATTLE_RULES, TEAMS, secondsLeft } from "@/entities/game/model/click-battle";
 import type { BattleState, Team } from "@/entities/game/model/click-battle";
 import { ScaledStage } from "@/entities/poster/ui/ScaledStage";
+import { gameSocketBase } from "@/features/click-battle/api/game-socket";
 import { useBattleHost } from "@/features/click-battle/model/use-battle-host";
-import type { PeerStatus } from "@/shared/lib/peer-game-channel";
+import {
+  captureDeviceTokenFromUrl,
+  deviceCredentials,
+} from "@/shared/lib/device-credential";
+import type { GameLinkStatus } from "@/shared/lib/ws-game-channel";
 import { Logo } from "@/shared/components/Logo";
 import { QRCodeBox } from "@/shared/components/QRCodeBox";
 import { to } from "@/shared/config/routes";
@@ -43,12 +49,14 @@ function statusOf(state: BattleState, seconds: number | null): { title: string; 
 
 export function ClickBattleTvPage() {
   const { roomId = "lobby" } = useParams();
-  const [searchParams] = useSearchParams();
-  // 기본은 WebRTC다. `?transport=local`은 시그널링 서버 없이 같은 브라우저 탭끼리 확인한다.
-  const transport = searchParams.get("transport") === "local" ? "local" : "webrtc";
-  const { state, now, peerId, status: link } = useBattleHost(roomId, { transport });
-  // WebRTC는 TV id를 받아야 QR을 만들 수 있다. 그전에는 QR 자리에 연결 상태를 보여 준다.
-  const linkReady = transport === "local" || peerId !== null;
+  // 방 id는 기기 id다. 기기 설정 링크(`#token=`)로 열면 토큰을 저장하고 주소에서 지운다.
+  // 플레이어 화면에서 이미 연결한 TV라면 저장된 토큰을 그대로 쓴다.
+  useState(() => captureDeviceTokenFromUrl(roomId));
+  const [token] = useState(() => deviceCredentials.get(roomId));
+  const socketBase = gameSocketBase();
+  const { state, now, status: link } = useBattleHost(roomId, { socketBase, token });
+  // 서버 중계는 방이 열려야(TV 인증) QR을 보여 준다. 그전에 찍으면 붙을 곳이 없다.
+  const linkReady = socketBase === null || link === "open";
   const seconds = secondsLeft(state, now);
   const status = statusOf(state, seconds);
   const joinable = state.phase === "LOBBY" || state.phase === "COUNTDOWN";
@@ -64,7 +72,7 @@ export function ClickBattleTvPage() {
           <span className="ml-auto text-[26px] text-ink-subtle tabular-nums">
             {state.round}번째 판
           </span>
-          <LinkBadge transport={transport} status={link} />
+          <LinkBadge local={socketBase === null} status={link} />
         </header>
 
         <div className="flex shrink-0 items-baseline gap-8">
@@ -89,10 +97,18 @@ export function ClickBattleTvPage() {
               state={state}
               joinUrl={
                 joinable && linkReady
-                  ? `${window.location.origin}${to.playClickBattle(roomId, team, peerId)}`
+                  ? `${window.location.origin}${to.playClickBattle(roomId, team)}`
                   : null
               }
-              closedLabel={joinable ? "연결 준비 중이에요" : "경기 중에는\n입장이 마감돼요"}
+              closedLabel={
+                !joinable
+                  ? "경기 중에는\n입장이 마감돼요"
+                  : link === "unauthorized"
+                    ? "이 TV는 게임을 열 수 없어요\n기기 설정 링크로 다시 열어 주세요"
+                    : link === "replaced"
+                      ? "다른 화면에서\n이 TV의 게임을 열었어요"
+                      : "연결 준비 중이에요"
+              }
             />
           ))}
         </div>
@@ -107,28 +123,24 @@ export function ClickBattleTvPage() {
   );
 }
 
-function LinkBadge({
-  transport,
-  status,
-}: {
-  transport: "webrtc" | "local";
-  status: PeerStatus | null;
-}) {
-  if (transport === "local") {
+const LINK_LABEL: Record<GameLinkStatus, { text: string; dot: string }> = {
+  connecting: { text: "서버 연결 중", dot: "bg-warning" },
+  reconnecting: { text: "다시 연결 중", dot: "bg-warning" },
+  open: { text: "폰 연결 가능", dot: "bg-success" },
+  "waiting-host": { text: "서버 연결 중", dot: "bg-warning" },
+  unauthorized: { text: "기기 인증 실패", dot: "bg-danger" },
+  replaced: { text: "다른 화면에서 열림", dot: "bg-danger" },
+};
+
+function LinkBadge({ local, status }: { local: boolean; status: GameLinkStatus | null }) {
+  if (local) {
     return <span className="text-[22px] text-ink-subtle">같은 브라우저 전용</span>;
   }
-  const label =
-    status === "open" ? "폰 연결 가능" : status === "error" ? "연결 오류 · 다시 시도 중" : "연결 준비 중";
+  const { text, dot } = LINK_LABEL[status ?? "connecting"];
   return (
     <span className="flex items-center gap-2 text-[22px] text-ink-subtle">
-      <span
-        aria-hidden="true"
-        className={cn(
-          "size-3 rounded-pill",
-          status === "open" ? "bg-success" : status === "error" ? "bg-danger" : "bg-warning",
-        )}
-      />
-      {label}
+      <span aria-hidden="true" className={cn("size-3 rounded-pill", dot)} />
+      {text}
     </span>
   );
 }
