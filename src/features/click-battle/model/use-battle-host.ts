@@ -4,6 +4,8 @@ import {
   applyClientMessage,
   initialBattle,
 } from "@/entities/game/model/click-battle";
+import { parseClientMessage } from "@/entities/game/model/messages";
+import { createPlayerBinding } from "./player-binding";
 import type {
   BattleClientMessage,
   BattleHostMessage,
@@ -47,20 +49,30 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
   useEffect(() => {
     // 기기 토큰이 없으면 방을 열 수 없다. 설정 링크로 다시 열어야 한다.
     if (socketBase && !token && !injected) return;
+
+    // 폰은 자기 참가자 id를 스스로 정한다. 서버 연결 id에 묶어 남의 id를 못 쓰게 한다.
+    const binding = createPlayerBinding();
+
     const channel =
       injected ??
       (socketBase && token
         ? createWsHostChannel<BattleClientMessage, BattleHostMessage>(socketBase, roomId, {
             token,
             onStatus: setStatus,
-            // 탭을 닫은 폰은 "나간다"를 못 보낸다. 연결이 끊기면 대신 내보낸다.
-            onDisconnect: (last) => ({ kind: "leave", playerId: last.playerId }),
+            // 탭을 닫은 폰은 "나간다"를 못 보낸다. 연결이 끊기면 그 연결의 참가자를 내보낸다.
+            onDisconnect: (from) => {
+              const playerId = binding.release(from);
+              return playerId === null ? null : { kind: "leave", playerId };
+            },
           })
         : createBroadcastGameChannel<BattleClientMessage, BattleHostMessage>(roomId));
     let dirty = true;
     let sentAt = 0;
 
-    const unsubscribe = channel.subscribe((message) => {
+    const unsubscribe = channel.subscribe((raw, from) => {
+      // 폰은 로그인하지 않는다. 모양이 틀리거나 남의 참가자 id를 쓴 메시지는 버린다.
+      const message = parseClientMessage(raw);
+      if (!message || !binding.claim(from, message.playerId)) return;
       const result = applyClientMessage(stateRef.current, message, now());
       if (result.state !== stateRef.current) {
         stateRef.current = result.state;

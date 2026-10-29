@@ -8,8 +8,11 @@
  */
 export interface GameChannel<Incoming, Outgoing> {
   send(message: Outgoing): void;
-  /** 구독을 푸는 함수를 돌려준다. */
-  subscribe(listener: (message: Incoming) => void): () => void;
+  /**
+   * 구독을 푸는 함수를 돌려준다. `from`은 보낸 연결의 id로, 서버 중계에서 서버가 정한다.
+   * 보낸 쪽이 바꿀 수 없어 누가 보냈는지 믿을 수 있는 값이다. 같은 브라우저 탭끼리는 없다.
+   */
+  subscribe(listener: (message: Incoming, from?: string) => void): () => void;
   close(): void;
 }
 

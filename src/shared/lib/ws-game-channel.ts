@@ -44,10 +44,10 @@ interface Options {
 export interface WsHostOptions<Incoming> extends Options {
   token: string;
   /**
-   * 참가자 연결이 끊겼을 때 대신 받을 메시지. 그 참가자가 마지막으로 보낸 메시지를 준다.
+   * 참가자 연결이 끊겼을 때 대신 받을 메시지. 끊긴 연결의 id를 준다.
    * 탭을 닫아 "나간다"를 못 보낸 폰도 명단에서 빼려는 것이다.
    */
-  onDisconnect?: (lastMessage: Incoming) => Incoming | null;
+  onDisconnect?: (from: string) => Incoming | null;
 }
 
 function socketUrl(base: string, room: string, role: "host" | "player"): string {
@@ -120,12 +120,11 @@ export function createWsHostChannel<Incoming, Outgoing>(
   room: string,
   options: WsHostOptions<Incoming>,
 ): GameChannel<Incoming, Outgoing> {
-  const listeners = new Set<(message: Incoming) => void>();
-  /** 참가자별 마지막 메시지. 연결이 끊기면 `onDisconnect`에 넘긴다. */
-  const lastFrom = new Map<string, Incoming>();
+  const listeners = new Set<(message: Incoming, from?: string) => void>();
   let ready = false;
 
-  const emit = (message: Incoming) => listeners.forEach((listener) => listener(message));
+  const emit = (message: Incoming, from?: string) =>
+    listeners.forEach((listener) => listener(message, from));
 
   const link = reconnecting(
     socketUrl(baseUrl, room, "host"),
@@ -142,13 +141,11 @@ export function createWsHostChannel<Incoming, Outgoing>(
           ready = true;
           options.onStatus?.("open");
         } else if (frame.type === "message" && typeof frame.from === "string") {
-          const message = frame.data as Incoming;
-          lastFrom.set(frame.from, message);
-          emit(message);
+          emit(frame.data as Incoming, frame.from);
         } else if (frame.type === "left" && typeof frame.from === "string") {
-          const last = lastFrom.get(frame.from);
-          lastFrom.delete(frame.from);
-          const replacement = last !== undefined ? options.onDisconnect?.(last) : null;
+          // 대신 만든 메시지는 이 채널이 만든 것이라 보낸 연결이 없다. 연결 id를 붙이면
+          // 받는 쪽이 끊긴 연결에 참가자를 다시 묶는다.
+          const replacement = options.onDisconnect?.(frame.from);
           if (replacement) emit(replacement);
         }
       });

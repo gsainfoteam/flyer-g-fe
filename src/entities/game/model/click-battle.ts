@@ -1,3 +1,5 @@
+import { hasBlockedWord, stripInvisible } from "./name-filter";
+
 /**
  * 클릭 배틀. A팀과 B팀이 폰으로 30초 동안 버튼을 눌러 더 많이 누른 팀이 이긴다.
  *
@@ -76,10 +78,15 @@ export function teamSize(state: BattleState, team: Team): number {
 const bothTeamsReady = (state: BattleState) =>
   TEAMS.every((team) => teamSize(state, team) > 0);
 
-/** 이름은 앞뒤 공백을 지우고 자른다. 비면 팀 이름으로 부른다. */
+/**
+ * TV에 보일 이름. 안 보이는 글자를 지우고 공백을 하나로 줄인 뒤 자른다. 비었거나
+ * 공용 화면에 띄우면 안 되는 말이 있으면 팀 이름으로 부른다.
+ */
 export function normalizeName(name: string, team: Team): string {
-  const trimmed = name.trim().slice(0, BATTLE_RULES.nameMaxLength);
-  return trimmed || `${team}팀 참가자`;
+  const cleaned = stripInvisible(name).replace(/\s+/g, " ").trim();
+  const trimmed = cleaned.slice(0, BATTLE_RULES.nameMaxLength);
+  if (!trimmed || hasBlockedWord(cleaned)) return `${team}팀 참가자`;
+  return trimmed;
 }
 
 export interface ApplyResult {

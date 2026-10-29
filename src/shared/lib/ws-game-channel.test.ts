@@ -74,14 +74,14 @@ describe("createWsHostChannel", () => {
     expect(socket.sent.at(-1)).toEqual({ type: "send", data: { kind: "state" } });
   });
 
-  it("참가자가 끊기면 그 참가자의 마지막 메시지로 대신 내보낸다", () => {
+  it("보낸 연결의 id를 함께 넘기고, 연결이 끊기면 대신 내보낸다", () => {
     type Message = { kind: string; playerId: string };
-    const received: Message[] = [];
+    const received: [Message, string | undefined][] = [];
     const channel = createWsHostChannel<Message, unknown>(BASE, "d", {
       token: "t",
-      onDisconnect: (lastMessage) => ({ kind: "leave", playerId: lastMessage.playerId }),
+      onDisconnect: (from) => (from === "c1" ? { kind: "leave", playerId: "p1" } : null),
     });
-    channel.subscribe((message) => received.push(message));
+    channel.subscribe((message, from) => received.push([message, from]));
     const socket = last();
     socket.serverOpen();
     socket.serverSend({ type: "ready" });
@@ -89,8 +89,9 @@ describe("createWsHostChannel", () => {
     socket.serverSend({ type: "left", from: "c1" });
     socket.serverSend({ type: "left", from: "unknown" });
     expect(received).toEqual([
-      { kind: "join", playerId: "p1" },
-      { kind: "leave", playerId: "p1" },
+      [{ kind: "join", playerId: "p1" }, "c1"],
+      // 대신 만든 메시지는 끊긴 연결에 다시 묶이지 않게 연결 id 없이 온다.
+      [{ kind: "leave", playerId: "p1" }, undefined],
     ]);
   });
 
