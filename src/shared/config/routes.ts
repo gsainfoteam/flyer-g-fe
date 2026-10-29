@@ -48,8 +48,11 @@ export const to = {
   display: (deviceId: string, options?: { preview?: boolean }) =>
     `/display/${encodeURIComponent(deviceId)}${options?.preview ? "?preview=1" : ""}`,
   playQuiz: (dateKey: string) => `/play/quiz?d=${encodeURIComponent(dateKey)}`,
-  playClickBattle: (roomId: string, team: "A" | "B") =>
-    `/play/click-battle/${encodeURIComponent(roomId)}?team=${team}`,
+  /** `peer`는 TV의 WebRTC id다. 없으면 같은 브라우저 탭끼리 잇는다(개발용). */
+  playClickBattle: (roomId: string, team: "A" | "B", peer?: string | null) =>
+    `/play/click-battle/${encodeURIComponent(roomId)}?team=${team}${
+      peer ? `&peer=${encodeURIComponent(peer)}` : ""
+    }`,
   clickBattle: (roomId: string) => `/games/click-battle/${encodeURIComponent(roomId)}`,
   login: (returnTo?: string) =>
     returnTo && returnTo !== "/"

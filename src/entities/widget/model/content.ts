@@ -44,7 +44,6 @@ export type WidgetContent =
 
 export interface ZodiacFortune {
   animal: string;
-  emoji: string;
   message: string;
   luckyColor: string;
 }
@@ -89,18 +88,18 @@ function readLabel(params: Record<string, unknown>, fallback: string): string {
 }
 
 const ZODIAC = [
-  ["쥐", "🐭"],
-  ["소", "🐮"],
-  ["호랑이", "🐯"],
-  ["토끼", "🐰"],
-  ["용", "🐲"],
-  ["뱀", "🐍"],
-  ["말", "🐴"],
-  ["양", "🐑"],
-  ["원숭이", "🐵"],
-  ["닭", "🐔"],
-  ["개", "🐶"],
-  ["돼지", "🐷"],
+  "쥐",
+  "소",
+  "호랑이",
+  "토끼",
+  "용",
+  "뱀",
+  "말",
+  "양",
+  "원숭이",
+  "닭",
+  "개",
+  "돼지",
 ] as const;
 
 const FORTUNE_MESSAGES = [
@@ -234,9 +233,8 @@ export function buildWidgetContent(
       return {
         type: "FORTUNE",
         dateKey,
-        fortunes: ZODIAC.map(([animal, emoji]) => ({
+        fortunes: ZODIAC.map((animal) => ({
           animal,
-          emoji,
           message: pick(FORTUNE_MESSAGES, random),
           luckyColor: pick(LUCKY_COLORS, random),
         })),
