@@ -20,16 +20,27 @@ const FLUSH_MS = 150;
 /** TV가 이 시간 넘게 말이 없으면 연결이 끊겼다고 본다. */
 const SILENCE_MS = 3_000;
 
+/**
+ * `crypto.randomUUID`는 https나 localhost에서만 있다. 개발 중 폰이 LAN 주소(http)로
+ * 들어오면 없으므로 대신 만든다. 식별용일 뿐 보안 값이 아니다.
+ */
+function randomId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function playerIdOf(roomId: string): string {
   const key = `flyerg:battle-player:${roomId}`;
   try {
     const saved = window.sessionStorage.getItem(key);
     if (saved) return saved;
-    const created = crypto.randomUUID();
+    const created = randomId();
     window.sessionStorage.setItem(key, created);
     return created;
   } catch {
-    return crypto.randomUUID();
+    return randomId();
   }
 }
 
