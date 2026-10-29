@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DisplayFrame } from "@/entities/poster/model/frames";
 import { buildWidgetContent, seoulDateKey } from "./content";
+import { previousDateKey, quizOfDay } from "./quiz";
 import { interleaveWidgets } from "./schedule";
 import { clampWidgetDuration, toWidgetSlots } from "./types";
 import type { WidgetSlot } from "./types";
@@ -96,6 +97,17 @@ describe("buildWidgetContent", () => {
     if (lunch?.type === "MEAL_PICK") {
       expect(new Set([lunch.menu, ...lunch.alternatives]).size).toBe(4);
     }
+  });
+
+  it("퀴즈는 날짜로 고르고 어제 문제와 정답을 함께 준다", () => {
+    const content = buildWidgetContent(slot({ type: "QUIZ" }), at("2026-10-29T03:00:00Z"));
+    expect(content).toMatchObject({
+      type: "QUIZ",
+      dateKey: "2026-10-29",
+      quiz: quizOfDay("2026-10-29"),
+      yesterday: quizOfDay("2026-10-28"),
+    });
+    expect(previousDateKey("2026-11-01")).toBe("2026-10-31");
   });
 
   it("날짜 키는 서울 기준이다", () => {

@@ -44,6 +44,11 @@ import type {
   SubmissionEventType,
 } from "@/entities/review/model/types";
 import { toPlaylist } from "@/entities/playlist";
+import {
+  settingsToSlotDtos,
+  toWidgetSettings,
+} from "@/entities/widget/model/settings";
+import type { WidgetType } from "@/entities/widget/model/types";
 import { DEFAULT_LAYOUT_TYPE } from "@/entities/playlist/model/types";
 import type { Playlist } from "@/entities/playlist/model/types";
 import { USER_QUERY_MAX_LENGTH, isGrantableRole } from "@/entities/user";
@@ -87,7 +92,8 @@ import {
   createEventFixtures,
   createDemoSubmissionFixtures,
   createSubmissionFixtures,
-  createWidgetSeeds,
+  createDefaultWidgetSettings,
+  createWidgetData,
 } from "./fixtures";
 import { createStorageHeartbeatLog } from "./heartbeats";
 import type { HeartbeatLog } from "./heartbeats";
@@ -1050,6 +1056,7 @@ export function createMockRepositories(
               item.targetGroupIds.some((id) => device.groupIds.includes(id))),
         );
 
+      const widgetData = createWidgetData(now);
       return toPlaylist({
         serverTime: toIsoUtc(now),
         deviceName: device?.name ?? null,
@@ -1079,7 +1086,14 @@ export function createMockRepositories(
           location: item.location,
           organizerName: item.organizerName,
         })),
-        widgets: createWidgetSeeds(now),
+        // 등록된 기기는 운영자가 정한 위젯을, 미리보기는 기본 위젯을 쓴다. 외부
+        // 데이터가 필요한 종류는 서버가 모은 데이터를 붙인다.
+        widgets: settingsToSlotDtos(
+          toWidgetSettings(device?.widgets ?? createDefaultWidgetSettings()),
+        ).map((slot) => {
+          const data = widgetData[slot.type as WidgetType];
+          return data ? { ...slot, params: { ...slot.params, data } } : slot;
+        }),
       });
     },
   };
@@ -1236,6 +1250,7 @@ export function createMockRepositories(
         lastPlaylistVersion: null,
         lastRenderOkAt: null,
         tokenIssuedAt: issuedAt,
+        widgets: createDefaultWidgetSettings(),
         silentSinceMs: "never",
         isActive: true,
       };
@@ -1266,6 +1281,7 @@ export function createMockRepositories(
         refreshAfterSeconds:
           input.refreshAfterSeconds ?? current.refreshAfterSeconds,
         isActive: input.isActive ?? current.isActive,
+        widgets: input.widgets ?? current.widgets,
       };
       deviceSeeds = deviceSeeds.map((item) => (item.id === id ? next : item));
       return toDevice(next);

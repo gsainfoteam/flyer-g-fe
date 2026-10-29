@@ -10,6 +10,9 @@ import type {
   Sky,
   WeatherContent,
 } from "@/entities/widget/model/data-content";
+import { CHOICE_MARKS } from "@/entities/widget/model/quiz";
+import { QRCodeBox } from "@/shared/components/QRCodeBox";
+import { to } from "@/shared/config/routes";
 import { getSeoulParts } from "@/shared/lib/datetime";
 import { cn } from "@/shared/lib/utils";
 
@@ -116,7 +119,47 @@ function WidgetBody({ content }: { content: WidgetContent }): ReactNode {
       return <WeatherBody content={content} />;
     case "RESTAURANT":
       return <RestaurantBody content={content} />;
+    case "QUIZ":
+      return <QuizBody content={content} />;
   }
+}
+
+function QuizBody({ content }: { content: Extract<WidgetContent, { type: "QUIZ" }> }) {
+  const { quiz, yesterday } = content;
+  // 폰은 TV와 같은 주소로 들어온다. 날짜를 실어 자정을 넘겨도 같은 문제를 푼다.
+  const playUrl = `${window.location.origin}${to.playQuiz(content.dateKey)}`;
+  return (
+    <div className="flex min-h-0 flex-1 gap-16">
+      <div className="flex min-w-0 flex-1 flex-col gap-10">
+        <Eyebrow>오늘의 퀴즈</Eyebrow>
+        <p className="text-[72px] leading-tight font-extrabold tracking-tight text-ink">
+          {quiz.question}
+        </p>
+        <ol className="grid grid-cols-2 gap-5">
+          {quiz.choices.map((choice, index) => (
+            <li
+              key={choice}
+              className="flex items-center gap-5 rounded-tv-poster bg-surface-muted px-8 py-6 text-[44px] font-bold text-ink"
+            >
+              <span className="text-ink-subtle">{CHOICE_MARKS[index]}</span>
+              {choice}
+            </li>
+          ))}
+        </ol>
+        <p className="mt-auto truncate text-[30px] text-ink-muted">
+          어제의 정답 · {yesterday.question}{" "}
+          <span className="font-bold text-ink">
+            {CHOICE_MARKS[yesterday.answerIndex]} {yesterday.choices[yesterday.answerIndex]}
+          </span>
+        </p>
+      </div>
+      <div className="flex shrink-0 flex-col items-center justify-center gap-6">
+        <QRCodeBox value={playUrl} size="tv" />
+        <p className="text-[38px] font-extrabold text-ink">폰으로 답하기</p>
+        <p className="text-[26px] text-ink-muted">정답은 내일 공개돼요</p>
+      </div>
+    </div>
+  );
 }
 
 const MEAL_LABEL: Record<MealType, string> = {
