@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { BATTLE_RULES, TEAMS, secondsLeft } from "@/entities/game/model/click-battle";
 import type { Team } from "@/entities/game/model/click-battle";
+import { gameSocketBase } from "@/features/click-battle/api/game-socket";
 import { useBattlePlayer } from "@/features/click-battle/model/use-battle-player";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
@@ -37,7 +38,7 @@ export function ClickBattlePlayPage() {
   const { roomId = "lobby" } = useParams();
   const [searchParams] = useSearchParams();
   const team = readTeam(searchParams.get("team"));
-  const player = useBattlePlayer(roomId, { hostPeerId: searchParams.get("peer") });
+  const player = useBattlePlayer(roomId, { socketBase: gameSocketBase() });
   const [name, setName] = useState("");
   const now = useNow();
   const style = TEAM_STYLE[team];
@@ -48,8 +49,12 @@ export function ClickBattlePlayPage() {
   if (!player.connected || !state) {
     return (
       <Notice
-        title="TV에 연결하는 중이에요"
-        description="TV와 같은 와이파이에 있는지 확인하고, 계속 안 되면 TV 화면의 QR을 다시 찍어 보세요."
+        title={player.link === "waiting-host" ? "TV가 아직 게임을 열지 않았어요" : "TV에 연결하는 중이에요"}
+        description={
+          player.link === "waiting-host"
+            ? "TV에 클릭 배틀 화면이 켜지면 바로 이어져요. 이 화면을 열어 두세요."
+            : "인터넷 연결을 확인해 주세요. 계속 안 되면 TV 화면의 QR을 다시 찍어 보세요."
+        }
       />
     );
   }

@@ -17,6 +17,7 @@ export const paths = {
   playQuiz: "/play/quiz",
   playClickBattle: "/play/click-battle/:roomId",
   /** TV 게임 화면. 플레이어처럼 세션 없이 연다. */
+  /** `:roomId`는 기기 id다. 서버 중계로 방을 열려면 그 기기의 토큰이 있어야 한다. */
   clickBattle: "/games/click-battle/:roomId",
   login: "/login",
   /** 로그인 제공자에서 돌아오는 곳. `VITE_AUTH_REDIRECT_URI`의 경로와 같아야 한다. */
@@ -48,11 +49,8 @@ export const to = {
   display: (deviceId: string, options?: { preview?: boolean }) =>
     `/display/${encodeURIComponent(deviceId)}${options?.preview ? "?preview=1" : ""}`,
   playQuiz: (dateKey: string) => `/play/quiz?d=${encodeURIComponent(dateKey)}`,
-  /** `peer`는 TV의 WebRTC id다. 없으면 같은 브라우저 탭끼리 잇는다(개발용). */
-  playClickBattle: (roomId: string, team: "A" | "B", peer?: string | null) =>
-    `/play/click-battle/${encodeURIComponent(roomId)}?team=${team}${
-      peer ? `&peer=${encodeURIComponent(peer)}` : ""
-    }`,
+  playClickBattle: (roomId: string, team: "A" | "B") =>
+    `/play/click-battle/${encodeURIComponent(roomId)}?team=${team}`,
   clickBattle: (roomId: string) => `/games/click-battle/${encodeURIComponent(roomId)}`,
   login: (returnTo?: string) =>
     returnTo && returnTo !== "/"
