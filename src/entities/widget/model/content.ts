@@ -9,6 +9,8 @@ import type {
   RestaurantContent,
   WeatherContent,
 } from "./data-content";
+import { previousDateKey, quizOfDay } from "./quiz";
+import type { QuizQuestion } from "./quiz";
 import type { WidgetSlot } from "./types";
 
 /**
@@ -31,7 +33,14 @@ export type WidgetContent =
   | { type: "MEAL_PICK"; meal: "LUNCH" | "DINNER"; menu: string; alternatives: string[] }
   | CafeteriaContent
   | WeatherContent
-  | RestaurantContent;
+  | RestaurantContent
+  | {
+      type: "QUIZ";
+      dateKey: string;
+      quiz: QuizQuestion;
+      /** 어제 문제와 정답. 정답률은 서버가 모아야 해서 아직 없다. */
+      yesterday: QuizQuestion;
+    };
 
 export interface ZodiacFortune {
   animal: string;
@@ -247,6 +256,13 @@ export function buildWidgetContent(
       return buildCafeteriaContent(slot.params, now);
     case "WEATHER":
       return buildWeatherContent(slot.params, now);
+    case "QUIZ":
+      return {
+        type: "QUIZ",
+        dateKey,
+        quiz: quizOfDay(dateKey),
+        yesterday: quizOfDay(previousDateKey(dateKey)),
+      };
     case "RESTAURANT": {
       // 한 시간마다 다른 가게를 보여 준다. 그 안에서는 모든 TV가 같다.
       const { hour24 } = getSeoulParts(now);

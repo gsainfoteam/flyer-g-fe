@@ -7,6 +7,7 @@ import {
 import { AdminLayout } from "@/app/layouts/AdminLayout";
 import { AppShell } from "@/app/layouts/AppShell";
 import { DisplayLayout } from "@/app/layouts/DisplayLayout";
+import { PlayLayout } from "@/app/layouts/PlayLayout";
 import { StudioLayout } from "@/app/layouts/StudioLayout";
 import { paths } from "@/shared/config/routes";
 import type { RouteHandle } from "@/app/router/use-document-title";
@@ -70,6 +71,22 @@ const displayPage = lazyPage(
   null,
 );
 
+const clickBattlePage = lazyPage(
+  () =>
+    import("@/pages/ClickBattleTvPage").then((m) => ({
+      default: m.ClickBattleTvPage,
+    })),
+  null,
+);
+const quizPlayPage = lazyPage(() =>
+  import("@/pages/QuizPlayPage").then((m) => ({ default: m.QuizPlayPage })),
+);
+const clickBattlePlayPage = lazyPage(() =>
+  import("@/pages/ClickBattlePlayPage").then((m) => ({
+    default: m.ClickBattlePlayPage,
+  })),
+);
+
 /**
  * 개발 전용 컴포넌트 카탈로그. production 빌드에서는 import 자체가 제거되어
  * 번들에 포함되지 않고 경로로도 접근할 수 없다. (Phase 00 문서 6절)
@@ -88,6 +105,25 @@ export const routeTree = [
     errorElement: <DisplayRouteErrorScreen />,
     children: [
       { path: paths.display, element: displayPage, handle: title("TV") },
+      {
+        path: paths.clickBattle,
+        element: clickBattlePage,
+        handle: title("클릭 배틀"),
+      },
+    ],
+  },
+
+  // 폰 참여 화면. TV의 QR로 들어오며 로그인을 요구하지 않는다.
+  {
+    element: <PlayLayout />,
+    errorElement: <RouteErrorScreen />,
+    children: [
+      { path: paths.playQuiz, element: quizPlayPage, handle: title("오늘의 퀴즈") },
+      {
+        path: paths.playClickBattle,
+        element: clickBattlePlayPage,
+        handle: title("클릭 배틀"),
+      },
     ],
   },
 

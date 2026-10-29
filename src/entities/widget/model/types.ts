@@ -17,6 +17,7 @@ export const WIDGET_TYPES = [
   "CAFETERIA",
   "WEATHER",
   "RESTAURANT",
+  "QUIZ",
 ] as const;
 export type WidgetType = (typeof WIDGET_TYPES)[number];
 
@@ -32,6 +33,7 @@ export const DEFAULT_WIDGET_DURATION: Record<WidgetType, number> = {
   CAFETERIA: 10,
   WEATHER: 10,
   RESTAURANT: 10,
+  QUIZ: 15,
 };
 
 /** 위젯 머무는 시간의 안전 범위. 포스터 노출을 너무 오래 막지 않게 한다. */

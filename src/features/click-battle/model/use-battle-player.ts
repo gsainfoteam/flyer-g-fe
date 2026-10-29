@@ -1,0 +1,104 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import type {
+  BattleClientMessage,
+  BattleHostMessage,
+  BattleState,
+  JoinRejection,
+  Team,
+} from "@/entities/game/model/click-battle";
+import { createBroadcastGameChannel } from "@/shared/lib/game-channel";
+import type { GameChannel } from "@/shared/lib/game-channel";
+
+/**
+ * 폰 쪽 클릭 배틀. 로그인 없이 이름만 받아 참가한다.
+ *
+ * 누를 때마다 보내지 않고 짧게 모아서 보낸다. 메시지 수를 줄이고, 점수는 TV가 받아
+ * 준 만큼만 오른다. 화면의 "내가 누른 수"는 바로 반응하도록 폰에서 센다.
+ */
+const FLUSH_MS = 150;
+/** TV가 이 시간 넘게 말이 없으면 연결이 끊겼다고 본다. */
+const SILENCE_MS = 3_000;
+
+function playerIdOf(roomId: string): string {
+  const key = `flyerg:battle-player:${roomId}`;
+  try {
+    const saved = window.sessionStorage.getItem(key);
+    if (saved) return saved;
+    const created = crypto.randomUUID();
+    window.sessionStorage.setItem(key, created);
+    return created;
+  } catch {
+    return crypto.randomUUID();
+  }
+}
+
+export interface UseBattlePlayerOptions {
+  channel?: GameChannel<BattleHostMessage, BattleClientMessage>;
+}
+
+export function useBattlePlayer(roomId: string, options: UseBattlePlayerOptions = {}) {
+  const { channel: injected } = options;
+  const [playerId] = useState(() => playerIdOf(roomId));
+  const [state, setState] = useState<BattleState | null>(null);
+  const [rejection, setRejection] = useState<JoinRejection | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [localTaps, setLocalTaps] = useState(0);
+  const channelRef = useRef<GameChannel<BattleHostMessage, BattleClientMessage> | null>(null);
+  const pendingRef = useRef(0);
+  const heardAtRef = useRef(0);
+
+  useEffect(() => {
+    const channel =
+      injected ??
+      createBroadcastGameChannel<BattleHostMessage, BattleClientMessage>(roomId);
+    channelRef.current = channel;
+
+    const unsubscribe = channel.subscribe((message) => {
+      heardAtRef.current = Date.now();
+      setConnected(true);
+      if (message.kind === "state") {
+        setState(message.state);
+        // 판이 끝나 내가 명단에서 빠지면 다음 판을 위해 내 수를 비운다.
+        if (!message.state.players.some((player) => player.id === playerId)) {
+          setLocalTaps(0);
+        }
+      } else if (message.playerId === playerId) {
+        setRejection(message.reason);
+      }
+    });
+    channel.send({ kind: "hello", playerId });
+
+    const flush = window.setInterval(() => {
+      if (pendingRef.current > 0) {
+        channel.send({ kind: "taps", playerId, count: pendingRef.current });
+        pendingRef.current = 0;
+      }
+      if (Date.now() - heardAtRef.current > SILENCE_MS) setConnected(false);
+    }, FLUSH_MS);
+
+    return () => {
+      window.clearInterval(flush);
+      unsubscribe();
+      channel.send({ kind: "leave", playerId });
+      if (!injected) channel.close();
+      channelRef.current = null;
+    };
+  }, [roomId, injected, playerId]);
+
+  const join = useCallback(
+    (name: string, team: Team) => {
+      setRejection(null);
+      channelRef.current?.send({ kind: "join", playerId, name, team });
+    },
+    [playerId],
+  );
+
+  const tap = useCallback(() => {
+    pendingRef.current += 1;
+    setLocalTaps((count) => count + 1);
+  }, []);
+
+  const me = state?.players.find((player) => player.id === playerId) ?? null;
+
+  return { playerId, state, me, rejection, connected, localTaps, join, tap };
+}

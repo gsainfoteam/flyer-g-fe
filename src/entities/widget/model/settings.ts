@@ -39,6 +39,7 @@ export const WIDGET_LABELS: Record<WidgetType, string> = {
   CAFETERIA: "오늘의 학식",
   WEATHER: "오늘 날씨",
   RESTAURANT: "근처 맛집",
+  QUIZ: "오늘의 퀴즈",
 };
 
 export const WIDGET_DESCRIPTIONS: Record<WidgetType, string> = {
@@ -49,6 +50,7 @@ export const WIDGET_DESCRIPTIONS: Record<WidgetType, string> = {
   CAFETERIA: "서버가 받아 온 오늘 메뉴. 메뉴가 없는 날은 빠져요.",
   WEATHER: "서버가 받아 온 날씨. 3시간 넘게 갱신되지 않으면 빠져요.",
   RESTAURANT: "서버가 받아 온 근처 가게를 1시간마다 바꿔 보여 줘요.",
+  QUIZ: "QR로 폰에서 답을 골라요. 정답은 다음 날 공개돼요.",
 };
 
 /** 운영자가 날짜를 정해야 하는 종류의 기본값. 새 기기에도 바로 쓸 수 있게 둔다. */

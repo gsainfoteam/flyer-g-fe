@@ -17,7 +17,7 @@ describe("toWidgetSettings", () => {
       { type: "FORTUNE", enabled: false, durationSeconds: 999, everyFrames: 0 },
       { type: "BAMBOO", enabled: true },
     ]);
-    expect(settings).toHaveLength(7);
+    expect(settings).toHaveLength(8);
     expect(settings.find((item) => item.type === "FORTUNE")).toMatchObject({
       enabled: false,
       durationSeconds: 300,
@@ -85,7 +85,7 @@ describe("위젯 설정 폼", () => {
   });
 
   it("목록 요약은 켠 개수를 센다", () => {
-    expect(summarizeWidgets(settings)).toBe("위젯 7개 켬");
+    expect(summarizeWidgets(settings)).toBe("위젯 8개 켬");
     expect(summarizeWidgets(settings.map((item) => ({ ...item, enabled: false })))).toBe(
       "위젯 꺼 둠",
     );

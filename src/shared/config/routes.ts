@@ -13,6 +13,11 @@ export const paths = {
   displays: "/displays",
   users: "/users",
   display: "/display/:deviceId",
+  /** 폰 참여 화면. 로그인 없이 TV의 QR로 들어온다. */
+  playQuiz: "/play/quiz",
+  playClickBattle: "/play/click-battle/:roomId",
+  /** TV 게임 화면. 플레이어처럼 세션 없이 연다. */
+  clickBattle: "/games/click-battle/:roomId",
   login: "/login",
   /** 로그인 제공자에서 돌아오는 곳. `VITE_AUTH_REDIRECT_URI`의 경로와 같아야 한다. */
   authCallback: "/auth/callback",
@@ -42,6 +47,10 @@ export const to = {
   users: () => "/users",
   display: (deviceId: string, options?: { preview?: boolean }) =>
     `/display/${encodeURIComponent(deviceId)}${options?.preview ? "?preview=1" : ""}`,
+  playQuiz: (dateKey: string) => `/play/quiz?d=${encodeURIComponent(dateKey)}`,
+  playClickBattle: (roomId: string, team: "A" | "B") =>
+    `/play/click-battle/${encodeURIComponent(roomId)}?team=${team}`,
+  clickBattle: (roomId: string) => `/games/click-battle/${encodeURIComponent(roomId)}`,
   login: (returnTo?: string) =>
     returnTo && returnTo !== "/"
       ? `/login?returnTo=${encodeURIComponent(returnTo)}`
