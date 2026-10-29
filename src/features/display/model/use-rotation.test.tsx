@@ -1,7 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PosterRenderModel } from "@/entities/poster";
-import type { DisplayFrame } from "@/entities/poster/model/frames";
+import type { PlayerFrame } from "@/entities/widget/model/schedule";
+import type { WidgetSlot } from "@/entities/widget/model/types";
 import { useRotation } from "./use-rotation";
 
 function poster(id: string): PosterRenderModel {
@@ -23,9 +24,10 @@ function poster(id: string): PosterRenderModel {
 
 const posters = (...ids: string[]) => ids.map(poster);
 
-/** 화면에서 지금 주인공인 게시물. 벽이면 `wall` */
-function focusOf(frame: DisplayFrame | undefined, items: PosterRenderModel[]) {
+/** 화면에서 지금 주인공인 게시물. 벽이면 `wall`, 위젯이면 `widget:{id}` */
+function focusOf(frame: PlayerFrame | undefined, items: PosterRenderModel[]) {
   if (!frame) return null;
+  if (frame.kind === "widget") return `widget:${frame.slot.id}`;
   if (frame.kind === "wall") return "wall";
   if (frame.kind === "spotlight") return frame.poster.id;
   return items[frame.focusIndex]!.id;
@@ -38,7 +40,41 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+function widget(id: string, durationSeconds: number, everyFrames: number): WidgetSlot {
+  return { id, type: "FORTUNE", durationSeconds, everyFrames, params: {} };
+}
+
 describe("useRotation", () => {
+  it("위젯은 포스터 사이에 끼고 자기 시간만큼 머문다", () => {
+    const items = posters("a", "b");
+    const widgets = [widget("w", 30, 2)];
+    const { result } = renderHook(() =>
+      useRotation({ posters: items, layout: "STRIP", rotationSeconds: 10, widgets }),
+    );
+
+    expect(focusOf(result.current.currentFrame, items)).toBe("a");
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("b");
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("widget:w");
+    // 포스터 간격(10초)이 지나도 위젯은 30초를 채운다.
+    act(() => vi.advanceTimersByTime(29_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("widget:w");
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("a");
+  });
+
+  it("포스터가 없으면 위젯만 돈다", () => {
+    const widgets = [widget("w1", 20, 4), widget("w2", 20, 4)];
+    const { result } = renderHook(() =>
+      useRotation({ posters: [], layout: "WALL", rotationSeconds: 10, widgets }),
+    );
+
+    expect(focusOf(result.current.currentFrame, [])).toBe("widget:w1");
+    act(() => vi.advanceTimersByTime(20_000));
+    expect(focusOf(result.current.currentFrame, [])).toBe("widget:w2");
+  });
+
   it("간격마다 다음 화면으로 넘어가고 끝에서 처음으로 돌아온다", () => {
     const items = posters("a", "b", "c");
     const { result } = renderHook(() =>
@@ -151,7 +187,7 @@ describe("useRotation", () => {
   });
 
   it("unmount 시 timer가 정리된다", () => {
-    const clearSpy = vi.spyOn(window, "clearInterval");
+    const clearSpy = vi.spyOn(window, "clearTimeout");
     const { unmount } = renderHook(() =>
       useRotation({
         posters: posters("a", "b"),

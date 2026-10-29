@@ -1,4 +1,5 @@
 import { parseIsoUtc, toIsoUtc } from "@/shared/lib/datetime";
+import { toWidgetSlotDtos, toWidgetSlots } from "@/entities/widget/model/types";
 import {
   clampRotationSeconds,
   DEFAULT_LAYOUT_TYPE,
@@ -30,6 +31,7 @@ export function toPlaylist(dto: PlaylistDto): Playlist {
       rotationSeconds: clampRotationSeconds(dto.layout.rotationSeconds),
     },
     items: dto.items.map(toPlaylistItem),
+    widgets: toWidgetSlots(dto.widgets),
   };
 }
 
@@ -46,6 +48,7 @@ export function toPlaylistDto(playlist: Playlist): PlaylistDto {
       startsAt: toIsoUtc(item.startsAt),
       endsAt: toIsoUtc(item.endsAt),
     })),
+    widgets: toWidgetSlotDtos(playlist.widgets),
   };
 }
 

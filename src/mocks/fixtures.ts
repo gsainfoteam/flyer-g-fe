@@ -1,3 +1,4 @@
+import type { WidgetSlotDto } from "@/entities/widget/model/types";
 import type {
   DisplayDeviceDto,
   TargetGroup,
@@ -534,6 +535,105 @@ export interface DeviceSeed extends Omit<
   silentSinceMs: number | null | "never";
   /** false면 사용 안 함(DISABLED) */
   isActive: boolean;
+}
+
+/**
+ * 모든 기기 편성에 끼우는 위젯. 백엔드에 위젯이 생기기 전까지 mock만 보낸다.
+ * 날짜는 서울 자정을 UTC로 적는다.
+ *
+ * 학식·날씨·맛집은 서버가 외부에서 모아 `params.data`에 싣는 자리다. mock은 요청
+ * 시각을 기준으로 "오늘" 데이터를 만든다. 실제 응답처럼 보이지만 지어낸 값이다.
+ */
+export function createWidgetSeeds(now: Date): WidgetSlotDto[] {
+  const hour = 60 * 60 * 1000;
+  const nextHour = Math.ceil(now.getTime() / hour) * hour;
+  const skies = ["CLEAR", "CLEAR", "PARTLY_CLOUDY", "PARTLY_CLOUDY", "CLOUDY", "CLOUDY"];
+
+  return [
+    {
+      id: "widget-dday-semester-end",
+      type: "DDAY",
+      params: { label: "종강", date: "2026-12-18T15:00:00.000Z" },
+    },
+    {
+      id: "widget-exam-final",
+      type: "EXAM_CHEER",
+      params: {
+        label: "기말고사",
+        startsAt: "2026-12-13T15:00:00.000Z",
+        endsAt: "2026-12-18T15:00:00.000Z",
+      },
+    },
+    { id: "widget-fortune", type: "FORTUNE", everyFrames: 6 },
+    { id: "widget-meal", type: "MEAL_PICK", everyFrames: 5 },
+    {
+      id: "widget-cafeteria",
+      type: "CAFETERIA",
+      everyFrames: 3,
+      params: {
+        data: {
+          servedOn: now.toISOString(),
+          place: "제2학생식당",
+          meals: [
+            {
+              type: "BREAKFAST",
+              hours: "07:30~09:00",
+              menus: ["흰쌀밥", "북엇국", "계란말이", "김치"],
+            },
+            {
+              type: "LUNCH",
+              hours: "11:30~13:30",
+              menus: ["잡곡밥", "돼지고기김치찌개", "치킨너겟", "콩나물무침", "깍두기"],
+            },
+            {
+              type: "DINNER",
+              hours: "17:30~19:00",
+              menus: ["카레라이스", "미소된장국", "돈까스", "양배추샐러드", "단무지"],
+            },
+          ],
+        },
+      },
+    },
+    {
+      id: "widget-weather",
+      type: "WEATHER",
+      everyFrames: 4,
+      params: {
+        data: {
+          fetchedAt: new Date(now.getTime() - 20 * 60 * 1000).toISOString(),
+          location: "광주 북구 오룡동",
+          temperature: 14.3,
+          sky: "PARTLY_CLOUDY",
+          high: 18,
+          low: 9,
+          precipitationChance: 20,
+          hourly: skies.map((sky, index) => ({
+            at: new Date(nextHour + index * hour).toISOString(),
+            temperature: 14 - index,
+            sky,
+          })),
+        },
+      },
+    },
+    {
+      id: "widget-restaurant",
+      type: "RESTAURANT",
+      everyFrames: 6,
+      params: {
+        data: {
+          source: "네이버 지역검색 제공",
+          places: [
+            { name: "오룡 칼국수", category: "한식 · 칼국수", address: "광주 북구 오룡동 12-3" },
+            { name: "첨단 마라공방", category: "중식 · 마라탕", address: "광주 북구 첨단과기로 201" },
+            { name: "기숙사앞 분식", category: "분식", address: "광주 북구 오룡동 45-1" },
+            { name: "과기로 돈까스", category: "일식 · 돈까스", address: "광주 북구 첨단과기로 188" },
+            { name: "첨단 쌀국수", category: "아시안 · 쌀국수", address: "광주 북구 첨단과기로 230" },
+            { name: "오룡 숯불닭갈비", category: "한식 · 닭갈비", address: "광주 북구 오룡동 77-2" },
+          ],
+        },
+      },
+    },
+  ];
 }
 
 const SEED_DEVICE_SETTINGS = {

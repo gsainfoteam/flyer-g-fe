@@ -1,3 +1,5 @@
+import type { WidgetSlot, WidgetSlotDto } from "@/entities/widget/model/types";
+
 /**
  * TV 화면 전환 방식. 기기마다 운영자가 고른다.
  *
@@ -86,6 +88,8 @@ export interface PlaylistDto {
   /** 예전 값(SINGLE·FOUR_GRID)이 남은 캐시도 있어 문자열로 받고 읽을 때 바꾼다. */
   layout: { type: string; rotationSeconds: number };
   items: PlaylistItemDto[];
+  /** 포스터 사이에 끼울 위젯. 백엔드가 아직 보내지 않아 선택이다. */
+  widgets?: WidgetSlotDto[];
 }
 
 export interface PlaylistItem extends Omit<
@@ -109,6 +113,7 @@ export interface Playlist {
   refreshAfterSeconds: number;
   layout: { type: LayoutType; rotationSeconds: number };
   items: PlaylistItem[];
+  widgets: WidgetSlot[];
 }
 
 /** 서버가 보낸 전환 간격을 안전 범위로 clamp한다. */
