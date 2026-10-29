@@ -94,6 +94,8 @@ function reconnecting(
       if (closed || socket !== next) return;
       const final = finalStatus(event.code);
       if (final) {
+        // 화면에는 상태만 보인다. 원인을 찾을 수 있게 서버가 준 코드와 이유를 남긴다.
+        console.warn(`[game] 연결 종료 ${event.code} ${event.reason}`);
         onStatus?.(final);
         return;
       }
