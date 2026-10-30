@@ -87,7 +87,10 @@ describe("buildWeatherContent", () => {
 
   it("값을 반올림하고 지난 시각·모르는 하늘은 뺀다", () => {
     const content = buildWeatherContent({ data }, at("2026-10-28T03:30:00Z"));
-    expect(content).toMatchObject({ temperature: 15, precipitationChance: 100 });
+    expect(content).toMatchObject({ temperature: 15, precipitationChance: 100, source: "" });
+    expect(buildWeatherContent({ data: { ...data, source: "기상청 제공" } }, at("2026-10-28T03:30:00Z"))?.source).toBe(
+      "기상청 제공",
+    );
     expect(content?.hourly).toHaveLength(1);
   });
 
@@ -104,6 +107,25 @@ describe("buildWeatherContent", () => {
 
 describe("buildRestaurantContent", () => {
   const places = ["가", "나", "다", "라"].map((name) => ({ name, category: "한식" }));
+
+  it("원본 링크는 http(s)만 받는다", () => {
+    const content = buildRestaurantContent(
+      {
+        data: {
+          places: [
+            { name: "가", url: "https://map.naver.com/p/1" },
+            { name: "나", url: "javascript:alert(1)" },
+            { name: "다", url: "지도" },
+          ],
+        },
+      },
+      seededRandom("s"),
+    );
+    const urls = Object.fromEntries(
+      [content!.featured, ...content!.others].map((place) => [place.name, place.url]),
+    );
+    expect(urls).toEqual({ 가: "https://map.naver.com/p/1", 나: null, 다: null });
+  });
 
   it("서로 다른 세 곳을 고르고 같은 씨앗이면 같은 결과다", () => {
     const first = buildRestaurantContent({ data: { places } }, seededRandom("s"));

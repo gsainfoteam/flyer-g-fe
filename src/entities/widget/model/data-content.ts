@@ -46,12 +46,16 @@ export interface WeatherContent {
   precipitationChance: number;
   hourly: WeatherHour[];
   fetchedAt: Date;
+  /** 데이터 제공처 표기. 기상청 자료는 공공누리 1유형이라 출처를 밝혀야 한다. */
+  source: string;
 }
 
 export interface RestaurantPlace {
   name: string;
   category: string;
   address: string;
+  /** 가게 원본 페이지. 있으면 TV에 QR로 보여 준다(지도·검색 API 약관의 원본 링크). */
+  url: string | null;
 }
 
 export interface RestaurantContent {
@@ -73,6 +77,18 @@ const readText = (value: unknown): string | null =>
 
 const readNumber = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
+
+/** QR로 띄울 주소. 폰이 열 수 있는 http(s)만 받는다. */
+function readWebUrl(value: unknown): string | null {
+  const text = readText(value);
+  if (!text) return null;
+  try {
+    const url = new URL(text);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
 
 function readTime(value: unknown): Date | null {
   if (typeof value !== "string") return null;
@@ -183,6 +199,7 @@ export function buildWeatherContent(
     precipitationChance: Math.min(100, Math.max(0, Math.round(chance))),
     hourly,
     fetchedAt,
+    source: readText(data.source) ?? "",
   };
 }
 
@@ -201,6 +218,7 @@ export function buildRestaurantContent(
         name,
         category: readText(raw.category) ?? "",
         address: readText(raw.address) ?? "",
+        url: readWebUrl(raw.url),
       },
     ];
   });
