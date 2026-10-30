@@ -24,6 +24,14 @@ import { paths } from "./routes";
  * - `display`: TV 편성과 상태 보고 (8, 9절). 사용자 세션이 아니라 기기 토큰을 쓴다
  * - `stats`: 노출 통계 (`GET /signage/stats/impressions`)
  * - `users`: 사용자 역할 관리 (`/signage/users`)
+ *
+ * 플랫폼 개편(Phase 09)에서 더한 단위. 백엔드 배포가 따로 나가서 하나씩 real로 바꾼다.
+ *
+ * - `lineup`: 그룹 편성과 기기 예외 (`/signage/target-groups/{id}/lineup`, 배포 ⑤)
+ * - `live`: 라이브 조작과 새로고침 (`/signage/devices/{id}/live`, ⑧)
+ * - `programs`: 운영 컨텐츠·데이터셋·수집기 (`/signage/programs`, ⑩⑪⑬)
+ * - `play`: QR 참여 퀴즈와 게임 참가자 인증 (`/play/quiz`, ⑫⑭)
+ * - `alerts`: 슬랙 알림 설정 (`/signage/settings/alerts`, ⑮)
  */
 export const API_UNITS = [
   "upload",
@@ -34,6 +42,11 @@ export const API_UNITS = [
   "display",
   "stats",
   "users",
+  "lineup",
+  "live",
+  "programs",
+  "play",
+  "alerts",
 ] as const;
 export type ApiUnit = (typeof API_UNITS)[number];
 
