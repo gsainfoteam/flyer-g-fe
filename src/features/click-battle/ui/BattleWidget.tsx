@@ -65,8 +65,14 @@ export function BattleWidget({
       local={socketBase === null}
       idleHint="QR로 참가하면 게임이 시작돼요"
       header={
-        <StageHeader deviceLabel={deviceLabel} serverTime={serverTime} clockTicking>
-          <span className="text-[26px] font-extrabold text-ink-muted">클릭 배틀</span>
+        <StageHeader
+          deviceLabel={deviceLabel}
+          serverTime={serverTime}
+          clockTicking
+        >
+          <span className="text-[26px] font-extrabold text-ink-muted">
+            클릭 배틀
+          </span>
         </StageHeader>
       }
     />
