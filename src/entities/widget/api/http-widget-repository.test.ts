@@ -97,7 +97,7 @@ describe("createHttpWidgetRepository", () => {
     }));
     const settings = await repository.getSettings("dev-1");
     expect(settings.ratioPercent).toBe(50);
-    expect(settings.widgets).toHaveLength(8);
+    expect(settings.widgets).toHaveLength(9);
     expect(settings.widgets.find((item) => item.type === "WEATHER")?.enabled).toBe(false);
     expect(userClient.calls[0]?.path).toBe("/signage/devices/dev-1/widget-settings");
 

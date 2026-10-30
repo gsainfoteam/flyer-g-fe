@@ -17,7 +17,7 @@ describe("toWidgetSettings", () => {
       { type: "FORTUNE", enabled: false, durationSeconds: 999 },
       { type: "BAMBOO", enabled: true },
     ]);
-    expect(settings).toHaveLength(8);
+    expect(settings).toHaveLength(9);
     expect(settings.find((item) => item.type === "FORTUNE")).toMatchObject({
       enabled: false,
       durationSeconds: 300,

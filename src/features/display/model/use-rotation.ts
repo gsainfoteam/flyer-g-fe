@@ -33,6 +33,8 @@ export interface UseRotationOptions {
   pickWidget?: () => WidgetPick | null;
   /** preview 모드의 일시정지 */
   paused?: boolean;
+  /** 지금 화면에 머문다(게임 세션 중). 풀리면 호출부가 `advance`로 넘긴다. */
+  hold?: boolean;
 }
 
 interface Position {
@@ -47,8 +49,10 @@ export function useRotation({
   rotationSeconds,
   widgetInterval = 0,
   pickWidget,
-  paused = false,
+  paused: pausedByUser = false,
+  hold = false,
 }: UseRotationOptions) {
+  const paused = pausedByUser || hold;
   // 화면 identity는 배열 참조가 아니라 **내용**으로 고정한다. 호출부가 렌더마다
   // 새 배열을 만들어도 내용이 같으면 frames가 유지되어야 한다. 참조로 두면 위치
   // 복원 effect와 anchor 갱신 effect가 서로를 되받아치는 무한 루프가 된다.

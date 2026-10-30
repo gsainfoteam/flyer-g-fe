@@ -63,6 +63,7 @@ export const WIDGET_LABELS: Record<WidgetType, string> = {
   WEATHER: "오늘 날씨",
   RESTAURANT: "근처 맛집",
   QUIZ: "오늘의 퀴즈",
+  CLICK_BATTLE: "클릭 배틀",
 };
 
 export const WIDGET_DESCRIPTIONS: Record<WidgetType, string> = {
@@ -74,6 +75,7 @@ export const WIDGET_DESCRIPTIONS: Record<WidgetType, string> = {
   WEATHER: "가끔(30분에 한 번까지) 크게 나와요. 상단 바에는 늘 떠 있어요.",
   RESTAURANT: "근처 가게를 1시간마다 바꿔 보여 줘요.",
   QUIZ: "QR로 폰에서 답을 골라요. 정답은 다음 날 공개돼요.",
+  CLICK_BATTLE: "QR로 누가 참가하면 게임 화면으로 바뀌어 끝날 때까지 머물러요(최대 5분).",
 };
 
 /** 운영자가 날짜를 정해야 하는 종류의 기본값. 새 기기에도 바로 쓸 수 있게 둔다. */

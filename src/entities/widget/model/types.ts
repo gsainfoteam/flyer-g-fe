@@ -18,6 +18,7 @@ export const WIDGET_TYPES = [
   "WEATHER",
   "RESTAURANT",
   "QUIZ",
+  "CLICK_BATTLE",
 ] as const;
 export type WidgetType = (typeof WIDGET_TYPES)[number];
 
@@ -34,6 +35,8 @@ export const DEFAULT_WIDGET_DURATION: Record<WidgetType, number> = {
   WEATHER: 10,
   RESTAURANT: 10,
   QUIZ: 15,
+  // QR을 찍고 이름을 칠 시간. 누가 참가하면 게임이 끝날 때까지 머문다.
+  CLICK_BATTLE: 20,
 };
 
 /** 위젯 머무는 시간의 안전 범위. 포스터 노출을 너무 오래 막지 않게 한다. */
