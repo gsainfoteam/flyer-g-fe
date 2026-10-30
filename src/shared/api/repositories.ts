@@ -13,6 +13,11 @@ import type {
   SignageConfig,
 } from "@/entities/submission/model/policy";
 import type { Playlist } from "@/entities/playlist/model/types";
+import type { DeviceWidgets } from "@/entities/widget/model/feed";
+import type {
+  DeviceWidgetSettings,
+  DeviceWidgetSettingsDto,
+} from "@/entities/widget/model/settings";
 import type {
   ImpressionStats,
   ImpressionStatsParams,
@@ -197,6 +202,23 @@ export interface DisplayRepository {
   getPlaylist(deviceId: string, signal?: AbortSignal): Promise<Playlist>;
 }
 
+/**
+ * TV 위젯 (flyer-g-be#24 제안). 편성과 따로 받는다. 백엔드에 아직 없어 실제 API는
+ * 404면 위젯 없음(TV)이나 `WIDGETS_UNSUPPORTED`(관리 화면)로 답한다.
+ */
+export interface WidgetRepository {
+  /** TV가 받는 위젯과 상단 바 날씨. 기기 토큰으로 접근한다. */
+  getDeviceWidgets(deviceId: string, signal?: AbortSignal): Promise<DeviceWidgets>;
+  /** 기기 위젯 설정. SUPER_ADMIN만. */
+  getSettings(deviceId: string, signal?: AbortSignal): Promise<DeviceWidgetSettings>;
+  /** 기기 위젯 설정 전체 교체. SUPER_ADMIN만. */
+  saveSettings(
+    deviceId: string,
+    settings: DeviceWidgetSettingsDto,
+    signal?: AbortSignal,
+  ): Promise<DeviceWidgetSettings>;
+}
+
 export interface DeviceRepository {
   /** 기기 목록과 연결 상태. 하우스 관리자 이상. `API-REQUIREMENTS.md` 11.1 */
   list(signal?: AbortSignal): Promise<DeviceList>;
@@ -280,6 +302,7 @@ export interface Repositories {
   submissions: SubmissionRepository;
   reviews: ReviewRepository;
   displays: DisplayRepository;
+  widgets: WidgetRepository;
   devices: DeviceRepository;
   reference: ReferenceRepository;
   stats: StatsRepository;

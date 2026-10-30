@@ -10,9 +10,7 @@ import { useRotateDeviceToken } from "@/features/devices/model/use-device-mutati
 import { DeviceFormDialog } from "@/features/devices/ui/DeviceFormDialog";
 import { DeviceSetupLinkDialog } from "@/features/devices/ui/DeviceSetupLinkDialog";
 import { TargetGroupsSection } from "@/features/devices/ui/TargetGroupsSection";
-import { summarizeWidgets } from "@/features/devices/model/widget-settings-form";
 import { WidgetSettingsDialog } from "@/features/devices/ui/WidgetSettingsDialog";
-import type { WidgetSetting } from "@/entities/widget/model/settings";
 import { isApiError, toUserMessage } from "@/shared/api/error";
 import {
   ConfirmActionDialog,
@@ -40,9 +38,7 @@ export function DevicesPage() {
 
   const [editing, setEditing] = useState<DisplayDevice | "new" | null>(null);
   const [rotating, setRotating] = useState<DisplayDevice | null>(null);
-  const [widgetsOf, setWidgetsOf] = useState<
-    (DisplayDevice & { widgets: WidgetSetting[] }) | null
-  >(null);
+  const [widgetsOf, setWidgetsOf] = useState<DisplayDevice | null>(null);
   const [setupLink, setSetupLink] = useState<SetupLinkResult | null>(null);
 
   const groupList = groups.data ?? [];
@@ -85,11 +81,7 @@ export function DevicesPage() {
                     serverNow={devices.data.serverTime}
                     onEdit={() => setEditing(device)}
                     onRotate={() => setRotating(device)}
-                    onWidgets={
-                      device.widgets
-                        ? () => setWidgetsOf({ ...device, widgets: device.widgets! })
-                        : null
-                    }
+                    onWidgets={() => setWidgetsOf(device)}
                   />
                 ))}
               </ul>
@@ -194,13 +186,11 @@ function DeviceRow({
   serverNow: Date;
   onEdit: () => void;
   onRotate: () => void;
-  /** 서버가 위젯 설정을 지원하지 않으면 null이고 버튼을 막는다. */
-  onWidgets: (() => void) | null;
+  onWidgets: () => void;
 }) {
   const facts = [
     `${LAYOUT_LABELS[device.layout.type]} · ${device.layout.rotationSeconds}초마다 넘김`,
     `${device.refreshAfterSeconds}초마다 편성 확인`,
-    summarizeWidgets(device.widgets),
     device.lastSeenAt
       ? `마지막 연결 ${formatTimeAgo(device.lastSeenAt, serverNow)}`
       : "아직 연결된 적 없음",
@@ -231,13 +221,7 @@ function DeviceRow({
         <Button variant="secondary" size="sm" onClick={onEdit}>
           수정
         </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={onWidgets ?? undefined}
-          disabled={!onWidgets}
-          title={onWidgets ? undefined : "서버가 아직 위젯 설정을 지원하지 않아요"}
-        >
+        <Button variant="secondary" size="sm" onClick={onWidgets}>
           위젯
         </Button>
         <Button variant="outline" size="sm" onClick={onRotate}>

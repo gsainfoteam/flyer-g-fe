@@ -6,7 +6,7 @@ import {
 } from "@/entities/widget/model/settings";
 import {
   draftFromSetting,
-  summarizeWidgets,
+  validateRatioPercent,
   toWidgetSettingDtos,
   validateWidgetDrafts,
 } from "./widget-settings-form";
@@ -14,14 +14,13 @@ import {
 describe("toWidgetSettings", () => {
   it("빠진 종류는 기본값으로 채우고 범위를 넘는 값은 자른다", () => {
     const settings = toWidgetSettings([
-      { type: "FORTUNE", enabled: false, durationSeconds: 999, everyFrames: 0 },
+      { type: "FORTUNE", enabled: false, durationSeconds: 999 },
       { type: "BAMBOO", enabled: true },
     ]);
     expect(settings).toHaveLength(8);
     expect(settings.find((item) => item.type === "FORTUNE")).toMatchObject({
       enabled: false,
       durationSeconds: 300,
-      everyFrames: 1,
     });
     expect(settings.find((item) => item.type === "WEATHER")?.enabled).toBe(true);
   });
@@ -84,11 +83,9 @@ describe("위젯 설정 폼", () => {
     );
   });
 
-  it("목록 요약은 켠 개수를 센다", () => {
-    expect(summarizeWidgets(settings)).toBe("위젯 8개 켬");
-    expect(summarizeWidgets(settings.map((item) => ({ ...item, enabled: false })))).toBe(
-      "위젯 꺼 둠",
-    );
-    expect(summarizeWidgets(null)).toBeNull();
+  it("위젯 비율은 10~50% 정수만 받는다", () => {
+    expect(validateRatioPercent("25")).toBeNull();
+    expect(validateRatioPercent("5")).toBe("10~50% 사이여야 해요.");
+    expect(validateRatioPercent("")).toBe("정수로 입력해 주세요.");
   });
 });

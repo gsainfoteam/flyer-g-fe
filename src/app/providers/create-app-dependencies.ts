@@ -9,6 +9,7 @@ import { createHttpReviewRepository } from "@/entities/review/api/http-review-re
 import { createHttpReferenceRepository } from "@/entities/submission/api/http-reference-repository";
 import { createHttpSubmissionRepository } from "@/entities/submission/api/http-submission-repository";
 import { createHttpUserRepository } from "@/entities/user/api/http-user-repository";
+import { createHttpWidgetRepository } from "@/entities/widget/api/http-widget-repository";
 import { createAssetUploadService } from "@/features/media-upload/api/create-asset-upload-service";
 import { createMockRepositories } from "@/mocks/repositories";
 import { createHttpClient } from "@/shared/api/http-client";
@@ -66,6 +67,8 @@ const REPOSITORY_UNITS = {
   submissions: "submissions",
   reviews: "reviews",
   displays: "display",
+  // TV 위젯은 편성과 같은 백엔드에 있다. 편성을 실제 API로 받으면 위젯도 그렇다.
+  widgets: "display",
   devices: "devices",
   reference: "reference",
   stats: "stats",
@@ -110,6 +113,12 @@ function createRepositories(
         userClient: client,
         credentials: deviceCredentials,
       }),
+    widgets: (client) =>
+      createHttpWidgetRepository({
+        deviceClient: createHttpClient({ baseUrl: env.apiBaseUrl! }),
+        userClient: client,
+        credentials: deviceCredentials,
+      }),
   };
 
   const pick = <K extends keyof Repositories>(key: K): Repositories[K] =>
@@ -119,6 +128,7 @@ function createRepositories(
     submissions: pick("submissions"),
     reviews: pick("reviews"),
     displays: pick("displays"),
+    widgets: pick("widgets"),
     devices: pick("devices"),
     reference: pick("reference"),
     stats: pick("stats"),

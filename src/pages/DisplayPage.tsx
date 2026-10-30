@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play, SkipForward } from "lucide-react";
 import { useParams, useSearchParams } from "react-router";
 import { Logo } from "@/shared/components/Logo";
@@ -17,9 +17,16 @@ import {
   PREVIEW_DEVICE_ID,
 } from "@/entities/playlist/model/types";
 import { exposedPosters, imagesOf } from "@/entities/poster/model/frames";
-import { buildWidgetContent } from "@/entities/widget/model/content";
+import { StageAmbientContext } from "@/entities/poster/ui/stage-ambient";
+import { buildWeatherContent } from "@/entities/widget/model/data-content";
+import {
+  createWidgetPicker,
+  widgetInterval,
+} from "@/entities/widget/model/policy";
 import type { PlayerFrame } from "@/entities/widget/model/schedule";
+import { HeaderWeather } from "@/entities/widget/ui/HeaderWeather";
 import { WidgetDisplay } from "@/entities/widget/ui/WidgetDisplay";
+import { useDeviceWidgets } from "@/features/display/model/use-device-widgets";
 import { toUserMessage } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
 import { captureDeviceTokenFromUrl } from "@/shared/lib/device-credential";
@@ -80,15 +87,31 @@ export function DisplayPage() {
   const rotationSeconds = feed.playlist?.layout.rotationSeconds ?? 10;
   const serverTime = feed.playlist?.serverTime ?? null;
 
-  // 지금 보여 줄 내용이 있는 위젯만 돈다. 지난 D-day, 시험 기간이 아닌 응원은 빠진다.
-  const widgets = useMemo(
+  // 위젯은 편성과 따로 받는다. 서버가 아직 지원하지 않으면 위젯 없이 돈다.
+  const widgetFeed = useDeviceWidgets(
+    deviceId,
+    feed.playlist?.refreshAfterSeconds ?? 60,
+  );
+
+  // 위젯을 고를 때의 "지금"(서버 시각). 편성의 서버 시각은 경계마다만 바뀌므로 기기
+  // 시계와의 차이를 두고 흘려 쓴다.
+  const clockOffsetRef = useRef(0);
+  useEffect(() => {
+    if (serverTime) clockOffsetRef.current = serverTime.getTime() - Date.now();
+  }, [serverTime]);
+
+  // 위젯 노출 정책: 포스터 N장마다 한 자리, 비율 상한, 시간대·간격 (policy.ts)
+  const pickerRef = useRef(createWidgetPicker());
+  const hasServerTime = serverTime !== null;
+  const pickWidget = useCallback(
     () =>
-      serverTime
-        ? (feed.playlist?.widgets ?? []).filter(
-            (slot) => buildWidgetContent(slot, serverTime) !== null,
+      hasServerTime
+        ? pickerRef.current.pick(
+            widgetFeed.widgets,
+            new Date(Date.now() + clockOffsetRef.current),
           )
-        : [],
-    [feed.playlist, serverTime],
+        : null,
+    [hasServerTime, widgetFeed.widgets],
   );
 
   const [paused, setPaused] = useState(false);
@@ -96,14 +119,17 @@ export function DisplayPage() {
     posters,
     layout,
     rotationSeconds,
-    widgets,
+    widgetInterval: widgetInterval(
+      widgetFeed.widgets,
+      rotationSeconds,
+      widgetFeed.ratioPercent,
+    ),
+    pickWidget,
     paused: isPreview && paused,
   });
 
   const nextFrame = rotation.nextFrame;
-  usePrefetchImages(
-    nextFrame && nextFrame.kind !== "widget" ? imagesOf(nextFrame, posters) : [],
-  );
+  usePrefetchImages(imagesOf(nextFrame, posters));
 
   // 실제로 그려진 이미지. 노출 기록과 정상 렌더링 보고는 뜬 화면만 센다.
   const [loadedIds, setLoadedIds] = useState<ReadonlySet<string>>(new Set());
@@ -132,8 +158,7 @@ export function DisplayPage() {
   usePlaybackReporting({
     page: exposed,
     rendered:
-      exposed.length > 0 &&
-      exposed.every((poster) => loadedIds.has(poster.id)),
+      exposed.length > 0 && exposed.every((poster) => loadedIds.has(poster.id)),
     rotationSeconds,
     recordExposure: telemetry.recordExposure,
     reportRenderOk: telemetry.reportRenderOk,
@@ -144,39 +169,54 @@ export function DisplayPage() {
   const frame = rotation.currentFrame;
   const frameKey = frame?.kind === "strip" ? "strip" : (frame?.key ?? "");
 
+  // 상단 바 날씨. 날씨 위젯을 꺼도 늘 뜬다. 날씨 위젯이 떠 있을 때는 겹치니 숨긴다.
+  const headerWeather = serverTime
+    ? buildWeatherContent({ data: widgetFeed.weather }, serverTime)
+    : null;
+  const ambient =
+    headerWeather &&
+    !(frame?.kind === "widget" && frame.content.type === "WEATHER") ? (
+      <HeaderWeather weather={headerWeather} />
+    ) : null;
+
   return (
     <div className="relative h-full">
-      <ScaledStage className="h-full w-full">
-        {feed.deviceError ? (
-          <DeviceSetupNotice error={feed.deviceError} deviceId={deviceId} />
-        ) : feed.isPending || !serverTime ? (
-          <div className="flex h-full flex-col items-center justify-center gap-6">
-            <Logo size="tv" />
-            <p className="text-[30px] text-ink-subtle">편성을 불러오는 중</p>
-          </div>
-        ) : !frame ? (
-          <EmptyDisplay deviceLabel={deviceLabel} serverTime={serverTime} />
-        ) : frame.kind === "widget" ? (
-          <WidgetFrame
-            key={frameKey}
-            frame={frame}
-            deviceLabel={deviceLabel}
-            serverTime={serverTime}
-          />
-        ) : (
-          <div key={frameKey} className="h-full animate-in duration-500 fade-in">
-            <DisplayStage
+      <StageAmbientContext value={ambient}>
+        <ScaledStage className="h-full w-full">
+          {feed.deviceError ? (
+            <DeviceSetupNotice error={feed.deviceError} deviceId={deviceId} />
+          ) : feed.isPending || !serverTime ? (
+            <div className="flex h-full flex-col items-center justify-center gap-6">
+              <Logo size="tv" />
+              <p className="text-[30px] text-ink-subtle">편성을 불러오는 중</p>
+            </div>
+          ) : !frame ? (
+            <EmptyDisplay deviceLabel={deviceLabel} serverTime={serverTime} />
+          ) : frame.kind === "widget" ? (
+            <WidgetFrame
+              key={frameKey}
               frame={frame}
-              posters={posters}
               deviceLabel={deviceLabel}
               serverTime={serverTime}
-              clockTicking
-              onPosterError={handlePosterError}
-              onPosterLoad={handlePosterLoad}
             />
-          </div>
-        )}
-      </ScaledStage>
+          ) : (
+            <div
+              key={frameKey}
+              className="h-full animate-in duration-500 fade-in"
+            >
+              <DisplayStage
+                frame={frame}
+                posters={posters}
+                deviceLabel={deviceLabel}
+                serverTime={serverTime}
+                clockTicking
+                onPosterError={handlePosterError}
+                onPosterLoad={handlePosterLoad}
+              />
+            </div>
+          )}
+        </ScaledStage>
+      </StageAmbientContext>
 
       {isPreview && (
         <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-pill bg-ink/85 px-4 py-2 text-ink-inverse shadow-floating backdrop-blur">
@@ -227,16 +267,11 @@ function WidgetFrame({
   deviceLabel: string | null;
   serverTime: Date;
 }) {
-  // 거르는 시점과 그리는 시점 사이에 날이 바뀌면 내용이 없을 수 있다. 다음 화면까지
-  // 빈 칸 대신 안내 화면을 둔다.
-  const content = buildWidgetContent(frame.slot, serverTime);
-  if (!content) {
-    return <EmptyDisplay deviceLabel={deviceLabel} serverTime={serverTime} />;
-  }
+  // 내용은 자리에 왔을 때 고르며 이미 만들어 두었다(policy.ts).
   return (
     <div className="h-full animate-in duration-500 fade-in">
       <WidgetDisplay
-        content={content}
+        content={frame.content}
         deviceLabel={deviceLabel}
         serverTime={serverTime}
         clockTicking
