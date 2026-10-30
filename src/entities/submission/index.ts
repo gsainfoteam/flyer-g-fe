@@ -5,3 +5,4 @@ export * from "./model/status";
 export * from "./model/schedule";
 export * from "./model/mapper";
 export * from "./model/progress";
+export * from "./model/kind";
