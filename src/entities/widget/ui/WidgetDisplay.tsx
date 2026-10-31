@@ -248,6 +248,9 @@ function WeatherBody({ content }: { content: WeatherContent }) {
         {content.location && (
           <p className="text-[34px] font-bold text-ink-muted">{content.location}</p>
         )}
+        {content.source && (
+          <p className="ml-auto text-[24px] text-ink-subtle">{content.source}</p>
+        )}
       </div>
       <div className="flex flex-1 items-center gap-24">
         <div className="flex items-center gap-10">
@@ -301,25 +304,33 @@ function HourIcon({ sky }: { sky: Sky }) {
 const LONG_PLACE_NAME = 9;
 
 function RestaurantBody({ content }: { content: RestaurantContent }) {
+  const { featured } = content;
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-10">
       <Eyebrow>근처 맛집</Eyebrow>
-      <div className="flex flex-1 flex-col justify-center gap-6">
-        {content.featured.category && (
-          <p className="text-[40px] font-bold text-ink-muted">
-            {content.featured.category}
-          </p>
-        )}
-        <p
-          className={cn(
-            "line-clamp-2 leading-[1.05] font-extrabold tracking-tight text-ink",
-            content.featured.name.length > LONG_PLACE_NAME ? "text-[110px]" : "text-[150px]",
+      <div className="flex min-h-0 flex-1 items-center gap-16">
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-6">
+          {featured.category && (
+            <p className="text-[40px] font-bold text-ink-muted">{featured.category}</p>
           )}
-        >
-          {content.featured.name}
-        </p>
-        {content.featured.address && (
-          <p className="text-[36px] text-ink-muted">{content.featured.address}</p>
+          <p
+            className={cn(
+              "line-clamp-2 leading-[1.05] font-extrabold tracking-tight text-ink",
+              featured.name.length > LONG_PLACE_NAME ? "text-[110px]" : "text-[150px]",
+            )}
+          >
+            {featured.name}
+          </p>
+          {featured.address && (
+            <p className="text-[36px] text-ink-muted">{featured.address}</p>
+          )}
+        </div>
+        {/* 원본 링크가 있으면 QR. TV는 누를 수 없어 폰으로 원본(지도·리뷰)을 연다. */}
+        {featured.url && (
+          <div className="flex shrink-0 flex-col items-center gap-4">
+            <QRCodeBox value={featured.url} size="tv" />
+            <p className="text-[30px] font-extrabold text-ink">자세히 보기</p>
+          </div>
         )}
       </div>
       <div className="flex items-end justify-between gap-10">
@@ -329,7 +340,7 @@ function RestaurantBody({ content }: { content: RestaurantContent }) {
           </p>
         )}
         {content.source && (
-          <p className="shrink-0 text-[24px] text-ink-subtle">{content.source}</p>
+          <p className="ml-auto shrink-0 text-[24px] text-ink-subtle">{content.source}</p>
         )}
       </div>
     </div>

@@ -575,6 +575,7 @@ export function createWidgetData(
     WEATHER: {
       fetchedAt: new Date(now.getTime() - 20 * 60 * 1000).toISOString(),
       location: "광주 북구 오룡동",
+      source: "기상청 제공",
       temperature: 14.3,
       sky: "PARTLY_CLOUDY",
       high: 18,
@@ -587,9 +588,15 @@ export function createWidgetData(
       })),
     },
     RESTAURANT: {
-      source: "네이버 지역검색 제공",
+      source: "학생 추천",
       places: [
-        { name: "오룡 칼국수", category: "한식 · 칼국수", address: "광주 북구 오룡동 12-3" },
+        {
+          name: "오룡 칼국수",
+          category: "한식 · 칼국수",
+          address: "광주 북구 오룡동 12-3",
+          // 원본 링크가 있으면 TV에 QR이 붙는다. 예시 주소다.
+          url: "https://map.naver.com/p/search/%EC%98%A4%EB%A3%A1%20%EC%B9%BC%EA%B5%AD%EC%88%98",
+        },
         { name: "첨단 마라공방", category: "중식 · 마라탕", address: "광주 북구 첨단과기로 201" },
         { name: "기숙사앞 분식", category: "분식", address: "광주 북구 오룡동 45-1" },
         { name: "과기로 돈까스", category: "일식 · 돈까스", address: "광주 북구 첨단과기로 188" },

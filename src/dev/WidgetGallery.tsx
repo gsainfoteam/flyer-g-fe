@@ -105,6 +105,7 @@ const CASES: { id: string; title: string; content: WidgetContent }[] = [
     content: {
       type: "WEATHER",
       location: "광주광역시 북구 오룡동 광주과학기술원",
+      source: "기상청 제공",
       temperature: -12,
       sky: "SNOW",
       high: -3,
@@ -124,6 +125,7 @@ const CASES: { id: string; title: string; content: WidgetContent }[] = [
     content: {
       type: "WEATHER",
       location: "",
+      source: "",
       temperature: 31,
       sky: "CLEAR",
       high: 34,
@@ -135,17 +137,18 @@ const CASES: { id: string; title: string; content: WidgetContent }[] = [
   },
   {
     id: "restaurant-long",
-    title: "맛집 · 긴 가게 이름",
+    title: "맛집 · 긴 가게 이름 + 원본 QR",
     content: {
       type: "RESTAURANT",
       featured: {
         name: "첨단과기로 원조 할머니 손칼국수 본점",
         category: "한식 · 칼국수 · 수제비 · 보리밥",
         address: "광주광역시 북구 첨단과기로 208번길 43-22, 1층 101호",
+        url: "https://map.naver.com/p/search/%EC%B9%BC%EA%B5%AD%EC%88%98",
       },
       others: [
-        { name: "오룡 숯불닭갈비 첨단직영점", category: "", address: "" },
-        { name: "기숙사앞 분식 & 김밥천국", category: "", address: "" },
+        { name: "오룡 숯불닭갈비 첨단직영점", category: "", address: "", url: null },
+        { name: "기숙사앞 분식 & 김밥천국", category: "", address: "", url: null },
       ],
       source: "네이버 지역검색 제공",
     },
@@ -155,7 +158,7 @@ const CASES: { id: string; title: string; content: WidgetContent }[] = [
     title: "맛집 · 분류·주소 없음, 한 곳",
     content: {
       type: "RESTAURANT",
-      featured: { name: "오룡 칼국수", category: "", address: "" },
+      featured: { name: "오룡 칼국수", category: "", address: "", url: null },
       others: [],
       source: "",
     },
