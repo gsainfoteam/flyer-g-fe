@@ -40,7 +40,9 @@ export type WidgetContent =
       quiz: QuizQuestion;
       /** 어제 문제와 정답. 정답률은 서버가 모아야 해서 아직 없다. */
       yesterday: QuizQuestion;
-    };
+    }
+  /** 실시간 게임. 화면은 플레이어가 게임 방을 열어 그린다. */
+  | { type: "CLICK_BATTLE" };
 
 export interface ZodiacFortune {
   animal: string;
@@ -254,6 +256,8 @@ export function buildWidgetContent(
       return buildCafeteriaContent(slot.params, now);
     case "WEATHER":
       return buildWeatherContent(slot.params, now);
+    case "CLICK_BATTLE":
+      return { type: "CLICK_BATTLE" };
     case "QUIZ":
       return {
         type: "QUIZ",

@@ -5,7 +5,11 @@ import type { WidgetRepository } from "@/shared/api/repositories";
 import type { DeviceCredentials } from "@/shared/lib/device-credential";
 import { NO_WIDGETS, toDeviceWidgets } from "../model/feed";
 import type { DeviceWidgets, DeviceWidgetsDto } from "../model/feed";
-import { toDeviceWidgetSettings } from "../model/settings";
+import {
+  defaultDeviceWidgetSettings,
+  settingsToSlotDtos,
+  toDeviceWidgetSettings,
+} from "../model/settings";
 import type { DeviceWidgetSettingsDto, WidgetSettingDto } from "../model/settings";
 import type { WidgetSlotDto } from "../model/types";
 
@@ -92,6 +96,17 @@ export function parseWidgetSettings(payload: unknown) {
   return toDeviceWidgetSettings({ ratioPercent: readNumberish(body.ratioPercent), widgets });
 }
 
+/** 미리보기용 기본 위젯. 실제 기기의 설정이 아니라 새 기기의 기본값이다. */
+export function previewWidgets(): DeviceWidgets {
+  const defaults = defaultDeviceWidgetSettings();
+  return toDeviceWidgets({
+    widgetsVersion: "preview-defaults",
+    ratioPercent: defaults.ratioPercent,
+    widgets: settingsToSlotDtos(defaults.widgets),
+    weather: null,
+  });
+}
+
 const notFound = (error: unknown) => isApiError(error) && error.status === 404;
 
 export function createHttpWidgetRepository({
@@ -106,8 +121,9 @@ export function createHttpWidgetRepository({
 
   return {
     async getDeviceWidgets(deviceId, signal) {
-      // 미리보기는 기기 토큰이 없다. 실제 API에서는 위젯 없이 보여 준다.
-      if (deviceId === PREVIEW_DEVICE_ID) return NO_WIDGETS;
+      // 미리보기는 기기 토큰이 없어 서버에 묻지 않는다. 기본 위젯으로 모양만 보여 준다.
+      // 학식·날씨·맛집은 데이터가 없어 화면이 알아서 뺀다.
+      if (deviceId === PREVIEW_DEVICE_ID) return previewWidgets();
       const token = credentials.get(deviceId);
       if (token === null) return NO_WIDGETS;
       const previous = cache.get(deviceId);

@@ -98,6 +98,20 @@ describe("useRotation", () => {
     expect(focusOf(result.current.currentFrame, items)).toBe("a");
   });
 
+  it("붙잡는 동안(게임 세션)은 넘어가지 않는다", () => {
+    const items = posters("a", "b");
+    const { result, rerender } = renderHook(
+      ({ hold }) =>
+        useRotation({ posters: items, layout: "STRIP", rotationSeconds: 10, hold }),
+      { initialProps: { hold: true } },
+    );
+    act(() => vi.advanceTimersByTime(60_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("a");
+    rerender({ hold: false });
+    act(() => result.current.advance());
+    expect(focusOf(result.current.currentFrame, items)).toBe("b");
+  });
+
   it("포스터가 없으면 위젯만 차례로 돈다", () => {
     const pickWidget = picker(widget("w1", 20), widget("w2", 20));
     const { result } = renderHook(() =>

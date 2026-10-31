@@ -27,9 +27,15 @@ import type { PlayerFrame } from "@/entities/widget/model/schedule";
 import { HeaderWeather } from "@/entities/widget/ui/HeaderWeather";
 import { WidgetDisplay } from "@/entities/widget/ui/WidgetDisplay";
 import { useDeviceWidgets } from "@/features/display/model/use-device-widgets";
+import { gameSocketBase } from "@/features/click-battle/api/game-socket";
+import { BattlePreview } from "@/features/click-battle/ui/BattlePreview";
+import { BattleWidget } from "@/features/click-battle/ui/BattleWidget";
 import { toUserMessage } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
-import { captureDeviceTokenFromUrl } from "@/shared/lib/device-credential";
+import {
+  captureDeviceTokenFromUrl,
+  deviceCredentials,
+} from "@/shared/lib/device-credential";
 import { ZIGGLE_HOST } from "@/shared/lib/ziggle-url";
 import { Button } from "@/shared/ui/button";
 
@@ -100,6 +106,21 @@ export function DisplayPage() {
     if (serverTime) clockOffsetRef.current = serverTime.getTime() - Date.now();
   }, [serverTime]);
 
+  // 게임 위젯은 이 TV가 게임 방을 열 수 있을 때 실제로 돈다. 서버 중계면 기기 토큰이
+  // 있어야 하고, mock이면 같은 브라우저 탭끼리 연다. 토큰이 없는 미리보기는 방 없이
+  // 모양만 보여 준다(BattlePreview). 그 밖에 방을 못 여는 화면에서는 건너뛴다.
+  const socketBase = gameSocketBase();
+  const [gameToken] = useState(() => deviceCredentials.get(deviceId));
+  const canHostGame = socketBase === null || gameToken !== null;
+  const previewGame = !canHostGame && deviceId === PREVIEW_DEVICE_ID;
+  const widgetSlots = useMemo(
+    () =>
+      canHostGame || previewGame
+        ? widgetFeed.widgets
+        : widgetFeed.widgets.filter((slot) => slot.type !== "CLICK_BATTLE"),
+    [canHostGame, previewGame, widgetFeed.widgets],
+  );
+
   // 위젯 노출 정책: 포스터 N장마다 한 자리, 비율 상한, 시간대·간격 (policy.ts)
   const pickerRef = useRef(createWidgetPicker());
   const hasServerTime = serverTime !== null;
@@ -107,12 +128,16 @@ export function DisplayPage() {
     () =>
       hasServerTime
         ? pickerRef.current.pick(
-            widgetFeed.widgets,
+            widgetSlots,
             new Date(Date.now() + clockOffsetRef.current),
           )
         : null,
-    [hasServerTime, widgetFeed.widgets],
+    [hasServerTime, widgetSlots],
   );
+
+  // 게임 위젯에서 누가 참가하면 게임이 끝날 때까지 그 화면에 머문다. 이 시간은 위젯
+  // 비율에 넣지 않는다(사람들이 원해서 하는 시간이다).
+  const [gameActive, setGameActive] = useState(false);
 
   const [paused, setPaused] = useState(false);
   const rotation = useRotation({
@@ -120,12 +145,13 @@ export function DisplayPage() {
     layout,
     rotationSeconds,
     widgetInterval: widgetInterval(
-      widgetFeed.widgets,
+      widgetSlots,
       rotationSeconds,
       widgetFeed.ratioPercent,
     ),
     pickWidget,
     paused: isPreview && paused,
+    hold: gameActive,
   });
 
   const nextFrame = rotation.nextFrame;
@@ -192,6 +218,29 @@ export function DisplayPage() {
             </div>
           ) : !frame ? (
             <EmptyDisplay deviceLabel={deviceLabel} serverTime={serverTime} />
+          ) : frame.kind === "widget" &&
+            frame.content.type === "CLICK_BATTLE" ? (
+            <div
+              key={frameKey}
+              className="h-full animate-in duration-500 fade-in"
+            >
+              {previewGame ? (
+                <BattlePreview
+                  deviceLabel={deviceLabel}
+                  serverTime={serverTime}
+                />
+              ) : (
+                <BattleWidget
+                  roomId={deviceId}
+                  socketBase={socketBase}
+                  token={gameToken}
+                  deviceLabel={deviceLabel}
+                  serverTime={serverTime}
+                  onActiveChange={setGameActive}
+                  onSessionEnd={rotation.advance}
+                />
+              )}
+            </div>
           ) : frame.kind === "widget" ? (
             <WidgetFrame
               key={frameKey}

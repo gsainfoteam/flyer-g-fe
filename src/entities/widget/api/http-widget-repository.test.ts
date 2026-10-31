@@ -68,10 +68,12 @@ describe("createHttpWidgetRepository", () => {
     await expect(repository.getDeviceWidgets("dev-1")).resolves.toEqual(NO_WIDGETS);
   });
 
-  it("토큰이 없거나 미리보기면 부르지 않는다", async () => {
+  it("토큰이 없으면 위젯 없이, 미리보기는 기본 위젯으로. 둘 다 서버에 묻지 않는다", async () => {
     const { repository, deviceClient } = setup(() => PROPOSED_RESPONSE);
     await expect(repository.getDeviceWidgets("unknown")).resolves.toEqual(NO_WIDGETS);
-    await expect(repository.getDeviceWidgets("device-preview")).resolves.toEqual(NO_WIDGETS);
+    const preview = await repository.getDeviceWidgets("device-preview");
+    expect(preview.widgets.map((slot) => slot.type)).toContain("CLICK_BATTLE");
+    expect(preview.widgets).toHaveLength(9);
     expect(deviceClient.calls).toHaveLength(0);
   });
 
@@ -97,7 +99,7 @@ describe("createHttpWidgetRepository", () => {
     }));
     const settings = await repository.getSettings("dev-1");
     expect(settings.ratioPercent).toBe(50);
-    expect(settings.widgets).toHaveLength(8);
+    expect(settings.widgets).toHaveLength(9);
     expect(settings.widgets.find((item) => item.type === "WEATHER")?.enabled).toBe(false);
     expect(userClient.calls[0]?.path).toBe("/signage/devices/dev-1/widget-settings");
 

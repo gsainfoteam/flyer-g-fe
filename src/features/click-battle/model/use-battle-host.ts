@@ -34,13 +34,35 @@ export interface UseBattleHostOptions {
   socketBase?: string | null;
   /** 이 TV(기기)의 기기 토큰. 서버 중계로 방을 열 때 필요하다. */
   token?: string | null;
+  /**
+   * 한 팀만 모인 채 이만큼 지나면 판을 비운다. 플레이어의 게임 위젯이 상대 팀을
+   * 하염없이 기다리며 순환을 붙잡지 않게 한다. 없으면 기다린다(단독 게임 화면).
+   */
+  lobbyWaitMs?: number;
+  /**
+   * 세션(누군가 참가한 뒤 계속 이어지는 판들)이 이만큼 지나면 경기 중이 아닐 때 판을
+   * 비운다. 포스터 노출을 지키려는 상한이다. 없으면 제한하지 않는다.
+   */
+  sessionLimitMs?: number;
   /** 테스트 주입용 */
   channel?: GameChannel<BattleClientMessage, BattleHostMessage>;
   now?: () => number;
 }
 
+/** 누군가 참가해 판이 살아 있는가. 이 동안 플레이어는 순환을 멈춘다. */
+export function isBattleActive(state: BattleState): boolean {
+  return state.players.length > 0 || state.phase !== "LOBBY";
+}
+
 export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}) {
-  const { channel: injected, now = Date.now, socketBase = null, token = null } = options;
+  const {
+    channel: injected,
+    now = Date.now,
+    socketBase = null,
+    token = null,
+    lobbyWaitMs,
+    sessionLimitMs,
+  } = options;
   const [status, setStatus] = useState<GameLinkStatus | null>(null);
   const [state, setState] = useState<BattleState>(initialBattle);
   const stateRef = useRef<BattleState>(state);
@@ -68,6 +90,9 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
         : createBroadcastGameChannel<BattleClientMessage, BattleHostMessage>(roomId));
     let dirty = true;
     let sentAt = 0;
+    /** 세션이 시작된 시각, 한 팀만 모여 기다리기 시작한 시각 */
+    let activeSince: number | null = null;
+    let waitingSince: number | null = null;
 
     const unsubscribe = channel.subscribe((raw, from) => {
       // 폰은 로그인하지 않는다. 모양이 틀리거나 남의 참가자 id를 쓴 메시지는 버린다.
@@ -94,6 +119,24 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
         if (advanced === next) break;
         next = advanced;
       }
+      // 세션 시간과 상대 팀 기다림을 잰다. 넘으면 판을 비워 순환으로 돌려보낸다.
+      // 경기 중에는 끊지 않는다.
+      const active = isBattleActive(next);
+      activeSince = active ? (activeSince ?? at) : null;
+      const waiting = next.phase === "LOBBY" && next.players.length > 0;
+      waitingSince = waiting ? (waitingSince ?? at) : null;
+      const waitedTooLong =
+        lobbyWaitMs !== undefined && waitingSince !== null && at - waitingSince >= lobbyWaitMs;
+      const sessionTooLong =
+        sessionLimitMs !== undefined &&
+        activeSince !== null &&
+        at - activeSince >= sessionLimitMs &&
+        next.phase !== "PLAYING";
+      if (waitedTooLong || sessionTooLong) {
+        next = initialBattle(next.round + 1);
+        activeSince = null;
+        waitingSince = null;
+      }
       if (next !== stateRef.current) {
         stateRef.current = next;
         dirty = true;
@@ -112,11 +155,12 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
       unsubscribe();
       if (!injected) channel.close();
     };
-  }, [roomId, injected, now, socketBase, token]);
+  }, [roomId, injected, now, socketBase, token, lobbyWaitMs, sessionLimitMs]);
 
   return {
     state,
     now: clock,
+    active: isBattleActive(state),
     status: socketBase && !token && !injected ? ("unauthorized" as const) : status,
   };
 }

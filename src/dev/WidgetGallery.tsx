@@ -3,6 +3,7 @@ import { quizOfDay } from "@/entities/widget/model/quiz";
 import type { QuizQuestion } from "@/entities/widget/model/quiz";
 import { WidgetDisplay } from "@/entities/widget/ui/WidgetDisplay";
 import { DisplayPreviewFrame } from "@/features/display-preview/ui/DisplayPreviewFrame";
+import { BattlePreview } from "@/features/click-battle/ui/BattlePreview";
 
 /**
  * 개발 전용. TV 위젯을 경계 사례와 함께 한눈에 본다.
@@ -193,6 +194,16 @@ export function WidgetGallery() {
           </div>
         </figure>
       ))}
+      <figure className="space-y-2">
+        <figcaption className="text-label font-bold text-ink">
+          클릭 배틀 · 미리보기(방 없이 모양만)
+        </figcaption>
+        <div data-widget-case="click-battle-preview">
+          <DisplayPreviewFrame>
+            <BattlePreview deviceLabel="A동 로비" serverTime={NOW} />
+          </DisplayPreviewFrame>
+        </div>
+      </figure>
     </div>
   );
 }
