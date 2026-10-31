@@ -3,7 +3,7 @@ import { ApiError, isApiError } from "@/shared/api/error";
 import type { HttpClient } from "@/shared/api/http-client";
 import type { WidgetRepository } from "@/shared/api/repositories";
 import type { DeviceCredentials } from "@/shared/lib/device-credential";
-import { NO_WIDGETS, toDeviceWidgets } from "../model/feed";
+import { NO_WIDGETS, WIDGETS_UNSUPPORTED, toDeviceWidgets } from "../model/feed";
 import type { DeviceWidgets, DeviceWidgetsDto } from "../model/feed";
 import {
   defaultDeviceWidgetSettings,
@@ -147,8 +147,8 @@ export function createHttpWidgetRepository({
         cache.set(deviceId, { etag, feed });
         return feed;
       } catch (error) {
-        // 서버에 위젯 API가 아직 없다. 위젯 없이 포스터만 돈다.
-        if (notFound(error)) return NO_WIDGETS;
+        // 서버에 위젯 API가 아직 없다. 포스터가 적을 때만 TV가 기본 위젯으로 채운다.
+        if (notFound(error)) return WIDGETS_UNSUPPORTED;
         throw error;
       }
     },

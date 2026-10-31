@@ -29,8 +29,13 @@ export interface UseRotationOptions {
   rotationSeconds: number;
   /** 포스터 화면 몇 장마다 위젯 자리를 둘까. 0이면 위젯 없음 */
   widgetInterval?: number;
-  /** 위젯 자리에 왔을 때 띄울 위젯을 고른다. 없으면 그 자리를 건너뛴다. */
-  pickWidget?: () => WidgetPick | null;
+  /** 한 바퀴에 둘 위젯 자리의 최소 개수. 포스터가 적을 때 채운다(`fillSlotCount`). */
+  widgetMinSlots?: number;
+  /**
+   * 위젯 자리에 왔을 때 띄울 위젯을 고른다. 없으면 그 자리를 건너뛴다. `avoidId`는
+   * 바로 앞 화면의 위젯이다. 같은 위젯이 연달아 나오지 않게 한다.
+   */
+  pickWidget?: (avoidId?: string) => WidgetPick | null;
   /** preview 모드의 일시정지 */
   paused?: boolean;
   /** 지금 화면에 머문다(게임 세션 중). 풀리면 호출부가 `advance`로 넘긴다. */
@@ -48,6 +53,7 @@ export function useRotation({
   layout,
   rotationSeconds,
   widgetInterval = 0,
+  widgetMinSlots = 0,
   pickWidget,
   paused: pausedByUser = false,
   hold = false,
@@ -58,14 +64,15 @@ export function useRotation({
   // 복원 effect와 anchor 갱신 effect가 서로를 되받아치는 무한 루프가 된다.
   // 배치는 크기에, 그림은 URL과 버전에 기대므로 함께 센다.
   const interval = pickWidget ? widgetInterval : 0;
-  const signature = `${layout}::${interval}::${posters
+  const minSlots = pickWidget ? widgetMinSlots : 0;
+  const signature = `${layout}::${interval}:${minSlots}::${posters
     .map(
       (item) =>
         `${item.id}@${item.revision ?? ""}:${item.width}x${item.height}:${item.posterUrl}`,
     )
     .join("|")}`;
   const frames = useMemo<FrameTemplate[]>(
-    () => placeWidgetSlots(buildFrames(posters, layout), interval),
+    () => placeWidgetSlots(buildFrames(posters, layout), interval, minSlots),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- posters는 signature로 대표된다
     [signature],
   );
@@ -86,14 +93,18 @@ export function useRotation({
 
   const safeIndex = frames.length === 0 ? 0 : position.index % frames.length;
 
-  /** `from` 다음부터 보여 줄 수 있는 첫 화면. 위젯 자리는 고를 위젯이 있어야 한다. */
+  /**
+   * `from` 다음부터 보여 줄 수 있는 첫 화면. 위젯 자리는 고를 위젯이 있어야 한다.
+   * 넘어가는 경우 그 사이 자리는 모두 건너뛴 것이라, 바로 앞 화면은 지금 화면이다.
+   */
   const nextFrom = useCallback(
     (from: number, includeSelf = false): Position | null => {
+      const avoidId = includeSelf ? undefined : positionRef.current.pick?.slot.id;
       for (let step = includeSelf ? 0 : 1; step <= frames.length; step++) {
         const index = (from + step) % frames.length;
         const frame = frames[index]!;
         if (frame.kind !== "widget-slot") return { index, pick: null };
-        const pick = pickRef.current?.() ?? null;
+        const pick = pickRef.current?.(avoidId) ?? null;
         if (pick) return { index, pick };
       }
       return null;

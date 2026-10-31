@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { toIsoUtc } from "@/shared/lib/datetime";
 import type { LayoutType, Playlist } from "@/entities/playlist/model/types";
 import { toPlaylist } from "@/entities/playlist";
+import { NO_WIDGETS, WIDGETS_UNSUPPORTED } from "@/entities/widget/model/feed";
 import { createMockRepositories } from "@/mocks/repositories";
 import type { Repositories } from "@/shared/api/repositories";
 import { createFixedClock } from "@/shared/lib/clock";
@@ -55,6 +56,8 @@ function withPlaylist(playlist: Playlist): Repositories {
     clock: createFixedClock(TEST_NOW),
   });
   vi.spyOn(repositories.displays, "getPlaylist").mockResolvedValue(playlist);
+  // 포스터 순환만 본다. 위젯은 포스터가 적으면 사이를 채우므로 따로 확인한다.
+  vi.spyOn(repositories.widgets, "getDeviceWidgets").mockResolvedValue(NO_WIDGETS);
   return repositories;
 }
 
@@ -186,6 +189,20 @@ describe("TV 플레이어", () => {
       await screen.findByRole("heading", { name: "살아있는 포스터" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "만료된 포스터" })).toBeNull();
+  });
+
+  it("서버에 위젯 API가 없어도 포스터가 적으면 기본 위젯으로 채운다", async () => {
+    const repositories = withPlaylist(
+      playlistWith([{ id: "p1", title: "첫 포스터" }]),
+    );
+    vi.spyOn(repositories.widgets, "getDeviceWidgets").mockResolvedValue(
+      WIDGETS_UNSUPPORTED,
+    );
+    renderRoute("/display/device-preview?preview=1", { repositories });
+
+    await screen.findByRole("heading", { name: "첫 포스터" });
+    fireEvent.click(screen.getByRole("button", { name: "다음 화면" }));
+    expect(await screen.findByText(/띠별 운세/)).toBeInTheDocument();
   });
 
   it("유효 콘텐츠가 없으면 브랜드와 안내를 보여준다", async () => {

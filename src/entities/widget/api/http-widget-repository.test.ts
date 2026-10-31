@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/shared/api/error";
 import type { HttpClient, HttpRequest } from "@/shared/api/http-client";
 import { createDeviceCredentials } from "@/shared/lib/device-credential";
-import { NO_WIDGETS } from "../model/feed";
+import { NO_WIDGETS, WIDGETS_UNSUPPORTED, isWidgetsUnsupported, standaloneWidgets } from "../model/feed";
 import { createHttpWidgetRepository } from "./http-widget-repository";
 
 /** flyer-g-be#24 제안의 TV 조회 예시 응답 */
@@ -63,9 +63,22 @@ describe("createHttpWidgetRepository", () => {
     });
   });
 
-  it("서버에 위젯 API가 없으면(404) 위젯 없이 돈다", async () => {
+  it("서버에 위젯 API가 없으면(404) 위젯 없이, 지원하지 않는다고 표시해 돈다", async () => {
     const { repository } = setup(notFound);
-    await expect(repository.getDeviceWidgets("dev-1")).resolves.toEqual(NO_WIDGETS);
+    const feed = await repository.getDeviceWidgets("dev-1");
+    expect(feed).toEqual(WIDGETS_UNSUPPORTED);
+    expect(feed.widgets).toEqual([]);
+    expect(isWidgetsUnsupported(feed)).toBe(true);
+    expect(isWidgetsUnsupported(NO_WIDGETS)).toBe(false);
+  });
+
+  it("서버 없이 채울 위젯은 데이터·날짜가 필요 없는 종류만", () => {
+    expect(standaloneWidgets().map((slot) => slot.type)).toEqual([
+      "FORTUNE",
+      "MEAL_PICK",
+      "QUIZ",
+      "CLICK_BATTLE",
+    ]);
   });
 
   it("토큰이 없으면 위젯 없이, 미리보기는 기본 위젯으로. 둘 다 서버에 묻지 않는다", async () => {

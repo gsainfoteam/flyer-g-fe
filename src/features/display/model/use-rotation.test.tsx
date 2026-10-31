@@ -112,6 +112,41 @@ describe("useRotation", () => {
     expect(focusOf(result.current.currentFrame, items)).toBe("b");
   });
 
+  it("포스터가 적으면 최소 자리만큼 위젯으로 채우고, 바로 앞 위젯은 피한다", () => {
+    const items = posters("a");
+    const w1 = widget("w1", 10);
+    const w2 = widget("w2", 10);
+    const avoided: (string | undefined)[] = [];
+    let turn = 0;
+    const pickWidget = (avoidId?: string) => {
+      avoided.push(avoidId);
+      const slot = [w1, w2].filter((item) => item.id !== avoidId)[turn++ % 2] ?? w1;
+      return { slot, content: { type: "FORTUNE" as const, dateKey: "2026-10-31", fortunes: [] } };
+    };
+    const { result } = renderHook(() =>
+      useRotation({
+        posters: items,
+        layout: "STRIP",
+        rotationSeconds: 10,
+        widgetInterval: 4,
+        widgetMinSlots: 3,
+        pickWidget,
+      }),
+    );
+
+    const seen = [focusOf(result.current.currentFrame, items)];
+    for (let i = 0; i < 4; i++) {
+      act(() => vi.advanceTimersByTime(10_000));
+      seen.push(focusOf(result.current.currentFrame, items));
+    }
+    // 포스터 1장 뒤에 위젯 자리 3개, 다시 포스터
+    expect(seen[0]).toBe("a");
+    expect(seen.slice(1, 4).every((focus) => focus?.startsWith("widget:"))).toBe(true);
+    expect(seen[4]).toBe("a");
+    // 위젯 다음 자리를 고를 때는 그 위젯을 피하라고 알려 준다.
+    expect(avoided.slice(1, 3).every((id) => id !== undefined)).toBe(true);
+  });
+
   it("포스터가 없으면 위젯만 차례로 돈다", () => {
     const pickWidget = picker(widget("w1", 20), widget("w2", 20));
     const { result } = renderHook(() =>

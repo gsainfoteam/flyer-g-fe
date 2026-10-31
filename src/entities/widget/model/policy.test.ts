@@ -3,6 +3,7 @@ import type { WidgetContent } from "./content";
 import {
   WEATHER_MIN_GAP_MS,
   createWidgetPicker,
+  fillSlotCount,
   inShowWindow,
   parseHours,
   widgetInterval,
@@ -34,6 +35,16 @@ describe("widgetInterval", () => {
     // 평균 30초면 더 드물게
     expect(widgetInterval([slot("a", "FORTUNE", {}, 30)], 10, 25)).toBe(9);
     expect(widgetInterval([], 10, 25)).toBe(0);
+  });
+});
+
+describe("fillSlotCount", () => {
+  it("포스터 한 바퀴가 60초보다 짧으면 남는 시간만큼 위젯 자리를 더한다", () => {
+    const widgets = [slot("a", "FORTUNE", {}, 30), slot("b", "QUIZ", {}, 10)]; // 평균 20초
+    expect(fillSlotCount(1, 10, widgets)).toBe(3); // 50초 → 3자리
+    expect(fillSlotCount(2, 10, widgets)).toBe(2); // 40초 → 2자리
+    expect(fillSlotCount(6, 10, widgets)).toBe(0);
+    expect(fillSlotCount(1, 10, [])).toBe(0);
   });
 });
 
@@ -97,6 +108,13 @@ describe("createWidgetPicker", () => {
     const picked = [1, 2, 3].map(() => picker.pick([fortune, mealPick, weather], at)?.slot.id);
     // 날씨는 한 번 나온 뒤 30분 동안 빠진다.
     expect(picked).toEqual(["fortune", "weather", "fortune"]);
+  });
+
+  it("바로 앞 위젯은 건너뛰고, 그것뿐이면 고르지 않는다", () => {
+    const picker = createWidgetPicker();
+    const at = seoul(12);
+    expect(picker.pick([fortune, mealPick], at, "fortune")?.slot.id).toBe("meal");
+    expect(picker.pick([fortune], at, "fortune")).toBeNull();
   });
 
   it("날씨는 30분이 지나야 다시 나온다", () => {

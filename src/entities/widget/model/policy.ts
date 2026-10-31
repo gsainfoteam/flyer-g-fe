@@ -81,10 +81,31 @@ export function widgetInterval(
   ratioPercent: number,
 ): number {
   if (widgets.length === 0) return 0;
-  const average =
-    widgets.reduce((sum, slot) => sum + slot.durationSeconds, 0) / widgets.length;
   const ratio = ratioPercent / 100;
-  return Math.max(1, Math.ceil((average * (1 - ratio)) / (ratio * rotationSeconds)));
+  return Math.max(
+    1,
+    Math.ceil((averageSeconds(widgets) * (1 - ratio)) / (ratio * rotationSeconds)),
+  );
+}
+
+const averageSeconds = (widgets: readonly WidgetSlot[]) =>
+  widgets.reduce((sum, slot) => sum + slot.durationSeconds, 0) / widgets.length;
+
+/**
+ * 포스터 한 바퀴가 이보다 짧으면 남는 시간을 위젯으로 채운다. 편성이 한두 장뿐일 때
+ * 같은 포스터만 되풀이되지 않게 한다. 포스터가 충분하면 비율 상한만 따른다.
+ */
+export const MIN_CYCLE_SECONDS = 60;
+
+/** 한 바퀴를 `MIN_CYCLE_SECONDS`까지 채우는 데 필요한 위젯 자리 수. 충분하면 0 */
+export function fillSlotCount(
+  posterFrames: number,
+  rotationSeconds: number,
+  widgets: readonly WidgetSlot[],
+): number {
+  if (widgets.length === 0) return 0;
+  const shortfall = MIN_CYCLE_SECONDS - posterFrames * rotationSeconds;
+  return shortfall > 0 ? Math.ceil(shortfall / averageSeconds(widgets)) : 0;
 }
 
 export interface WidgetPick {
@@ -95,16 +116,20 @@ export interface WidgetPick {
 /**
  * 위젯 자리에 올 위젯을 고른다. 켜진 위젯을 차례로 돌며, 지금 내용이 있고 시간대·간격
  * 조건을 만족하는 첫 위젯을 준다. 없으면 null(그 자리는 건너뜀).
+ *
+ * `avoidId`는 바로 앞 화면의 위젯이다. 위젯 자리가 붙어 있을 때 같은 위젯이 연달아
+ * 나오지 않게 건너뛴다.
  */
 export function createWidgetPicker() {
   let cursor = -1;
   const lastShownAt = new Map<string, number>();
 
   return {
-    pick(slots: readonly WidgetSlot[], now: Date): WidgetPick | null {
+    pick(slots: readonly WidgetSlot[], now: Date, avoidId?: string): WidgetPick | null {
       for (let step = 1; step <= slots.length; step++) {
         const index = (cursor + step) % slots.length;
         const slot = slots[index]!;
+        if (slot.id === avoidId) continue;
         const content = buildWidgetContent(slot, now);
         if (!content || !inShowWindow(content, now)) continue;
         const last = lastShownAt.get(slot.id);

@@ -1,6 +1,10 @@
-import { clampRatioPercent } from "./settings";
+import {
+  clampRatioPercent,
+  defaultDeviceWidgetSettings,
+  settingsToSlotDtos,
+} from "./settings";
 import { toWidgetSlots } from "./types";
-import type { WidgetSlot, WidgetSlotDto } from "./types";
+import type { WidgetSlot, WidgetSlotDto, WidgetType } from "./types";
 
 /**
  * TV 한 대가 받는 위젯 묶음 (`GET /signage/devices/{id}/widgets`, flyer-g-be#24 제안).
@@ -49,3 +53,29 @@ export const NO_WIDGETS: DeviceWidgets = {
   widgets: [],
   weather: null,
 };
+
+/**
+ * 서버에 위젯 API가 아직 없다(404). 위젯 없이 돌되, 포스터가 적어 한 바퀴가 짧으면
+ * TV가 `standaloneWidgets`로 채운다.
+ */
+export const WIDGETS_UNSUPPORTED: DeviceWidgets = { ...NO_WIDGETS, version: "unsupported" };
+
+export const isWidgetsUnsupported = (feed: DeviceWidgets) =>
+  feed.version === WIDGETS_UNSUPPORTED.version;
+
+/**
+ * 서버 데이터 없이 화면이 스스로 만드는 위젯. 학식·날씨·맛집은 데이터가, D-day·시험
+ * 응원은 운영자가 정한 날짜가 있어야 해서 빠진다.
+ */
+const STANDALONE_TYPES: readonly WidgetType[] = ["FORTUNE", "MEAL_PICK", "QUIZ", "CLICK_BATTLE"];
+
+/** 서버 설정이 없을 때 쓰는 위젯. 길이·문구는 기본값이다. */
+export function standaloneWidgets(): WidgetSlot[] {
+  return toWidgetSlots(
+    settingsToSlotDtos(
+      defaultDeviceWidgetSettings().widgets.filter((setting) =>
+        STANDALONE_TYPES.includes(setting.type),
+      ),
+    ),
+  );
+}

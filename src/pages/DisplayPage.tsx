@@ -16,11 +16,21 @@ import {
   DEFAULT_LAYOUT_TYPE,
   PREVIEW_DEVICE_ID,
 } from "@/entities/playlist/model/types";
-import { exposedPosters, imagesOf } from "@/entities/poster/model/frames";
+import {
+  buildFrames,
+  exposedPosters,
+  imagesOf,
+} from "@/entities/poster/model/frames";
 import { StageAmbientContext } from "@/entities/poster/ui/stage-ambient";
 import { buildWeatherContent } from "@/entities/widget/model/data-content";
 import {
+  isWidgetsUnsupported,
+  standaloneWidgets,
+} from "@/entities/widget/model/feed";
+import {
+  MIN_CYCLE_SECONDS,
   createWidgetPicker,
+  fillSlotCount,
   widgetInterval,
 } from "@/entities/widget/model/policy";
 import type { PlayerFrame } from "@/entities/widget/model/schedule";
@@ -113,23 +123,33 @@ export function DisplayPage() {
   const [gameToken] = useState(() => deviceCredentials.get(deviceId));
   const canHostGame = socketBase === null || gameToken !== null;
   const previewGame = !canHostGame && deviceId === PREVIEW_DEVICE_ID;
-  const widgetSlots = useMemo(
-    () =>
-      canHostGame || previewGame
-        ? widgetFeed.widgets
-        : widgetFeed.widgets.filter((slot) => slot.type !== "CLICK_BATTLE"),
-    [canHostGame, previewGame, widgetFeed.widgets],
+
+  // 포스터 한 바퀴가 짧으면(편성이 한두 장) 남는 시간을 위젯으로 채운다. 서버에 위젯
+  // API가 아직 없으면 그때만 데이터가 필요 없는 기본 위젯을 쓴다. 포스터가 충분하면
+  // 운영자가 정하지 않은 위젯은 끼우지 않는다.
+  const posterFrameCount = useMemo(
+    () => buildFrames(posters, layout).length,
+    [posters, layout],
   );
+  const shortCycle = posterFrameCount * rotationSeconds < MIN_CYCLE_SECONDS;
+  const fillWithStandalone = shortCycle && isWidgetsUnsupported(widgetFeed);
+  const widgetSlots = useMemo(() => {
+    const slots = fillWithStandalone ? standaloneWidgets() : widgetFeed.widgets;
+    return canHostGame || previewGame
+      ? slots
+      : slots.filter((slot) => slot.type !== "CLICK_BATTLE");
+  }, [canHostGame, previewGame, fillWithStandalone, widgetFeed.widgets]);
 
   // 위젯 노출 정책: 포스터 N장마다 한 자리, 비율 상한, 시간대·간격 (policy.ts)
   const pickerRef = useRef(createWidgetPicker());
   const hasServerTime = serverTime !== null;
   const pickWidget = useCallback(
-    () =>
+    (avoidId?: string) =>
       hasServerTime
         ? pickerRef.current.pick(
             widgetSlots,
             new Date(Date.now() + clockOffsetRef.current),
+            avoidId,
           )
         : null,
     [hasServerTime, widgetSlots],
@@ -148,6 +168,11 @@ export function DisplayPage() {
       widgetSlots,
       rotationSeconds,
       widgetFeed.ratioPercent,
+    ),
+    widgetMinSlots: fillSlotCount(
+      posterFrameCount,
+      rotationSeconds,
+      widgetSlots,
     ),
     pickWidget,
     paused: isPreview && paused,
