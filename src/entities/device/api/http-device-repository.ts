@@ -134,8 +134,6 @@ export function parseDevice(payload: unknown, path = "기기"): DisplayDevice {
       at("lastRenderOkAt"),
     ),
     tokenIssuedAt: readNullableDate(body, "tokenIssuedAt", at("tokenIssuedAt")),
-    // 백엔드에 위젯 설정이 아직 없다. 계약이 생기면 여기서 읽는다.
-    widgets: null,
   };
 }
 
@@ -181,15 +179,11 @@ export function createHttpDeviceRepository(
     },
 
     async update(id, input: UpdateDeviceInput, signal) {
-      // 백엔드에 위젯 설정이 아직 없어 보내지 않는다. 화면은 위젯 설정이 없는
-      // 기기(`widgets: null`)에서 위젯 설정을 막는다.
-      const { widgets, ...rest } = input;
-      void widgets;
       return parseDevice(
         await client.request({
           method: "PATCH",
           path: devicePath(id),
-          body: toWireInput(rest) satisfies ApiRequestBody<"UpdateDeviceDto">,
+          body: toWireInput(input) satisfies ApiRequestBody<"UpdateDeviceDto">,
           signal,
         }),
       );

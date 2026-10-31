@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DisplayFrame } from "@/entities/poster/model/frames";
 import { buildWidgetContent, seoulDateKey } from "./content";
 import { previousDateKey, quizOfDay } from "./quiz";
-import { interleaveWidgets } from "./schedule";
+import { placeWidgetSlots } from "./schedule";
 import { clampWidgetDuration, toWidgetSlots } from "./types";
 import type { WidgetSlot } from "./types";
 
@@ -12,7 +12,6 @@ function slot(partial: Partial<WidgetSlot> & Pick<WidgetSlot, "type">): WidgetSl
   return {
     id: `w-${partial.type}`,
     durationSeconds: 30,
-    everyFrames: 2,
     params: {},
     ...partial,
   };
@@ -23,11 +22,11 @@ describe("toWidgetSlots", () => {
     const slots = toWidgetSlots([
       { id: "a", type: "FORTUNE" },
       { id: "b", type: "BAMBOO" },
-      { id: "c", type: "DDAY", durationSeconds: 2, everyFrames: 0 },
+      { id: "c", type: "DDAY", durationSeconds: 2 },
     ]);
     expect(slots.map((item) => item.id)).toEqual(["a", "c"]);
-    expect(slots[0]).toMatchObject({ durationSeconds: 30, everyFrames: 4 });
-    expect(slots[1]).toMatchObject({ durationSeconds: 5, everyFrames: 4 });
+    expect(slots[0]).toMatchObject({ durationSeconds: 30 });
+    expect(slots[1]).toMatchObject({ durationSeconds: 5 });
   });
 
   it("머무는 시간을 안전 범위로 자른다", () => {
@@ -115,7 +114,7 @@ describe("buildWidgetContent", () => {
   });
 });
 
-describe("interleaveWidgets", () => {
+describe("placeWidgetSlots", () => {
   const frames: DisplayFrame[] = ["a", "b", "c", "d", "e"].map((id, focusIndex) => ({
     kind: "strip",
     key: `strip:${id}`,
@@ -123,27 +122,24 @@ describe("interleaveWidgets", () => {
   }));
   const keys = (list: { key: string }[]) => list.map((frame) => frame.key);
 
-  it("everyFrames장마다 위젯을 끼운다", () => {
-    const result = interleaveWidgets(frames, [slot({ type: "FORTUNE", id: "f", everyFrames: 2 })]);
-    expect(keys(result)).toEqual([
+  it("포스터 화면 N장마다 위젯 자리를 하나만 둔다", () => {
+    expect(keys(placeWidgetSlots(frames, 2))).toEqual([
       "strip:a",
       "strip:b",
-      "widget:f:2",
+      "wslot:2",
       "strip:c",
       "strip:d",
-      "widget:f:4",
+      "wslot:4",
       "strip:e",
     ]);
   });
 
-  it("포스터가 적어 자리가 없던 위젯은 끝에 한 번 둔다", () => {
-    const result = interleaveWidgets(frames.slice(0, 1), [
-      slot({ type: "DDAY", id: "d", everyFrames: 4 }),
-    ]);
-    expect(keys(result)).toEqual(["strip:a", "widget:d:end"]);
+  it("포스터가 N장보다 적으면 끝에 한 자리, 없으면 위젯 자리 하나만", () => {
+    expect(keys(placeWidgetSlots(frames.slice(0, 1), 4))).toEqual(["strip:a", "wslot:end"]);
+    expect(keys(placeWidgetSlots([], 4))).toEqual(["wslot:only"]);
   });
 
-  it("위젯이 없으면 포스터 화면을 그대로 둔다", () => {
-    expect(interleaveWidgets(frames, [])).toBe(frames);
+  it("위젯이 없으면(간격 0) 포스터 화면을 그대로 둔다", () => {
+    expect(placeWidgetSlots(frames, 0)).toBe(frames);
   });
 });

@@ -347,6 +347,5 @@ function toDisplayPlaylist(
     layout: playlist.layout,
     deviceName: playlist.deviceName,
     posters,
-    widgets: playlist.widgets,
   };
 }

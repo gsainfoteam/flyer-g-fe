@@ -1,5 +1,5 @@
-import { defaultWidgetSettings } from "@/entities/widget/model/settings";
-import type { WidgetSettingDto } from "@/entities/widget/model/settings";
+import { defaultDeviceWidgetSettings } from "@/entities/widget/model/settings";
+import type { DeviceWidgetSettingsDto } from "@/entities/widget/model/settings";
 import type { WidgetType } from "@/entities/widget/model/types";
 import type {
   DisplayDeviceDto,
@@ -600,19 +600,12 @@ export function createWidgetData(
   };
 }
 
-/** 기기를 처음 만들 때의 위젯 설정. 모두 켜고, 자주 보면 지루한 것은 드물게 둔다. */
-export function createDefaultWidgetSettings(): WidgetSettingDto[] {
-  const every: Partial<Record<WidgetType, number>> = {
-    FORTUNE: 6,
-    MEAL_PICK: 5,
-    CAFETERIA: 3,
-    WEATHER: 4,
-    RESTAURANT: 6,
-  };
-  return defaultWidgetSettings().map((setting) => ({
-    ...setting,
-    everyFrames: every[setting.type] ?? setting.everyFrames,
-  }));
+/**
+ * 기기를 처음 만들 때의 위젯 설정. 모두 켜고 비율은 기본(25%)이다. 언제 끼울지는
+ * 노출 정책(`entities/widget/model/policy.ts`)이 정한다.
+ */
+export function createDefaultWidgetSettings(): DeviceWidgetSettingsDto {
+  return defaultDeviceWidgetSettings();
 }
 
 const SEED_DEVICE_SETTINGS = {
@@ -635,7 +628,6 @@ export const DEVICE_FIXTURES: readonly DeviceSeed[] = [
     silentSinceMs: null,
     tokenIssuedAt: "2026-06-01T00:00:00.000Z",
     ...SEED_DEVICE_SETTINGS,
-    widgets: createDefaultWidgetSettings(),
   },
   {
     id: "house-b-lobby",
@@ -648,7 +640,6 @@ export const DEVICE_FIXTURES: readonly DeviceSeed[] = [
     silentSinceMs: 26 * MINUTE_MS,
     tokenIssuedAt: "2026-06-01T00:00:00.000Z",
     ...SEED_DEVICE_SETTINGS,
-    widgets: createDefaultWidgetSettings(),
     layout: { type: "STRIP", rotationSeconds: 10 },
   },
 ];

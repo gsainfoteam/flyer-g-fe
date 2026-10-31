@@ -1,4 +1,4 @@
-import { WIDGET_EVERY_FRAMES } from "@/entities/widget/model/settings";
+import { WIDGET_RATIO_PERCENT } from "@/entities/widget/model/settings";
 import type {
   WidgetSetting,
   WidgetSettingDto,
@@ -19,7 +19,6 @@ export interface WidgetSettingDraft {
   type: WidgetType;
   enabled: boolean;
   durationSeconds: string;
-  everyFrames: string;
   /** D-day·시험 응원의 이름 */
   label: string;
   /** D-day 날짜, 시험 시작일 */
@@ -29,7 +28,7 @@ export interface WidgetSettingDraft {
 }
 
 export type WidgetDraftErrors = Partial<
-  Record<WidgetType, Partial<Record<"durationSeconds" | "everyFrames" | "label" | "dates", string>>>
+  Record<WidgetType, Partial<Record<"durationSeconds" | "label" | "dates", string>>>
 >;
 
 /** 날짜를 정해야 하는 종류. 이름도 함께 받는다. */
@@ -52,7 +51,6 @@ export function draftFromSetting(setting: WidgetSetting): WidgetSettingDraft {
     type: setting.type,
     enabled: setting.enabled,
     durationSeconds: String(setting.durationSeconds),
-    everyFrames: String(setting.everyFrames),
     label: typeof params.label === "string" ? params.label : "",
     startDate: dateInput(setting.type === "DDAY" ? params.date : params.startsAt),
     // 시험 마지막 날. 그날 서울 자정으로 주고받는다.
@@ -81,8 +79,6 @@ export function validateWidgetDrafts(
     const own: NonNullable<WidgetDraftErrors[WidgetType]> = {};
     const duration = rangeError(draft.durationSeconds, WIDGET_DURATION_SECONDS, "초");
     if (duration) own.durationSeconds = duration;
-    const every = rangeError(draft.everyFrames, WIDGET_EVERY_FRAMES, "장");
-    if (every) own.everyFrames = every;
 
     if (DATED_WIDGETS.includes(draft.type)) {
       const label = draft.label.trim();
@@ -130,15 +126,12 @@ export function toWidgetSettingDtos(
       type: draft.type,
       enabled: draft.enabled,
       durationSeconds: number(draft.durationSeconds, previous?.durationSeconds ?? 10),
-      everyFrames: number(draft.everyFrames, previous?.everyFrames ?? 4),
       params,
     };
   });
 }
 
-/** 기기 목록 한 줄 요약. "위젯 5개 켬" */
-export function summarizeWidgets(settings: readonly WidgetSetting[] | null): string | null {
-  if (!settings) return null;
-  const count = settings.filter((setting) => setting.enabled).length;
-  return count === 0 ? "위젯 꺼 둠" : `위젯 ${count}개 켬`;
+/** 기기 위젯 비율(%) 입력 검사. 틀리면 문구, 맞으면 null */
+export function validateRatioPercent(value: string): string | null {
+  return rangeError(value, WIDGET_RATIO_PERCENT, "%");
 }

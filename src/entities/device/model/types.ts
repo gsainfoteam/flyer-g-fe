@@ -1,10 +1,5 @@
 import type { LayoutType } from "@/entities/playlist/model/types";
 import { parseIsoUtc } from "@/shared/lib/datetime";
-import { toWidgetSettings } from "@/entities/widget/model/settings";
-import type {
-  WidgetSetting,
-  WidgetSettingDto,
-} from "@/entities/widget/model/settings";
 
 /** 명세 6.4 DisplayDevice */
 export const DEVICE_STATUSES = ["ONLINE", "OFFLINE", "DISABLED"] as const;
@@ -35,22 +30,15 @@ export interface DisplayDeviceDto {
   lastRenderOkAt: string | null;
   /** 지금 토큰을 발급한 시각. 재발급하면 바뀐다. */
   tokenIssuedAt: string | null;
-  /**
-   * 이 기기의 위젯 설정. 백엔드에는 아직 없어 mock만 보낸다. 없으면 위젯 설정을
-   * 바꿀 수 없다고 보고 화면에서 막는다.
-   */
-  widgets?: WidgetSettingDto[];
 }
 
 export interface DisplayDevice extends Omit<
   DisplayDeviceDto,
-  "lastSeenAt" | "lastRenderOkAt" | "tokenIssuedAt" | "widgets"
+  "lastSeenAt" | "lastRenderOkAt" | "tokenIssuedAt"
 > {
   lastSeenAt: Date | null;
   lastRenderOkAt: Date | null;
   tokenIssuedAt: Date | null;
-  /** 서버가 위젯 설정을 지원하지 않으면 null */
-  widgets: WidgetSetting[] | null;
 }
 
 /**
@@ -77,8 +65,6 @@ export interface DeviceInput {
 export interface UpdateDeviceInput extends Partial<DeviceInput> {
   /** false면 사용 안 함(DISABLED). 토큰이 있어도 편성을 받지 못한다. */
   isActive?: boolean;
-  /** 위젯 설정. 종류마다 하나씩 전체를 보낸다. */
-  widgets?: WidgetSettingDto[];
 }
 
 /**
@@ -106,7 +92,6 @@ export function toDisplayDevice(dto: DisplayDeviceDto): DisplayDevice {
     lastSeenAt: date(dto.lastSeenAt),
     lastRenderOkAt: date(dto.lastRenderOkAt),
     tokenIssuedAt: date(dto.tokenIssuedAt),
-    widgets: dto.widgets ? toWidgetSettings(dto.widgets) : null,
   };
 }
 

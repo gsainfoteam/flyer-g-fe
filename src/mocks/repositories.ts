@@ -44,10 +44,12 @@ import type {
   SubmissionEventType,
 } from "@/entities/review/model/types";
 import { toPlaylist } from "@/entities/playlist";
+import { toDeviceWidgets } from "@/entities/widget/model/feed";
 import {
   settingsToSlotDtos,
-  toWidgetSettings,
+  toDeviceWidgetSettings,
 } from "@/entities/widget/model/settings";
+import type { DeviceWidgetSettingsDto } from "@/entities/widget/model/settings";
 import type { WidgetType } from "@/entities/widget/model/types";
 import { DEFAULT_LAYOUT_TYPE } from "@/entities/playlist/model/types";
 import type { Playlist } from "@/entities/playlist/model/types";
@@ -61,6 +63,7 @@ import type {
   ApproveInput,
   CreateSubmissionInput,
   DeviceRepository,
+  WidgetRepository,
   DisplayRepository,
   MutationOptions,
   ReferenceRepository,
@@ -1056,7 +1059,6 @@ export function createMockRepositories(
               item.targetGroupIds.some((id) => device.groupIds.includes(id))),
         );
 
-      const widgetData = createWidgetData(now);
       return toPlaylist({
         serverTime: toIsoUtc(now),
         deviceName: device?.name ?? null,
@@ -1086,14 +1088,6 @@ export function createMockRepositories(
           location: item.location,
           organizerName: item.organizerName,
         })),
-        // 등록된 기기는 운영자가 정한 위젯을, 미리보기는 기본 위젯을 쓴다. 외부
-        // 데이터가 필요한 종류는 서버가 모은 데이터를 붙인다.
-        widgets: settingsToSlotDtos(
-          toWidgetSettings(device?.widgets ?? createDefaultWidgetSettings()),
-        ).map((slot) => {
-          const data = widgetData[slot.type as WidgetType];
-          return data ? { ...slot, params: { ...slot.params, data } } : slot;
-        }),
       });
     },
   };
@@ -1250,7 +1244,6 @@ export function createMockRepositories(
         lastPlaylistVersion: null,
         lastRenderOkAt: null,
         tokenIssuedAt: issuedAt,
-        widgets: createDefaultWidgetSettings(),
         silentSinceMs: "never",
         isActive: true,
       };
@@ -1281,7 +1274,6 @@ export function createMockRepositories(
         refreshAfterSeconds:
           input.refreshAfterSeconds ?? current.refreshAfterSeconds,
         isActive: input.isActive ?? current.isActive,
-        widgets: input.widgets ?? current.widgets,
       };
       deviceSeeds = deviceSeeds.map((item) => (item.id === id ? next : item));
       return toDevice(next);
@@ -1297,6 +1289,50 @@ export function createMockRepositories(
       };
       deviceSeeds = deviceSeeds.map((item) => (item.id === id ? next : item));
       return { device: toDevice(next), token: issueToken(id) };
+    },
+  };
+
+  /**
+   * 위젯 API mock (flyer-g-be#24 제안 형식). 기기별 설정은 메모리에 두고, 학식·날씨·맛집
+   * 데이터는 요청 시각 기준으로 만든다. 등록되지 않은 기기(미리보기)는 기본 설정이다.
+   */
+  const widgetSettings = new Map<string, DeviceWidgetSettingsDto>();
+  const widgetSettingsOf = (deviceId: string) =>
+    widgetSettings.get(deviceId) ?? createDefaultWidgetSettings();
+
+  const widgets: WidgetRepository = {
+    async getDeviceWidgets(deviceId, signal) {
+      await settle(signal);
+      const settings = toDeviceWidgetSettings(widgetSettingsOf(deviceId));
+      const data = createWidgetData(clock.now());
+      const slots = settingsToSlotDtos(settings.widgets).map((slot) => {
+        const attached = data[slot.type as WidgetType];
+        return attached ? { ...slot, params: { ...slot.params, data: attached } } : slot;
+      });
+      return toDeviceWidgets({
+        // 실제 서버는 응답 해시를 쓴다. mock은 설정이 바뀔 때만 달라지면 충분하다.
+        widgetsVersion: `mock-${JSON.stringify(settings).length}-${slots.length}`,
+        ratioPercent: settings.ratioPercent,
+        widgets: slots,
+        // 날씨는 위젯을 꺼도 상단 바에 쓰려고 따로 준다.
+        weather: data.WEATHER ?? null,
+      });
+    },
+
+    async getSettings(deviceId, signal) {
+      await settle(signal);
+      requireSuperAdmin();
+      findDevice(deviceId);
+      return toDeviceWidgetSettings(widgetSettingsOf(deviceId));
+    },
+
+    async saveSettings(deviceId, input, signal) {
+      await settle(signal);
+      requireSuperAdmin();
+      findDevice(deviceId);
+      const saved = toDeviceWidgetSettings(input);
+      widgetSettings.set(deviceId, saved);
+      return saved;
     },
   };
 
@@ -1580,6 +1616,7 @@ export function createMockRepositories(
     submissions: withInjection("submissions", submissions),
     reviews: withInjection("reviews", reviews),
     displays: withInjection("displays", displays),
+    widgets: withInjection("widgets", widgets),
     devices: withInjection("devices", devices),
     reference: withInjection("reference", reference),
     stats: withInjection("stats", stats),
