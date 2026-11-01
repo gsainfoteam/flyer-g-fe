@@ -165,13 +165,15 @@ export function applyClientMessage(
       if (!player || !Number.isFinite(message.count) || message.count <= 0) {
         return { state };
       }
+      // 경기 시작부터 지금까지 낼 수 있는 연타 수(초당 상한)에 1초 몫의 여유를 더해 누적으로
+      // 잰다. 폰은 연타를 150ms씩 묶어 보내고 네트워크에서 묶음이 몰려 오기도 해서, 묶음마다
+      // 따로 내림해 자르면 정상 속도의 연타도 매번 조금씩 버려진다.
       const startedAt = (state.phaseEndsAt ?? now) - BATTLE_RULES.matchMs;
-      const since = player.lastTapAt ?? startedAt;
-      const allowance = Math.max(
-        1,
-        Math.floor(((now - since) / 1000) * BATTLE_RULES.maxTapsPerSecond),
+      const cap = Math.ceil(
+        ((now - startedAt) / 1000 + 1) * BATTLE_RULES.maxTapsPerSecond,
       );
-      const accepted = Math.min(Math.floor(message.count), allowance);
+      const accepted = Math.min(Math.floor(message.count), Math.max(0, cap - player.taps));
+      if (accepted === 0) return { state };
       return {
         state: {
           ...state,
