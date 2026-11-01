@@ -11,7 +11,7 @@ export function NotFoundPage() {
           주소가 바뀌었거나, 신청이 삭제되었을 수 있어요.
         </p>
         <Button asChild className="mt-5">
-          <Link to={to.dashboard()}>홈으로</Link>
+          <Link to={to.home()}>홈으로</Link>
         </Button>
       </div>
     </div>

@@ -19,3 +19,12 @@ export const KIND_INFO: Record<SubmissionKind, KindInfo> = {
   EVENT_BANNER: { short: "이벤트", name: "이벤트 배너" },
   STORY: { short: "제보", name: "소식 제보" },
 };
+
+/**
+ * 신청의 종류. 서버가 `type`을 보내기 전(배포 ② 전)에는 모두 포스터다.
+ * 종류를 모르는 값이 오면 포스터로 본다. 9.1에서 신청 모델에 `type`을 싣는다.
+ */
+export function kindOfSubmission(submission: object): SubmissionKind {
+  const type = "type" in submission ? submission.type : undefined;
+  return SUBMISSION_KINDS.find((kind) => kind === type) ?? "POSTER";
+}

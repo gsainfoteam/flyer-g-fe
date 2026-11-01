@@ -1,4 +1,4 @@
-import { NavLink } from "react-router";
+import { Link, NavLink, useLocation } from "react-router";
 import { to } from "@/shared/config/routes";
 import { hasAnyRole } from "@/features/auth/model/types";
 import type { Role, SessionUser } from "@/features/auth/model/types";
@@ -7,56 +7,81 @@ import { Logo } from "@/shared/components/Logo";
 import { AccountMenu } from "@/widgets/layout/AccountMenu";
 
 /**
- * 관리 화면 내비게이션.
+ * 관리 화면 내비게이션. 역할마다 메뉴가 다르다. (기획 1절)
  *
- * 화면 위에 가로로 놓아 본문 폭을 넓게 쓴다. 스크롤해도 따라오는 반투명
- * 헤더다. 현재 위치는 옅은 배경으로 알리고, 처리해야 할 건수만 강조색 배지로
- * 붙인다.
+ * - 사용자: 홈 · 내 컨텐츠
+ * - 하우스 관리자: 홈 · 심사 · 전체 컨텐츠
+ * - 운영자: 홈 · 심사 · TV · 설정
  *
+ * 지금 위치는 검은 알약으로, 처리해야 할 건수만 빨간 배지로 붙인다.
  * 역할에 없는 메뉴는 그리지 않는다. 다만 이는 편의일 뿐 보안이 아니다 —
  * 직접 URL로 들어와도 route guard가 막고, 서버가 다시 검증한다.
  */
 interface NavItem {
   label: string;
   href: string;
+  /** 이 경로로 시작하는 하위 화면에서도 켜 둔다. */
+  match?: string;
   allow?: readonly Role[];
+  /** 이 역할이 있으면 숨긴다. */
+  hideFor?: readonly Role[];
   count?: number;
 }
 
 interface TopNavProps {
   user: SessionUser;
-  /** 승인 대기 건수. 관리자에게만 배지로 보인다. */
+  /** 심사 대기 건수. 관리자에게만 배지로 보인다. */
   pendingCount?: number;
 }
 
 export function TopNav({ user, pendingCount = 0 }: TopNavProps) {
-  const isReviewer = hasAnyRole(user, ["REVIEWER", "SUPER_ADMIN"]);
+  const { pathname } = useLocation();
 
   const items: NavItem[] = [
-    { label: "홈", href: to.dashboard() },
-    // 관리자에게 이 목록은 내 신청과 전체 신청을 오가는 곳이다.
-    { label: isReviewer ? "신청 목록" : "내 신청", href: to.submissions() },
+    { label: "홈", href: to.home() },
+    // 관리자는 전체 컨텐츠에서 내 것도 찾는다. 메뉴는 할 일 순서로 짧게 둔다.
     {
-      label: "승인 대기",
-      href: to.reviews(),
+      label: "내 컨텐츠",
+      href: to.mine(),
+      match: "/mine",
+      hideFor: ["REVIEWER", "SUPER_ADMIN"],
+    },
+    {
+      label: "심사",
+      href: to.review(),
+      match: "/review",
       allow: ["REVIEWER", "SUPER_ADMIN"],
       count: pendingCount,
     },
-    // 기기 등록·설정은 시스템 운영자만 한다.
-    { label: "기기", href: to.displays(), allow: ["SUPER_ADMIN"] },
-    // 하우스 관리자·시스템 운영자 지정도 시스템 운영자만 한다.
-    { label: "권한", href: to.users(), allow: ["SUPER_ADMIN"] },
+    {
+      label: "전체 컨텐츠",
+      href: to.contents(),
+      match: "/contents",
+      allow: ["REVIEWER"],
+      hideFor: ["SUPER_ADMIN"],
+    },
+    { label: "TV", href: to.tv(), match: "/tv", allow: ["SUPER_ADMIN"] },
+    {
+      label: "설정",
+      href: to.roleSettings(),
+      match: "/settings",
+      allow: ["SUPER_ADMIN"],
+    },
   ];
 
   const visible = items.filter(
-    (item) => !item.allow || hasAnyRole(user, item.allow),
+    (item) =>
+      (!item.allow || hasAnyRole(user, item.allow)) &&
+      !(item.hideFor && hasAnyRole(user, item.hideFor)),
   );
+  const isCurrent = (item: NavItem) =>
+    item.match ? pathname.startsWith(item.match) : pathname === item.href;
 
   return (
     <header className="sticky top-0 z-(--layer-header) border-b border-line bg-surface/90 backdrop-blur-sm">
       <div className="flex h-(--layout-header-height) items-center gap-4 px-4 sm:gap-8 sm:px-6 lg:px-10">
         <NavLink
-          to={to.dashboard()}
+          to={to.home()}
           className="flex shrink-0 rounded-control focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus"
         >
           <Logo size="md" compact />
@@ -68,29 +93,30 @@ export function TopNav({ user, pendingCount = 0 }: TopNavProps) {
           aria-label="주요 메뉴"
           className="-mx-1 flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {visible.map((item) => (
-            <NavLink
-              key={item.href}
-              to={item.href}
-              end={item.href === to.dashboard()}
-              className={({ isActive }) =>
-                cn(
-                  "inline-flex shrink-0 items-center gap-1.5 rounded-control px-3 py-1.5 text-label font-medium transition-colors duration-150",
+          {visible.map((item) => {
+            const current = isCurrent(item);
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                aria-current={current ? "page" : undefined}
+                className={cn(
+                  "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-pill px-3.5 text-label transition-colors duration-150",
                   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-                  isActive
-                    ? "bg-surface-muted font-semibold text-ink"
-                    : "text-ink-muted hover:bg-surface-muted/70 hover:text-ink",
-                )
-              }
-            >
-              <span className="truncate">{item.label}</span>
-              {item.count !== undefined && item.count > 0 && (
-                <span className="rounded-pill bg-accent px-1.75 py-px text-overline tabular-nums text-accent-on">
-                  {item.count}
-                </span>
-              )}
-            </NavLink>
-          ))}
+                  current
+                    ? "bg-ink font-bold text-ink-inverse"
+                    : "font-medium text-ink-muted hover:bg-surface-muted hover:text-ink",
+                )}
+              >
+                <span className="truncate">{item.label}</span>
+                {item.count !== undefined && item.count > 0 && (
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-pill bg-accent px-1.5 text-overline font-extrabold tabular-nums text-accent-on">
+                    {item.count}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
         <AccountMenu user={user} />

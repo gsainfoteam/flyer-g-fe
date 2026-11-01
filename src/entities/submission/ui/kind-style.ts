@@ -7,6 +7,8 @@ import type { SubmissionKind } from "../model/kind";
  */
 interface KindStyle {
   icon: LucideIcon;
+  /** 옅은 바탕만 (카드 머리 띠) */
+  tint: string;
   /** 옅은 바탕 + 진한 글자 (아이콘 사각형, 칩) */
   soft: string;
   /** 진한 바탕 + 흰 글자 (동그란 행동 버튼) */
@@ -20,6 +22,7 @@ interface KindStyle {
 export const KIND_STYLE: Record<SubmissionKind, KindStyle> = {
   POSTER: {
     icon: Image,
+    tint: "bg-type-poster-subtle",
     soft: "bg-type-poster-subtle text-type-poster",
     solid: "bg-type-poster text-ink-inverse",
     bar: "bg-type-poster-bar",
@@ -27,6 +30,7 @@ export const KIND_STYLE: Record<SubmissionKind, KindStyle> = {
   },
   EVENT_BANNER: {
     icon: PartyPopper,
+    tint: "bg-type-event-subtle",
     soft: "bg-type-event-subtle text-type-event",
     solid: "bg-type-event text-ink-inverse",
     bar: "bg-type-event-bar",
@@ -34,6 +38,7 @@ export const KIND_STYLE: Record<SubmissionKind, KindStyle> = {
   },
   STORY: {
     icon: MessageSquareText,
+    tint: "bg-type-story-subtle",
     soft: "bg-type-story-subtle text-type-story",
     solid: "bg-type-story text-ink-inverse",
     bar: "bg-type-story-bar",

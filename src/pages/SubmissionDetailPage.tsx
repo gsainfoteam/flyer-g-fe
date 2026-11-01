@@ -68,7 +68,7 @@ export function SubmissionDetailPage() {
         <>
           <div>
             <Button variant="ghost" size="sm" asChild className="-ml-2.5">
-              <Link to={to.submissions()}>
+              <Link to={to.mine()}>
                 <ArrowLeft aria-hidden="true" />
                 목록으로
               </Link>

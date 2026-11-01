@@ -11,24 +11,24 @@ import { TEST_NOW, renderRoute } from "@/test/render-route";
 describe("기기 관리", () => {
   it("시스템 운영자에게만 메뉴가 보인다", async () => {
     renderRoute("/", { role: "SUPER_ADMIN" });
-    expect(await screen.findByRole("link", { name: "기기" })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: "TV" })).toHaveAttribute(
       "href",
-      "/displays",
+      "/tv",
     );
   });
 
   it("하우스 관리자에게는 메뉴가 없고 주소로 와도 권한 안내를 본다", async () => {
-    renderRoute("/displays", { role: "REVIEWER" });
+    renderRoute("/tv", { role: "REVIEWER" });
     expect(
       await screen.findByRole("heading", {
         name: "이 화면을 볼 권한이 없어요",
       }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "기기" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "TV" })).toBeNull();
   });
 
   it("등록된 기기와 연결 상태, 화면 설정을 보여준다", async () => {
-    renderRoute("/displays", { role: "SUPER_ADMIN" });
+    renderRoute("/tv", { role: "SUPER_ADMIN" });
 
     expect(
       await screen.findByRole("heading", { name: "디스플레이 기기 2대" }),
@@ -47,7 +47,7 @@ describe("기기 관리", () => {
 
   it("기기를 등록하면 TV 설정 링크를 한 번 보여준다", async () => {
     const user = userEvent.setup();
-    renderRoute("/displays", { role: "SUPER_ADMIN" });
+    renderRoute("/tv", { role: "SUPER_ADMIN" });
     await screen.findByRole("heading", { name: /디스플레이 기기/ });
 
     await user.click(screen.getByRole("button", { name: "기기 등록" }));
@@ -85,7 +85,7 @@ describe("기기 관리", () => {
 
   it("토큰을 재발급하면 새 설정 링크를 보여준다", async () => {
     const user = userEvent.setup();
-    renderRoute("/displays", { role: "SUPER_ADMIN" });
+    renderRoute("/tv", { role: "SUPER_ADMIN" });
     await screen.findByRole("heading", { name: /디스플레이 기기/ });
 
     await user.click(
@@ -114,7 +114,7 @@ describe("기기 관리", () => {
     const created = await repositories.reference.createTargetGroup({
       name: "학사기숙사 C동",
     });
-    renderRoute("/displays", { role: "SUPER_ADMIN", repositories });
+    renderRoute("/tv", { role: "SUPER_ADMIN", repositories });
     await screen.findByRole("heading", { name: /디스플레이 기기/ });
 
     await user.click(screen.getByRole("button", { name: "기기 등록" }));

@@ -202,7 +202,7 @@
   }
 
   /* --- 레이아웃 ---------------------------------------------------------- */
-  --container-content: 1120px;
+  --container-content: 1200px;
   --container-form: 720px;
   /* TV 기준 해상도. 플레이어 레이아웃 검증용 breakpoint. */
   --breakpoint-tv: 1920px;

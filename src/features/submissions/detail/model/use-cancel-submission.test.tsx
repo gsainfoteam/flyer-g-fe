@@ -16,7 +16,7 @@ describe("신청 취소", () => {
     const repositories = createMockRepositories({
       clock: createFixedClock(TEST_NOW),
     });
-    renderRoute("/submissions/notice-901", {
+    renderRoute("/mine/notice-901", {
       role: "SUBMITTER",
       repositories,
     });
@@ -39,27 +39,27 @@ describe("신청 취소", () => {
   });
 
   it("게시 중단된 신청은 취소할 수 없고, 고쳐서 다시 신청할 수 있다", async () => {
-    renderRoute("/submissions/notice-903", { role: "SUBMITTER" });
+    renderRoute("/mine/notice-903", { role: "SUBMITTER" });
 
     expect(
       await screen.findByRole("link", { name: "수정해서 다시 신청" }),
-    ).toHaveAttribute("href", "/studio?submissionId=notice-903");
+    ).toHaveAttribute("href", "/new/poster?submissionId=notice-903");
     expect(screen.queryByRole("button", { name: "신청 취소하기" })).toBeNull();
   });
 
   it("승인 대기 중인 신청은 고치거나 취소할 수 있다", async () => {
-    renderRoute("/submissions/notice-905", { role: "SUBMITTER" });
+    renderRoute("/mine/notice-905", { role: "SUBMITTER" });
 
     expect(
       await screen.findByRole("link", { name: "수정하기" }),
-    ).toHaveAttribute("href", "/studio?submissionId=notice-905");
+    ).toHaveAttribute("href", "/new/poster?submissionId=notice-905");
     expect(
       screen.getByRole("button", { name: "신청 취소하기" }),
     ).toBeInTheDocument();
   });
 
   it("게시 중인 신청은 게시자가 직접 내리거나 고치지 못한다", async () => {
-    renderRoute("/submissions/notice-001", { role: "SUBMITTER" });
+    renderRoute("/mine/notice-001", { role: "SUBMITTER" });
 
     await screen.findByText("처리 이력");
     expect(screen.queryByRole("button", { name: "신청 취소하기" })).toBeNull();
@@ -68,11 +68,11 @@ describe("신청 취소", () => {
   });
 
   it("반려된 신청에서 수정 재신청 링크가 스튜디오 수정 모드로 간다", async () => {
-    renderRoute("/submissions/notice-901", { role: "SUBMITTER" });
+    renderRoute("/mine/notice-901", { role: "SUBMITTER" });
 
     const link = await screen.findByRole("link", {
       name: "수정해서 다시 신청",
     });
-    expect(link).toHaveAttribute("href", "/studio?submissionId=notice-901");
+    expect(link).toHaveAttribute("href", "/new/poster?submissionId=notice-901");
   });
 });

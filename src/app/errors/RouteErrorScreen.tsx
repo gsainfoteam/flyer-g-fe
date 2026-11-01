@@ -38,7 +38,7 @@ export function RouteErrorScreen() {
           <Button onClick={() => window.location.reload()}>새로고침</Button>
           {!staleChunk && (
             <Button variant="secondary" asChild>
-              <Link to={to.dashboard()}>홈으로</Link>
+              <Link to={to.home()}>홈으로</Link>
             </Button>
           )}
         </div>

@@ -22,13 +22,13 @@ describe("로그인 복귀 화면", () => {
   it("로그인을 마치면 시작할 때 보던 화면으로 돌아간다", async () => {
     const completeSignIn = vi.fn<AuthAdapter["completeSignIn"]>(async () => ({
       user: MOCK_USERS.REVIEWER,
-      returnTo: "/reviews",
+      returnTo: "/review",
     }));
     const { router } = renderRoute("/auth/callback?code=code-1&state=s-1", {
       authAdapter: returningAdapter(completeSignIn),
     });
 
-    await waitFor(() => expect(currentPath(router)).toBe("/reviews"));
+    await waitFor(() => expect(currentPath(router)).toBe("/review"));
     expect(completeSignIn.mock.calls[0]![0].get("code")).toBe("code-1");
     // 뒤로 가기로 code가 든 주소에 다시 오지 않게 기록을 바꿔 넣는다.
     expect(router.state.historyAction).toBe("REPLACE");

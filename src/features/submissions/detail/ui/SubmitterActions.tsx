@@ -47,7 +47,7 @@ export function SubmitterActions({
     <div className="flex flex-wrap items-center gap-2.5">
       {editLabel && (
         <Button size="sm" asChild>
-          <Link to={to.studioEdit(submission.id)}>{editLabel}</Link>
+          <Link to={to.editPoster(submission.id)}>{editLabel}</Link>
         </Button>
       )}
 
