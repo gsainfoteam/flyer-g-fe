@@ -207,7 +207,7 @@ export interface DisplayRepository {
  * 404면 위젯 없음(TV)이나 `WIDGETS_UNSUPPORTED`(관리 화면)로 답한다.
  */
 export interface WidgetRepository {
-  /** TV가 받는 위젯과 상단 바 날씨. 기기 토큰으로 접근한다. */
+  /** TV가 받는 위젯과 정보줄 날씨. 기기 토큰으로 접근한다. */
   getDeviceWidgets(deviceId: string, signal?: AbortSignal): Promise<DeviceWidgets>;
   /**
    * 서버가 날씨를 주지 않을 때 TV가 직접 받는 날씨(Open-Meteo). 날씨 위젯 데이터와

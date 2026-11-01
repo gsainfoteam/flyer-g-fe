@@ -1,3 +1,10 @@
+import {
+  STAGE_BODY_HEIGHT,
+  STAGE_HEADER_GAP,
+  STAGE_HEADER_HEIGHT,
+  TV_STAGE_PADDING,
+  TV_STAGE_WIDTH,
+} from "../ui/stage-metrics";
 import { posterAspect } from "./types";
 import type { PosterRenderModel } from "./types";
 
@@ -12,7 +19,7 @@ import type { PosterRenderModel } from "./types";
  * 한 쪽에 너무 많이 담으면 이미지가 알아볼 수 없게 작아진다. 가장 낮은 행이
  * `minRowHeight`보다 낮아지면 거기서 쪽을 넘긴다.
  *
- * 치수는 1920x1080 스테이지의 여백 안쪽(1760x920)에서 머리 줄을 뺀 영역 기준 px다.
+ * 치수는 정보줄과 간격을 뺀 1920x1080 본문에서 머리 줄을 뺀 영역 기준 px다.
  */
 export interface WallMetrics {
   width: number;
@@ -31,8 +38,8 @@ export interface WallMetrics {
 }
 
 export const WALL_METRICS: WallMetrics = {
-  width: 1760,
-  height: 832,
+  width: TV_STAGE_WIDTH - TV_STAGE_PADDING * 2,
+  height: STAGE_BODY_HEIGHT - STAGE_HEADER_HEIGHT - STAGE_HEADER_GAP,
   gap: 24,
   rowGap: 20,
   caption: 44,

@@ -21,10 +21,15 @@ import {
   exposedPosters,
   imagesOf,
 } from "@/entities/poster/model/frames";
-import { StageAmbientContext } from "@/entities/poster/ui/stage-ambient";
-import { buildWeatherContent } from "@/entities/widget/model/data-content";
+import { StageFrame } from "@/entities/poster/ui/StageFrame";
+import { INFO_BAR_HEIGHT } from "@/entities/poster/ui/stage-metrics";
+import {
+  buildCafeteriaContent,
+  buildWeatherContent,
+} from "@/entities/widget/model/data-content";
 import { cafeteriaDataFor } from "@/entities/widget/model/cafeteria-week";
 import { seoulDateKey } from "@/entities/widget/model/content";
+import { ddayChip, mealChip } from "@/entities/widget/model/info-bar";
 import {
   isWidgetsUnsupported,
   standaloneWidgets,
@@ -35,8 +40,13 @@ import {
   fillSlotCount,
   widgetInterval,
 } from "@/entities/widget/model/policy";
-import type { PlayerFrame } from "@/entities/widget/model/schedule";
-import { HeaderWeather } from "@/entities/widget/ui/HeaderWeather";
+import type {
+  FrameTemplate,
+  PlayerFrame,
+} from "@/entities/widget/model/schedule";
+import { WIDGET_LABELS } from "@/entities/widget/model/settings";
+import type { WidgetSlot } from "@/entities/widget/model/types";
+import { StageInfoBar } from "@/entities/widget/ui/StageInfoBar";
 import { WidgetDisplay } from "@/entities/widget/ui/WidgetDisplay";
 import { useDeviceWidgets } from "@/features/display/model/use-device-widgets";
 import { useLocalCafeteria } from "@/features/display/model/use-local-cafeteria";
@@ -112,7 +122,7 @@ export function DisplayPage() {
     deviceId,
     feed.playlist?.refreshAfterSeconds ?? 60,
   );
-  // 서버가 날씨를 주지 않으면 TV가 직접 받는다(Open-Meteo). 상단 바와 날씨 위젯이 쓴다.
+  // 서버가 날씨를 주지 않으면 TV가 직접 받는다(Open-Meteo). 정보줄와 날씨 위젯이 쓴다.
   const localWeather = useLocalWeather(widgetFeed.weather === null);
   const weatherData = widgetFeed.weather ?? localWeather;
 
@@ -145,10 +155,13 @@ export function DisplayPage() {
     [fillWithStandalone, widgetFeed.widgets],
   );
   // 서버가 학식을 주지 않으면 같은 도메인 함수(/api/cafeteria)가 학교 게시판에서 읽은
-  // 이번 주 식단을 쓴다. 데이터 없는 학식 위젯이 있을 때만 부른다.
-  const localCafeteria = useLocalCafeteria(
-    baseSlots.some((slot) => slot.type === "CAFETERIA" && !slot.params.data),
+  // 이번 주 식단을 쓴다. 학식 위젯과 정보줄 식사 칩이 함께 쓴다.
+  const serverCafeteria = baseSlots.find(
+    (slot) => slot.type === "CAFETERIA" && slot.params.data,
   );
+  const cafeteriaPlace = baseSlots.find((slot) => slot.type === "CAFETERIA")
+    ?.params.place;
+  const localCafeteria = useLocalCafeteria(!serverCafeteria);
   const todayKey = serverTime ? seoulDateKey(serverTime) : null;
   const widgetSlots = useMemo(() => {
     const today = todayKey ? new Date(`${todayKey}T12:00:00+09:00`) : null;
@@ -176,18 +189,20 @@ export function DisplayPage() {
   ]);
 
   // 위젯 노출 정책: 포스터 N장마다 한 자리, 비율 상한, 시간대·간격 (policy.ts)
-  const pickerRef = useRef(createWidgetPicker());
+  // 고르기는 차례와 간격을 기억한다. 렌더 중에 정보줄의 "다음"을 미리 보느라 읽으므로
+  // ref가 아니라 state에 둔다(한 번 만들고 바꾸지 않는다).
+  const [picker] = useState(createWidgetPicker);
   const hasServerTime = serverTime !== null;
   const pickWidget = useCallback(
     (avoidId?: string) =>
       hasServerTime
-        ? pickerRef.current.pick(
+        ? picker.pick(
             widgetSlots,
             new Date(Date.now() + clockOffsetRef.current),
             avoidId,
           )
         : null,
-    [hasServerTime, widgetSlots],
+    [hasServerTime, picker, widgetSlots],
   );
 
   // 게임 위젯에서 누가 참가하면 게임이 끝날 때까지 그 화면에 머문다. 이 시간은 위젯
@@ -255,114 +270,161 @@ export function DisplayPage() {
   const frame = rotation.currentFrame;
   const frameKey = frame?.kind === "strip" ? "strip" : (frame?.key ?? "");
 
-  // 상단 바 날씨. 날씨 위젯을 꺼도 늘 뜬다. 날씨 위젯이 떠 있을 때는 겹치니 숨긴다.
-  const headerWeather = serverTime
+  // 아래 정보줄. 같은 내용의 위젯이 화면을 채우는 동안에는 그 칩을 숨긴다.
+  const showing = frame?.kind === "widget" ? frame.content.type : null;
+  const weather = serverTime
     ? buildWeatherContent({ data: weatherData }, serverTime)
     : null;
-  const ambient =
-    headerWeather &&
-    !(frame?.kind === "widget" && frame.content.type === "WEATHER") ? (
-      <HeaderWeather weather={headerWeather} />
-    ) : null;
+  const meal = (() => {
+    if (!serverTime || !todayKey) return null;
+    const tomorrow = new Date(`${todayKey}T12:00:00+09:00`);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const today =
+      serverCafeteria?.params.data ??
+      cafeteriaDataFor(localCafeteria, cafeteriaPlace, serverTime);
+    const mealsOf = (data: unknown, day: Date) =>
+      buildCafeteriaContent({ data }, day)?.meals ?? [];
+    return mealChip(
+      mealsOf(today, serverTime),
+      mealsOf(
+        cafeteriaDataFor(localCafeteria, cafeteriaPlace, tomorrow),
+        tomorrow,
+      ),
+      serverTime,
+    );
+  })();
+  const upcoming = rotation.upcoming;
+  const infoBar = (
+    <StageInfoBar
+      now={serverTime}
+      clockTicking
+      weather={showing === "WEATHER" ? null : weather}
+      meal={showing === "CAFETERIA" ? null : meal}
+      dday={
+        showing === "DDAY" || showing === "EXAM_CHEER" || !serverTime
+          ? null
+          : ddayChip(widgetSlots, serverTime)
+      }
+      status={gameActive ? "클릭 배틀 진행 중" : null}
+      next={
+        rotation.moving && upcoming && serverTime
+          ? {
+              label: frameLabel(upcoming, posters, () =>
+                picker.peek(widgetSlots, serverTime, rotation.currentPickId),
+              ),
+              seconds: rotation.frameSeconds,
+              key: String(rotation.serial),
+            }
+          : null
+      }
+    />
+  );
 
   return (
     <div className="relative h-full">
-      <StageAmbientContext value={ambient}>
-        <ScaledStage className="h-full w-full">
-          {feed.deviceError ? (
-            <DeviceSetupNotice error={feed.deviceError} deviceId={deviceId} />
-          ) : feed.isPending || !serverTime ? (
-            <div className="flex h-full flex-col items-center justify-center gap-6">
-              <Logo size="tv" />
-              <p className="text-[30px] text-ink-subtle">편성을 불러오는 중</p>
-            </div>
-          ) : !frame ? (
-            <EmptyDisplay deviceLabel={deviceLabel} serverTime={serverTime} />
-          ) : frame.kind === "widget" &&
-            frame.content.type === "CLICK_BATTLE" ? (
-            <div
-              key={frameKey}
-              className="h-full animate-in duration-500 fade-in"
-            >
-              {previewGame ? (
-                <BattlePreview
-                  deviceLabel={deviceLabel}
-                  serverTime={serverTime}
-                />
-              ) : (
-                <BattleWidget
-                  roomId={deviceId}
-                  socketBase={socketBase}
-                  token={gameToken}
-                  deviceLabel={deviceLabel}
-                  serverTime={serverTime}
-                  onActiveChange={setGameActive}
-                  onSessionEnd={rotation.advance}
-                />
-              )}
-            </div>
-          ) : frame.kind === "widget" ? (
-            <WidgetFrame
-              key={frameKey}
-              frame={frame}
-              deviceLabel={deviceLabel}
-              serverTime={serverTime}
-            />
-          ) : (
-            <div
-              key={frameKey}
-              className="h-full animate-in duration-500 fade-in"
-            >
-              <DisplayStage
+      <ScaledStage className="h-full w-full">
+        {feed.deviceError ? (
+          <DeviceSetupNotice error={feed.deviceError} deviceId={deviceId} />
+        ) : feed.isPending || !serverTime ? (
+          <div className="flex h-full flex-col items-center justify-center gap-6">
+            <Logo size="tv" />
+            <p className="text-[30px] text-ink-subtle">편성을 불러오는 중</p>
+          </div>
+        ) : (
+          <StageFrame bar={infoBar}>
+            {!frame ? (
+              <EmptyDisplay deviceLabel={deviceLabel} serverTime={serverTime} />
+            ) : frame.kind === "widget" &&
+              frame.content.type === "CLICK_BATTLE" ? (
+              <div
+                key={frameKey}
+                className="h-full animate-in duration-500 fade-in"
+              >
+                {previewGame ? (
+                  <BattlePreview
+                    deviceLabel={deviceLabel}
+                    serverTime={serverTime}
+                  />
+                ) : (
+                  <BattleWidget
+                    roomId={deviceId}
+                    socketBase={socketBase}
+                    token={gameToken}
+                    deviceLabel={deviceLabel}
+                    serverTime={serverTime}
+                    onActiveChange={setGameActive}
+                    onSessionEnd={rotation.advance}
+                  />
+                )}
+              </div>
+            ) : frame.kind === "widget" ? (
+              <WidgetFrame
+                key={frameKey}
                 frame={frame}
-                posters={posters}
                 deviceLabel={deviceLabel}
                 serverTime={serverTime}
-                clockTicking
-                onPosterError={handlePosterError}
-                onPosterLoad={handlePosterLoad}
               />
-            </div>
-          )}
-        </ScaledStage>
-      </StageAmbientContext>
-
-      {isPreview && (
-        <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-pill bg-ink/85 px-4 py-2 text-ink-inverse shadow-floating backdrop-blur">
-          <span className="text-caption font-bold">미리보기</span>
-          {feed.source === "cache" && (
-            <span className="rounded-pill bg-white/15 px-2 py-0.5 text-caption">
-              오프라인 편성
-            </span>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-ink-inverse hover:bg-white/15 hover:text-ink-inverse"
-            onClick={() => setPaused((value) => !value)}
-            aria-label={paused ? "재생" : "일시정지"}
-          >
-            {paused ? (
-              <Play aria-hidden="true" />
             ) : (
-              <Pause aria-hidden="true" />
+              <div
+                key={frameKey}
+                className="h-full animate-in duration-500 fade-in"
+              >
+                <DisplayStage
+                  frame={frame}
+                  posters={posters}
+                  deviceLabel={deviceLabel}
+                  serverTime={serverTime}
+                  clockTicking
+                  onPosterError={handlePosterError}
+                  onPosterLoad={handlePosterLoad}
+                />
+              </div>
             )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-ink-inverse hover:bg-white/15 hover:text-ink-inverse"
-            onClick={rotation.advance}
-            disabled={rotation.frameCount <= 1}
-            aria-label="다음 화면"
+          </StageFrame>
+        )}
+        {/* 배포 환경에서도 preview=1이면 표시. 본문과 정보줄 사이 간격 안에 둔다. */}
+        {isPreview && (
+          <div
+            role="toolbar"
+            aria-label="미리보기 조작"
+            className="absolute left-1/2 z-10 flex h-10 -translate-x-1/2 items-center gap-2 rounded-pill bg-ink/85 px-3 text-ink-inverse shadow-floating"
+            style={{ bottom: INFO_BAR_HEIGHT + 4 }}
           >
-            <SkipForward aria-hidden="true" />
-          </Button>
-          <span className="text-caption tabular-nums text-white/70">
-            {rotation.frameIndex + 1} / {Math.max(rotation.frameCount, 1)}
-          </span>
-        </div>
-      )}
+            <span className="text-caption font-bold">미리보기</span>
+            {feed.source === "cache" && (
+              <span className="rounded-pill bg-white/15 px-2 py-0.5 text-caption">
+                오프라인 편성
+              </span>
+            )}
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="text-ink-inverse hover:bg-white/15 hover:text-ink-inverse"
+              onClick={() => setPaused((value) => !value)}
+              aria-label={paused ? "재생" : "일시정지"}
+            >
+              {paused ? (
+                <Play aria-hidden="true" />
+              ) : (
+                <Pause aria-hidden="true" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="text-ink-inverse hover:bg-white/15 hover:text-ink-inverse"
+              onClick={rotation.advance}
+              disabled={rotation.frameCount <= 1}
+              aria-label="다음 화면"
+            >
+              <SkipForward aria-hidden="true" />
+            </Button>
+            <span className="text-caption tabular-nums text-white/70">
+              {rotation.frameIndex + 1} / {Math.max(rotation.frameCount, 1)}
+            </span>
+          </div>
+        )}
+      </ScaledStage>
     </div>
   );
 }
@@ -448,4 +510,24 @@ function DeviceSetupNotice({
       <p className="text-[26px] text-ink-subtle">기기 ID · {deviceId}</p>
     </div>
   );
+}
+
+/** 정보줄 "다음 · ○○"에 쓸 이름. 위젯 자리는 그때 고를 위젯을 미리 본다. */
+function frameLabel(
+  template: FrameTemplate,
+  posters: readonly { title: string }[],
+  peek: () => { slot: WidgetSlot } | null,
+): string {
+  switch (template.kind) {
+    case "spotlight":
+      return template.poster.title;
+    case "strip":
+      return posters[template.focusIndex]?.title ?? "포스터";
+    case "wall":
+      return "모아 보기";
+    case "widget-slot": {
+      const pick = peek();
+      return pick ? WIDGET_LABELS[pick.slot.type] : "포스터";
+    }
+  }
 }

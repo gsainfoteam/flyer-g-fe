@@ -67,12 +67,12 @@ export const WIDGET_LABELS: Record<WidgetType, string> = {
 };
 
 export const WIDGET_DESCRIPTIONS: Record<WidgetType, string> = {
-  DDAY: "정한 날까지 남은 날을 보여 줘요. 날이 지나면 저절로 빠져요.",
+  DDAY: "아래 정보줄에 남은 날이 늘 보여요. 큰 화면은 7일 안으로 다가왔을 때만 나와요.",
   EXAM_CHEER: "시험 2주 전부터 끝나는 날까지만 응원 문구가 나와요.",
   FORTUNE: "12띠 운세. 같은 날에는 모든 TV가 같은 결과예요.",
   MEAL_PICK: "점심·저녁 전(10:30~13:30, 16:30~19:30)에만 메뉴를 추천해요.",
   CAFETERIA: "끼니 시간대(아침·점심·저녁 전후)에만 오늘 메뉴가 나와요.",
-  WEATHER: "가끔(30분에 한 번까지) 크게 나와요. 상단 바에는 늘 떠 있어요.",
+  WEATHER: "가끔(30분에 한 번까지) 크게 나와요. 아래 정보줄에는 늘 떠 있어요.",
   RESTAURANT: "근처 가게를 1시간마다 바꿔 보여 줘요.",
   QUIZ: "QR로 폰에서 답을 골라요. 정답은 다음 날 공개돼요.",
   CLICK_BATTLE: "QR로 누가 참가하면 게임 화면으로 바뀌어 끝날 때까지 머물러요(최대 5분).",

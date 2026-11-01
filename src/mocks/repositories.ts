@@ -1332,7 +1332,7 @@ export function createMockRepositories(
         widgetsVersion: `mock-${JSON.stringify(settings).length}-${slots.length}`,
         ratioPercent: settings.ratioPercent,
         widgets: slots,
-        // 날씨는 위젯을 꺼도 상단 바에 쓰려고 따로 준다.
+        // 날씨는 위젯을 꺼도 정보줄에 쓰려고 따로 준다.
         weather: data.WEATHER ?? null,
       });
     },

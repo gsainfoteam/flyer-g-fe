@@ -1,5 +1,5 @@
 import type { PosterRenderModel } from "@/entities/poster";
-import { hasKnownSize, posterAspect } from "@/entities/poster/model/types";
+import { hasKnownSize } from "@/entities/poster/model/types";
 import { spotlightImageSize } from "@/entities/poster/model/spotlight-layout";
 import { PosterArtwork } from "@/entities/poster/ui/PosterArtwork";
 import { StageHeader } from "@/entities/poster/ui/StageHeader";
@@ -35,8 +35,6 @@ import { ZIGGLE_HOST } from "@/shared/lib/ziggle-url";
  */
 interface SpotlightDisplayProps {
   poster: PosterRenderModel;
-  /** 머리에 작게 보여 줄 다음 차례 */
-  upNext?: PosterRenderModel[];
   deviceLabel: string | null;
   /** 편성 판정의 기준이 되는 서버 시각. 모르면 시계는 기기 시각으로 흐른다. */
   serverTime: Date | null;
@@ -100,27 +98,8 @@ function QrBlock({
   );
 }
 
-function UpNext({ posters }: { posters: PosterRenderModel[] }) {
-  if (posters.length === 0) return null;
-  return (
-    <div className="flex items-center gap-3">
-      <span className="mr-1 text-[22px] font-bold text-ink-subtle">다음</span>
-      {posters.map((poster) => (
-        <img
-          key={poster.id}
-          src={poster.posterUrl}
-          alt=""
-          className="h-12 rounded-[6px] bg-canvas object-cover opacity-70"
-          style={{ width: Math.min(144, posterAspect(poster) * 48) }}
-        />
-      ))}
-    </div>
-  );
-}
-
 export function SpotlightDisplay({
   poster,
-  upNext = [],
   deviceLabel,
   serverTime,
   clockTicking = false,
@@ -174,9 +153,7 @@ export function SpotlightDisplay({
         deviceLabel={deviceLabel}
         serverTime={serverTime}
         clockTicking={clockTicking}
-      >
-        <UpNext posters={upNext} />
-      </StageHeader>
+      />
 
       {image.stacked ? (
         <div className="flex min-h-0 flex-1 flex-col gap-8">

@@ -44,14 +44,6 @@ describe("buildFrames", () => {
     ]);
   });
 
-  it("크게 보기는 다음 차례를 알고 있다", () => {
-    const frames = buildFrames(posters("a", "b", "c"), "WALL");
-    const spotlight = frames.find((frame) => frame.key === "spot:c")!;
-    expect(
-      spotlight.kind === "spotlight" && spotlight.upNext.map((item) => item.id),
-    ).toEqual(["a", "b"]);
-  });
-
   it("게시물이 한 건이면 벽 없이 크게만 보여 준다", () => {
     expect(buildFrames(posters("a"), "WALL").map(describeFrame)).toEqual(["a"]);
   });

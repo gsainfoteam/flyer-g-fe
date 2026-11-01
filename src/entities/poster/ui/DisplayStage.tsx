@@ -60,7 +60,6 @@ export function DisplayStage({
       return (
         <SpotlightDisplay
           poster={frame.poster}
-          upNext={frame.upNext}
           {...common}
         />
       );

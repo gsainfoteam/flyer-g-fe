@@ -131,11 +131,15 @@ export function useRotation({
     anchorKeyRef.current = frames[safeIndex]?.key ?? anchorKeyRef.current;
   }, [frames, safeIndex]);
 
+  /** 넘어간 횟수. 같은 화면이 다시 와도 정보줄 진행 막대를 처음부터 채우는 데 쓴다. */
+  const [serial, setSerial] = useState(0);
+
   const step = useCallback(() => {
     const next = nextFrom(positionRef.current.index);
     if (!next) return;
     positionRef.current = next;
     setPosition(next);
+    setSerial((count) => count + 1);
   }, [nextFrom]);
 
   const current: PlayerFrame | undefined = (() => {
@@ -185,6 +189,7 @@ export function useRotation({
 
   const nextTemplate =
     frames.length > 1 ? frames[(safeIndex + 1) % frames.length] : undefined;
+  const currentTemplate = frames[safeIndex];
 
   return {
     frames,
@@ -197,5 +202,19 @@ export function useRotation({
         : undefined,
     frameCount: frames.length,
     advance: step,
+    /** 지금 화면이 머무는 시간(초) */
+    frameSeconds: !currentTemplate
+      ? rotationSeconds
+      : currentTemplate.kind === "widget-slot"
+        ? (position.pick?.slot.durationSeconds ?? rotationSeconds)
+        : frameDurationSeconds(currentTemplate, rotationSeconds),
+    /** 다음 자리(위젯 자리일 수 있다). 화면이 하나뿐이면 지금 자리다. 정보줄 "다음" 표시용 */
+    upcoming: rotates ? frames[(safeIndex + 1) % frames.length] : undefined,
+    /** 지금 위젯. 다음 위젯을 미리 볼 때 바로 앞 위젯을 피하는 데 쓴다. */
+    currentPickId: position.pick?.slot.id,
+    /** 넘어갈 때마다 1씩 는다. */
+    serial,
+    /** 저절로 넘어가는가(일시정지·붙잡기 아님, 화면이 둘 이상) */
+    moving: rotates && !paused,
   };
 }

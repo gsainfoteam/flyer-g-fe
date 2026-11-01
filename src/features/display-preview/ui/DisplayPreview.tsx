@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { DisplayStage } from "@/entities/poster/ui/DisplayStage";
+import { StageFrame } from "@/entities/poster/ui/StageFrame";
+import { StageInfoBar } from "@/entities/widget/ui/StageInfoBar";
 import type { PosterRenderModel } from "@/entities/poster";
 import type { DisplayFrame } from "@/entities/poster/model/frames";
 import { packWallPages } from "@/entities/poster/model/wall-layout";
@@ -50,14 +52,13 @@ function frameFor(
   mode: PreviewMode,
   posters: PosterRenderModel[],
 ): DisplayFrame {
-  const [poster, ...others] = posters;
+  const [poster] = posters;
   switch (mode) {
     case "spotlight":
       return {
         kind: "spotlight",
         key: "preview",
         poster: poster!,
-        upNext: others.slice(0, 3),
       };
     case "wall":
       return {
@@ -110,12 +111,16 @@ export function DisplayPreview({
       </div>
 
       <DisplayPreviewFrame className="max-w-[900px]">
-        <DisplayStage
-          frame={frameFor(mode, posters)}
-          posters={posters}
-          deviceLabel={deviceLabel}
-          serverTime={serverTime}
-        />
+        {/* TV와 같은 틀. 정보줄 칸이 있어야 포스터가 TV와 같은 크기로 보인다. 칩 내용은
+            기기마다 달라 시각만 둔다. */}
+        <StageFrame bar={<StageInfoBar now={serverTime} />}>
+          <DisplayStage
+            frame={frameFor(mode, posters)}
+            posters={posters}
+            deviceLabel={deviceLabel}
+            serverTime={serverTime}
+          />
+        </StageFrame>
       </DisplayPreviewFrame>
 
       <p className="max-w-[900px] text-center text-caption text-ink-muted">

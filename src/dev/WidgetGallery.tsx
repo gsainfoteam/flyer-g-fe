@@ -1,3 +1,6 @@
+import { StageFrame } from "@/entities/poster/ui/StageFrame";
+import { StageInfoBar } from "@/entities/widget/ui/StageInfoBar";
+import { buildWidgetContent } from "@/entities/widget/model/content";
 import type { WidgetContent } from "@/entities/widget/model/content";
 import { quizOfDay } from "@/entities/widget/model/quiz";
 import type { QuizQuestion } from "@/entities/widget/model/quiz";
@@ -52,6 +55,11 @@ const CASES: { id: string; title: string; content: WidgetContent }[] = [
       days: 3,
       message: "끝까지 힘내요, 거의 다 왔어요",
     },
+  },
+  {
+    id: "fortune",
+    title: "운세 · 12띠 카드",
+    content: buildWidgetContent({ id: "fortune", type: "FORTUNE", durationSeconds: 30, params: {} }, NOW)!,
   },
   {
     id: "meal-pick",
@@ -184,14 +192,37 @@ const CASES: { id: string; title: string; content: WidgetContent }[] = [
 ];
 
 export function WidgetGallery() {
+  const weather = CASES.find((item) => item.id === "weather-cold")!.content;
   return (
     <div className="grid gap-6 md:grid-cols-2">
+      <figure className="space-y-2 md:col-span-2">
+        <figcaption className="text-label font-bold text-ink">
+          정보줄 · 긴 식사·D-day·다음 제목 + 매우 나쁜 미세먼지
+        </figcaption>
+        <div data-widget-case="info-bar-long">
+          <DisplayPreviewFrame>
+            <StageFrame bar={
+              <StageInfoBar
+                now={NOW}
+                weather={weather.type === "WEATHER" ? { ...weather, sky: "PARTLY_CLOUDY" } : null}
+                meal="제2학생식당 점심 운영 중 · 특별식 제공 · 13:30까지"
+                dday="2026학년도 2학기 기말고사 및 종강 행사 D-14"
+                next={{ label: "광주과학기술원 학사기숙사 전체 입주생 대상 문화행사 및 동아리 공연 안내", seconds: 30, key: "long" }}
+              />
+            }>
+              <WidgetDisplay content={CASES.find((item) => item.id === "quiz-long")!.content} deviceLabel="A동 로비" serverTime={NOW} />
+            </StageFrame>
+          </DisplayPreviewFrame>
+        </div>
+      </figure>
       {CASES.map((item) => (
         <figure key={item.id} className="space-y-2">
           <figcaption className="text-label font-bold text-ink">{item.title}</figcaption>
           <div data-widget-case={item.id}>
             <DisplayPreviewFrame>
-              <WidgetDisplay content={item.content} deviceLabel="A동 로비" serverTime={NOW} />
+              <StageFrame bar={<StageInfoBar now={NOW} />}>
+                <WidgetDisplay content={item.content} deviceLabel="A동 로비" serverTime={NOW} />
+              </StageFrame>
             </DisplayPreviewFrame>
           </div>
         </figure>
@@ -202,7 +233,9 @@ export function WidgetGallery() {
         </figcaption>
         <div data-widget-case="click-battle-preview">
           <DisplayPreviewFrame>
-            <BattlePreview deviceLabel="A동 로비" serverTime={NOW} />
+            <StageFrame bar={<StageInfoBar now={NOW} />}>
+              <BattlePreview deviceLabel="A동 로비" serverTime={NOW} />
+            </StageFrame>
           </DisplayPreviewFrame>
         </div>
       </figure>
