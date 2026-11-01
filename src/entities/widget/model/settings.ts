@@ -3,6 +3,7 @@ import {
   WIDGET_TYPES,
   clampWidgetDuration,
 } from "./types";
+import { SURVEY_PARAMS } from "./operation";
 import type { WidgetSlotDto, WidgetType } from "./types";
 
 /**
@@ -88,6 +89,8 @@ const DEFAULT_PARAMS: Partial<Record<WidgetType, Record<string, unknown>>> = {
     startsAt: "2026-12-13T15:00:00.000Z",
     endsAt: "2026-12-18T15:00:00.000Z",
   },
+  // 설문 링크·문구는 운영 설정에서 온다. mock과 미리보기의 기본 위젯에도 설문이 보이게 한다.
+  SURVEY: { ...SURVEY_PARAMS },
 };
 
 export function defaultWidgetSetting(type: WidgetType): WidgetSetting {

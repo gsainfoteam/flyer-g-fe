@@ -26,19 +26,21 @@ export const WIDGET_DURATIONS: Partial<Record<WidgetType, number>> = {
 };
 
 /**
+ * 설문 위젯 내용. 설문 링크는 화면(이 파일)이 정하므로, 서버·mock이 주는 설문 위젯에
+ * 링크가 없으면 이 값으로 채운다(`withSurveyParams`).
+ */
+export const SURVEY_PARAMS = {
+  url: SURVEY_URL,
+  title: "전단지 설문에 참여해 주세요",
+  description: "기숙사 로비 TV를 어떻게 쓰고 계신지 알려 주세요. 1분이면 끝나요.",
+} as const;
+
+/**
  * 포스터가 많아도 평소 순환에 늘 넣는 위젯(위젯 비율 상한은 지킨다). 서버 설정이 없을 때만.
  * 설문 위젯은 이벤트 시간 밖에서 설문 QR을 보여 준다.
  */
 export const EXTRA_WIDGETS: readonly WidgetSlotDto[] = [
-  {
-    id: "widget-survey",
-    type: "SURVEY",
-    params: {
-      url: SURVEY_URL,
-      title: "전단지 설문에 참여해 주세요",
-      description: "기숙사 로비 TV를 어떻게 쓰고 계신지 알려 주세요. 1분이면 끝나요.",
-    },
-  },
+  { id: "widget-survey", type: "SURVEY", params: { ...SURVEY_PARAMS } },
 ];
 
 /**

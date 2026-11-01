@@ -37,3 +37,16 @@ describe("설문 위젯", () => {
     ).toEqual({ type: "SURVEY", url: "https://forms.gle/abc", title: "설문", description: null });
   });
 });
+
+describe("mock 위젯 피드의 설문", () => {
+  it("기본 설정으로 만든 피드에서도 설문 위젯이 내용을 갖는다", async () => {
+    const { createMockRepositories } = await import("@/mocks/repositories");
+    const { createFixedClock } = await import("@/shared/lib/clock");
+    const now = new Date("2026-11-02T03:00:00Z");
+    const repositories = createMockRepositories({ clock: createFixedClock(now) });
+    const feed = await repositories.widgets.getDeviceWidgets("device-preview");
+    const survey = feed.widgets.find((slot) => slot.type === "SURVEY");
+    expect(survey).toBeDefined();
+    expect(buildWidgetContent(survey!, now)).toMatchObject({ type: "SURVEY" });
+  });
+});

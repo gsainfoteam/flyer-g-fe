@@ -3,7 +3,7 @@ import {
   defaultDeviceWidgetSettings,
   settingsToSlotDtos,
 } from "./settings";
-import { EXTRA_WIDGETS, WIDGET_DURATIONS } from "./operation";
+import { EXTRA_WIDGETS, SURVEY_PARAMS, WIDGET_DURATIONS } from "./operation";
 import { clampWidgetDuration, toWidgetSlots } from "./types";
 import type { WidgetSlot, WidgetSlotDto, WidgetType } from "./types";
 
@@ -32,9 +32,24 @@ export function toDeviceWidgets(dto: DeviceWidgetsDto): DeviceWidgets {
   return {
     version: dto.widgetsVersion,
     ratioPercent: clampRatioPercent(dto.ratioPercent),
-    widgets: toWidgetSlots(dto.widgets),
+    widgets: toWidgetSlots(dto.widgets).map(withSurveyParams),
     weather: dto.weather ?? null,
   };
+}
+
+/**
+ * 설문 위젯에 링크·문구가 없으면 운영 설정(`SURVEY_PARAMS`)으로 채운다. 설문 링크는 화면이
+ * 정한다(서버 위젯 설정에는 아직 설문 칸이 없다). 서버가 링크를 주면 그 값을 쓴다.
+ */
+function withSurveyParams(slot: WidgetSlot): WidgetSlot {
+  if (slot.type !== "SURVEY") return slot;
+  const filled = Object.fromEntries(
+    Object.entries(SURVEY_PARAMS).map(([key, value]) => {
+      const given = slot.params[key];
+      return [key, typeof given === "string" && given.trim() ? given : value];
+    }),
+  );
+  return { ...slot, params: { ...slot.params, ...filled } };
 }
 
 /** 오프라인 캐시가 직렬화할 때 쓴다. */

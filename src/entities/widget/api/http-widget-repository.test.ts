@@ -124,3 +124,26 @@ describe("createHttpWidgetRepository", () => {
     });
   });
 });
+
+describe("설문 위젯 링크", () => {
+  it("서버 응답의 설문 위젯에 링크가 없으면 운영 설정의 링크로 채우고, 있으면 그대로 쓴다", async () => {
+    const { SURVEY_URL } = await import("../model/operation");
+    const { repository } = setup(() => ({
+      widgetsVersion: "v1",
+      widgets: [
+        { id: "survey-a", type: "SURVEY", durationSeconds: 15, params: {} },
+        { id: "survey-b", type: "SURVEY", durationSeconds: 15, params: { url: "https://example.com/other" } },
+      ],
+    }));
+    const feed = await repository.getDeviceWidgets("dev-1");
+    expect(feed.widgets.map((slot) => slot.params.url)).toEqual([SURVEY_URL, "https://example.com/other"]);
+    expect(feed.widgets[0]!.params.title).toBeTruthy();
+  });
+
+  it("미리보기 기본 위젯의 설문도 링크를 갖는다", async () => {
+    const { SURVEY_URL } = await import("../model/operation");
+    const { repository } = setup(() => PROPOSED_RESPONSE);
+    const preview = await repository.getDeviceWidgets("device-preview");
+    expect(preview.widgets.find((slot) => slot.type === "SURVEY")?.params.url).toBe(SURVEY_URL);
+  });
+});
