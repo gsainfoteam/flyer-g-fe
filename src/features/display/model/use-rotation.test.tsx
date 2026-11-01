@@ -50,7 +50,7 @@ function picker(...sequence: (WidgetSlot | null)[]) {
   return () => {
     const slot = sequence[index++ % sequence.length] ?? null;
     return slot
-      ? { slot, content: { type: "FORTUNE" as const, dateKey: "2026-10-31", fortunes: [] } }
+      ? { slot, content: { type: "CLICK_BATTLE" as const } }
       : null;
   };
 }

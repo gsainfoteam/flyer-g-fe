@@ -12,6 +12,7 @@ import type {
   WeatherContent,
 } from "@/entities/widget/model/data-content";
 import { CHOICE_MARKS } from "@/entities/widget/model/quiz";
+import { RELATION_LABEL } from "@/entities/widget/model/saju";
 import { QRCodeBox } from "@/shared/components/QRCodeBox";
 import { to } from "@/shared/config/routes";
 import { getSeoulParts } from "@/shared/lib/datetime";
@@ -95,7 +96,15 @@ function WidgetBody({ content }: { content: WidgetContent }): ReactNode {
         <div className="flex min-h-0 flex-1 flex-col gap-8">
           <div className="flex items-baseline gap-8">
             <Eyebrow>오늘의 띠별 운세</Eyebrow>
-            <p className="text-[30px] text-ink-subtle">재미로 보는 운세예요</p>
+            <p className="text-[34px] font-bold text-ink-muted">
+              오늘은 {content.dayPillar.name}일
+              <span className="ml-3 font-normal text-ink-subtle">
+                {content.dayPillar.hanja}日
+              </span>
+            </p>
+            <p className="ml-auto text-[26px] text-ink-subtle">
+              띠와 일진의 합·충으로 보는 재미용 운세
+            </p>
           </div>
           <ul className="grid min-h-0 flex-1 grid-cols-4 grid-rows-3 gap-5">
             {content.fortunes.map((fortune) => (
@@ -377,8 +386,18 @@ function RestaurantBody({ content }: { content: RestaurantContent }) {
 function FortuneCell({ fortune }: { fortune: ZodiacFortune }) {
   return (
     <li className="flex min-h-0 flex-col justify-center gap-2 overflow-hidden rounded-tv-poster bg-surface-muted px-8 py-4">
-      <p className="text-[32px] font-extrabold text-ink">
+      <p className="flex items-baseline gap-3 text-[32px] font-extrabold text-ink">
         {fortune.animal}띠
+        {RELATION_LABEL[fortune.relation] && (
+          <span
+            className={cn(
+              "text-[22px] font-bold",
+              fortune.relation === "CLASH" ? "text-warning" : "text-success",
+            )}
+          >
+            {RELATION_LABEL[fortune.relation]}
+          </span>
+        )}
       </p>
       <p className="line-clamp-2 text-[24px] leading-snug text-ink">{fortune.message}</p>
       <p className="text-[22px] text-ink-subtle">행운의 색 · {fortune.luckyColor}</p>

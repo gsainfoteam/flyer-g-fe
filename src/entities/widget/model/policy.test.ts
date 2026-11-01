@@ -76,8 +76,8 @@ describe("inShowWindow", () => {
     expect(inShowWindow(mealPick, seoul(11))).toBe(true);
     expect(inShowWindow(mealPick, seoul(15))).toBe(false);
     expect(inShowWindow(mealPick, seoul(17))).toBe(true);
-    const fortune: WidgetContent = { type: "FORTUNE", dateKey: "2026-10-30", fortunes: [] };
-    expect(inShowWindow(fortune, seoul(3))).toBe(true);
+    const game: WidgetContent = { type: "CLICK_BATTLE" };
+    expect(inShowWindow(game, seoul(3))).toBe(true);
   });
 
   it("운영 시간 문자열을 읽는다", () => {
