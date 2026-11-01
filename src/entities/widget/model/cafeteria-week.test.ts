@@ -22,6 +22,25 @@ describe("cafeteriaDataFor", () => {
     expect(buildCafeteriaContent({ data }, NOON)).toMatchObject({ place: "제2학생식당" });
   });
 
+  it("운영 시간이 있으면 학식 위젯이 그 시간을 쓴다", async () => {
+    const { inShowWindow } = await import("./policy");
+    const week = {
+      places: [
+        {
+          place: "제2학생식당",
+          days: [{ date: "2026-11-01", meals: [{ type: "LUNCH", hours: "11:30~13:30", menus: ["흑미밥"] }] }],
+        },
+      ],
+    };
+    const content = buildCafeteriaContent({ data: cafeteriaDataFor(week, undefined, NOON) }, NOON)!;
+    expect(content.meals[0]!.hours).toBe("11:30~13:30");
+    // 시작 1시간 전(10:30)부터 끝(13:30)까지 노출한다.
+    const at = (hour: number, minute: number) => new Date(Date.UTC(2026, 10, 1, hour - 9, minute));
+    expect(inShowWindow(content, at(10, 29))).toBe(false);
+    expect(inShowWindow(content, at(10, 30))).toBe(true);
+    expect(inShowWindow(content, at(13, 30))).toBe(false);
+  });
+
   it("정한 식당에 오늘 식단이 없으면 null", () => {
     expect(cafeteriaDataFor(WEEK, "제1학생식당", NOON)).toBeNull();
     expect(cafeteriaDataFor(WEEK, "제2학생식당", NOON)).not.toBeNull();

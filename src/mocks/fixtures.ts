@@ -557,7 +557,7 @@ export function createWidgetData(
       meals: [
         {
           type: "BREAKFAST",
-          hours: "07:30~09:00",
+          hours: "08:00~09:00",
           menus: ["흰쌀밥", "북엇국", "계란말이", "김치"],
         },
         {
@@ -567,7 +567,7 @@ export function createWidgetData(
         },
         {
           type: "DINNER",
-          hours: "17:30~19:00",
+          hours: "17:00~19:00",
           menus: ["카레라이스", "미소된장국", "돈까스", "양배추샐러드", "단무지"],
         },
       ],

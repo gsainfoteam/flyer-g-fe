@@ -21,8 +21,19 @@ export type MealType = "BREAKFAST" | "LUNCH" | "DINNER";
 export interface MenuDay {
   /** 서울 날짜 "2026-10-26" */
   date: string;
-  meals: { type: MealType; hours: null; menus: string[] }[];
+  meals: { type: MealType; hours: string; menus: string[] }[];
 }
+
+/**
+ * 끼니 운영 시간. 식단표 PDF에는 시간이 없어 학교 편의시설 안내의 학생식당(제1·제2
+ * 학생회관 1층) 시간을 쓴다(https://www.gist.ac.kr/en/html/sub05/050301.html).
+ * 두 식당이 같다. 쉬는 날은 식단표에 그날 메뉴가 없는 것으로 가린다.
+ */
+export const MEAL_HOURS: Record<MealType, string> = {
+  BREAKFAST: "08:00~09:00",
+  LUNCH: "11:30~13:30",
+  DINNER: "17:00~19:00",
+};
 
 const MEAL_LABELS: Record<string, MealType> = {
   breakfast: "BREAKFAST",
@@ -167,7 +178,7 @@ export function parseMenuPage({ items, rects }: PdfPage, now: Date): MenuDay[] {
         const menus = lines
           .map((line) => cleanMenu(line.text))
           .filter((menu): menu is string => menu !== null);
-        return { type, hours: null, menus };
+        return { type, hours: MEAL_HOURS[type], menus };
       })
       .filter((meal) => meal.menus.length > 0),
   }));
