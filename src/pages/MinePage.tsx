@@ -293,7 +293,7 @@ function MineList({ items, impressions, now }: RowsProps) {
         return (
           <li key={item.id}>
             <Link
-              to={action.strong ? action.href : to.submissionDetail(item.id)}
+              to={to.submissionDetail(item.id)}
               className="flex items-center gap-3.5 px-4 py-3.5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
             >
               <PosterThumb poster={fromSubmissionView(item)} size="sm" />

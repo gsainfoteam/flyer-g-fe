@@ -1,4 +1,5 @@
 import { legacyPaths, to } from "@/shared/config/routes";
+import type { MineView } from "@/shared/config/routes";
 import { LegacyRedirect } from "./LegacyRedirect";
 
 /**
@@ -8,10 +9,24 @@ import { LegacyRedirect } from "./LegacyRedirect";
  * guard가 하므로 여기서는 주소만 바꾼다. 상태 탭 같은 query는 그대로 넘긴다.
  */
 
-/** `/submissions?scope=all&status=x` → `/contents?status=x`, 아니면 `/mine?status=x` */
+/**
+ * `/submissions?scope=all&status=x` → `/contents?status=x`.
+ * 내 신청은 `/mine`의 보기(진행 중 · 지난 것)로 바꾼다. 내 컨텐츠에는 상태 탭이 없다.
+ */
 function listTarget(search: URLSearchParams): string {
   const status = search.get("status") ?? undefined;
-  return search.get("scope") === "all" ? to.contents(status) : to.mine(status);
+  return search.get("scope") === "all"
+    ? to.contents(status)
+    : to.mine(mineViewOfStatusGroup(status));
+}
+
+/** 옛 상태 탭 → 내 컨텐츠 보기. 둘에 걸친 탭(중단/취소)과 전체는 전체로 본다. */
+function mineViewOfStatusGroup(status: string | undefined): MineView | undefined {
+  if (status === "ended") return "past";
+  if (status && ["pending", "rejected", "approved", "published"].includes(status)) {
+    return "active";
+  }
+  return undefined;
 }
 
 function keepQuery(path: string, search: URLSearchParams): string {
@@ -40,7 +55,9 @@ export const legacyRoutes = [
   },
   {
     path: legacyPaths.reviews,
-    element: <LegacyRedirect build={() => to.review()} />,
+    element: (
+      <LegacyRedirect build={({ search }) => keepQuery(to.review(), search)} />
+    ),
   },
   {
     path: legacyPaths.reviewDetail,

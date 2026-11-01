@@ -25,7 +25,8 @@ import { paths } from "./routes";
  * - `stats`: 노출 통계 (`GET /signage/stats/impressions`)
  * - `users`: 사용자 역할 관리 (`/signage/users`)
  *
- * 플랫폼 개편(Phase 09)에서 더한 단위. 백엔드 배포가 따로 나가서 하나씩 real로 바꾼다.
+ * 플랫폼 개편(Phase 09)에서 더한 단위. 백엔드 배포가 따로 나간다. production은 다른
+ * 단위처럼 모두 real이어야 하고(아니면 `EnvConfigError`), 배포 전 mock은 개발·데모에서만 쓴다.
  *
  * - `lineup`: 그룹 편성과 기기 예외 (`/signage/target-groups/{id}/lineup`, 배포 ⑤)
  * - `live`: 라이브 조작과 새로고침 (`/signage/devices/{id}/live`, ⑧)

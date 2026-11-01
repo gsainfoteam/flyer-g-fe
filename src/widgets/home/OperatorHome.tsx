@@ -15,7 +15,7 @@ import { LONG_WAIT_MS } from "./OldestQueue";
 import { QueueCard } from "./QueueHero";
 import { RecentDecisions } from "./RecentDecisions";
 import type { ReviewDesk } from "./use-review-desk";
-import { useReviewDesk } from "./use-review-desk";
+import { QUEUE_LIMIT, useReviewDesk } from "./use-review-desk";
 
 /**
  * 운영자 홈 (기획 4-0). 온 이유는 "문제 없나, 지금 뭐가 나오나"다.
@@ -106,7 +106,12 @@ function checksOf(desk: ReviewDesk, devices: DisplayDevice[]): CheckItem[] {
           {
             key: "long-wait",
             kind: "wait",
-            title: `오래 기다린 심사 ${longWaits.length}건`,
+            // 오래된 건은 QUEUE_LIMIT개만 받는다. 거기에 닿고 대기가 더 있으면 "이상"
+            title: `오래 기다린 심사 ${longWaits.length}건${
+              longWaits.length >= QUEUE_LIMIT && desk.queue.total > QUEUE_LIMIT
+                ? " 이상"
+                : ""
+            }`,
             detail: `24시간 넘음 · 가장 오래 ${formatElapsed(
               longWaits[0]!.submittedAt ?? longWaits[0]!.createdAt,
               desk.now,

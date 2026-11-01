@@ -194,6 +194,22 @@ describe("개편 전 주소", () => {
     );
   });
 
+  it("옛 내 신청 상태 탭은 내 컨텐츠의 보기로 바꾼다", async () => {
+    const { router } = renderRoute("/submissions?status=ended", {
+      role: "SUBMITTER",
+    });
+    await waitFor(() => expect(currentPath(router)).toBe("/mine?view=past"));
+  });
+
+  it("옛 심사 목록 주소는 분류 필터를 지킨다", async () => {
+    const { router } = renderRoute("/reviews?category=club", {
+      role: "REVIEWER",
+    });
+    await waitFor(() =>
+      expect(currentPath(router)).toBe("/review?category=club"),
+    );
+  });
+
   it("옛 수정 주소는 고칠 신청을 그대로 연다", async () => {
     const { router } = renderRoute("/studio?submissionId=notice-903", {
       role: "SUBMITTER",

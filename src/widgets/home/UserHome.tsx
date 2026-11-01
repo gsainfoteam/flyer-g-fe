@@ -260,7 +260,15 @@ function MineRow({
         <p className="text-caption text-ink-subtle">
           {KIND_INFO[kindOfSubmission(item)].name} · {formatPeriod(item)}
         </p>
-        <p className="truncate font-bold text-ink">{item.title}</p>
+        <p className="truncate font-bold text-ink">
+          {/* 반려·중단 사유는 상세에만 있다. 오른쪽 링크가 수정 화면일 때도 사유에 닿게 한다. */}
+          <Link
+            to={to.submissionDetail(item.id)}
+            className="underline-offset-4 hover:underline"
+          >
+            {item.title}
+          </Link>
+        </p>
         <p className="text-caption text-ink-muted">
           <span className={cn("font-semibold", USER_STATUS_TEXT[status.tone])}>
             {status.label}

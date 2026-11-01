@@ -38,7 +38,8 @@ describe("to", () => {
   });
 
   it("목록의 전체 탭은 query를 붙이지 않는다", () => {
-    expect(to.mine("all")).toBe("/mine");
+    expect(to.mine()).toBe("/mine");
+    expect(to.mine("past")).toBe("/mine?view=past");
     expect(to.contents("published")).toBe("/contents?status=published");
   });
 });

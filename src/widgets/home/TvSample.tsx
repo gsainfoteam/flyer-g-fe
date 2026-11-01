@@ -100,7 +100,7 @@ export function TvSample() {
                 className="min-h-0 flex-1 animate-[tv-sample-fade_400ms_ease-out]"
               >
                 {scene.key === "spotlight" && <SpotlightScene />}
-                {scene.key === "wall" && <WallScene />}
+                {scene.key === "wall" && <WallScene playing={playing} />}
                 {scene.key === "story" && <StoryScene />}
               </div>
             </div>
@@ -235,10 +235,16 @@ function SpotlightScene() {
 }
 
 /** 포스터가 옆으로 흐르는 띠. 같은 목록을 두 번 이어 붙여 끊김 없이 돈다. */
-function WallScene() {
+/** 띠는 일시정지와 움직임 줄이기를 따른다. 저절로 움직이는 내용은 멈출 수 있어야 한다. */
+function WallScene({ playing }: { playing: boolean }) {
   return (
     <div className="flex h-full items-center overflow-hidden">
-      <div className="flex h-[82%] w-max animate-tv-sample-strip gap-[2cqw]">
+      <div
+        className={cn(
+          "flex h-[82%] w-max animate-tv-sample-strip gap-[2cqw] motion-reduce:animate-none",
+          !playing && "[animation-play-state:paused]",
+        )}
+      >
         {[...POSTERS, ...POSTERS].map((poster, i) => (
           <PosterImage key={i} poster={poster} />
         ))}

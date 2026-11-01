@@ -40,6 +40,9 @@ export const legacyPaths = {
   users: "/users",
 } as const;
 
+/** 내 컨텐츠 화면의 보기(`?view=`). 전체는 query를 붙이지 않는다. */
+export type MineView = "active" | "past";
+
 /** 상태 탭이 있는 목록 경로. "all" 탭은 query를 붙이지 않는다. */
 function withStatus(path: string, statusGroupKey?: string): string {
   return statusGroupKey && statusGroupKey !== "all"
@@ -53,7 +56,8 @@ export const to = {
   /** 반려·초안을 고쳐서 다시 내는 포스터 화면 */
   editPoster: (submissionId: string) =>
     `/new/poster?submissionId=${encodeURIComponent(submissionId)}`,
-  mine: (statusGroupKey?: string) => withStatus("/mine", statusGroupKey),
+  /** 내 컨텐츠의 보기. 없으면 전체 */
+  mine: (view?: MineView) => (view ? `/mine?view=${view}` : "/mine"),
   contents: (statusGroupKey?: string) =>
     withStatus("/contents", statusGroupKey),
   submissionDetail: (submissionId: string) =>

@@ -2,6 +2,7 @@ import {
   formatElapsed,
   formatSeoulDayRange,
   formatSeoulMonthDay,
+  seoulLastDay,
 } from "@/shared/lib/datetime";
 import type { SubmissionView } from "./types";
 
@@ -40,7 +41,7 @@ export function getUserStatus(view: SubmissionView, now: Date): UserStatus {
     case "PUBLISHED":
       return {
         label: "게시 중",
-        note: `${formatSeoulMonthDay(lastShownDay(view.endAt))}까지`,
+        note: `${formatSeoulMonthDay(seoulLastDay(view.startAt, view.endAt))}까지`,
         tone: "live",
       };
     case "REJECTED":
@@ -59,14 +60,4 @@ export function getUserStatus(view: SubmissionView, now: Date): UserStatus {
 /** 표의 기간 칸. "11월 3일 – 14일" */
 export function formatPeriod(view: SubmissionView): string {
   return formatSeoulDayRange(view.startAt, view.endAt);
-}
-
-/** 서울 자정에 끝나는 기간은 그 전날까지 나온 것으로 읽는다. */
-function lastShownDay(endAt: Date): Date {
-  // 서울 00:00은 UTC 15:00이다(서머타임 없음).
-  const seoulMidnight =
-    endAt.getUTCHours() === 15 &&
-    endAt.getUTCMinutes() === 0 &&
-    endAt.getUTCSeconds() === 0;
-  return seoulMidnight ? new Date(endAt.getTime() - 1) : endAt;
 }
