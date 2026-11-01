@@ -19,6 +19,7 @@ import { useAuth } from "@/features/auth/model/auth-context";
 import { IconTile, LogoMark } from "@/shared/components";
 import { to } from "@/shared/config/routes";
 import { cn } from "@/shared/lib/utils";
+import { EventArt, PosterArt, StoryArt } from "@/widgets/home/KindArt";
 import { TvSample } from "@/widgets/home/TvSample";
 import { SiteFooter } from "@/widgets/layout/SiteFooter";
 
@@ -233,51 +234,5 @@ function FlowStep({
       <h3 className="text-subhead">{title}</h3>
       <p className="-mt-2 text-label text-ink-muted">{children}</p>
     </li>
-  );
-}
-
-/** 포스터 카드의 그림. 세로 포스터 세 장이 꽂힌 모습 */
-function PosterArt() {
-  return (
-    <div className="flex h-36 items-end justify-center gap-3 bg-type-poster-subtle px-6 pt-6">
-      <div className="h-24 w-16 -rotate-3 rounded-t-md bg-type-poster opacity-85" />
-      <div className="h-28 w-18 rounded-t-md bg-type-poster-bar" />
-      <div className="h-20 w-16 rotate-3 rounded-t-md bg-type-poster-bright" />
-    </div>
-  );
-}
-
-/** 이벤트 카드의 그림. TV 카드 그대로의 작은 배너 */
-function EventArt() {
-  return (
-    <div className="flex h-36 items-center bg-type-event-subtle px-6">
-      <div className="w-full rounded-tile bg-hero-raised px-4 py-3.5 text-hero-ink">
-        <span className="inline-flex rounded-pill bg-accent px-2 py-0.5 text-overline text-accent-on">
-          합격 축하
-        </span>
-        <p className="mt-1.5 text-subhead">수현아, 합격 축하해</p>
-        <p className="text-caption text-hero-muted">연구실 동기들이</p>
-      </div>
-    </div>
-  );
-}
-
-/** 제보 카드의 그림. TV에 나오는 카드 두 장 */
-function StoryArt() {
-  return (
-    <div className="flex h-36 items-center gap-2.5 bg-type-story-subtle px-6">
-      {[
-        { tag: "칭찬", body: "세탁실 건조기 2번이 고쳐졌어요!" },
-        { tag: "분실물", body: "파란 텀블러 주웠어요" },
-      ].map((card) => (
-        <div
-          key={card.tag}
-          className="min-w-0 flex-1 rounded-tile bg-hero-raised px-3.5 py-3 text-caption text-hero-ink"
-        >
-          <b className="text-type-story-bright">{card.tag}</b>
-          <p className="mt-0.5 line-clamp-2">{card.body}</p>
-        </div>
-      ))}
-    </div>
   );
 }
