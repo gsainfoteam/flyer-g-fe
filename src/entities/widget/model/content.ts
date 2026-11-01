@@ -10,6 +10,8 @@ import type {
   WeatherContent,
 } from "./data-content";
 import { previousDateKey, quizOfDay } from "./quiz";
+import { ZODIAC_ANIMALS, branchRelation, dayPillarOf } from "./saju";
+import type { BranchRelation, DayPillar } from "./saju";
 import type { QuizQuestion } from "./quiz";
 import type { WidgetSlot } from "./types";
 
@@ -29,7 +31,7 @@ export type WidgetContent =
       days: number;
       message: string;
     }
-  | { type: "FORTUNE"; dateKey: string; fortunes: ZodiacFortune[] }
+  | { type: "FORTUNE"; dateKey: string; dayPillar: DayPillar; fortunes: ZodiacFortune[] }
   | { type: "MEAL_PICK"; meal: "LUNCH" | "DINNER"; menu: string; alternatives: string[] }
   | CafeteriaContent
   | WeatherContent
@@ -46,6 +48,8 @@ export type WidgetContent =
 
 export interface ZodiacFortune {
   animal: string;
+  /** 오늘 일진과 이 띠의 관계. 운세 문구를 고르는 근거다. */
+  relation: BranchRelation;
   message: string;
   luckyColor: string;
 }
@@ -74,6 +78,15 @@ function pick<T>(items: readonly T[], random: () => number): T {
   return items[Math.floor(random() * items.length)]!;
 }
 
+function shuffled<T>(items: readonly T[], random: () => number): T[] {
+  const copy = [...items];
+  for (let index = copy.length - 1; index > 0; index--) {
+    const other = Math.floor(random() * (index + 1));
+    [copy[index], copy[other]] = [copy[other]!, copy[index]!];
+  }
+  return copy;
+}
+
 function readDate(params: Record<string, unknown>, key: string): Date | null {
   const value = params[key];
   if (typeof value !== "string") return null;
@@ -89,39 +102,63 @@ function readLabel(params: Record<string, unknown>, fallback: string): string {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
-const ZODIAC = [
-  "쥐",
-  "소",
-  "호랑이",
-  "토끼",
-  "용",
-  "뱀",
-  "말",
-  "양",
-  "원숭이",
-  "닭",
-  "개",
-  "돼지",
-] as const;
+/**
+ * 띠별 운세 문구. 오늘 일진과 띠의 관계(`saju.ts`)에 맞는 묶음에서 고른다. 합이면 좋은
+ * 일, 충이면 조심할 일을 말하되 겁주지 않는다. 캠퍼스 생활에 맞춘 재미용 문구다.
+ * TV 칸 한 줄에 들어가게 18자 이내로 쓴다.
+ */
+const FORTUNE_MESSAGES: Record<"GOOD" | "SAME" | "CLASH" | "NEUTRAL", readonly string[]> = {
+  GOOD: [
+    "팀플이 술술 풀리는 날",
+    "도움을 청하면 기꺼이 도와줘요",
+    "미뤄 둔 연락에 반가운 답이 와요",
+    "새로운 사람과 금방 친해져요",
+    "질문하면 생각보다 쉽게 풀려요",
+    "뜻밖의 칭찬을 듣게 돼요",
+    "함께 먹는 밥이 유난히 맛있어요",
+    "동아리에서 좋은 인연이 생겨요",
+    "발표와 면접에 운이 따라요",
+    "작은 친절이 크게 돌아와요",
+  ],
+  SAME: [
+    "익숙한 방식이 가장 잘 통해요",
+    "닮은 사람에게서 힌트를 얻어요",
+    "하던 일을 이어 가면 빛을 봐요",
+    "고집을 조금 내려놓으면 좋아요",
+    "혼자 집중하는 시간이 보람차요",
+    "한 번 더 확인하면 실수가 없어요",
+  ],
+  CLASH: [
+    "서두르지 말고 한 번 더 확인!",
+    "말을 부드럽게 하면 하루가 편해요",
+    "지갑 조심, 충동구매 주의",
+    "계획이 바뀌어도 유연하게 넘겨요",
+    "무리한 약속은 내일로 미뤄요",
+    "나가기 전에 챙길 것 확인",
+    "일찍 자면 내일이 가벼워요",
+    "급한 결정은 하루 묵혀요",
+  ],
+  NEUTRAL: [
+    "미뤄 둔 과제를 시작하기 좋은 날",
+    "도서관 자리 운이 따르는 날",
+    "계획보다 산책이 답이 되는 하루",
+    "정리정돈이 행운을 불러요",
+    "오후에 좋은 아이디어가 떠올라요",
+    "운동하면 기분이 확 풀려요",
+    "룸메이트와 이야기가 잘 통해요",
+    "오늘 학식이 유난히 맛있어요",
+    "조금 일찍 움직이면 여유로워요",
+    "새 메뉴에 도전하기 좋은 날",
+  ],
+};
 
-const FORTUNE_MESSAGES = [
-  "미뤄 둔 과제를 시작하기 좋은 날",
-  "오랜만에 연락한 친구가 반가운 소식을 전해요",
-  "도서관 자리 운이 따르는 날",
-  "작은 친절이 크게 돌아와요",
-  "계획보다 산책이 답이 되는 하루",
-  "새로운 동아리 활동에서 인연이 생겨요",
-  "오늘 먹은 학식이 유난히 맛있어요",
-  "질문하면 생각보다 쉽게 풀려요",
-  "일찍 잠들면 내일이 가벼워져요",
-  "룸메이트와 이야기가 잘 통하는 날",
-  "지갑을 조심하세요, 야식 유혹이 커요",
-  "꾸준함이 빛을 보는 하루",
-  "뜻밖의 칭찬을 듣게 돼요",
-  "정리정돈이 행운을 불러요",
-  "오후에 좋은 아이디어가 떠올라요",
-  "운동을 하면 기분이 확 풀려요",
-] as const;
+const MESSAGE_GROUP: Record<BranchRelation, keyof typeof FORTUNE_MESSAGES> = {
+  SIX_HARMONY: "GOOD",
+  THREE_HARMONY: "GOOD",
+  SAME: "SAME",
+  CLASH: "CLASH",
+  NEUTRAL: "NEUTRAL",
+};
 
 const LUCKY_COLORS = [
   "빨강",
@@ -232,14 +269,27 @@ export function buildWidgetContent(
     }
     case "FORTUNE": {
       const random = seededRandom(`fortune:${dateKey}`);
+      const dayPillar = dayPillarOf(dateKey);
+      // 같은 날 두 띠가 같은 문구를 받지 않게, 묶음마다 섞어 두고 차례로 꺼낸다.
+      const decks = Object.fromEntries(
+        Object.entries(FORTUNE_MESSAGES).map(([group, messages]) => [
+          group,
+          shuffled(messages, random),
+        ]),
+      ) as Record<keyof typeof FORTUNE_MESSAGES, string[]>;
       return {
         type: "FORTUNE",
         dateKey,
-        fortunes: ZODIAC.map((animal) => ({
-          animal,
-          message: pick(FORTUNE_MESSAGES, random),
-          luckyColor: pick(LUCKY_COLORS, random),
-        })),
+        dayPillar,
+        fortunes: ZODIAC_ANIMALS.map((animal, branch) => {
+          const relation = branchRelation(dayPillar.branch, branch);
+          return {
+            animal,
+            relation,
+            message: decks[MESSAGE_GROUP[relation]].shift() ?? "",
+            luckyColor: pick(LUCKY_COLORS, random),
+          };
+        }),
       };
     }
     case "MEAL_PICK": {
