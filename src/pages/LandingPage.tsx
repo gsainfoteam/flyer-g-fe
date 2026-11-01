@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  ChevronRight,
   CircleCheck,
   MonitorPlay,
   PenLine,
@@ -129,17 +130,18 @@ export function LandingPage() {
           <h2 id="flow" className="text-[1.75rem] font-black tracking-[-0.03em]">
             올리면 이렇게 돼요
           </h2>
-          <ol className="flex flex-col lg:flex-row">
-            <FlowStep step={1} when="올릴 때" icon={PenLine} title="올리기">
+          {/* 네 단계를 같은 폭의 칸에 놓아 화면 폭을 채우고, 원의 가운데끼리 선으로 잇는다. */}
+          <ol className="grid rounded-block bg-surface px-5 py-7 ring-1 ring-line sm:px-8 lg:grid-cols-4 lg:px-6 lg:py-9">
+            <FlowStep step={1} when="올릴 때" who="ME" icon={PenLine} title="올리기">
               쓰는 동안 자동 저장
             </FlowStep>
-            <FlowStep step={2} when="올린 뒤" icon={ShieldCheck} title="관리자 심사">
+            <FlowStep step={2} when="올린 뒤" who="ADMIN" icon={ShieldCheck} title="관리자 심사">
               반려되면 사유를 알려 드려요
             </FlowStep>
-            <FlowStep step={3} when="게시 기간 동안" icon={MonitorPlay} title="TV에 게시">
+            <FlowStep step={3} when="게시 기간 동안" who="TV" icon={MonitorPlay} title="TV에 게시">
               여러 TV에서 번갈아 나와요
             </FlowStep>
-            <FlowStep step={4} when="끝나는 날" icon={CircleCheck} title="저절로 내려감" last>
+            <FlowStep step={4} when="끝나는 날" who="AUTO" icon={CircleCheck} title="저절로 내려감" last>
               직접 뗄 필요 없어요
             </FlowStep>
           </ol>
@@ -177,13 +179,34 @@ function KindCard({
   );
 }
 
+/** 단계마다 누가 하는지. 원과 칩의 색은 이것만 뜻한다. */
+const FLOW_WHO = {
+  ME: { label: "내가", tone: "bg-surface-muted text-ink", chip: "bg-surface-muted text-ink" },
+  ADMIN: {
+    label: "관리자가",
+    tone: "bg-info-subtle text-info-strong",
+    chip: "bg-info-subtle text-info-strong",
+  },
+  TV: {
+    label: "TV에서",
+    tone: "bg-success-subtle text-success-strong",
+    chip: "bg-success-subtle text-success-strong",
+  },
+  AUTO: {
+    label: "저절로",
+    tone: "bg-warning-subtle text-warning-strong",
+    chip: "bg-warning-subtle text-warning-strong",
+  },
+} as const;
+
 /**
- * 진행 순서 한 단계. 단계 번호와 "언제"를 위에 두고, 다음 단계까지 선으로 잇는다.
- * 넓은 화면은 가로로, 좁은 화면은 세로로 이어진다. 모든 단계가 같은 색이다.
+ * 진행 순서 한 단계. 넓은 화면은 칸 가운데 정렬로 원끼리 가로선으로 잇고, 좁은
+ * 화면은 왼쪽 정렬로 세로선을 잇는다. 선 끝의 화살표가 순서를 알려 준다.
  */
 function FlowStep({
   step,
   when,
+  who,
   icon,
   title,
   last = false,
@@ -191,30 +214,43 @@ function FlowStep({
 }: {
   step: number;
   when: string;
+  who: keyof typeof FLOW_WHO;
   icon: LucideIcon;
   title: string;
   last?: boolean;
   children: React.ReactNode;
 }) {
+  const style = FLOW_WHO[who];
   return (
-    <li className="relative flex flex-1 gap-4 pb-7 last:pb-0 lg:flex-col lg:gap-3 lg:pb-0">
+    <li className="relative flex gap-4 pb-8 last:pb-0 lg:flex-col lg:items-center lg:gap-0 lg:px-3 lg:pb-0 lg:text-center">
       {!last && (
         <span
           aria-hidden="true"
-          className="absolute top-12 bottom-0 left-6 w-0.5 bg-line lg:top-6 lg:right-0 lg:bottom-auto lg:left-14 lg:h-0.5 lg:w-auto"
-        />
+          className="absolute top-14 bottom-1 left-7 w-0.5 bg-line-strong lg:top-7 lg:right-[calc(-50%+2.25rem)] lg:bottom-auto lg:left-[calc(50%+2.25rem)] lg:h-0.5 lg:w-auto"
+        >
+          <ChevronRight
+            size={16}
+            strokeWidth={2.5}
+            className="absolute -right-[7px] -bottom-2 rotate-90 text-line-strong lg:-top-[7px] lg:bottom-auto lg:rotate-0"
+          />
+        </span>
       )}
       <IconTile
         icon={icon}
         size="lg"
-        className="relative rounded-full bg-surface text-ink ring-2 ring-line"
+        className={`relative size-14 rounded-full ring-2 ring-current/20 ${style.tone}`}
       />
-      <div className="min-w-0 pt-1 lg:pt-0 lg:pr-6">
+      <div className="min-w-0 pt-1 lg:mt-4 lg:pt-0">
         <p className="text-caption font-bold text-ink-subtle">
-          {step} · {when}
+          {step}단계 · {when}
         </p>
-        <h3 className="mt-0.5 text-subhead">{title}</h3>
-        <p className="mt-0.5 text-label text-ink-muted">{children}</p>
+        <h3 className="mt-1 text-heading">{title}</h3>
+        <p className="mt-1 text-label text-ink-muted">{children}</p>
+        <span
+          className={`mt-3 inline-flex h-6 items-center rounded-pill px-2.5 text-overline ${style.chip}`}
+        >
+          {style.label}
+        </span>
       </div>
     </li>
   );
