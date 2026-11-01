@@ -10,7 +10,7 @@ import { queryKeys } from "@/shared/api/query-keys";
 import { useRepositories } from "@/shared/api/repositories-context";
 
 /**
- * TV가 받는 위젯과 상단 바 날씨. 편성과 따로 받는다.
+ * TV가 받는 위젯과 정보줄 날씨. 편성과 따로 받는다.
  *
  * 편성처럼 주기적으로 다시 받고, 마지막으로 받은 것을 기기에 남겨 둔다. 네트워크가
  * 끊겨도 위젯과 날씨가 계속 돈다. 날씨·학식처럼 오래되면 안 되는 내용은 화면이 날짜와

@@ -10,9 +10,12 @@ import type { WidgetSlot } from "./types";
  * - 포스터 화면 N장마다 위젯 **한 자리**. 그 자리에 왔을 때 지금 보여 줄 수 있는 위젯
  *   하나를 차례로 고른다. 위젯이 연달아 나오거나 몰리지 않는다.
  * - N은 기기의 위젯 비율(기본 25%)을 넘지 않게 정한다.
- * - 학식·메뉴 추천은 끼니 시간대에만, 날씨는 30분에 한 번까지만. 날씨는 상단 바에 늘
+ * - 학식·메뉴 추천은 끼니 시간대에만, 날씨는 30분에 한 번까지만. 날씨는 정보줄에 늘
  *   떠 있으므로 큰 화면은 가끔이면 된다.
  */
+
+/** D-day 위젯은 이 날 수 안으로 다가왔을 때만 크게 띄운다(그 전에는 정보줄 칩). */
+export const DDAY_WIDGET_WITHIN_DAYS = 7;
 
 /** 날씨 위젯을 다시 띄우기까지의 최소 간격 */
 export const WEATHER_MIN_GAP_MS = 30 * 60 * 1000;
@@ -66,6 +69,9 @@ export function inShowWindow(content: WidgetContent, now: Date): boolean {
       });
     case "MEAL_PICK":
       return MEAL_PICK_WINDOWS.some((window) => within(minutes, window));
+    case "DDAY":
+      // 정보줄에 늘 남은 날이 보인다. 큰 화면은 다가왔을 때만 띄운다.
+      return content.days <= DDAY_WIDGET_WITHIN_DAYS;
     default:
       return true;
   }
@@ -124,27 +130,38 @@ export function createWidgetPicker() {
   let cursor = -1;
   const lastShownAt = new Map<string, number>();
 
+  /** 지금 고를 수 있는 다음 위젯(차례·시간대·간격·바로 앞 위젯 기준) */
+  const next = (slots: readonly WidgetSlot[], now: Date, avoidId?: string) => {
+    for (let step = 1; step <= slots.length; step++) {
+      const index = (cursor + step) % slots.length;
+      const slot = slots[index]!;
+      if (slot.id === avoidId) continue;
+      const content = buildWidgetContent(slot, now);
+      if (!content || !inShowWindow(content, now)) continue;
+      const last = lastShownAt.get(slot.id);
+      if (
+        slot.type === "WEATHER" &&
+        last !== undefined &&
+        now.getTime() - last < WEATHER_MIN_GAP_MS
+      ) {
+        continue;
+      }
+      return { index, pick: { slot, content } };
+    }
+    return null;
+  };
+
   return {
     pick(slots: readonly WidgetSlot[], now: Date, avoidId?: string): WidgetPick | null {
-      for (let step = 1; step <= slots.length; step++) {
-        const index = (cursor + step) % slots.length;
-        const slot = slots[index]!;
-        if (slot.id === avoidId) continue;
-        const content = buildWidgetContent(slot, now);
-        if (!content || !inShowWindow(content, now)) continue;
-        const last = lastShownAt.get(slot.id);
-        if (
-          slot.type === "WEATHER" &&
-          last !== undefined &&
-          now.getTime() - last < WEATHER_MIN_GAP_MS
-        ) {
-          continue;
-        }
-        cursor = index;
-        lastShownAt.set(slot.id, now.getTime());
-        return { slot, content };
-      }
-      return null;
+      const found = next(slots, now, avoidId);
+      if (!found) return null;
+      cursor = found.index;
+      lastShownAt.set(found.pick.slot.id, now.getTime());
+      return found.pick;
+    },
+    /** 다음에 고를 위젯을 미리 본다. 차례와 간격 기록은 바꾸지 않는다(정보줄 "다음" 표시용). */
+    peek(slots: readonly WidgetSlot[], now: Date, avoidId?: string): WidgetPick | null {
+      return next(slots, now, avoidId)?.pick ?? null;
     },
   };
 }

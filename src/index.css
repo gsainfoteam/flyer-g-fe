@@ -220,6 +220,15 @@
       transform: scaleX(1);
     }
   }
+  /* TV 정보줄의 진행 막대. 화면 하나가 머무는 시간 동안 찬다. */
+  @keyframes tv-info-progress {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
   @keyframes tv-sample-fade {
     from {
       opacity: 0;

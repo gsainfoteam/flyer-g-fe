@@ -10,7 +10,7 @@ import type { WidgetSlot, WidgetSlotDto, WidgetType } from "./types";
  * TV 한 대가 받는 위젯 묶음 (`GET /signage/devices/{id}/widgets`, flyer-g-be#24 제안).
  *
  * 편성과 따로 받는다. 위젯 설정·데이터가 바뀌어도 편성 버전에 영향을 주지 않고, 위젯
- * 쪽만 다시 받는다. `weather`는 위젯을 껐어도 상단 바에 쓰려고 따로 온다.
+ * 쪽만 다시 받는다. `weather`는 위젯을 껐어도 정보줄에 쓰려고 따로 온다.
  */
 export interface DeviceWidgetsDto {
   widgetsVersion: string;
