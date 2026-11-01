@@ -102,11 +102,12 @@ const CASES: { id: string; title: string; content: WidgetContent }[] = [
   },
   {
     id: "weather-cold",
-    title: "날씨 · 영하, 강수 100%, 긴 지명",
+    title: "날씨 · 영하, 강수 100%, 긴 지명, 미세먼지 매우 나쁨",
     content: {
       type: "WEATHER",
       location: "광주광역시 북구 오룡동 광주과학기술원",
       source: "기상청 제공",
+      air: { pm10: "VERY_BAD", pm25: "VERY_BAD" },
       temperature: -12,
       sky: "SNOW",
       high: -3,
@@ -134,6 +135,7 @@ const CASES: { id: string; title: string; content: WidgetContent }[] = [
       precipitationChance: 0,
       fetchedAt: NOW,
       hourly: [],
+      air: null,
     },
   },
   {

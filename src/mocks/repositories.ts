@@ -1301,6 +1301,12 @@ export function createMockRepositories(
     widgetSettings.get(deviceId) ?? createDefaultWidgetSettings();
 
   const widgets: WidgetRepository = {
+    async getLocalWeather(signal) {
+      await settle(signal);
+      // 실제로는 Open-Meteo에서 받는다. mock은 같은 형식의 고정 값을 준다.
+      return { ...createWidgetData(clock.now()).WEATHER, source: "Open-Meteo 제공" };
+    },
+
     async getDeviceWidgets(deviceId, signal) {
       await settle(signal);
       const settings = toDeviceWidgetSettings(widgetSettingsOf(deviceId));

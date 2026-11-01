@@ -37,6 +37,7 @@ import type { PlayerFrame } from "@/entities/widget/model/schedule";
 import { HeaderWeather } from "@/entities/widget/ui/HeaderWeather";
 import { WidgetDisplay } from "@/entities/widget/ui/WidgetDisplay";
 import { useDeviceWidgets } from "@/features/display/model/use-device-widgets";
+import { useLocalWeather } from "@/features/display/model/use-local-weather";
 import { gameSocketBase } from "@/features/click-battle/api/game-socket";
 import { BattlePreview } from "@/features/click-battle/ui/BattlePreview";
 import { BattleWidget } from "@/features/click-battle/ui/BattleWidget";
@@ -108,6 +109,9 @@ export function DisplayPage() {
     deviceId,
     feed.playlist?.refreshAfterSeconds ?? 60,
   );
+  // 서버가 날씨를 주지 않으면 TV가 직접 받는다(Open-Meteo). 상단 바와 날씨 위젯이 쓴다.
+  const localWeather = useLocalWeather(widgetFeed.weather === null);
+  const weatherData = widgetFeed.weather ?? localWeather;
 
   // 위젯을 고를 때의 "지금"(서버 시각). 편성의 서버 시각은 경계마다만 바뀌므로 기기
   // 시계와의 차이를 두고 흘려 쓴다.
@@ -134,11 +138,24 @@ export function DisplayPage() {
   const shortCycle = posterFrameCount * rotationSeconds < MIN_CYCLE_SECONDS;
   const fillWithStandalone = shortCycle && isWidgetsUnsupported(widgetFeed);
   const widgetSlots = useMemo(() => {
-    const slots = fillWithStandalone ? standaloneWidgets() : widgetFeed.widgets;
+    const slots = (
+      fillWithStandalone ? standaloneWidgets() : widgetFeed.widgets
+    ).map((slot) =>
+      // 데이터 없는 날씨 위젯(기본 위젯·미리보기)에는 TV가 받은 날씨를 붙인다.
+      slot.type === "WEATHER" && !slot.params.data && weatherData
+        ? { ...slot, params: { ...slot.params, data: weatherData } }
+        : slot,
+    );
     return canHostGame || previewGame
       ? slots
       : slots.filter((slot) => slot.type !== "CLICK_BATTLE");
-  }, [canHostGame, previewGame, fillWithStandalone, widgetFeed.widgets]);
+  }, [
+    canHostGame,
+    previewGame,
+    fillWithStandalone,
+    widgetFeed.widgets,
+    weatherData,
+  ]);
 
   // 위젯 노출 정책: 포스터 N장마다 한 자리, 비율 상한, 시간대·간격 (policy.ts)
   const pickerRef = useRef(createWidgetPicker());
@@ -222,7 +239,7 @@ export function DisplayPage() {
 
   // 상단 바 날씨. 날씨 위젯을 꺼도 늘 뜬다. 날씨 위젯이 떠 있을 때는 겹치니 숨긴다.
   const headerWeather = serverTime
-    ? buildWeatherContent({ data: widgetFeed.weather }, serverTime)
+    ? buildWeatherContent({ data: weatherData }, serverTime)
     : null;
   const ambient =
     headerWeather &&

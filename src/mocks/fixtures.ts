@@ -581,6 +581,7 @@ export function createWidgetData(
       high: 18,
       low: 9,
       precipitationChance: 20,
+      air: { pm10: 24, pm25: 18 },
       hourly: skies.map((sky, index) => ({
         at: new Date(nextHour + index * hour).toISOString(),
         temperature: 14 - index,

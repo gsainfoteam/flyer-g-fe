@@ -76,6 +76,7 @@ describe("createHttpWidgetRepository", () => {
     expect(standaloneWidgets().map((slot) => slot.type)).toEqual([
       "FORTUNE",
       "MEAL_PICK",
+      "WEATHER",
       "QUIZ",
       "CLICK_BATTLE",
     ]);
