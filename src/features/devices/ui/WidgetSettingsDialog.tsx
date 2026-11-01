@@ -33,7 +33,8 @@ import type {
  * 기기 단위로 위젯 비율(화면 시간 중 위젯 몫의 상한)을 정한다. 언제 끼울지(시간대·간격)는
  * 노출 정책이 정한다. 다음 갱신 때 TV에 반영된다.
  *
- * 설정은 위젯 API로 따로 주고받는다. 서버가 아직 지원하지 않으면 그렇다고 알린다.
+ * 설정은 같은 도메인 함수(`/api/tv-settings`, Cloudflare KV)에 기기별로 저장한다. 백엔드
+ * 위젯 API 없이 TV가 1분 안에 읽어 간다.
  */
 interface WidgetSettingsDialogProps {
   device: DisplayDevice;
@@ -46,8 +47,6 @@ export function WidgetSettingsDialog({ device, onClose }: WidgetSettingsDialogPr
   const settings = useWidgetSettings(device.id);
 
   if (!settings.data) {
-    const unsupported =
-      isApiError(settings.error) && settings.error.code === "WIDGETS_UNSUPPORTED";
     return (
       <ConfirmActionDialog
         open
@@ -58,9 +57,7 @@ export function WidgetSettingsDialog({ device, onClose }: WidgetSettingsDialogPr
         description={
           settings.isPending
             ? "위젯 설정을 불러오는 중이에요."
-            : unsupported
-              ? "서버가 아직 위젯 설정을 지원하지 않아요. 백엔드 작업(flyer-g-be#24) 뒤에 열려요."
-              : "위젯 설정을 불러오지 못했어요. 잠시 후 다시 열어 주세요."
+            : "위젯 설정을 불러오지 못했어요. 잠시 후 다시 열어 주세요."
         }
         confirmLabel="닫기"
         onConfirm={() => undefined}

@@ -39,6 +39,10 @@ export const queryKeys = {
     /** 같은 도메인 함수가 읽은 이번 주 학식. 기기와 무관하다. */
     localCafeteria: () => ["displays", "local-cafeteria"] as const,
   },
+  /** 관리 화면에서 바꾸는 TV 운영 설정(KV). 기기 위젯 설정과 시간대 점유를 함께 담는다. */
+  tvSettings: {
+    all: () => ["tv-settings"] as const,
+  },
   widgetSettings: {
     detail: (deviceId: string) => ["widget-settings", deviceId] as const,
   },

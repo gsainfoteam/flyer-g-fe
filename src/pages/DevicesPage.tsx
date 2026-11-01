@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { CalendarClock, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useDevices, useTargetGroups } from "@/entities/device/api/queries";
 import type { DisplayDevice, TargetGroup } from "@/entities/device/model/types";
@@ -10,6 +10,7 @@ import { useRotateDeviceToken } from "@/features/devices/model/use-device-mutati
 import { DeviceFormDialog } from "@/features/devices/ui/DeviceFormDialog";
 import { DeviceSetupLinkDialog } from "@/features/devices/ui/DeviceSetupLinkDialog";
 import { TargetGroupsSection } from "@/features/devices/ui/TargetGroupsSection";
+import { TimeSlotsDialog } from "@/features/devices/ui/TimeSlotsDialog";
 import { WidgetSettingsDialog } from "@/features/devices/ui/WidgetSettingsDialog";
 import { isApiError, toUserMessage } from "@/shared/api/error";
 import {
@@ -40,6 +41,7 @@ export function DevicesPage() {
   const [rotating, setRotating] = useState<DisplayDevice | null>(null);
   const [widgetsOf, setWidgetsOf] = useState<DisplayDevice | null>(null);
   const [setupLink, setSetupLink] = useState<SetupLinkResult | null>(null);
+  const [editingSlots, setEditingSlots] = useState(false);
 
   const groupList = groups.data ?? [];
 
@@ -57,10 +59,16 @@ export function DevicesPage() {
             title={`디스플레이 기기 ${devices.data.items.length}대`}
             description="로비 TV를 등록하고 화면 설정과 연결을 관리해요."
             action={
-              <Button size="sm" onClick={() => setEditing("new")}>
-                <Plus aria-hidden="true" />
-                기기 등록
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="secondary" size="sm" onClick={() => setEditingSlots(true)}>
+                  <CalendarClock aria-hidden="true" />
+                  시간대 고정
+                </Button>
+                <Button size="sm" onClick={() => setEditing("new")}>
+                  <Plus aria-hidden="true" />
+                  기기 등록
+                </Button>
+              </div>
             }
           />
 
@@ -95,6 +103,13 @@ export function DevicesPage() {
             onRetry={() => void groups.refetch()}
           />
         </>
+      )}
+
+      {editingSlots && devices.data && (
+        <TimeSlotsDialog
+          devices={devices.data.items}
+          onClose={() => setEditingSlots(false)}
+        />
       )}
 
       {editing !== null && (
@@ -189,7 +204,7 @@ function DeviceRow({
   onWidgets: () => void;
 }) {
   const facts = [
-    `${LAYOUT_LABELS[device.layout.type]} · ${device.layout.rotationSeconds}초마다 넘김`,
+    `${LAYOUT_LABELS[device.layout.type]} · 포스터 ${device.layout.rotationSeconds}초마다 넘김`,
     `${device.refreshAfterSeconds}초마다 편성 확인`,
     device.lastSeenAt
       ? `마지막 연결 ${formatTimeAgo(device.lastSeenAt, serverNow)}`

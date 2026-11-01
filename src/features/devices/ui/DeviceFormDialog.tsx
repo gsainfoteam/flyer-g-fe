@@ -247,9 +247,9 @@ export function DeviceFormDialog({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
-            label="전환 간격(초)"
+            label="포스터 전환 간격(초)"
             error={errorOf("rotationSeconds")}
-            description={`${DEVICE_LIMITS.rotationSeconds.min}~${DEVICE_LIMITS.rotationSeconds.max}초`}
+            description={`포스터 한 장을 보여 주는 시간이에요. ${DEVICE_LIMITS.rotationSeconds.min}~${DEVICE_LIMITS.rotationSeconds.max}초. 위젯 시간은 '위젯'에서 정해요.`}
           >
             {(control) => (
               <Input
