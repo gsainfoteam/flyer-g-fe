@@ -132,16 +132,16 @@ export function LandingPage() {
           </h2>
           {/* 네 단계를 같은 폭의 칸에 놓아 화면 폭을 채우고, 원의 가운데끼리 선으로 잇는다. */}
           <ol className="grid rounded-block bg-surface px-5 py-7 ring-1 ring-line sm:px-8 lg:grid-cols-4 lg:px-6 lg:py-9">
-            <FlowStep step={1} when="올릴 때" who="ME" icon={PenLine} title="올리기">
+            <FlowStep step={1} when="올릴 때" icon={PenLine} title="올리기">
               쓰는 동안 자동 저장
             </FlowStep>
-            <FlowStep step={2} when="올린 뒤" who="ADMIN" icon={ShieldCheck} title="관리자 심사">
+            <FlowStep step={2} when="올린 뒤" icon={ShieldCheck} title="관리자 심사">
               반려되면 사유를 알려 드려요
             </FlowStep>
-            <FlowStep step={3} when="게시 기간 동안" who="TV" icon={MonitorPlay} title="TV에 게시">
+            <FlowStep step={3} when="게시 기간 동안" icon={MonitorPlay} title="TV에 게시">
               여러 TV에서 번갈아 나와요
             </FlowStep>
-            <FlowStep step={4} when="끝나는 날" who="AUTO" icon={CircleCheck} title="저절로 내려감" last>
+            <FlowStep step={4} when="끝나는 날" icon={CircleCheck} title="저절로 내려감" last>
               직접 뗄 필요 없어요
             </FlowStep>
           </ol>
@@ -179,34 +179,14 @@ function KindCard({
   );
 }
 
-/** 단계마다 누가 하는지. 원과 칩의 색은 이것만 뜻한다. */
-const FLOW_WHO = {
-  ME: { label: "내가", tone: "bg-surface-muted text-ink", chip: "bg-surface-muted text-ink" },
-  ADMIN: {
-    label: "관리자가",
-    tone: "bg-info-subtle text-info-strong",
-    chip: "bg-info-subtle text-info-strong",
-  },
-  TV: {
-    label: "TV에서",
-    tone: "bg-success-subtle text-success-strong",
-    chip: "bg-success-subtle text-success-strong",
-  },
-  AUTO: {
-    label: "저절로",
-    tone: "bg-warning-subtle text-warning-strong",
-    chip: "bg-warning-subtle text-warning-strong",
-  },
-} as const;
-
 /**
  * 진행 순서 한 단계. 넓은 화면은 칸 가운데 정렬로 원끼리 가로선으로 잇고, 좁은
  * 화면은 왼쪽 정렬로 세로선을 잇는다. 선 끝의 화살표가 순서를 알려 준다.
+ * 모든 단계가 브랜드 빨강을 옅게 쓴 같은 원이다.
  */
 function FlowStep({
   step,
   when,
-  who,
   icon,
   title,
   last = false,
@@ -214,13 +194,11 @@ function FlowStep({
 }: {
   step: number;
   when: string;
-  who: keyof typeof FLOW_WHO;
   icon: LucideIcon;
   title: string;
   last?: boolean;
   children: React.ReactNode;
 }) {
-  const style = FLOW_WHO[who];
   return (
     <li className="relative flex gap-4 pb-8 last:pb-0 lg:flex-col lg:items-center lg:gap-0 lg:px-3 lg:pb-0 lg:text-center">
       {!last && (
@@ -238,7 +216,7 @@ function FlowStep({
       <IconTile
         icon={icon}
         size="lg"
-        className={`relative size-14 rounded-full ring-2 ring-current/20 ${style.tone}`}
+        className="relative size-14 rounded-full bg-accent-100 text-accent-700 ring-2 ring-accent-200"
       />
       <div className="min-w-0 pt-1 lg:mt-4 lg:pt-0">
         <p className="text-caption font-bold text-ink-subtle">
@@ -246,11 +224,6 @@ function FlowStep({
         </p>
         <h3 className="mt-1 text-heading">{title}</h3>
         <p className="mt-1 text-label text-ink-muted">{children}</p>
-        <span
-          className={`mt-3 inline-flex h-6 items-center rounded-pill px-2.5 text-overline ${style.chip}`}
-        >
-          {style.label}
-        </span>
       </div>
     </li>
   );
