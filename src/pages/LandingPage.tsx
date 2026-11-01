@@ -1,12 +1,9 @@
 import {
   ArrowRight,
   CircleCheck,
-  Gamepad2,
   MonitorPlay,
   PenLine,
-  QrCode,
   ShieldCheck,
-  Sparkles,
   Tv,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -18,7 +15,6 @@ import { TypeIcon } from "@/entities/submission/ui/TypeIcon";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { IconTile, LogoMark } from "@/shared/components";
 import { to } from "@/shared/config/routes";
-import { cn } from "@/shared/lib/utils";
 import { EventArt, PosterArt, StoryArt } from "@/widgets/home/KindArt";
 import { TvSample } from "@/widgets/home/TvSample";
 import { SiteFooter } from "@/widgets/layout/SiteFooter";
@@ -133,49 +129,20 @@ export function LandingPage() {
           <h2 id="flow" className="text-[1.75rem] font-black tracking-[-0.03em]">
             올리면 이렇게 돼요
           </h2>
-          <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <FlowStep icon={PenLine} title="올리기">
+          <ol className="flex flex-col lg:flex-row">
+            <FlowStep step={1} when="올릴 때" icon={PenLine} title="올리기">
               쓰는 동안 자동 저장
             </FlowStep>
-            <FlowStep icon={ShieldCheck} title="하우스 관리자 심사">
+            <FlowStep step={2} when="올린 뒤" icon={ShieldCheck} title="관리자 심사">
               반려되면 사유를 알려 드려요
             </FlowStep>
-            <FlowStep icon={MonitorPlay} title="TV에 게시" highlighted>
+            <FlowStep step={3} when="게시 기간 동안" icon={MonitorPlay} title="TV에 게시">
               여러 TV에서 번갈아 나와요
             </FlowStep>
-            <FlowStep icon={CircleCheck} title="저절로 내려감">
+            <FlowStep step={4} when="끝나는 날" icon={CircleCheck} title="저절로 내려감" last>
               직접 뗄 필요 없어요
             </FlowStep>
           </ol>
-        </section>
-
-        <section
-          aria-labelledby="play"
-          className="flex flex-wrap items-center gap-x-6 gap-y-5 rounded-block bg-accent-100 px-6 py-7 sm:px-8"
-        >
-          <IconTile icon={QrCode} size="lg" className="bg-accent text-accent-on" />
-          <div className="min-w-0 flex-[1_1_280px]">
-            <h2 id="play" className="text-heading text-accent-800">
-              TV 앞에서는 QR로 참여
-            </h2>
-            <p className="mt-1 text-body text-accent-800/85">
-              폰으로 찍으면 바로 열려요. 답을 내거나 참가할 때만 로그인해요.
-            </p>
-          </div>
-          <ul className="flex flex-wrap gap-2">
-            {[
-              { icon: Sparkles, label: "오늘의 퀴즈" },
-              { icon: Gamepad2, label: "클릭 배틀" },
-            ].map(({ icon: Icon, label }) => (
-              <li
-                key={label}
-                className="inline-flex h-9 items-center gap-1.5 rounded-pill bg-surface px-3.5 text-label font-semibold text-accent-800"
-              >
-                <Icon size={16} aria-hidden="true" />
-                {label}
-              </li>
-            ))}
-          </ul>
         </section>
       </main>
 
@@ -210,29 +177,45 @@ function KindCard({
   );
 }
 
+/**
+ * 진행 순서 한 단계. 단계 번호와 "언제"를 위에 두고, 다음 단계까지 선으로 잇는다.
+ * 넓은 화면은 가로로, 좁은 화면은 세로로 이어진다. 모든 단계가 같은 색이다.
+ */
 function FlowStep({
+  step,
+  when,
   icon,
   title,
-  highlighted = false,
+  last = false,
   children,
 }: {
+  step: number;
+  when: string;
   icon: LucideIcon;
   title: string;
-  highlighted?: boolean;
+  last?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <li className="flex flex-col gap-3">
+    <li className="relative flex flex-1 gap-4 pb-7 last:pb-0 lg:flex-col lg:gap-3 lg:pb-0">
+      {!last && (
+        <span
+          aria-hidden="true"
+          className="absolute top-12 bottom-0 left-6 w-0.5 bg-line lg:top-6 lg:right-0 lg:bottom-auto lg:left-14 lg:h-0.5 lg:w-auto"
+        />
+      )}
       <IconTile
         icon={icon}
         size="lg"
-        className={cn(
-          "rounded-full",
-          highlighted ? "bg-accent text-accent-on" : "bg-surface-muted text-ink",
-        )}
+        className="relative rounded-full bg-surface text-ink ring-2 ring-line"
       />
-      <h3 className="text-subhead">{title}</h3>
-      <p className="-mt-2 text-label text-ink-muted">{children}</p>
+      <div className="min-w-0 pt-1 lg:pt-0 lg:pr-6">
+        <p className="text-caption font-bold text-ink-subtle">
+          {step} · {when}
+        </p>
+        <h3 className="mt-0.5 text-subhead">{title}</h3>
+        <p className="mt-0.5 text-label text-ink-muted">{children}</p>
+      </div>
     </li>
   );
 }

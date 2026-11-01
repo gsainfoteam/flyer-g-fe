@@ -79,15 +79,23 @@ function PosterShape({
   );
 }
 
-/** 이벤트 배너: 생일 축하 배너 한 장. 실명 대신 별명을 쓴다. */
+/**
+ * 이벤트 배너: 생일 축하 배너 한 장. 뒤에 다른 배너가 한 장 더 있어 여러 건이
+ * 돌아간다는 느낌만 준다(뒤 배너는 거의 가려진다). 실명 대신 별명을 쓴다.
+ */
 export function EventArt() {
   return (
     <ArtArea tint="bg-type-event-subtle">
       <Banner
+        tag="합격 축하"
+        headline="모두 합격 축하해"
+        className="absolute top-6 left-1/2 w-[72%] -translate-x-[42%] rotate-[5deg] opacity-60"
+      />
+      <Banner
         tag="생일 축하"
         headline="포포야 생일축하해"
         sender="🌮🌮🌮"
-        className="absolute top-10 left-1/2 w-[78%] -translate-x-1/2 -rotate-[2deg] shadow-[0_12px_28px_rgb(174_24_0/0.25)]"
+        className="absolute top-11 left-1/2 w-[78%] -translate-x-1/2 -rotate-[2deg] shadow-[0_12px_28px_rgb(174_24_0/0.25)]"
       />
     </ArtArea>
   );
