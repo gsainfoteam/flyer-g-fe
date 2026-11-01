@@ -158,6 +158,13 @@ export function createHttpWidgetRepository({
       return fetchOpenMeteoWeather(new Date(), signal);
     },
 
+    async getLocalCafeteria(signal) {
+      // 같은 도메인의 Pages 함수. Vite 개발 서버에는 없어 index.html이 오므로 JSON만 받는다.
+      const response = await fetch("/api/cafeteria", { signal });
+      const isJson = response.headers.get("Content-Type")?.includes("application/json");
+      return response.ok && isJson ? ((await response.json()) as unknown) : null;
+    },
+
     async getSettings(deviceId, signal) {
       try {
         return parseWidgetSettings(

@@ -36,6 +36,8 @@ export const queryKeys = {
     widgets: (deviceId: string) => ["displays", "widgets", deviceId] as const,
     /** 서버가 날씨를 주지 않을 때 TV가 직접 받는 날씨. 기기와 무관하다. */
     localWeather: () => ["displays", "local-weather"] as const,
+    /** 같은 도메인 함수가 읽은 이번 주 학식. 기기와 무관하다. */
+    localCafeteria: () => ["displays", "local-cafeteria"] as const,
   },
   widgetSettings: {
     detail: (deviceId: string) => ["widget-settings", deviceId] as const,
