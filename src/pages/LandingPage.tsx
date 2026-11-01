@@ -18,12 +18,9 @@ import { TypeIcon } from "@/entities/submission/ui/TypeIcon";
 import { useAuth } from "@/features/auth/model/auth-context";
 import { IconTile, LogoMark } from "@/shared/components";
 import { to } from "@/shared/config/routes";
-import {
-  SERVICE_CONTACT_EMAIL,
-  SERVICE_OPERATOR,
-} from "@/shared/config/service-info";
 import { cn } from "@/shared/lib/utils";
 import { TvSample } from "@/widgets/home/TvSample";
+import { SiteFooter } from "@/widgets/layout/SiteFooter";
 
 /**
  * 로그인 전 첫 화면 (기획 4-0).
@@ -181,10 +178,8 @@ export function LandingPage() {
         </section>
       </main>
 
-      <footer className="mx-auto flex max-w-[1200px] flex-wrap gap-x-6 gap-y-1 border-t border-line px-4 py-6 text-caption text-ink-subtle sm:px-8">
-        <span>전단지 · {SERVICE_OPERATOR}</span>
-        <span>문의 {SERVICE_CONTACT_EMAIL}</span>
-      </footer>
+      {/* 다른 화면과 같은 바닥(약관·개인정보·문의). */}
+      <SiteFooter />
     </div>
   );
 }

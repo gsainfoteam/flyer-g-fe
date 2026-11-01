@@ -13,7 +13,7 @@ import wingSurvival from "./samples/wing-survival.webp";
  * 소개 화면의 TV 모습. 예시 데이터로 그린 장면이 실제 TV처럼 돌아간다(실제 편성이
  * 아니다). (기획 3-1)
  *
- * 장면: 포스터 크게 → 포스터 모아 보기(띠가 흐름) → 소식 제보 → 이벤트. 장면이 바뀔
+ * 장면: 포스터 크게 → 포스터 모아 보기(띠가 흐름) → 소식 제보. 장면이 바뀔
  * 때는 짧은 페이드 하나만 쓰고, 정보줄의 진행 막대가 다음 장면까지 남은 시간을
  * 보여 준다. 틀(머리 줄·정보줄)은 그대로 두고 안쪽만 바뀐다.
  *
@@ -41,13 +41,12 @@ const POSTERS: SamplePoster[] = [
   { src: magicShop, ratio: 1280 / 1707 },
 ];
 
-type SceneKey = "spotlight" | "wall" | "story" | "event";
+type SceneKey = "spotlight" | "wall" | "story";
 
 const SCENES: { key: SceneKey; label: string; position: string }[] = [
   { key: "spotlight", label: "포스터", position: "포스터 1 / 5" },
   { key: "wall", label: "모아 보기", position: "모아 보기 1 / 2" },
   { key: "story", label: "소식 제보", position: "제보 1–2 / 7" },
-  { key: "event", label: "이벤트", position: "이벤트 1 / 2" },
 ];
 
 function prefersReducedMotion(): boolean {
@@ -103,7 +102,6 @@ export function TvSample() {
                 {scene.key === "spotlight" && <SpotlightScene />}
                 {scene.key === "wall" && <WallScene />}
                 {scene.key === "story" && <StoryScene />}
-                {scene.key === "event" && <EventScene />}
               </div>
             </div>
             <InfoBar nextLabel={next.label} index={index} playing={playing} />
@@ -231,14 +229,6 @@ function SpotlightScene() {
         <p className="mt-[0.8cqw] text-[1.8cqw] text-hero-muted">
           개발자 · 디자이너 모집 · 배우고 싶은 분도 환영
         </p>
-        <div className="mt-[2cqw] flex items-center gap-[1.4cqw]">
-          <QrMark className="size-[8cqw]" />
-          <span className="text-[1.5cqw] font-bold">
-            폰으로 찍으면
-            <br />
-            자세히 보기
-          </span>
-        </div>
       </div>
     </div>
   );
@@ -259,7 +249,7 @@ function WallScene() {
 
 function StoryScene() {
   return (
-    <SceneCard tag="소식 제보" note="이름 없이 전하는 기숙사 소식" qr="폰으로 제보하기">
+    <SceneCard tag="소식 제보" note="이름 없이 전하는 기숙사 소식">
       <div className="grid h-full grid-cols-2 gap-[1.6cqw]">
         <StoryCard number={128} tag="칭찬">
           B동 3층 세탁실 건조기 2번이 고쳐졌어요! 고쳐 주신 분 감사합니다.
@@ -294,67 +284,25 @@ function StoryCard({
   );
 }
 
-function EventScene() {
-  return (
-    <SceneCard tag="생일 축하" note="10월 31일 하루" qr="나도 올리기">
-      <div className="flex h-full flex-col justify-center gap-[1.4cqw]">
-        <p className="text-[5cqw] leading-[1.15] font-extrabold tracking-[-0.035em]">
-          지민아, 생일 축하해
-        </p>
-        <p className="text-[2.4cqw] leading-[1.4] font-bold">
-          스물한 살 생일 축하해! 오늘 하루는 네가 주인공
-        </p>
-        <p className="text-[1.7cqw] text-hero-muted">3층 친구들이</p>
-      </div>
-    </SceneCard>
-  );
-}
-
-/** 카드 틀(PR #36): 빨간 말머리 + 보조 문구, 오른쪽에 QR */
+/** 카드 틀(PR #36): 빨간 말머리 + 보조 문구 */
 function SceneCard({
   tag,
   note,
-  qr,
   children,
 }: {
   tag: string;
   note: string;
-  qr: string;
   children: ReactNode;
 }) {
   return (
-    <div className="flex h-full gap-[3cqw] rounded-[1.25cqw] bg-hero-raised/60 px-[3.6cqw] py-[2.6cqw]">
-      <div className="flex min-w-0 flex-1 flex-col gap-[1.4cqw]">
-        <div className="flex items-center gap-[1cqw]">
-          <span className="rounded-pill bg-accent px-[1.3cqw] py-[0.45cqw] text-[1.45cqw] font-bold text-accent-on">
-            {tag}
-          </span>
-          <span className="text-[1.6cqw] text-hero-muted">{note}</span>
-        </div>
-        <div className="min-h-0 flex-1">{children}</div>
+    <div className="flex h-full flex-col gap-[1.4cqw] rounded-[1.25cqw] bg-hero-raised/60 px-[3.6cqw] py-[2.6cqw]">
+      <div className="flex items-center gap-[1cqw]">
+        <span className="rounded-pill bg-accent px-[1.3cqw] py-[0.45cqw] text-[1.45cqw] font-bold text-accent-on">
+          {tag}
+        </span>
+        <span className="text-[1.6cqw] text-hero-muted">{note}</span>
       </div>
-      <div className="flex flex-none flex-col items-center justify-center gap-[1cqw]">
-        <QrMark className="size-[11cqw]" />
-        <p className="text-[1.6cqw] font-extrabold">{qr}</p>
-      </div>
-    </div>
-  );
-}
-
-/** QR 자리. 소개 화면은 실제 주소를 싣지 않으므로 모양만 그린다. */
-function QrMark({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn(
-        "grid grid-cols-5 grid-rows-5 gap-[6%] rounded-[0.3cqw] bg-white p-[8%]",
-        className,
-      )}
-    >
-      {[1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1].map(
-        (on, i) => (
-          <span key={i} className={on ? "bg-stage" : ""} />
-        ),
-      )}
+      <div className="min-h-0 flex-1">{children}</div>
     </div>
   );
 }
