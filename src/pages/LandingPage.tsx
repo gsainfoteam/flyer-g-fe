@@ -127,22 +127,46 @@ export function LandingPage() {
         </section>
 
         <section aria-labelledby="flow" className="flex flex-col gap-7">
-          <h2 id="flow" className="text-[1.75rem] font-black tracking-[-0.03em]">
+          <h2
+            id="flow"
+            className="text-[1.75rem] font-black tracking-[-0.03em]"
+          >
             올리면 이렇게 돼요
           </h2>
           {/* 네 단계를 같은 폭의 칸에 놓아 화면 폭을 채우고, 원의 가운데끼리 선으로 잇는다. */}
           <ol className="grid rounded-block bg-surface px-5 py-7 ring-1 ring-line sm:px-8 lg:grid-cols-4 lg:px-6 lg:py-9">
-            <FlowStep step={1} when="올릴 때" icon={PenLine} title="올리기">
-              쓰는 동안 자동 저장
+            <FlowStep
+              step={1}
+              when="올릴 때"
+              icon={PenLine}
+              title="콘텐츠 올리기"
+            >
+              이미지, 문구 업로드
             </FlowStep>
-            <FlowStep step={2} when="올린 뒤" icon={ShieldCheck} title="관리자 심사">
-              반려되면 사유를 알려 드려요
+            <FlowStep
+              step={2}
+              when="올린 뒤"
+              icon={ShieldCheck}
+              title="관리자 심사"
+            >
+              반려 시 사유 확인
             </FlowStep>
-            <FlowStep step={3} when="게시 기간 동안" icon={MonitorPlay} title="TV에 게시">
-              여러 TV에서 번갈아 나와요
+            <FlowStep
+              step={3}
+              when="게시 기간"
+              icon={MonitorPlay}
+              title="TV에 게시"
+            >
+              기숙사 TV 화면에 노출
             </FlowStep>
-            <FlowStep step={4} when="끝나는 날" icon={CircleCheck} title="저절로 내려감" last>
-              직접 뗄 필요 없어요
+            <FlowStep
+              step={4}
+              when="끝나는 날"
+              icon={CircleCheck}
+              title="자동 삭제"
+              last
+            >
+              게시 종료 시 자동 삭제
             </FlowStep>
           </ol>
         </section>
