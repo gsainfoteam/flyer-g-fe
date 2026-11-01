@@ -4,14 +4,17 @@
  * `paths`는 route 정의에 쓰는 패턴, `to`는 실제 이동에 쓰는 생성기다.
  */
 export const paths = {
-  dashboard: "/",
-  studio: "/studio",
-  submissions: "/submissions",
-  submissionDetail: "/submissions/:submissionId",
-  reviews: "/reviews",
-  reviewDetail: "/reviews/:submissionId",
-  displays: "/displays",
-  users: "/users",
+  /** 로그인 전에는 소개, 로그인하면 역할별 첫 화면 */
+  home: "/",
+  newPoster: "/new/poster",
+  mine: "/mine",
+  mineDetail: "/mine/:submissionId",
+  /** 하우스 관리자·운영자의 전체 컨텐츠 목록 */
+  contents: "/contents",
+  review: "/review",
+  reviewDetail: "/review/:submissionId",
+  tv: "/tv",
+  roleSettings: "/settings/roles",
   display: "/display/:deviceId",
   /** 폰 참여 화면. 로그인 없이 TV의 QR로 들어온다. */
   playQuiz: "/play/quiz",
@@ -24,28 +27,46 @@ export const paths = {
   authCallback: "/auth/callback",
 } as const;
 
+/**
+ * 개편 전 경로. 공유된 링크와 북마크가 깨지지 않게 새 경로로 보낸다. (Phase 09)
+ */
+export const legacyPaths = {
+  studio: "/studio",
+  submissions: "/submissions",
+  submissionDetail: "/submissions/:submissionId",
+  reviews: "/reviews",
+  reviewDetail: "/reviews/:submissionId",
+  displays: "/displays",
+  users: "/users",
+} as const;
+
+/** 내 컨텐츠 화면의 보기(`?view=`). 전체는 query를 붙이지 않는다. */
+export type MineView = "active" | "past";
+
+/** 상태 탭이 있는 목록 경로. "all" 탭은 query를 붙이지 않는다. */
+function withStatus(path: string, statusGroupKey?: string): string {
+  return statusGroupKey && statusGroupKey !== "all"
+    ? `${path}?status=${encodeURIComponent(statusGroupKey)}`
+    : path;
+}
+
 export const to = {
-  dashboard: () => "/",
-  studio: () => "/studio",
-  studioEdit: (submissionId: string) =>
-    `/studio?submissionId=${encodeURIComponent(submissionId)}`,
-  /** `scope: "all"`은 관리자의 전체 신청 목록이다. 기본은 내 신청. */
-  submissions: (statusGroupKey?: string, options?: { scope?: "all" }) => {
-    const params = new URLSearchParams();
-    if (options?.scope === "all") params.set("scope", "all");
-    if (statusGroupKey && statusGroupKey !== "all") {
-      params.set("status", statusGroupKey);
-    }
-    const query = params.toString();
-    return query ? `/submissions?${query}` : "/submissions";
-  },
+  home: () => "/",
+  newPoster: () => "/new/poster",
+  /** 반려·초안을 고쳐서 다시 내는 포스터 화면 */
+  editPoster: (submissionId: string) =>
+    `/new/poster?submissionId=${encodeURIComponent(submissionId)}`,
+  /** 내 컨텐츠의 보기. 없으면 전체 */
+  mine: (view?: MineView) => (view ? `/mine?view=${view}` : "/mine"),
+  contents: (statusGroupKey?: string) =>
+    withStatus("/contents", statusGroupKey),
   submissionDetail: (submissionId: string) =>
-    `/submissions/${encodeURIComponent(submissionId)}`,
-  reviews: () => "/reviews",
+    `/mine/${encodeURIComponent(submissionId)}`,
+  review: () => "/review",
   reviewDetail: (submissionId: string) =>
-    `/reviews/${encodeURIComponent(submissionId)}`,
-  displays: () => "/displays",
-  users: () => "/users",
+    `/review/${encodeURIComponent(submissionId)}`,
+  tv: () => "/tv",
+  roleSettings: () => "/settings/roles",
   display: (deviceId: string, options?: { preview?: boolean }) =>
     `/display/${encodeURIComponent(deviceId)}${options?.preview ? "?preview=1" : ""}`,
   playQuiz: (dateKey: string) => `/play/quiz?d=${encodeURIComponent(dateKey)}`,

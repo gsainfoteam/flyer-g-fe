@@ -27,49 +27,55 @@ async function expectNoViolations(container: HTMLElement) {
 }
 
 describe("접근성 자동 검사", () => {
-  it("대시보드 (게시자)", async () => {
+  it("소개 화면 (로그인 전)", async () => {
+    const { container } = renderRoute("/", { role: null });
+    await screen.findByRole("heading", { name: /띄우고 싶은 게/ });
+    await expectNoViolations(container);
+  });
+
+  it("첫 화면 (사용자)", async () => {
     const { container } = renderRoute("/", { role: "SUBMITTER" });
-    await screen.findByRole("heading", { name: /진행 중인 신청/ });
+    await screen.findByRole("heading", { name: "내 컨텐츠" });
     await screen.findByText(/게시 시작/);
     await expectNoViolations(container);
   });
 
-  it("대시보드 (관리자)", async () => {
+  it("첫 화면 (하우스 관리자)", async () => {
     const { container } = renderRoute("/", { role: "REVIEWER" });
-    await screen.findByRole("heading", { name: /검토 대기/ });
-    await screen.findByText("게시 중단");
+    await screen.findByRole("heading", { name: "오늘 TV에서" });
+    await screen.findByText(/TV 켜짐/);
     await expectNoViolations(container);
   });
 
-  it("대시보드 (운영자)", async () => {
+  it("첫 화면 (운영자)", async () => {
     const { container } = renderRoute("/", { role: "SUPER_ADMIN" });
-    await screen.findByRole("heading", { name: "게시판 현황" });
-    await screen.findByText(/한 바퀴/);
+    await screen.findByRole("heading", { name: "TV 지금" });
+    await screen.findByText(/B동 로비 꺼짐/);
     await expectNoViolations(container);
   });
 
-  it("신청 목록", async () => {
-    const { container } = renderRoute("/submissions", { role: "SUBMITTER" });
-    await screen.findByText(/신청 \d+건/);
+  it("내 컨텐츠", async () => {
+    const { container } = renderRoute("/mine", { role: "SUBMITTER" });
+    await screen.findByRole("table");
     await expectNoViolations(container);
   });
 
   it("신청 상세", async () => {
-    const { container } = renderRoute("/submissions/notice-901", {
+    const { container } = renderRoute("/mine/notice-901", {
       role: "SUBMITTER",
     });
-    await screen.findByText("처리 이력");
+    await screen.findByRole("heading", { name: "진행" });
     await expectNoViolations(container);
   });
 
   it("승인 대기 목록", async () => {
-    const { container } = renderRoute("/reviews", { role: "REVIEWER" });
+    const { container } = renderRoute("/review", { role: "REVIEWER" });
     await screen.findByText(/승인 대기 \d+건/);
     await expectNoViolations(container);
   });
 
   it("검토 상세", async () => {
-    const { container } = renderRoute("/reviews/notice-003", {
+    const { container } = renderRoute("/review/notice-003", {
       role: "REVIEWER",
     });
     await screen.findByRole("button", { name: "승인" });
@@ -77,19 +83,19 @@ describe("접근성 자동 검사", () => {
   });
 
   it("기기 관리", async () => {
-    const { container } = renderRoute("/displays", { role: "SUPER_ADMIN" });
+    const { container } = renderRoute("/tv", { role: "SUPER_ADMIN" });
     await screen.findByRole("heading", { name: /디스플레이 기기/ });
     await expectNoViolations(container);
   });
 
   it("사용자 권한", async () => {
-    const { container } = renderRoute("/users", { role: "SUPER_ADMIN" });
+    const { container } = renderRoute("/settings/roles", { role: "SUPER_ADMIN" });
     await screen.findByText(/권한 있는 사용자 \d+명/);
     await expectNoViolations(container);
   });
 
   it("로그인", async () => {
-    const { container } = renderRoute("/submissions", { role: null });
+    const { container } = renderRoute("/mine", { role: null });
     await screen.findByRole("button", { name: /인포팀 계정으로 로그인/ });
     await expectNoViolations(container);
   });

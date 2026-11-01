@@ -40,7 +40,7 @@ export function AuthCallbackPage() {
   if (!hasResult) {
     return (
       <Navigate
-        to={state.status === "authenticated" ? to.dashboard() : to.login()}
+        to={state.status === "authenticated" ? to.home() : to.login()}
         replace
       />
     );

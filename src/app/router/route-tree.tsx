@@ -11,7 +11,12 @@ import { PlayLayout } from "@/app/layouts/PlayLayout";
 import { StudioLayout } from "@/app/layouts/StudioLayout";
 import { paths } from "@/shared/config/routes";
 import type { RouteHandle } from "@/app/router/use-document-title";
-import { RequireRole, RequireSession } from "@/features/auth/ui/guards";
+import { legacyRoutes } from "@/app/router/legacy-redirects";
+import {
+  RequireRole,
+  RequireSession,
+  SessionOrFallback,
+} from "@/features/auth/ui/guards";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
@@ -38,7 +43,14 @@ function lazyPage(
 const dashboardPage = lazyPage(() =>
   import("@/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
 );
-const submissionsPage = lazyPage(() =>
+const landingPage = lazyPage(
+  () => import("@/pages/LandingPage").then((m) => ({ default: m.LandingPage })),
+  null,
+);
+const minePage = lazyPage(() =>
+  import("@/pages/MinePage").then((m) => ({ default: m.MinePage })),
+);
+const contentsPage = lazyPage(() =>
   import("@/pages/SubmissionsPage").then((m) => ({
     default: m.SubmissionsPage,
   })),
@@ -138,6 +150,21 @@ export const routeTree = [
         handle: title("로그인"),
       },
 
+      // 개편 전 주소는 새 주소로 보낸다.
+      ...legacyRoutes,
+
+      // 첫 화면. 로그인 전에는 소개, 로그인하면 역할별 홈.
+      {
+        path: paths.home,
+        element: <SessionOrFallback fallback={landingPage} />,
+        children: [
+          {
+            element: <AdminLayout />,
+            children: [{ index: true, element: dashboardPage }],
+          },
+        ],
+      },
+
       // 세션이 있어야 볼 수 있는 화면
       {
         element: <RequireSession />,
@@ -146,54 +173,58 @@ export const routeTree = [
             element: <StudioLayout />,
             children: [
               {
-                path: paths.studio,
+                path: paths.newPoster,
                 element: studioPage,
-                handle: title("게시 신청"),
+                handle: title("포스터 올리기"),
               },
             ],
           },
           {
             element: <AdminLayout />,
             children: [
-              { path: paths.dashboard, element: dashboardPage },
               {
-                path: paths.submissions,
-                element: submissionsPage,
-                handle: title("신청 목록"),
+                path: paths.mine,
+                element: minePage,
+                handle: title("내 컨텐츠"),
               },
               {
-                path: paths.submissionDetail,
+                path: paths.mineDetail,
                 element: submissionDetailPage,
-                handle: title("신청 상세"),
+                handle: title("컨텐츠 상세"),
               },
-              // 검토는 하우스 관리자와 운영자만 볼 수 있다.
+              // 심사와 전체 컨텐츠는 하우스 관리자와 운영자만 볼 수 있다.
               {
                 element: <RequireRole allow={["REVIEWER", "SUPER_ADMIN"]} />,
                 children: [
                   {
-                    path: paths.reviews,
+                    path: paths.review,
                     element: reviewsPage,
-                    handle: title("승인 대기"),
+                    handle: title("심사"),
                   },
                   {
                     path: paths.reviewDetail,
                     element: reviewDetailPage,
-                    handle: title("검토"),
+                    handle: title("심사"),
+                  },
+                  {
+                    path: paths.contents,
+                    element: contentsPage,
+                    handle: title("전체 컨텐츠"),
                   },
                 ],
               },
-              // 기기 관리와 사용자 권한은 운영자만 볼 수 있다.
+              // TV 관리와 설정은 운영자만 볼 수 있다.
               {
                 element: <RequireRole allow={["SUPER_ADMIN"]} />,
                 children: [
                   {
-                    path: paths.displays,
-                    handle: title("기기 관리"),
+                    path: paths.tv,
+                    handle: title("TV"),
                     element: devicesPage,
                   },
                   {
-                    path: paths.users,
-                    handle: title("사용자 권한"),
+                    path: paths.roleSettings,
+                    handle: title("권한 설정"),
                     element: usersPage,
                   },
                 ],

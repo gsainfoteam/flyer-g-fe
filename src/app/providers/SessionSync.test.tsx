@@ -29,7 +29,7 @@ describe("세션 동기화", () => {
         status: 401,
       });
     };
-    const { router } = renderRoute("/reviews", {
+    const { router } = renderRoute("/review", {
       role: "REVIEWER",
       repositories,
     });
@@ -37,32 +37,33 @@ describe("세션 동기화", () => {
     expect(
       await screen.findByText("로그인이 만료되었어요"),
     ).toBeInTheDocument();
-    expect(currentPath(router)).toBe("/login?returnTo=%2Freviews");
+    expect(currentPath(router)).toBe("/login?returnTo=%2Freview");
   });
 
   it("역할을 바꾸면 이전 사용자의 신청 목록이 남지 않는다", async () => {
     const user = userEvent.setup();
-    renderRoute("/submissions", { role: "REVIEWER" });
+    renderRoute("/mine", { role: "REVIEWER" });
 
     // 하우스 관리자 이수현은 하우스오피스 공지 한 건만 직접 신청했다.
     await screen.findByRole("main");
     const main = () => within(screen.getByRole("main"));
+    // 넓은 화면의 표와 좁은 화면의 목록이 함께 그려진다(CSS로 하나만 보인다).
     expect(
-      await main().findByText(/2026학년도 2학기 기숙사 디지털 게시판/),
+      (await main().findAllByText(/2026학년도 2학기 기숙사 디지털 게시판/))[0],
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "계정 메뉴" }));
     await user.click(
-      await screen.findByRole("menuitemradio", { name: "게시자" }),
+      await screen.findByRole("menuitemradio", { name: "사용자" }),
     );
 
     expect(
-      await main().findByText("슈퍼-피셜 신입 부원 모집"),
+      (await main().findAllByText("슈퍼-피셜 신입 부원 모집"))[0],
     ).toBeInTheDocument();
     await waitFor(() => {
       expect(
-        main().queryByText(/2026학년도 2학기 기숙사 디지털 게시판/),
-      ).toBeNull();
+        main().queryAllByText(/2026학년도 2학기 기숙사 디지털 게시판/),
+      ).toHaveLength(0);
     });
   });
 
@@ -94,13 +95,13 @@ describe("세션 동기화", () => {
       });
     };
 
-    renderRoute("/displays", { authAdapter, repositories });
+    renderRoute("/tv", { authAdapter, repositories });
 
     expect(
       await screen.findByText("이 화면을 볼 권한이 없어요"),
     ).toBeInTheDocument();
     const nav = within(screen.getByRole("navigation", { name: "주요 메뉴" }));
-    expect(nav.queryByRole("link", { name: "기기" })).toBeNull();
-    expect(nav.getByRole("link", { name: /승인 대기/ })).toBeInTheDocument();
+    expect(nav.queryByRole("link", { name: "TV" })).toBeNull();
+    expect(nav.getByRole("link", { name: /심사/ })).toBeInTheDocument();
   });
 });

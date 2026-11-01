@@ -6,13 +6,13 @@ import { currentPath, renderRoute } from "@/test/render-route";
 /** 승인 대기 목록 (명세 FR-REV-01) */
 describe("승인 대기 목록", () => {
   it("오래 기다린 순으로 보여주고 검토 상세로 연결한다", async () => {
-    renderRoute("/reviews", { role: "REVIEWER" });
+    renderRoute("/review", { role: "REVIEWER" });
 
     expect(await screen.findByText(/승인 대기 \d+건/)).toBeInTheDocument();
 
     const reviewLinks = screen.getAllByRole("link", { name: "검토" });
     expect(reviewLinks.length).toBeGreaterThan(0);
-    expect(reviewLinks[0]!.getAttribute("href")).toMatch(/^\/reviews\//);
+    expect(reviewLinks[0]!.getAttribute("href")).toMatch(/^\/review\//);
 
     // 가장 오래 기다린 건이 위에 온다.
     const waits = screen
@@ -22,7 +22,7 @@ describe("승인 대기 목록", () => {
   });
 
   it("누가 올렸는지와 주최를 함께 보여준다", async () => {
-    renderRoute("/reviews", { role: "REVIEWER" });
+    renderRoute("/review", { role: "REVIEWER" });
     await screen.findByText(/승인 대기 \d+건/);
 
     // notice-003: 최기자가 지스트신문 이름으로 올린 동아리 신청
@@ -33,22 +33,22 @@ describe("승인 대기 목록", () => {
 
   it("카테고리 필터는 서버가 거르고 URL에 남는다", async () => {
     const user = userEvent.setup();
-    const { router } = renderRoute("/reviews", { role: "REVIEWER" });
+    const { router } = renderRoute("/review", { role: "REVIEWER" });
     await screen.findByText(/승인 대기 \d+건/);
     const before = screen.getAllByRole("link", { name: "검토" }).length;
 
     await user.click(screen.getByRole("combobox", { name: "카테고리 필터" }));
     await user.click(await screen.findByRole("option", { name: "동아리" }));
 
-    expect(currentPath(router)).toBe("/reviews?category=club");
+    expect(currentPath(router)).toBe("/review?category=club");
     await screen.findByText("승인 대기 1건");
     const links = screen.getAllByRole("link", { name: "검토" });
     expect(links.length).toBeLessThan(before);
-    expect(links[0]).toHaveAttribute("href", "/reviews/notice-003");
+    expect(links[0]).toHaveAttribute("href", "/review/notice-003");
   });
 
   it("조건에 맞는 건이 없으면 필터 안내를 보여준다", async () => {
-    renderRoute("/reviews?category=performance", { role: "REVIEWER" });
+    renderRoute("/review?category=performance", { role: "REVIEWER" });
 
     expect(
       await screen.findByText("조건에 맞는 대기 건이 없어요"),

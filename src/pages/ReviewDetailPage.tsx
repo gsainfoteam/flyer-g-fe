@@ -72,12 +72,12 @@ export function ReviewDetailPage() {
           <div>
             <Button variant="ghost" size="sm" asChild className="-ml-2.5">
               {view.status === "PENDING_REVIEW" ? (
-                <Link to={to.reviews()}>
+                <Link to={to.review()}>
                   <ArrowLeft aria-hidden="true" />
                   승인 대기 목록으로
                 </Link>
               ) : (
-                <Link to={to.submissions(undefined, { scope: "all" })}>
+                <Link to={to.contents()}>
                   <ArrowLeft aria-hidden="true" />
                   전체 신청으로
                 </Link>
@@ -106,7 +106,7 @@ export function ReviewDetailPage() {
                   if (kind === "suspend") return;
                   const nextId = await nextPending(submissionId);
                   void navigate(
-                    nextId ? to.reviewDetail(nextId) : to.reviews(),
+                    nextId ? to.reviewDetail(nextId) : to.review(),
                   );
                 }}
               />

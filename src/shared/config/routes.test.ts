@@ -27,13 +27,19 @@ describe("safeReturnTo", () => {
 
 describe("to", () => {
   it("경로 조각을 안전하게 인코딩한다", () => {
-    expect(to.submissionDetail("a b/c")).toBe("/submissions/a%20b%2Fc");
+    expect(to.submissionDetail("a b/c")).toBe("/mine/a%20b%2Fc");
     expect(to.display("device 1")).toBe("/display/device%201");
   });
 
   it("복귀 경로가 홈이면 query를 붙이지 않는다", () => {
     expect(to.login("/")).toBe("/login");
     expect(to.login()).toBe("/login");
-    expect(to.login("/reviews")).toBe("/login?returnTo=%2Freviews");
+    expect(to.login("/review")).toBe("/login?returnTo=%2Freview");
+  });
+
+  it("목록의 전체 탭은 query를 붙이지 않는다", () => {
+    expect(to.mine()).toBe("/mine");
+    expect(to.mine("past")).toBe("/mine?view=past");
+    expect(to.contents("published")).toBe("/contents?status=published");
   });
 });

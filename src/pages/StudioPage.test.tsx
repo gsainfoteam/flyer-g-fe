@@ -58,7 +58,7 @@ function studioRepositories() {
 type User = ReturnType<typeof userEvent.setup>;
 
 async function openStudio(repositories?: Repositories) {
-  const view = renderRoute("/studio", {
+  const view = renderRoute("/new/poster", {
     role: "SUBMITTER",
     repositories,
     services: { assetUpload: uploadService() },
@@ -116,8 +116,12 @@ describe("게시 신청 스튜디오", () => {
     await user.type(screen.getByRole("textbox", { name: /장소/ }), "대강당");
 
     const preview = screen.getByRole("main");
+    // 미리보기는 그림(role="img")이라 안쪽 제목은 보조기기에서 숨겨져 있다.
     expect(
-      await within(preview).findByRole("heading", { name: "새 제목" }),
+      await within(preview).findByRole("heading", {
+        name: "새 제목",
+        hidden: true,
+      }),
     ).toBeInTheDocument();
     expect(within(preview).getByText("금요일 저녁 7시")).toBeInTheDocument();
     expect(within(preview).getByText("페이드인")).toBeInTheDocument();
@@ -303,7 +307,7 @@ describe("게시 신청 스튜디오", () => {
       },
     };
 
-    renderRoute("/studio", {
+    renderRoute("/new/poster", {
       role: "SUBMITTER",
       services: { assetUpload: flaky },
     });
@@ -401,7 +405,7 @@ describe("게시 신청 스튜디오", () => {
 
 describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () => {
   function openEdit(submissionId: string, repositories?: Repositories) {
-    return renderRoute(`/studio?submissionId=${submissionId}`, {
+    return renderRoute(`/new/poster?submissionId=${submissionId}`, {
       role: "SUBMITTER",
       repositories,
       services: { assetUpload: uploadService() },
@@ -562,13 +566,13 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
   });
 
   it("상세에서 넘어와 이미 받은 신청으로 열어도 카테고리가 유지된다", async () => {
-    const { router } = renderRoute("/submissions/notice-901", {
+    const { router } = renderRoute("/mine/notice-901", {
       role: "SUBMITTER",
       services: { assetUpload: uploadService() },
     });
     await screen.findByRole("heading", { name: "슈퍼-피셜 신입 부원 모집" });
 
-    await act(() => router.navigate("/studio?submissionId=notice-901"));
+    await act(() => router.navigate("/new/poster?submissionId=notice-901"));
 
     await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
     await waitFor(() => {
@@ -642,7 +646,7 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
         throw new Error("network down");
       },
     };
-    renderRoute("/studio?submissionId=notice-901", {
+    renderRoute("/new/poster?submissionId=notice-901", {
       role: "SUBMITTER",
       repositories,
       services: { assetUpload: failing },
@@ -671,7 +675,7 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
     await user.keyboard("{Escape}");
 
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe("/submissions/notice-901"),
+      expect(router.state.location.pathname).toBe("/mine/notice-901"),
     );
   });
 });

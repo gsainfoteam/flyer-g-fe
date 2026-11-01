@@ -26,10 +26,10 @@ describe("직접 URL 접근", () => {
 
 describe("세션 guard", () => {
   it("로그아웃 상태로 관리 화면에 오면 로그인으로 보낸다", async () => {
-    const { router } = renderRoute("/reviews");
+    const { router } = renderRoute("/review");
 
     await waitFor(() => {
-      expect(currentPath(router)).toBe("/login?returnTo=%2Freviews");
+      expect(currentPath(router)).toBe("/login?returnTo=%2Freview");
     });
     expect(
       await screen.findByRole("heading", {
@@ -39,14 +39,14 @@ describe("세션 guard", () => {
   });
 
   it("로그인하면 원래 가려던 경로로 돌아간다", async () => {
-    const { router } = renderRoute("/reviews");
+    const { router } = renderRoute("/review");
 
     await screen.findByRole("button", { name: "인포팀 계정으로 로그인" });
     await userEvent.click(
       screen.getByRole("button", { name: "인포팀 계정으로 로그인" }),
     );
 
-    await waitFor(() => expect(currentPath(router)).toBe("/reviews"));
+    await waitFor(() => expect(currentPath(router)).toBe("/review"));
     expect(
       await screen.findByRole("heading", { name: /승인 대기/ }),
     ).toBeInTheDocument();
@@ -60,7 +60,7 @@ describe("세션 guard", () => {
 
 describe("역할 기반 접근", () => {
   it("게시자는 검토 화면을 볼 수 없다", async () => {
-    renderRoute("/reviews", { role: "SUBMITTER" });
+    renderRoute("/review", { role: "SUBMITTER" });
 
     expect(
       await screen.findByRole("heading", {
@@ -73,14 +73,14 @@ describe("역할 기반 접근", () => {
   });
 
   it("하우스 관리자는 검토 화면을 볼 수 있다", async () => {
-    renderRoute("/reviews", { role: "REVIEWER" });
+    renderRoute("/review", { role: "REVIEWER" });
     expect(
       await screen.findByRole("heading", { name: /승인 대기/ }),
     ).toBeInTheDocument();
   });
 
-  it("기기 관리는 운영자만 볼 수 있다", async () => {
-    renderRoute("/displays", { role: "REVIEWER" });
+  it("TV 관리는 운영자만 볼 수 있다", async () => {
+    renderRoute("/tv", { role: "REVIEWER" });
     expect(
       await screen.findByRole("heading", {
         name: "이 화면을 볼 권한이 없어요",
@@ -93,10 +93,32 @@ describe("역할 기반 접근", () => {
     await screen.findByRole("navigation", { name: "주요 메뉴" });
 
     const nav = screen.getByRole("navigation", { name: "주요 메뉴" });
-    expect(nav).toHaveTextContent("내 신청");
-    expect(nav).not.toHaveTextContent("승인 대기");
-    expect(nav).not.toHaveTextContent("기기");
-    expect(nav).not.toHaveTextContent("권한");
+    expect(nav).toHaveTextContent("내 컨텐츠");
+    expect(nav).not.toHaveTextContent("심사");
+    expect(nav).not.toHaveTextContent("TV");
+    expect(nav).not.toHaveTextContent("설정");
+  });
+});
+
+describe("역할별 메뉴", () => {
+  it("운영자는 하우스 관리자 메뉴를 모두 갖고 TV와 설정을 더 가진다", async () => {
+    renderRoute("/", { role: "SUPER_ADMIN" });
+    const nav = await screen.findByRole("navigation", { name: "주요 메뉴" });
+
+    const labels = Array.from(nav.querySelectorAll("a")).map((link) =>
+      link.textContent?.replace(/\d+$/, ""),
+    );
+    expect(labels).toEqual(["홈", "심사", "전체 컨텐츠", "TV", "설정"]);
+  });
+
+  it("하우스 관리자는 TV와 설정 메뉴가 없다", async () => {
+    renderRoute("/", { role: "REVIEWER" });
+    const nav = await screen.findByRole("navigation", { name: "주요 메뉴" });
+
+    const labels = Array.from(nav.querySelectorAll("a")).map((link) =>
+      link.textContent?.replace(/\d+$/, ""),
+    );
+    expect(labels).toEqual(["홈", "심사", "전체 컨텐츠"]);
   });
 });
 
@@ -113,8 +135,8 @@ describe("셸 분리", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("게시 신청 화면도 관리 내비게이션을 쓰지 않는다", async () => {
-    renderRoute("/studio", { role: "SUBMITTER" });
+  it("포스터 올리기 화면도 관리 내비게이션을 쓰지 않는다", async () => {
+    renderRoute("/new/poster", { role: "SUBMITTER" });
     await screen.findByRole("heading", { name: "게시 신청" });
 
     expect(
@@ -132,7 +154,7 @@ describe("셸 분리", () => {
 
 describe("세션 종료", () => {
   it("로그아웃하면 관리 화면에서 로그인으로 돌아간다", async () => {
-    const { router } = renderRoute("/", { role: "REVIEWER" });
+    const { router } = renderRoute("/review", { role: "REVIEWER" });
     await screen.findByRole("navigation", { name: "주요 메뉴" });
 
     await userEvent.click(screen.getByRole("button", { name: "계정 메뉴" }));
@@ -146,18 +168,68 @@ describe("세션 종료", () => {
 
 describe("탭 제목", () => {
   it("화면마다 탭 제목이 다르다", async () => {
-    renderRoute("/reviews", { role: "REVIEWER" });
+    renderRoute("/review", { role: "REVIEWER" });
 
-    await waitFor(() => expect(document.title).toBe("승인 대기 · 전단지"));
+    await waitFor(() => expect(document.title).toBe("심사 · 전단지"));
   });
 });
 
 describe("권한 없음", () => {
   it("화면을 볼 수 있는 역할을 그 화면에 맞게 알린다", async () => {
-    renderRoute("/displays", { role: "REVIEWER" });
+    renderRoute("/tv", { role: "REVIEWER" });
 
     expect(
       await screen.findByText(/시스템 운영자에게만 열려 있는 화면이에요/),
     ).toBeInTheDocument();
+  });
+});
+
+describe("개편 전 주소", () => {
+  it("옛 목록 주소는 범위와 상태 탭을 지켜 새 주소로 간다", async () => {
+    const { router } = renderRoute("/submissions?scope=all&status=published", {
+      role: "REVIEWER",
+    });
+    await waitFor(() =>
+      expect(currentPath(router)).toBe("/contents?status=published"),
+    );
+  });
+
+  it("옛 내 신청 상태 탭은 내 컨텐츠의 보기로 바꾼다", async () => {
+    const { router } = renderRoute("/submissions?status=ended", {
+      role: "SUBMITTER",
+    });
+    await waitFor(() => expect(currentPath(router)).toBe("/mine?view=past"));
+  });
+
+  it("옛 심사 목록 주소는 분류 필터를 지킨다", async () => {
+    const { router } = renderRoute("/reviews?category=club", {
+      role: "REVIEWER",
+    });
+    await waitFor(() =>
+      expect(currentPath(router)).toBe("/review?category=club"),
+    );
+  });
+
+  it("옛 수정 주소는 고칠 신청을 그대로 연다", async () => {
+    const { router } = renderRoute("/studio?submissionId=notice-903", {
+      role: "SUBMITTER",
+    });
+    await waitFor(() =>
+      expect(currentPath(router)).toBe("/new/poster?submissionId=notice-903"),
+    );
+  });
+
+  it("옛 상세·검토·기기·권한 주소도 새 주소로 간다", async () => {
+    const cases = [
+      ["/submissions/notice-901", "/mine/notice-901"],
+      ["/reviews/notice-003", "/review/notice-003"],
+      ["/displays", "/tv"],
+      ["/users", "/settings/roles"],
+    ] as const;
+    for (const [from, target] of cases) {
+      const { router, unmount } = renderRoute(from, { role: "SUPER_ADMIN" });
+      await waitFor(() => expect(currentPath(router)).toBe(target));
+      unmount();
+    }
   });
 });

@@ -13,47 +13,58 @@ import { TEST_NOW, renderRoute } from "@/test/render-route";
  * - notice-903: SUSPENDED, 중단 사유 있음
  */
 describe("신청 상세", () => {
-  it("상태·기간·버전과 처리 이력을 보여준다", async () => {
-    renderRoute("/submissions/notice-901", { role: "SUBMITTER" });
+  it("상태·기간과 진행 기록을 보여준다", async () => {
+    renderRoute("/mine/notice-901", { role: "SUBMITTER" });
 
+    // TV 미리보기도 제목을 그리므로 화면 제목(h1)으로 찾는다.
     expect(
-      await screen.findByRole("heading", { name: "슈퍼-피셜 신입 부원 모집" }),
+      await screen.findByRole("heading", {
+        name: "슈퍼-피셜 신입 부원 모집",
+        level: 1,
+      }),
     ).toBeInTheDocument();
-    expect(screen.getByText("반려됨")).toBeInTheDocument();
-    expect(screen.getByText("게시 기간")).toBeInTheDocument();
+    expect(screen.getByText("기간")).toBeInTheDocument();
     // 처음 낸 일이 처리 이력의 시작이다.
     expect(screen.getByText("신청 · 정하윤")).toBeInTheDocument();
   });
 
-  it("반려 사유가 게시자에게 보인다", async () => {
-    renderRoute("/submissions/notice-901", { role: "SUBMITTER" });
+  it("반려 사유를 맨 위에 두고 진행 기록에도 남긴다", async () => {
+    renderRoute("/mine/notice-901", { role: "SUBMITTER" });
 
-    await screen.findByText("처리 이력");
-    expect(screen.getByText(/반려 · 이수현/)).toBeInTheDocument();
-    expect(screen.getByText(/정보 불일치/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/마감일이 다릅니다/),
-    ).toBeInTheDocument();
+    const reason = (
+      await screen.findByRole("heading", { name: "반려 · 정보 불일치" })
+    ).closest("section")!;
+    expect(within(reason).getByText(/마감일이 다릅니다/)).toBeInTheDocument();
+    expect(within(reason).getByText(/이수현/)).toBeInTheDocument();
+
+    const progress = screen
+      .getByRole("heading", { name: "진행" })
+      .closest("section")!;
+    expect(within(progress).getByText(/반려 · 이수현/)).toBeInTheDocument();
   });
 
   it("중단 사유가 게시자에게 보인다", async () => {
-    renderRoute("/submissions/notice-903", { role: "SUBMITTER" });
+    renderRoute("/mine/notice-903", { role: "SUBMITTER" });
 
-    await screen.findByText("처리 이력");
-    expect(screen.getByText(/게시 중단 · 이수현/)).toBeInTheDocument();
-    expect(screen.getByText(/안내를 잠시 내립니다/)).toBeInTheDocument();
+    const reason = (
+      await screen.findByRole("heading", { name: "게시 중단", level: 2 })
+    ).closest("section")!;
+    expect(within(reason).getByText(/안내를 잠시 내립니다/)).toBeInTheDocument();
   });
 
   it("Ziggle 원문 링크가 새 창과 안전한 rel로 열린다", async () => {
-    renderRoute("/submissions/notice-901", { role: "SUBMITTER" });
+    renderRoute("/mine/notice-901", { role: "SUBMITTER" });
 
-    const link = await screen.findByRole("link", { name: /원문 보기/ });
+    const info = (
+      await screen.findByRole("heading", { name: "신청 내용" })
+    ).closest("section")!;
+    const link = within(info).getByRole("link", { name: /ziggle\.gistory\.me/ });
     expect(link).toHaveAttribute("target", "_blank");
     expect(link.getAttribute("rel")).toContain("noreferrer");
   });
 
   it("없는 신청은 찾을 수 없음을 알린다", async () => {
-    renderRoute("/submissions/no-such-id", { role: "SUBMITTER" });
+    renderRoute("/mine/no-such-id", { role: "SUBMITTER" });
 
     const alert = await screen.findByRole("alert");
     expect(
@@ -62,12 +73,12 @@ describe("신청 상세", () => {
   });
 
   it("관리자가 남의 신청을 열면 게시자 버튼 대신 검토 화면으로 안내한다", async () => {
-    renderRoute("/submissions/notice-003", { role: "REVIEWER" });
+    renderRoute("/mine/notice-003", { role: "REVIEWER" });
 
     expect(
-      await screen.findByRole("link", { name: "검토 화면에서 보기" }),
-    ).toHaveAttribute("href", "/reviews/notice-003");
-    expect(screen.queryByRole("button", { name: "신청 취소하기" })).toBeNull();
+      await screen.findByRole("link", { name: "심사 화면에서 보기" }),
+    ).toHaveAttribute("href", "/review/notice-003");
+    expect(screen.queryByRole("button", { name: "신청 취소" })).toBeNull();
   });
 
   it("관리자가 자기 신청을 열면 수정·취소와 함께 검토 화면으로 갈 수 있다", async () => {
@@ -88,20 +99,20 @@ describe("신청 상세", () => {
       endAt: new Date(TEST_NOW.getTime() + 5 * 86_400_000),
       targetGroupIds: [],
     });
-    renderRoute(`/submissions/${own.id}`, { role: "REVIEWER", repositories });
+    renderRoute(`/mine/${own.id}`, { role: "REVIEWER", repositories });
 
     expect(
-      await screen.findByRole("link", { name: "검토 화면에서 보기" }),
-    ).toHaveAttribute("href", `/reviews/${own.id}`);
-    expect(screen.getByRole("link", { name: "수정하기" })).toBeInTheDocument();
+      await screen.findByRole("link", { name: "심사 화면에서 보기" }),
+    ).toHaveAttribute("href", `/review/${own.id}`);
+    expect(screen.getByRole("link", { name: "고치기" })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "신청 취소하기" }),
+      screen.getByRole("button", { name: "신청 취소" }),
     ).toBeInTheDocument();
   });
 
   it("게시자 화면에 내부 식별자를 드러내지 않는다", async () => {
-    renderRoute("/submissions/notice-901", { role: "SUBMITTER" });
-    await screen.findByText("게시 정보");
+    renderRoute("/mine/notice-901", { role: "SUBMITTER" });
+    await screen.findByRole("heading", { name: "신청 내용" });
 
     expect(screen.queryByText("신청 ID")).toBeNull();
     expect(screen.queryByText("신청 버전")).toBeNull();

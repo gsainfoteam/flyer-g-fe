@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link, Navigate, Outlet, useLocation } from "react-router";
 import { RETURN_TO_PARAM, to } from "@/shared/config/routes";
 import { ErrorState, LoadingState } from "@/shared/components";
@@ -46,6 +47,26 @@ export function RequireSession() {
   return <Outlet />;
 }
 
+/**
+ * 로그인했으면 안쪽 화면을, 아니면 `fallback`(소개 화면)을 그린다.
+ *
+ * 첫 화면(`/`)처럼 로그인 전에도 열리는 경로에 쓴다. 세션 확인이 실패하면 소개 화면을
+ * 보여 준다. 소개 화면의 시작 버튼이 로그인을 다시 시도한다.
+ */
+export function SessionOrFallback({ fallback }: { fallback: ReactNode }) {
+  const { state } = useAuth();
+
+  if (state.status === "initializing") {
+    return (
+      <div className="mx-auto max-w-content px-6 py-16 lg:px-10">
+        <LoadingState rows={3} label="로그인 상태를 확인하고 있어요." />
+      </div>
+    );
+  }
+  if (state.status !== "authenticated") return <>{fallback}</>;
+  return <Outlet />;
+}
+
 /** 특정 역할만 볼 수 있는 화면을 감싼다. `RequireSession` 안쪽에서 쓴다. */
 export function RequireRole({ allow }: { allow: readonly Role[] }) {
   const { state } = useAuth();
@@ -82,7 +103,7 @@ export function ForbiddenView({ allow }: { allow: readonly Role[] }) {
         문의해 주세요.
       </p>
       <Button variant="secondary" size="sm" asChild className="mt-1">
-        <Link to={to.dashboard()}>홈으로</Link>
+        <Link to={to.home()}>홈으로</Link>
       </Button>
     </div>
   );
