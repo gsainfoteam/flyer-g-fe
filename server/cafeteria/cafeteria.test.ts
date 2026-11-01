@@ -45,6 +45,12 @@ describe("식단표 PDF 읽기", () => {
     ]);
     const monday = days[0]!;
     expect(monday.meals.map((meal) => meal.type)).toEqual(["BREAKFAST", "LUNCH", "DINNER"]);
+    // PDF에는 시간이 없어 학교 안내의 운영 시간을 붙인다.
+    expect(monday.meals.map((meal) => meal.hours)).toEqual([
+      "08:00~09:00",
+      "11:30~13:30",
+      "17:00~19:00",
+    ]);
     expect(monday.meals[0]!.menus).toEqual([
       "백미밥",
       "우동장국",
