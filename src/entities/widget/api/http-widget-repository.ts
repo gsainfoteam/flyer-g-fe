@@ -5,6 +5,8 @@ import type { WidgetRepository } from "@/shared/api/repositories";
 import type { DeviceCredentials } from "@/shared/lib/device-credential";
 import { NO_WIDGETS, WIDGETS_UNSUPPORTED, toDeviceWidgets } from "../model/feed";
 import { fetchOpenMeteoWeather } from "./open-meteo";
+import { EMPTY_TV_SETTINGS, parseTvSettings } from "../model/tv-settings";
+import type { TvSettings } from "../model/tv-settings";
 import type { DeviceWidgets, DeviceWidgetsDto } from "../model/feed";
 import {
   defaultDeviceWidgetSettings,
@@ -32,6 +34,10 @@ export interface HttpWidgetRepositoryOptions {
   deviceClient: HttpClient;
   /** 관리 화면용 사용자 client */
   userClient: HttpClient;
+  /**
+   * 같은 도메인 함수(`/api/tv-settings`)에 로그인 토큰을 실어 보내는 client. 저장할 때 쓴다.
+   */
+  settingsClient: HttpClient;
   credentials: DeviceCredentials;
 }
 
@@ -110,9 +116,32 @@ export function previewWidgets(): DeviceWidgets {
 
 const notFound = (error: unknown) => isApiError(error) && error.status === 404;
 
+/**
+ * 저장된 TV 설정. 함수가 없는 곳(Vite 개발 서버)은 index.html이 오므로 JSON일 때만 읽고,
+ * 아니면 빈 설정이다.
+ */
+async function readTvSettings(signal?: AbortSignal): Promise<TvSettings> {
+  const response = await fetch("/api/tv-settings", { signal, cache: "no-store" });
+  const isJson = response.headers.get("Content-Type")?.includes("application/json");
+  return response.ok && isJson ? parseTvSettings(await response.json()) : EMPTY_TV_SETTINGS;
+}
+
+/** 저장된 기기 위젯 설정 → TV가 읽는 위젯 묶음 */
+function feedFromSettings(settings: TvSettings, deviceId: string): DeviceWidgets | null {
+  const dto = settings.devices[deviceId];
+  if (!dto) return null;
+  const device = toDeviceWidgetSettings(dto);
+  return toDeviceWidgets({
+    widgetsVersion: `tv-settings:${settings.updatedAt ?? "none"}`,
+    ratioPercent: device.ratioPercent,
+    widgets: settingsToSlotDtos(device.widgets),
+    weather: null,
+  });
+}
+
 export function createHttpWidgetRepository({
   deviceClient,
-  userClient,
+  settingsClient,
   credentials,
 }: HttpWidgetRepositoryOptions): WidgetRepository {
   const devicePath = (deviceId: string) =>
@@ -148,8 +177,12 @@ export function createHttpWidgetRepository({
         cache.set(deviceId, { etag, feed });
         return feed;
       } catch (error) {
-        // 서버에 위젯 API가 아직 없다. 포스터가 적을 때만 TV가 기본 위젯으로 채운다.
-        if (notFound(error)) return WIDGETS_UNSUPPORTED;
+        // 서버에 위젯 API가 아직 없다. 관리 화면에서 저장한 설정(KV)이 있으면 그것을,
+        // 없으면 포스터가 적을 때만 TV가 기본 위젯으로 채운다.
+        if (notFound(error)) {
+          const saved = await readTvSettings(signal).catch(() => EMPTY_TV_SETTINGS);
+          return feedFromSettings(saved, deviceId) ?? WIDGETS_UNSUPPORTED;
+        }
         throw error;
       }
     },
@@ -165,29 +198,37 @@ export function createHttpWidgetRepository({
       return response.ok && isJson ? ((await response.json()) as unknown) : null;
     },
 
+    getTvSettings(signal) {
+      return readTvSettings(signal);
+    },
+
+    async saveTimeSlots(rules, signal) {
+      return parseTvSettings(
+        await settingsClient.request({
+          method: "PUT",
+          path: "/api/tv-settings",
+          body: { timeSlots: rules },
+          signal,
+        }),
+      );
+    },
+
+    // 위젯 설정은 같은 도메인 함수(KV)에 기기별로 둔다. 저장한 적이 없으면 기본값이다.
     async getSettings(deviceId, signal) {
-      try {
-        return parseWidgetSettings(
-          await userClient.request({ path: `${devicePath(deviceId)}/widget-settings`, signal }),
-        );
-      } catch (error) {
-        throw notFound(error) ? widgetsUnsupported() : error;
-      }
+      const saved = (await readTvSettings(signal)).devices[deviceId];
+      return saved ? toDeviceWidgetSettings(saved) : defaultDeviceWidgetSettings();
     },
 
     async saveSettings(deviceId, settings: DeviceWidgetSettingsDto, signal) {
-      try {
-        return parseWidgetSettings(
-          await userClient.request({
-            method: "PUT",
-            path: `${devicePath(deviceId)}/widget-settings`,
-            body: settings,
-            signal,
-          }),
-        );
-      } catch (error) {
-        throw notFound(error) ? widgetsUnsupported() : error;
-      }
+      const saved = parseTvSettings(
+        await settingsClient.request({
+          method: "PUT",
+          path: "/api/tv-settings",
+          body: { devices: { [deviceId]: settings } },
+          signal,
+        }),
+      );
+      return toDeviceWidgetSettings(saved.devices[deviceId] ?? settings);
     },
   };
 }

@@ -50,6 +50,8 @@ import {
   toDeviceWidgetSettings,
 } from "@/entities/widget/model/settings";
 import type { DeviceWidgetSettingsDto } from "@/entities/widget/model/settings";
+import type { TimeSlotRule } from "@/entities/widget/model/operation";
+import type { TvSettings } from "@/entities/widget/model/tv-settings";
 import type { WidgetType } from "@/entities/widget/model/types";
 import { DEFAULT_LAYOUT_TYPE } from "@/entities/playlist/model/types";
 import type { Playlist } from "@/entities/playlist/model/types";
@@ -1299,6 +1301,14 @@ export function createMockRepositories(
   const widgetSettings = new Map<string, DeviceWidgetSettingsDto>();
   const widgetSettingsOf = (deviceId: string) =>
     widgetSettings.get(deviceId) ?? createDefaultWidgetSettings();
+  // 시간대 점유 규칙. 저장한 적이 없으면 null이고 TV는 코드의 기본 규칙을 쓴다.
+  let timeSlots: TimeSlotRule[] | null = null;
+  let settingsUpdatedAt: string | null = null;
+  const tvSettings = (): TvSettings => ({
+    devices: Object.fromEntries(widgetSettings),
+    timeSlots,
+    updatedAt: settingsUpdatedAt,
+  });
 
   const widgets: WidgetRepository = {
     async getLocalWeather(signal) {
@@ -1337,6 +1347,19 @@ export function createMockRepositories(
       });
     },
 
+    async getTvSettings(signal) {
+      await settle(signal);
+      return tvSettings();
+    },
+
+    async saveTimeSlots(rules, signal) {
+      await settle(signal);
+      requireSuperAdmin();
+      timeSlots = rules.map((rule) => ({ ...rule }));
+      settingsUpdatedAt = clock.now().toISOString();
+      return tvSettings();
+    },
+
     async getSettings(deviceId, signal) {
       await settle(signal);
       requireSuperAdmin();
@@ -1350,6 +1373,7 @@ export function createMockRepositories(
       findDevice(deviceId);
       const saved = toDeviceWidgetSettings(input);
       widgetSettings.set(deviceId, saved);
+      settingsUpdatedAt = clock.now().toISOString();
       return saved;
     },
   };

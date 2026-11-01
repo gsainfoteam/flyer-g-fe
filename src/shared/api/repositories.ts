@@ -18,6 +18,8 @@ import type {
   DeviceWidgetSettings,
   DeviceWidgetSettingsDto,
 } from "@/entities/widget/model/settings";
+import type { TimeSlotRule } from "@/entities/widget/model/operation";
+import type { TvSettings } from "@/entities/widget/model/tv-settings";
 import type {
   ImpressionStats,
   ImpressionStatsParams,
@@ -219,6 +221,13 @@ export interface WidgetRepository {
    * 주지 않을 때 쓴다. 함수가 없거나(로컬 개발) 실패하면 null.
    */
   getLocalCafeteria(signal?: AbortSignal): Promise<unknown>;
+  /**
+   * 관리 화면에서 바꾸는 TV 운영 설정(기기별 위젯·시간대 점유). 같은 도메인 함수
+   * (`/api/tv-settings`, Cloudflare KV)에서 읽는다. 누구나 읽는다(TV가 읽는다).
+   */
+  getTvSettings(signal?: AbortSignal): Promise<TvSettings>;
+  /** 시간대 점유 규칙 전체 교체. SUPER_ADMIN만. */
+  saveTimeSlots(rules: readonly TimeSlotRule[], signal?: AbortSignal): Promise<TvSettings>;
   /** 기기 위젯 설정. SUPER_ADMIN만. */
   getSettings(deviceId: string, signal?: AbortSignal): Promise<DeviceWidgetSettings>;
   /** 기기 위젯 설정 전체 교체. SUPER_ADMIN만. */

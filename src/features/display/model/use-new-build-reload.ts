@@ -10,7 +10,8 @@ import { useEffect } from "react";
  * 확인에 실패하면(오프라인, 개발 서버) 아무것도 하지 않는다. 오프라인에서
  * 새로고침하면 앱을 다시 받지 못해 화면이 죽는다.
  */
-const CHECK_INTERVAL_MS = 10 * 60 * 1000;
+// 운영 변경(시간대 등)이 몇 분 안에 TV에 닿도록 짧게 둔다. 작은 파일 하나라 부담이 없다.
+const CHECK_INTERVAL_MS = 2 * 60 * 1000;
 
 export async function fetchDeployedBuildId(
   signal?: AbortSignal,

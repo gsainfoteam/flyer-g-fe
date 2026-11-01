@@ -40,6 +40,8 @@ interface ConfirmActionDialogProps {
    * 오류 문구 표시는 호출부 책임이다. 여기서 오류를 삼키지 않도록 반드시 연결한다.
    */
   onError?: (error: unknown) => void;
+  /** 입력이 많은 dialog의 폭 등 */
+  className?: string;
 }
 
 export function ConfirmActionDialog({
@@ -54,6 +56,7 @@ export function ConfirmActionDialog({
   confirmDisabled = false,
   onConfirm,
   onError,
+  className,
 }: ConfirmActionDialogProps) {
   const [isPending, setIsPending] = useState(false);
 
@@ -79,7 +82,7 @@ export function ConfirmActionDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent>
+      <DialogContent className={className}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}

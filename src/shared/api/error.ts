@@ -145,6 +145,8 @@ export function toUserMessage(error: ApiError): string {
       return "관리자에게 받은 설정 링크로 이 화면을 열어 주세요.";
     case "DEVICE_UNAUTHORIZED":
       return "토큰이 재발급되었거나 사용하지 않는 기기예요. 관리자에게 새 설정 링크를 받아 주세요.";
+    case "KV_NOT_BOUND":
+      return "TV 설정 저장소(Cloudflare KV)가 아직 연결되지 않았어요. 관리자에게 문의해 주세요.";
     case "UPLOAD_FAILED":
       return "포스터를 올리지 못했습니다. 다시 시도해 주세요.";
     default:

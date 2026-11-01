@@ -172,6 +172,10 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
         {
           method,
           headers,
+          // 브라우저 HTTP 캐시를 거치지 않는다. 응답에 Cache-Control이 없어 브라우저가
+          // 스스로 재검증하면 304 뒤에 옛 본문(옛 serverTime)을 돌려줘, TV 시계와 시간대
+          // 판정이 새로고침 직전 시각에 멈춘다. 조건부 요청(ETag)은 화면이 직접 한다.
+          cache: "no-store",
           signal: deadline.signal,
           body:
             request.body === undefined

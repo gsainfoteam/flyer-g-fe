@@ -117,6 +117,14 @@ function createRepositories(
       createHttpWidgetRepository({
         deviceClient: createHttpClient({ baseUrl: env.apiBaseUrl! }),
         userClient: client,
+        // TV 운영 설정은 같은 도메인 함수(/api/tv-settings)에 둔다. 저장 권한 확인에 로그인
+        // 토큰을 싣는다.
+        settingsClient: createHttpClient({
+          baseUrl: window.location.origin,
+          ...(isHttpAuthAdapter(authAdapter)
+            ? { getAuthHeaders: authAdapter.getAuthHeaders }
+            : {}),
+        }),
         credentials: deviceCredentials,
       }),
   };

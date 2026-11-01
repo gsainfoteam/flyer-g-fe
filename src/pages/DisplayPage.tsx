@@ -13,6 +13,7 @@ import {
 } from "@/features/display";
 import { useRotation } from "@/features/display/model/use-rotation";
 import { useTimeSlot } from "@/features/display/model/use-time-slot";
+import { useTimeSlotRules } from "@/features/display/model/use-tv-settings";
 import {
   DEFAULT_LAYOUT_TYPE,
   PREVIEW_DEVICE_ID,
@@ -143,8 +144,10 @@ export function DisplayPage() {
   const [gameToken] = useState(() => deviceCredentials.get(deviceId));
   const canHostGame = socketBase === null || gameToken !== null;
   const previewGame = !canHostGame && deviceId === PREVIEW_DEVICE_ID;
-  // 시간대 점유(operation.ts). 이 시간에는 순환을 붙잡고 정한 위젯만 띄운다.
-  const timeSlot = useTimeSlot(serverTime);
+  // 시간대 점유(관리 화면 설정, 없으면 operation.ts). 이 시간에는 순환을 붙잡고 정한
+  // 위젯만 띄운다.
+  const timeSlotRules = useTimeSlotRules(deviceId);
+  const timeSlot = useTimeSlot(serverTime, timeSlotRules);
 
   // 포스터 한 바퀴가 짧으면(편성이 한두 장) 남는 시간을 위젯으로 채운다. 서버에 위젯
   // API가 아직 없으면 그때만 데이터가 필요 없는 기본 위젯을 쓴다. 포스터가 충분하면

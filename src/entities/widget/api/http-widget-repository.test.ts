@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/shared/api/error";
 import type { HttpClient, HttpRequest } from "@/shared/api/http-client";
 import { createDeviceCredentials } from "@/shared/lib/device-credential";
@@ -22,6 +22,18 @@ const PROPOSED_RESPONSE = {
   weather: { fetchedAt: "2026-10-31T02:40:00.000Z", temperature: 14.3, sky: "CLEAR" },
 };
 
+/** 같은 도메인 함수 `/api/tv-settings`의 응답을 흉내 낸다. */
+function stubTvSettings(body: unknown) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json(body)),
+  );
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 function client(respond: (request: HttpRequest) => unknown): HttpClient & { calls: HttpRequest[] } {
   const calls: HttpRequest[] = [];
   return {
@@ -42,10 +54,12 @@ function setup(deviceRespond: (request: HttpRequest) => unknown, userRespond = d
   credentials.save("dev-1", "fgd_token");
   const deviceClient = client(deviceRespond);
   const userClient = client(userRespond);
+  const settingsClient = client(userRespond);
   return {
     deviceClient,
     userClient,
-    repository: createHttpWidgetRepository({ deviceClient, userClient, credentials }),
+    settingsClient,
+    repository: createHttpWidgetRepository({ deviceClient, userClient, settingsClient, credentials }),
   };
 }
 
@@ -107,21 +121,52 @@ describe("createHttpWidgetRepository", () => {
     await expect(repository.getDeviceWidgets("dev-1")).resolves.toBe(before);
   });
 
-  it("설정은 비율과 종류마다 하나씩 읽고, 서버가 없으면 지원하지 않는다고 알린다", async () => {
-    const { repository, userClient } = setup(notFound, () => ({
-      ratioPercent: 80,
-      widgets: [{ type: "WEATHER", enabled: false, durationSeconds: 10, params: {} }],
-    }));
+  it("설정은 같은 도메인 함수(KV)에서 읽고, 저장한 적 없으면 기본값이다", async () => {
+    stubTvSettings({
+      devices: {
+        "dev-1": {
+          ratioPercent: 80,
+          widgets: [{ type: "WEATHER", enabled: false, durationSeconds: 10, params: {} }],
+        },
+      },
+    });
+    const { repository } = setup(notFound);
     const settings = await repository.getSettings("dev-1");
     expect(settings.ratioPercent).toBe(50);
-    expect(settings.widgets).toHaveLength(10);
     expect(settings.widgets.find((item) => item.type === "WEATHER")?.enabled).toBe(false);
-    expect(userClient.calls[0]?.path).toBe("/signage/devices/dev-1/widget-settings");
+    const fresh = await repository.getSettings("dev-2");
+    expect(fresh.widgets.every((item) => item.type !== "WEATHER" || item.enabled)).toBe(true);
+  });
 
-    const missing = setup(notFound).repository;
-    await expect(missing.getSettings("dev-1")).rejects.toMatchObject({
-      code: "WIDGETS_UNSUPPORTED",
+  it("위젯 API가 없으면 TV는 KV에 저장된 기기 설정으로 위젯을 띄운다", async () => {
+    stubTvSettings({
+      updatedAt: "2026-11-02T03:00:00.000Z",
+      devices: {
+        "dev-1": {
+          ratioPercent: 30,
+          widgets: [{ type: "FORTUNE", enabled: true, durationSeconds: 12, params: {} }],
+        },
+      },
     });
+    const { repository } = setup(notFound);
+    const feed = await repository.getDeviceWidgets("dev-1");
+    expect(isWidgetsUnsupported(feed)).toBe(false);
+    expect(feed.widgets.find((slot) => slot.type === "FORTUNE")?.durationSeconds).toBe(12);
+  });
+
+  it("저장은 로그인 토큰을 싣는 client로 보낸다", async () => {
+    const { repository, settingsClient } = setup(notFound, () => ({
+      devices: { "dev-1": { ratioPercent: 25, widgets: [] } },
+      timeSlots: [],
+    }));
+    await repository.saveSettings("dev-1", { ratioPercent: 25, widgets: [] });
+    expect(settingsClient.calls[0]).toMatchObject({
+      method: "PUT",
+      path: "/api/tv-settings",
+      body: { devices: { "dev-1": { ratioPercent: 25, widgets: [] } } },
+    });
+    const saved = await repository.saveTimeSlots([]);
+    expect(saved.timeSlots).toEqual([]);
   });
 });
 

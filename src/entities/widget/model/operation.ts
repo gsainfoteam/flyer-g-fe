@@ -55,6 +55,8 @@ export interface TimeSlotRule {
   time: { from: string; to: string };
   /** 정보줄에 "○○ · 22:00까지"로 쓴다. */
   label: string;
+  /** 적용할 TV. 없으면 모든 TV */
+  deviceIds?: string[];
   survey?: { url: string; label: string };
 }
 
