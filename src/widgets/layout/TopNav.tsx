@@ -11,7 +11,9 @@ import { AccountMenu } from "@/widgets/layout/AccountMenu";
  *
  * - 사용자: 홈 · 내 컨텐츠
  * - 하우스 관리자: 홈 · 심사 · 전체 컨텐츠
- * - 운영자: 홈 · 심사 · TV · 설정
+ * - 운영자: 홈 · 심사 · 전체 컨텐츠 · TV · 설정
+ *
+ * 운영자는 하우스 관리자의 메뉴를 모두 갖고 TV·설정을 더 가진다.
  *
  * 지금 위치는 검은 알약으로, 처리해야 할 건수만 빨간 배지로 붙인다.
  * 역할에 없는 메뉴는 그리지 않는다. 다만 이는 편의일 뿐 보안이 아니다 —
@@ -57,8 +59,7 @@ export function TopNav({ user, pendingCount = 0 }: TopNavProps) {
       label: "전체 컨텐츠",
       href: to.contents(),
       match: "/contents",
-      allow: ["REVIEWER"],
-      hideFor: ["SUPER_ADMIN"],
+      allow: ["REVIEWER", "SUPER_ADMIN"],
     },
     { label: "TV", href: to.tv(), match: "/tv", allow: ["SUPER_ADMIN"] },
     {

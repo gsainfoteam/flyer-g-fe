@@ -100,6 +100,28 @@ describe("역할 기반 접근", () => {
   });
 });
 
+describe("역할별 메뉴", () => {
+  it("운영자는 하우스 관리자 메뉴를 모두 갖고 TV와 설정을 더 가진다", async () => {
+    renderRoute("/", { role: "SUPER_ADMIN" });
+    const nav = await screen.findByRole("navigation", { name: "주요 메뉴" });
+
+    const labels = Array.from(nav.querySelectorAll("a")).map((link) =>
+      link.textContent?.replace(/\d+$/, ""),
+    );
+    expect(labels).toEqual(["홈", "심사", "전체 컨텐츠", "TV", "설정"]);
+  });
+
+  it("하우스 관리자는 TV와 설정 메뉴가 없다", async () => {
+    renderRoute("/", { role: "REVIEWER" });
+    const nav = await screen.findByRole("navigation", { name: "주요 메뉴" });
+
+    const labels = Array.from(nav.querySelectorAll("a")).map((link) =>
+      link.textContent?.replace(/\d+$/, ""),
+    );
+    expect(labels).toEqual(["홈", "심사", "전체 컨텐츠"]);
+  });
+});
+
 describe("셸 분리", () => {
   it("TV 경로에는 관리 내비게이션이 없다", async () => {
     renderRoute("/display/house-a-lobby");
