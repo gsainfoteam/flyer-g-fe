@@ -75,7 +75,7 @@ export function LandingPage() {
               <Tv size={15} aria-hidden="true" />
               기숙사 로비 TV
             </span>
-            <h1 className="mt-5 text-[2.5rem] leading-[1.15] font-black tracking-[-0.04em] sm:text-[3.5rem]">
+            <h1 className="mt-5 text-[2rem] leading-[1.2] font-black tracking-[-0.04em] sm:text-[2.75rem]">
               기숙사 <span className="text-accent">TV</span>에
               <br />
               띄우고 싶은 게
