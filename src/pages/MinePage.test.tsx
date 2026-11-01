@@ -59,6 +59,16 @@ describe("내 컨텐츠", () => {
     expect(screen.queryByRole("button", { name: /더 보기/ })).toBeNull();
   });
 
+  it.each(["SUBMITTER", "REVIEWER", "SUPER_ADMIN"] as const)(
+    "%s도 새로 올리기를 누르면 포스터 올리기 화면으로 간다",
+    async (role) => {
+      const user = userEvent.setup();
+      const { router } = renderRoute("/mine", { role });
+      await user.click(await screen.findByRole("link", { name: "새로 올리기" }));
+      await waitFor(() => expect(currentPath(router)).toBe("/new/poster"));
+    },
+  );
+
   it("다른 사람의 컨텐츠는 나오지 않는다", async () => {
     renderRoute("/mine", { role: "SUBMITTER" });
 

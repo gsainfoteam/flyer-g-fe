@@ -97,8 +97,11 @@ export function MinePage() {
               : "불러오는 중"}
           </p>
         </div>
+        {/* 종류 고르기는 사용자 첫 화면에만 있다(관리자 첫 화면에는 없음). 지금 열린 종류는
+            포스터뿐이라 바로 포스터 올리기로 보낸다. 이벤트 배너·소식이 열리면(9.2) 고르는
+            화면으로 바꾼다. */}
         <Button asChild>
-          <Link to={to.home()}>새로 올리기</Link>
+          <Link to={to.newPoster()}>새로 올리기</Link>
         </Button>
       </div>
 
