@@ -19,11 +19,6 @@ import { useAuth } from "@/features/auth/model/auth-context";
 import { IconTile, LogoMark } from "@/shared/components";
 import { to } from "@/shared/config/routes";
 import { cn } from "@/shared/lib/utils";
-import {
-  EventPreview,
-  PosterPreview,
-  StoryPreview,
-} from "@/widgets/home/KindPreviews";
 import { TvSample } from "@/widgets/home/TvSample";
 import { SiteFooter } from "@/widgets/layout/SiteFooter";
 
@@ -118,15 +113,15 @@ export function LandingPage() {
             이런 걸 올릴 수 있어요
           </h2>
           <div className="grid gap-5 md:grid-cols-3">
-            <KindCard kind="POSTER" art={<PosterPreview />}>
+            <KindCard kind="POSTER" art={<PosterArt />}>
               동아리 모집, 공연·행사 안내. 기간을 정하면 끝나는 날 저절로
               내려가요.
             </KindCard>
-            <KindCard kind="EVENT_BANNER" art={<EventPreview />}>
+            <KindCard kind="EVENT_BANNER" art={<EventArt />}>
               친구 생일, 합격·수상 소식. 받는 사람과 문구만 쓰면 TV 화면이
               만들어져요.
             </KindCard>
-            <KindCard kind="STORY" art={<StoryPreview />}>
+            <KindCard kind="STORY" art={<StoryArt />}>
               고쳐진 시설, 분실물, 건의. 140자 안으로 쓰면 이름 없이 TV에
               나가요.
             </KindCard>
@@ -207,8 +202,7 @@ function KindCard({
         </h3>
         <p className="text-body text-ink-muted">{children}</p>
       </div>
-      {/* 예시 그림이라 보조기기에는 숨긴다. 같은 내용은 위 설명에 있다. */}
-      <div aria-hidden="true" className="mt-6 flex flex-1 flex-col justify-end">
+      <div aria-hidden="true" className="mt-6 flex-1">
         {art}
       </div>
     </article>
@@ -239,5 +233,51 @@ function FlowStep({
       <h3 className="text-subhead">{title}</h3>
       <p className="-mt-2 text-label text-ink-muted">{children}</p>
     </li>
+  );
+}
+
+/** 포스터 카드의 그림. 세로 포스터 세 장이 꽂힌 모습 */
+function PosterArt() {
+  return (
+    <div className="flex h-36 items-end justify-center gap-3 bg-type-poster-subtle px-6 pt-6">
+      <div className="h-24 w-16 -rotate-3 rounded-t-md bg-type-poster opacity-85" />
+      <div className="h-28 w-18 rounded-t-md bg-type-poster-bar" />
+      <div className="h-20 w-16 rotate-3 rounded-t-md bg-type-poster-bright" />
+    </div>
+  );
+}
+
+/** 이벤트 카드의 그림. TV 카드 그대로의 작은 배너 */
+function EventArt() {
+  return (
+    <div className="flex h-36 items-center bg-type-event-subtle px-6">
+      <div className="w-full rounded-tile bg-hero-raised px-4 py-3.5 text-hero-ink">
+        <span className="inline-flex rounded-pill bg-accent px-2 py-0.5 text-overline text-accent-on">
+          합격 축하
+        </span>
+        <p className="mt-1.5 text-subhead">수현아, 합격 축하해</p>
+        <p className="text-caption text-hero-muted">연구실 동기들이</p>
+      </div>
+    </div>
+  );
+}
+
+/** 제보 카드의 그림. TV에 나오는 카드 두 장 */
+function StoryArt() {
+  return (
+    <div className="flex h-36 items-center gap-2.5 bg-type-story-subtle px-6">
+      {[
+        { tag: "칭찬", body: "세탁실 건조기 2번이 고쳐졌어요!" },
+        { tag: "분실물", body: "파란 텀블러 주웠어요" },
+      ].map((card) => (
+        <div
+          key={card.tag}
+          className="min-w-0 flex-1 rounded-tile bg-hero-raised px-3.5 py-3 text-caption text-hero-ink"
+        >
+          <b className="text-type-story-bright">{card.tag}</b>
+          <p className="mt-0.5 line-clamp-2">{card.body}</p>
+        </div>
+      ))}
+    </div>
   );
 }
