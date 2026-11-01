@@ -23,6 +23,13 @@ interface BattleWidgetProps {
   serverTime: Date | null;
   onActiveChange: (active: boolean) => void;
   onSessionEnd: () => void;
+  /**
+   * 행사 시간대처럼 이 화면에 고정된 때. 순환으로 돌려보낼 일이 없으니 세션 상한·상대 팀
+   * 기다림으로 판을 비우지 않는다(기다리던 참가자가 쫓겨나지 않게).
+   */
+  pinned?: boolean;
+  /** 행사 시간대 화면에만 붙이는 설문 QR */
+  survey?: { url: string; label: string } | null;
 }
 
 export function BattleWidget({
@@ -33,11 +40,13 @@ export function BattleWidget({
   serverTime,
   onActiveChange,
   onSessionEnd,
+  pinned = false,
+  survey = null,
 }: BattleWidgetProps) {
   const { state, now, status, active } = useBattleHost(roomId, {
     socketBase,
     token,
-    ...BATTLE_WIDGET_LIMITS,
+    ...(pinned ? {} : BATTLE_WIDGET_LIMITS),
   });
 
   // 콜백은 렌더마다 새로 올 수 있다. effect가 되풀이되지 않게 ref로 든다.
@@ -63,6 +72,7 @@ export function BattleWidget({
       now={now}
       link={status}
       local={socketBase === null}
+      survey={survey}
       idleHint="QR로 참가하면 게임이 시작돼요"
       header={
         <StageHeader

@@ -3,7 +3,8 @@ import {
   defaultDeviceWidgetSettings,
   settingsToSlotDtos,
 } from "./settings";
-import { toWidgetSlots } from "./types";
+import { EXTRA_WIDGETS, WIDGET_DURATIONS } from "./operation";
+import { clampWidgetDuration, toWidgetSlots } from "./types";
 import type { WidgetSlot, WidgetSlotDto, WidgetType } from "./types";
 
 /**
@@ -77,7 +78,16 @@ const STANDALONE_TYPES: readonly WidgetType[] = [
   "CLICK_BATTLE",
 ];
 
-/** 서버 설정이 없을 때 쓰는 위젯. 길이·문구는 기본값이다. */
+/** 운영 설정(`operation.ts`)의 위젯별 시간을 입힌다. */
+const withOperationDuration = (slot: WidgetSlot): WidgetSlot => ({
+  ...slot,
+  durationSeconds: clampWidgetDuration(
+    slot.type,
+    WIDGET_DURATIONS[slot.type] ?? slot.durationSeconds,
+  ),
+});
+
+/** 서버 설정이 없을 때 쓰는 위젯. 시간은 운영 설정, 문구는 기본값이다. */
 export function standaloneWidgets(): WidgetSlot[] {
   return toWidgetSlots(
     settingsToSlotDtos(
@@ -85,5 +95,15 @@ export function standaloneWidgets(): WidgetSlot[] {
         STANDALONE_TYPES.includes(setting.type),
       ),
     ),
-  );
+  ).map(withOperationDuration);
+}
+
+/**
+ * 서버에 위젯 API가 없을 때의 위젯. 한 바퀴가 짧으면 기본 위젯으로 채우고, 운영 설정의
+ * 상시 위젯(설문 등)은 포스터가 많아도 넣는다(비율 상한은 그대로 지킨다).
+ */
+export function operationWidgets(fillShortCycle: boolean): WidgetSlot[] {
+  const extras = toWidgetSlots([...EXTRA_WIDGETS]).map(withOperationDuration);
+  const base = fillShortCycle ? standaloneWidgets() : [];
+  return [...base, ...extras.filter((extra) => !base.some((slot) => slot.type === extra.type))];
 }

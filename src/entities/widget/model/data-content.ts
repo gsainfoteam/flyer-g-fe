@@ -97,7 +97,7 @@ const readNumber = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 
 /** QR로 띄울 주소. 폰이 열 수 있는 http(s)만 받는다. */
-function readWebUrl(value: unknown): string | null {
+export function readWebUrl(value: unknown): string | null {
   const text = readText(value);
   if (!text) return null;
   try {

@@ -88,7 +88,7 @@ describe("createHttpWidgetRepository", () => {
     await expect(repository.getDeviceWidgets("unknown")).resolves.toEqual(NO_WIDGETS);
     const preview = await repository.getDeviceWidgets("device-preview");
     expect(preview.widgets.map((slot) => slot.type)).toContain("CLICK_BATTLE");
-    expect(preview.widgets).toHaveLength(9);
+    expect(preview.widgets).toHaveLength(10);
     expect(deviceClient.calls).toHaveLength(0);
   });
 
@@ -114,7 +114,7 @@ describe("createHttpWidgetRepository", () => {
     }));
     const settings = await repository.getSettings("dev-1");
     expect(settings.ratioPercent).toBe(50);
-    expect(settings.widgets).toHaveLength(9);
+    expect(settings.widgets).toHaveLength(10);
     expect(settings.widgets.find((item) => item.type === "WEATHER")?.enabled).toBe(false);
     expect(userClient.calls[0]?.path).toBe("/signage/devices/dev-1/widget-settings");
 

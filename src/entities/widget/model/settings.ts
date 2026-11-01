@@ -64,6 +64,7 @@ export const WIDGET_LABELS: Record<WidgetType, string> = {
   RESTAURANT: "근처 맛집",
   QUIZ: "오늘의 퀴즈",
   CLICK_BATTLE: "클릭 배틀",
+  SURVEY: "설문",
 };
 
 export const WIDGET_DESCRIPTIONS: Record<WidgetType, string> = {
@@ -76,6 +77,7 @@ export const WIDGET_DESCRIPTIONS: Record<WidgetType, string> = {
   RESTAURANT: "근처 가게를 1시간마다 바꿔 보여 줘요.",
   QUIZ: "QR로 폰에서 답을 골라요. 정답은 다음 날 공개돼요.",
   CLICK_BATTLE: "QR로 누가 참가하면 게임 화면으로 바뀌어 끝날 때까지 머물러요(최대 5분).",
+  SURVEY: "설문 링크를 QR로 보여 줘요. 링크는 운영 설정(operation.ts)에서 정해요.",
 };
 
 /** 운영자가 날짜를 정해야 하는 종류의 기본값. 새 기기에도 바로 쓸 수 있게 둔다. */

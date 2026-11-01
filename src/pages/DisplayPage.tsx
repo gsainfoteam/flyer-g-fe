@@ -12,7 +12,7 @@ import {
   usePrefetchImages,
 } from "@/features/display";
 import { useRotation } from "@/features/display/model/use-rotation";
-import { useTemporaryBattleWindow } from "@/features/display/model/use-temporary-battle-window";
+import { useTimeSlot } from "@/features/display/model/use-time-slot";
 import {
   DEFAULT_LAYOUT_TYPE,
   PREVIEW_DEVICE_ID,
@@ -27,13 +27,14 @@ import { INFO_BAR_HEIGHT } from "@/entities/poster/ui/stage-metrics";
 import {
   buildCafeteriaContent,
   buildWeatherContent,
+  readWebUrl,
 } from "@/entities/widget/model/data-content";
 import { cafeteriaDataFor } from "@/entities/widget/model/cafeteria-week";
-import { seoulDateKey } from "@/entities/widget/model/content";
+import { buildWidgetContent, seoulDateKey } from "@/entities/widget/model/content";
 import { ddayChip, mealChip } from "@/entities/widget/model/info-bar";
 import {
   isWidgetsUnsupported,
-  standaloneWidgets,
+  operationWidgets,
 } from "@/entities/widget/model/feed";
 import {
   MIN_CYCLE_SECONDS,
@@ -46,6 +47,7 @@ import type {
   PlayerFrame,
 } from "@/entities/widget/model/schedule";
 import { WIDGET_LABELS } from "@/entities/widget/model/settings";
+import { DEFAULT_WIDGET_DURATION } from "@/entities/widget/model/types";
 import type { WidgetSlot } from "@/entities/widget/model/types";
 import { StageInfoBar } from "@/entities/widget/ui/StageInfoBar";
 import { WidgetDisplay } from "@/entities/widget/ui/WidgetDisplay";
@@ -141,8 +143,8 @@ export function DisplayPage() {
   const [gameToken] = useState(() => deviceCredentials.get(deviceId));
   const canHostGame = socketBase === null || gameToken !== null;
   const previewGame = !canHostGame && deviceId === PREVIEW_DEVICE_ID;
-  const inTemporaryBattleWindow = useTemporaryBattleWindow(serverTime);
-  const temporaryBattle = inTemporaryBattleWindow && (canHostGame || previewGame);
+  // 시간대 점유(operation.ts). 이 시간에는 순환을 붙잡고 정한 위젯만 띄운다.
+  const timeSlot = useTimeSlot(serverTime);
 
   // 포스터 한 바퀴가 짧으면(편성이 한두 장) 남는 시간을 위젯으로 채운다. 서버에 위젯
   // API가 아직 없으면 그때만 데이터가 필요 없는 기본 위젯을 쓴다. 포스터가 충분하면
@@ -152,10 +154,12 @@ export function DisplayPage() {
     [posters, layout],
   );
   const shortCycle = posterFrameCount * rotationSeconds < MIN_CYCLE_SECONDS;
-  const fillWithStandalone = shortCycle && isWidgetsUnsupported(widgetFeed);
+  const fillWithStandalone = shortCycle;
+  const unsupported = isWidgetsUnsupported(widgetFeed);
   const baseSlots = useMemo(
-    () => (fillWithStandalone ? standaloneWidgets() : widgetFeed.widgets),
-    [fillWithStandalone, widgetFeed.widgets],
+    () =>
+      unsupported ? operationWidgets(fillWithStandalone) : widgetFeed.widgets,
+    [unsupported, fillWithStandalone, widgetFeed.widgets],
   );
   // 서버가 학식을 주지 않으면 같은 도메인 함수(/api/cafeteria)가 학교 게시판에서 읽은
   // 이번 주 식단을 쓴다. 학식 위젯과 정보줄 식사 칩이 함께 쓴다.
@@ -212,6 +216,33 @@ export function DisplayPage() {
   // 비율에 넣지 않는다(사람들이 원해서 하는 시간이다).
   const [gameActive, setGameActive] = useState(false);
 
+  // 시간대가 점유한 화면. 설정된 같은 종류 위젯이 있으면 그 설정(데이터)을 쓴다. 게임은
+  // 방을 열 수 있는 TV에서만 띄우고, 내용이 없는 위젯(데이터 없음)이면 순환을 그대로 둔다.
+  const takeoverFrame: PlayerFrame | null = (() => {
+    if (!timeSlot || !serverTime) return null;
+    const { rule } = timeSlot;
+    if (rule.widget === "CLICK_BATTLE" && !(canHostGame || previewGame)) return null;
+    const slot = widgetSlots.find((item) => item.type === rule.widget) ?? {
+      id: `time-slot-${rule.id}`,
+      type: rule.widget,
+      durationSeconds: DEFAULT_WIDGET_DURATION[rule.widget],
+      params: {},
+    };
+    const content = buildWidgetContent(slot, serverTime);
+    return content
+      ? { kind: "widget", key: `time-slot:${rule.id}`, slot, content }
+      : null;
+  })();
+  const takeover = takeoverFrame !== null;
+  // 행사 화면에만 붙이는 설문 QR. 링크가 비었거나 http(s)가 아니면 띄우지 않는다.
+  const takeoverSurveyUrl = takeover
+    ? readWebUrl(timeSlot?.rule.survey?.url)
+    : null;
+  const takeoverSurvey =
+    takeoverSurveyUrl && timeSlot?.rule.survey
+      ? { url: takeoverSurveyUrl, label: timeSlot.rule.survey.label }
+      : null;
+
   const [paused, setPaused] = useState(false);
   const rotation = useRotation({
     posters,
@@ -229,7 +260,7 @@ export function DisplayPage() {
     ),
     pickWidget,
     paused: isPreview && paused,
-    hold: gameActive || temporaryBattle,
+    hold: gameActive || takeover,
   });
 
   const nextFrame = rotation.nextFrame;
@@ -254,15 +285,8 @@ export function DisplayPage() {
     [playlistVersion],
   );
 
-  // 행사 시간에는 기존 편성을 그대로 보관하고 게임 화면만 띄운다. 20:00에는 복귀.
-  const frame: PlayerFrame | undefined = temporaryBattle
-    ? {
-        kind: "widget",
-        key: "temporary-evening-click-battle",
-        slot: { id: "temporary-evening-click-battle", type: "CLICK_BATTLE", durationSeconds: 20, params: {} },
-        content: { type: "CLICK_BATTLE" },
-      }
-    : rotation.currentFrame;
+  // 점유 시간에는 하던 순환을 그대로 보관하고 그 화면만 띄운다. 끝나면 이어서 돈다.
+  const frame: PlayerFrame | undefined = takeoverFrame ?? rotation.currentFrame;
 
   // 위젯 화면은 게시물 노출이 아니다. 행사 화면 뒤에 보관한 포스터도 집계하지 않는다.
   const exposed =
@@ -317,7 +341,13 @@ export function DisplayPage() {
           ? null
           : ddayChip(widgetSlots, serverTime)
       }
-      status={temporaryBattle ? "클릭 배틀 · 20:00까지" : gameActive ? "클릭 배틀 진행 중" : null}
+      status={
+        takeover && timeSlot
+          ? `${timeSlot.rule.label} · ${timeSlot.rule.time.to}까지`
+          : gameActive
+            ? "클릭 배틀 진행 중"
+            : null
+      }
       next={
         rotation.moving && upcoming && serverTime
           ? {
@@ -366,8 +396,10 @@ export function DisplayPage() {
                     serverTime={serverTime}
                     onActiveChange={setGameActive}
                     onSessionEnd={() => {
-                      if (!temporaryBattle) rotation.advance();
+                      if (!takeover) rotation.advance();
                     }}
+                    pinned={takeover}
+                    survey={takeoverSurvey}
                   />
                 )}
               </div>
@@ -428,13 +460,13 @@ export function DisplayPage() {
               size="icon-xs"
               className="text-ink-inverse hover:bg-white/15 hover:text-ink-inverse"
               onClick={rotation.advance}
-              disabled={temporaryBattle || rotation.frameCount <= 1}
+              disabled={takeover || rotation.frameCount <= 1}
               aria-label="다음 화면"
             >
               <SkipForward aria-hidden="true" />
             </Button>
             <span className="text-caption tabular-nums text-white/70">
-              {temporaryBattle ? "시간대 고정" : `${rotation.frameIndex + 1} / ${Math.max(rotation.frameCount, 1)}`}
+              {takeover ? "시간대 고정" : `${rotation.frameIndex + 1} / ${Math.max(rotation.frameCount, 1)}`}
             </span>
           </div>
         )}

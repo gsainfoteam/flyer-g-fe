@@ -3,6 +3,7 @@ import {
   buildCafeteriaContent,
   buildRestaurantContent,
   buildWeatherContent,
+  readWebUrl,
 } from "./data-content";
 import type {
   CafeteriaContent,
@@ -44,7 +45,9 @@ export type WidgetContent =
       yesterday: QuizQuestion;
     }
   /** 실시간 게임. 화면은 플레이어가 게임 방을 열어 그린다. */
-  | { type: "CLICK_BATTLE" };
+  | { type: "CLICK_BATTLE" }
+  /** 설문 링크 QR. 링크가 없으면 빠진다. */
+  | { type: "SURVEY"; url: string; title: string; description: string | null };
 
 export interface ZodiacFortune {
   animal: string;
@@ -308,6 +311,17 @@ export function buildWidgetContent(
       return buildWeatherContent(slot.params, now);
     case "CLICK_BATTLE":
       return { type: "CLICK_BATTLE" };
+    case "SURVEY": {
+      const url = readWebUrl(slot.params.url);
+      if (!url) return null;
+      const description = slot.params.description;
+      return {
+        type: "SURVEY",
+        url,
+        title: readLabel({ label: slot.params.title }, "설문에 참여해 주세요"),
+        description: typeof description === "string" && description.trim() ? description.trim() : null,
+      };
+    }
     case "QUIZ":
       return {
         type: "QUIZ",

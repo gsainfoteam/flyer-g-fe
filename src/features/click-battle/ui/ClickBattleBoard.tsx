@@ -61,6 +61,11 @@ interface ClickBattleBoardProps {
    * 찍어도 붙을 곳이 없는 QR을 띄우지 않기 위해서다.
    */
   previewOnly?: boolean;
+  /**
+   * 행사 시간대 화면에만 붙이는 설문 QR. 두 팀 칸 아래 전체 폭 띠에 둔다. 팀 참가 QR과
+   * 자리·크기가 달라 헷갈리지 않고, 양 팀 칸의 대칭도 깨지 않는다.
+   */
+  survey?: { url: string; label: string } | null;
 }
 
 export function ClickBattleBoard({
@@ -72,6 +77,7 @@ export function ClickBattleBoard({
   header,
   idleHint,
   previewOnly = false,
+  survey = null,
 }: ClickBattleBoardProps) {
   // 서버 중계는 방이 열려야(TV 인증) QR을 보여 준다. 그전에 찍으면 붙을 곳이 없다.
   const linkReady = local || link === "open";
@@ -107,6 +113,7 @@ export function ClickBattleBoard({
             key={team}
             team={team}
             state={state}
+            compact={survey !== null}
             previewOnly={previewOnly}
             joinUrl={
               !previewOnly && joinable && linkReady
@@ -126,11 +133,45 @@ export function ClickBattleBoard({
         ))}
       </div>
 
-      <p className="shrink-0 text-[24px] text-ink-subtle">
-        팀당 최대 {BATTLE_RULES.maxPlayersPerTeam}명 · 한 폰에 한 명 ·{" "}
-        {BATTLE_RULES.matchMs / 1000}초 동안 더 많이 누른 팀이 이겨요 · 로그인
-        없이 이름만 적고 참가해요
-      </p>
+      {survey ? (
+        <SurveyBand survey={survey} finished={state.phase === "RESULT"} />
+      ) : (
+        <p className="shrink-0 text-[24px] text-ink-subtle">{RULES_TEXT}</p>
+      )}
+    </div>
+  );
+}
+
+const RULES_TEXT = `팀당 최대 ${BATTLE_RULES.maxPlayersPerTeam}명 · 한 폰에 한 명 · ${
+  BATTLE_RULES.matchMs / 1000
+}초 동안 더 많이 누른 팀이 이겨요 · 로그인 없이 이름만 적고 참가해요`;
+
+/**
+ * 설문 띠. 판이 끝난 직후가 폰을 들고 있어 응답하기 가장 좋은 때라, 결과 화면에서는
+ * 띠를 강조하고 문구를 바꾼다.
+ */
+function SurveyBand({
+  survey,
+  finished,
+}: {
+  survey: { url: string; label: string };
+  finished: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex shrink-0 items-center gap-10 rounded-tv-card bg-surface px-12 py-5",
+        finished && "ring-6 ring-accent",
+      )}
+    >
+      <QRCodeBox value={survey.url} size="band" />
+      <div className="flex min-w-0 flex-col gap-3">
+        <p className="text-[44px] leading-tight font-extrabold text-ink">
+          {finished ? `판이 끝났어요! ${survey.label}에 참여해 주세요` : `${survey.label}에 참여해 주세요`}
+        </p>
+        <p className="text-[26px] text-ink-muted">왼쪽 QR을 찍으면 설문으로 가요</p>
+        <p className="truncate text-[22px] text-ink-subtle">{RULES_TEXT}</p>
+      </div>
     </div>
   );
 }
@@ -168,12 +209,15 @@ export function LinkBadge({
 function TeamPanel({
   team,
   state,
+  compact,
   joinUrl,
   closedLabel,
   previewOnly,
 }: {
   team: Team;
   state: BattleState;
+  /** 아래 설문 띠가 있을 때. 점수 글자와 안쪽 여백을 줄여 같은 높이에 담는다. */
+  compact: boolean;
   previewOnly: boolean;
   joinUrl: string | null;
   /** QR을 보여 줄 수 없을 때 그 자리에 적는다. */
@@ -187,7 +231,8 @@ function TeamPanel({
     <section
       aria-label={`${team}팀`}
       className={cn(
-        "flex min-h-0 gap-10 rounded-tv-card bg-surface px-14 py-12",
+        "flex min-h-0 gap-10 rounded-tv-card bg-surface",
+        compact ? "px-12 py-8" : "px-14 py-12",
         isWinner && `ring-6 ${style.ring}`,
       )}
     >
@@ -220,17 +265,19 @@ function TeamPanel({
 
         <p
           className={cn(
-            "mt-auto text-[220px] leading-none font-extrabold tracking-tight tabular-nums",
+            // 글자 크기를 leading-none보다 앞에 둔다. 뒤에 두면 cn이 줄 높이를 지운다.
+            compact ? "text-[150px]" : "text-[220px]",
+            "mt-auto leading-none font-extrabold tracking-tight tabular-nums",
             style.text,
           )}
         >
           {state.scores[team].toLocaleString("ko-KR")}
         </p>
-        <p className="mt-3 text-[28px] font-bold text-ink-subtle">
+        <p className={cn("text-[28px] font-bold text-ink-subtle", compact ? "mt-1" : "mt-3")}>
           번 눌렀어요
         </p>
 
-        <p className="mt-8 truncate text-[28px] text-ink-muted">
+        <p className={cn("shrink-0 truncate text-[28px] text-ink-muted", compact ? "mt-4" : "mt-8")}>
           {players.length > 0
             ? players.map((player) => player.name).join(" · ")
             : "아직 아무도 없어요"}
