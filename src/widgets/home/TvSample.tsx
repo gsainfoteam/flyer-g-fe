@@ -3,6 +3,11 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { LiveClock, LogoMark } from "@/shared/components";
 import { cn } from "@/shared/lib/utils";
+import infoteamDesigner from "./samples/infoteam-designer.webp";
+import infoteamRecruiting from "./samples/infoteam-recruiting.webp";
+import lumiere from "./samples/lumiere-2026.webp";
+import magicShop from "./samples/magic-shop.webp";
+import wingSurvival from "./samples/wing-survival.webp";
 
 /**
  * 소개 화면의 TV 모습. 예시 데이터로 그린 장면이 실제 TV처럼 돌아간다(실제 편성이
@@ -15,67 +20,31 @@ import { cn } from "@/shared/lib/utils";
  * 저절로 넘어가는 화면이라 멈춤 버튼과 장면 고르기를 둔다. 움직임 줄이기를 켠
  * 사용자에게는 넘기지 않고 첫 장면에 멈춰 있다. 글자 크기는 컨테이너 폭 기준(cqw)이라
  * 어느 폭에서도 1920×1080 비율 그대로 보인다.
+ *
+ * 포스터는 교내 단체의 실제 포스터 예시다(긴 변 900px로 줄인 사본). 비율이 제각각이라
+ * 띠에서는 높이만 맞추고 원래 비율 그대로 놓는다.
  */
 const SCENE_MS = 5000;
 
 interface SamplePoster {
-  title: string;
-  kicker: string;
-  date: string;
-  place: string;
-  /** 포스터 바탕과 글자 색 */
-  tone: string;
+  src: string;
+  /** 원본 비율(가로 / 세로) */
+  ratio: number;
 }
 
+/** 첫 장이 "포스터 크게" 장면에 나온다. */
 const POSTERS: SamplePoster[] = [
-  {
-    title: "밴드 동아리 정기공연 〈소리〉",
-    kicker: "BAND LIVE",
-    date: "11.14 금 19:00",
-    place: "학생회관 대강당",
-    tone: "bg-type-poster text-white",
-  },
-  {
-    title: "가을 사진전",
-    kicker: "PHOTO CLUB",
-    date: "11.5 – 11.12",
-    place: "학생회관 2층 갤러리",
-    tone: "bg-accent-800 text-white",
-  },
-  {
-    title: "창업 아이디어 경진대회",
-    kicker: "START UP",
-    date: "11.20 목 마감",
-    place: "창업지원단",
-    tone: "bg-success-strong text-white",
-  },
-  {
-    title: "하우스 가을 체육대회",
-    kicker: "HOUSE",
-    date: "11.8 토 10:00",
-    place: "대운동장",
-    tone: "bg-accent text-white",
-  },
-  {
-    title: "영화 동아리 상영회",
-    kicker: "CINEMA",
-    date: "11.12 수 20:00",
-    place: "기숙사 B동 세미나실",
-    tone: "bg-zinc-700 text-white",
-  },
-  {
-    title: "알고리즘 스터디 모집",
-    kicker: "STUDY",
-    date: "~ 11.10",
-    place: "온라인 신청",
-    tone: "bg-violet-700 text-white",
-  },
+  { src: infoteamRecruiting, ratio: 1190 / 1488 },
+  { src: wingSurvival, ratio: 1188 / 1682 },
+  { src: infoteamDesigner, ratio: 1 },
+  { src: lumiere, ratio: 1080 / 1440 },
+  { src: magicShop, ratio: 1280 / 1707 },
 ];
 
 type SceneKey = "spotlight" | "wall" | "story" | "event";
 
 const SCENES: { key: SceneKey; label: string; position: string }[] = [
-  { key: "spotlight", label: "포스터", position: "포스터 1 / 6" },
+  { key: "spotlight", label: "포스터", position: "포스터 1 / 5" },
   { key: "wall", label: "모아 보기", position: "모아 보기 1 / 2" },
   { key: "story", label: "소식 제보", position: "제보 1–2 / 7" },
   { key: "event", label: "이벤트", position: "이벤트 1 / 2" },
@@ -92,6 +61,11 @@ function prefersReducedMotion(): boolean {
 export function TvSample() {
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(() => !prefersReducedMotion());
+
+  // 뒤 장면의 포스터를 미리 받아 둔다. 장면이 바뀐 뒤에 받으면 빈 칸이 잠깐 보인다.
+  useEffect(() => {
+    for (const poster of POSTERS) new Image().src = poster.src;
+  }, []);
 
   useEffect(() => {
     if (!playing) return;
@@ -219,65 +193,43 @@ function InfoBar({
   );
 }
 
-/** 예시 포스터 한 장. 그림 대신 색과 글자로 만든다. */
-function PosterArt({
+/** 예시 포스터 한 장. 높이에 맞추고 원래 비율 그대로 둔다. */
+function PosterImage({
   poster,
   className,
-  size = "md",
 }: {
   poster: SamplePoster;
   className?: string;
-  size?: "md" | "lg";
 }) {
-  const large = size === "lg";
   return (
-    <div
+    <img
+      src={poster.src}
+      alt=""
+      draggable={false}
+      style={{ aspectRatio: poster.ratio }}
       className={cn(
-        "flex aspect-3/4 flex-col justify-between overflow-hidden rounded-[0.8cqw]",
-        large ? "p-[2cqw]" : "p-[1.1cqw]",
-        poster.tone,
+        "h-full w-auto flex-none rounded-[0.8cqw] object-cover shadow-[0_1.2cqw_3cqw_rgb(0_0_0/0.5)]",
         className,
       )}
-    >
-      <span
-        className={cn(
-          "tracking-[0.12em] opacity-80",
-          large ? "text-[1.1cqw]" : "text-[0.7cqw]",
-        )}
-      >
-        {poster.kicker}
-      </span>
-      <span
-        className={cn(
-          "leading-[1.15] font-extrabold",
-          large ? "text-[3.2cqw]" : "text-[1.6cqw]",
-        )}
-      >
-        {poster.title}
-      </span>
-      <span
-        className={cn("opacity-85", large ? "text-[1.1cqw]" : "text-[0.75cqw]")}
-      >
-        {poster.date}
-      </span>
-    </div>
+    />
   );
 }
 
 function SpotlightScene() {
-  const poster = POSTERS[0]!;
   return (
     <div className="flex h-full items-center gap-[4cqw]">
-      <PosterArt poster={poster} size="lg" className="h-full" />
+      <PosterImage poster={POSTERS[0]!} />
       <div className="min-w-0 flex-1">
         <span className="inline-flex rounded-pill bg-type-poster-bar px-[1.2cqw] py-[0.4cqw] text-[1.3cqw] font-bold text-white">
-          공연
+          모집
         </span>
-        <p className="mt-[1.4cqw] text-[3.6cqw] leading-[1.2] font-extrabold tracking-[-0.03em]">
-          {poster.title}
+        <p className="mt-[1.4cqw] text-[3.4cqw] leading-[1.2] font-extrabold tracking-[-0.03em]">
+          2026 가을학기 인포팀
+          <br />
+          신입부원 리크루팅
         </p>
         <p className="mt-[0.8cqw] text-[1.8cqw] text-hero-muted">
-          {poster.date} · {poster.place}
+          개발자 · 디자이너 모집 · 배우고 싶은 분도 환영
         </p>
         <div className="mt-[2cqw] flex items-center gap-[1.4cqw]">
           <QrMark className="size-[8cqw]" />
@@ -296,9 +248,9 @@ function SpotlightScene() {
 function WallScene() {
   return (
     <div className="flex h-full items-center overflow-hidden">
-      <div className="flex h-[76%] w-max animate-tv-sample-strip gap-[1.6cqw]">
+      <div className="flex h-[82%] w-max animate-tv-sample-strip gap-[2cqw]">
         {[...POSTERS, ...POSTERS].map((poster, i) => (
-          <PosterArt key={i} poster={poster} className="h-full flex-none" />
+          <PosterImage key={i} poster={poster} />
         ))}
       </div>
     </div>
