@@ -8,11 +8,9 @@ import type { WidgetSlotDto, WidgetType } from "./types";
 
 /**
  * 설문 링크. 비워 두면 설문 QR과 설문 위젯이 숨는다.
- *
- * ⚠️ 공개 설정 필요: 2026-11-02 기준 이 Notion 페이지는 로그인해야 열린다. QR을 찍은
- * 사람이 바로 응답할 수 있게 Notion에서 "웹에 게시"(또는 양식 공유)를 켜 둘 것.
+ * 로그인 없이 열리는 공개 링크여야 한다(Notion "웹에 게시"의 notion.site 주소).
  */
-export const SURVEY_URL = "https://app.notion.com/p/409084b8aa7980be943ad6c656b91bf7?pvs=106";
+export const SURVEY_URL = "https://pacific-switch-8c6.notion.site/409084b8aa7980be943ad6c656b91bf7";
 
 /** 위젯별 머무는 시간(초). 서버 설정이 없을 때 쓴다. 없는 종류는 기본값 */
 export const WIDGET_DURATIONS: Partial<Record<WidgetType, number>> = {
@@ -31,8 +29,8 @@ export const WIDGET_DURATIONS: Partial<Record<WidgetType, number>> = {
  */
 export const SURVEY_PARAMS = {
   url: SURVEY_URL,
-  title: "전단지 설문에 참여해 주세요",
-  description: "기숙사 로비 TV를 어떻게 쓰고 계신지 알려 주세요. 1분이면 끝나요.",
+  title: "전단지 피드백 설문에 참여해 주세요",
+  description: "응답자 중 추첨으로 경품을 드려요 · 11/8까지",
 } as const;
 
 /**
