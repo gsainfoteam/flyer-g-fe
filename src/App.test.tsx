@@ -59,7 +59,7 @@ describe("첫 화면", () => {
       await screen.findByRole("heading", { name: /띄우고 싶은 게/ }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /GIST 계정으로 시작하기/ }),
+      screen.getByRole("button", { name: /인포팀 계정으로 로그인/ }),
     ).toBeInTheDocument();
   });
 });

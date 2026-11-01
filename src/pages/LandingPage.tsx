@@ -76,7 +76,7 @@ export function LandingPage() {
           <div className="min-w-0 flex-[1_1_420px]">
             <span className="inline-flex h-8 items-center gap-2 rounded-pill bg-white/8 px-3.5 text-caption font-semibold text-zinc-300">
               <Tv size={15} aria-hidden="true" />
-              기숙사 로비 · 학생회관 TV
+              기숙사 로비 TV
             </span>
             <h1 className="mt-5 text-[2.5rem] leading-[1.15] font-black tracking-[-0.04em] sm:text-[3.5rem]">
               기숙사 <span className="text-accent">TV</span>에
@@ -86,8 +86,8 @@ export function LandingPage() {
               있나요?
             </h1>
             <p className="mt-5 max-w-[520px] text-[1.0625rem] leading-[1.65] text-hero-muted sm:text-lg">
-              포스터부터 친구 생일 축하, 이름 없는 소식 제보까지. 올리면 하우스
-              관리자가 확인하고 오가는 학생들이 보는 TV에 띄워요.
+              포스터부터 생일 축하, 익명 제보까지. 올리면 관리자가 확인하고
+              기숙사 로비 TV에 띄워요.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-x-4.5 gap-y-3">
               <button
@@ -96,12 +96,9 @@ export function LandingPage() {
                 disabled={isPending}
                 className="inline-flex h-13.5 items-center gap-2.5 rounded-tile bg-accent px-6.5 text-[1.0625rem] font-extrabold text-accent-on transition-colors hover:bg-accent-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-70"
               >
-                {isPending ? "이동하는 중…" : "GIST 계정으로 시작하기"}
+                {isPending ? "이동하는 중…" : "인포팀 계정으로 로그인"}
                 <ArrowRight size={20} strokeWidth={2.5} aria-hidden="true" />
               </button>
-              <span className="text-label text-zinc-400">
-                Ziggle과 같은 계정이에요
-              </span>
             </div>
           </div>
           <div className="min-w-0 flex-[1.15_1_440px]">

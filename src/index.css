@@ -201,6 +201,34 @@
     }
   }
 
+  /* 소개 화면의 예시 TV. 포스터 띠는 두 번 이어 붙인 목록을 절반만큼 옆으로 민다.
+     정보줄의 진행 막대는 장면 하나가 머무는 시간 동안 왼쪽에서 오른쪽으로 찬다. */
+  --animate-tv-sample-strip: tv-sample-strip 28s linear infinite;
+  @keyframes tv-sample-strip {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  @keyframes tv-sample-progress {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+  @keyframes tv-sample-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
   /* --- 레이아웃 ---------------------------------------------------------- */
   --container-content: 1200px;
   --container-form: 720px;

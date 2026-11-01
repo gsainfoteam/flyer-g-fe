@@ -1,16 +1,114 @@
-import { LogoMark } from "@/shared/components";
+import { Pause, Play } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { LiveClock, LogoMark } from "@/shared/components";
+import { cn } from "@/shared/lib/utils";
 
 /**
- * 소개 화면의 TV 모습. 예시 데이터로 그린 이벤트 장면이다(실제 편성이 아니다).
+ * 소개 화면의 TV 모습. 예시 데이터로 그린 장면이 실제 TV처럼 돌아간다(실제 편성이
+ * 아니다). (기획 3-1)
  *
- * TV 틀(머리 줄·카드·하단 정보줄)을 화면 폭에 맞춰 줄인다. 글자 크기는 컨테이너 폭
- * 기준(cqw)이라 어느 폭에서도 1920×1080 비율 그대로 보인다. (기획 3-1)
+ * 장면: 포스터 크게 → 포스터 모아 보기(띠가 흐름) → 소식 제보 → 이벤트. 장면이 바뀔
+ * 때는 짧은 페이드 하나만 쓰고, 정보줄의 진행 막대가 다음 장면까지 남은 시간을
+ * 보여 준다. 틀(머리 줄·정보줄)은 그대로 두고 안쪽만 바뀐다.
+ *
+ * 저절로 넘어가는 화면이라 멈춤 버튼과 장면 고르기를 둔다. 움직임 줄이기를 켠
+ * 사용자에게는 넘기지 않고 첫 장면에 멈춰 있다. 글자 크기는 컨테이너 폭 기준(cqw)이라
+ * 어느 폭에서도 1920×1080 비율 그대로 보인다.
  */
+const SCENE_MS = 5000;
+
+interface SamplePoster {
+  title: string;
+  kicker: string;
+  date: string;
+  place: string;
+  /** 포스터 바탕과 글자 색 */
+  tone: string;
+}
+
+const POSTERS: SamplePoster[] = [
+  {
+    title: "밴드 동아리 정기공연 〈소리〉",
+    kicker: "BAND LIVE",
+    date: "11.14 금 19:00",
+    place: "학생회관 대강당",
+    tone: "bg-type-poster text-white",
+  },
+  {
+    title: "가을 사진전",
+    kicker: "PHOTO CLUB",
+    date: "11.5 – 11.12",
+    place: "학생회관 2층 갤러리",
+    tone: "bg-accent-800 text-white",
+  },
+  {
+    title: "창업 아이디어 경진대회",
+    kicker: "START UP",
+    date: "11.20 목 마감",
+    place: "창업지원단",
+    tone: "bg-success-strong text-white",
+  },
+  {
+    title: "하우스 가을 체육대회",
+    kicker: "HOUSE",
+    date: "11.8 토 10:00",
+    place: "대운동장",
+    tone: "bg-accent text-white",
+  },
+  {
+    title: "영화 동아리 상영회",
+    kicker: "CINEMA",
+    date: "11.12 수 20:00",
+    place: "기숙사 B동 세미나실",
+    tone: "bg-zinc-700 text-white",
+  },
+  {
+    title: "알고리즘 스터디 모집",
+    kicker: "STUDY",
+    date: "~ 11.10",
+    place: "온라인 신청",
+    tone: "bg-violet-700 text-white",
+  },
+];
+
+type SceneKey = "spotlight" | "wall" | "story" | "event";
+
+const SCENES: { key: SceneKey; label: string; position: string }[] = [
+  { key: "spotlight", label: "포스터", position: "포스터 1 / 6" },
+  { key: "wall", label: "모아 보기", position: "모아 보기 1 / 2" },
+  { key: "story", label: "소식 제보", position: "제보 1–2 / 7" },
+  { key: "event", label: "이벤트", position: "이벤트 1 / 2" },
+];
+
+function prefersReducedMotion(): boolean {
+  try {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
+}
+
 export function TvSample() {
+  const [index, setIndex] = useState(0);
+  const [playing, setPlaying] = useState(() => !prefersReducedMotion());
+
+  useEffect(() => {
+    if (!playing) return;
+    const id = window.setTimeout(
+      () => setIndex((current) => (current + 1) % SCENES.length),
+      SCENE_MS,
+    );
+    return () => window.clearTimeout(id);
+  }, [index, playing]);
+
+  const scene = SCENES[index]!;
+  const next = SCENES[(index + 1) % SCENES.length]!;
+
   return (
     <figure className="m-0 min-w-0">
       <div className="rounded-[1.125rem] bg-zinc-800 p-2.5 shadow-[0_30px_60px_rgb(0_0_0/0.45)]">
-        <div className="@container">
+        <div className="@container" aria-hidden="true">
           <div className="flex aspect-video flex-col overflow-hidden rounded-[0.625rem] bg-stage text-hero-ink">
             <div className="flex min-h-0 flex-1 flex-col gap-[1.5cqw] px-[4.2cqw] pt-[2.9cqw] pb-[1.7cqw]">
               <div className="flex h-[2.9cqw] items-center gap-[0.8cqw] text-[1.3cqw] font-extrabold">
@@ -19,34 +117,22 @@ export function TvSample() {
                 <span className="ml-[0.4cqw] font-normal text-zinc-400">
                   A동 로비 1
                 </span>
+                <span className="ml-auto font-normal text-zinc-400">
+                  {scene.position}
+                </span>
               </div>
-              <div className="flex min-h-0 flex-1 gap-[3.3cqw] rounded-[1.25cqw] bg-hero-raised px-[5cqw] py-[3.75cqw]">
-                <div className="flex min-w-0 flex-1 flex-col justify-center gap-[1.9cqw]">
-                  <span className="self-start rounded-pill bg-accent px-[1.35cqw] py-[0.52cqw] text-[1.56cqw] font-bold text-accent-on">
-                    생일 축하
-                  </span>
-                  <p className="m-0 text-[5.4cqw] leading-[1.15] font-extrabold tracking-[-0.035em]">
-                    지민아, 생일 축하해
-                  </p>
-                  <p className="m-0 text-[2.7cqw] leading-[1.4] font-bold">
-                    스물한 살 생일 축하해! 오늘 하루는 네가 주인공
-                  </p>
-                  <p className="m-0 text-[1.9cqw] text-hero-muted">3층 친구들이</p>
-                </div>
-                <div className="flex flex-none flex-col items-center justify-center gap-[1.25cqw]">
-                  <div className="flex size-[12.5cqw] items-center justify-center rounded-[0.2cqw] bg-white text-[1.7cqw] font-extrabold text-stage">
-                    QR
-                  </div>
-                  <p className="m-0 text-[2cqw] font-extrabold">나도 올리기</p>
-                </div>
+              {/* key가 바뀌면 새 장면이 페이드로 들어온다. */}
+              <div
+                key={scene.key}
+                className="min-h-0 flex-1 animate-[tv-sample-fade_400ms_ease-out]"
+              >
+                {scene.key === "spotlight" && <SpotlightScene />}
+                {scene.key === "wall" && <WallScene />}
+                {scene.key === "story" && <StoryScene />}
+                {scene.key === "event" && <EventScene />}
               </div>
             </div>
-            <div className="flex h-[4.4cqw] flex-none items-center gap-[2.1cqw] bg-hero px-[2.5cqw] text-[1.35cqw]">
-              <b className="text-[1.8cqw]">12:11</b>
-              <span>맑음 14°</span>
-              <span>종강 D-50</span>
-              <span className="text-zinc-300">점심 11:30–13:30</span>
-            </div>
+            <InfoBar nextLabel={next.label} index={index} playing={playing} />
           </div>
         </div>
       </div>
@@ -54,11 +140,269 @@ export function TvSample() {
         aria-hidden="true"
         className="mx-auto h-2.5 w-36 rounded-b-lg bg-zinc-800"
       />
-      {/* TV 머리 줄을 가리지 않게 화면 밖 아래에 둔다. */}
-      <figcaption className="mt-3 flex items-center justify-center gap-1.5 text-caption text-zinc-400">
-        <span aria-hidden="true" className="size-1.75 rounded-full bg-accent" />
-        예시 화면 · 실제 TV와 같은 틀
+      <figcaption className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-caption text-zinc-400">
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden="true" className="size-1.75 rounded-full bg-accent" />
+          예시 화면 · 실제 TV와 같은 틀
+        </span>
+        <span className="flex items-center gap-1">
+          {SCENES.map((item, i) => (
+            <button
+              key={item.key}
+              type="button"
+              aria-label={`${item.label} 장면 보기`}
+              aria-pressed={i === index}
+              onClick={() => {
+                setIndex(i);
+                setPlaying(false);
+              }}
+              className="group inline-flex h-6 items-center px-0.5 focus-visible:outline-2 focus-visible:outline-white"
+            >
+              <span
+                className={cn(
+                  "block h-1.5 rounded-pill transition-all",
+                  i === index ? "w-5 bg-white" : "w-1.5 bg-zinc-600 group-hover:bg-zinc-400",
+                )}
+              />
+            </button>
+          ))}
+          <button
+            type="button"
+            aria-label={playing ? "장면 넘기기 멈춤" : "장면 넘기기 다시 시작"}
+            onClick={() => setPlaying((value) => !value)}
+            className="ml-1 inline-flex size-6 items-center justify-center rounded-full text-zinc-300 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white"
+          >
+            {playing ? (
+              <Pause size={13} aria-hidden="true" />
+            ) : (
+              <Play size={13} aria-hidden="true" />
+            )}
+          </button>
+        </span>
       </figcaption>
     </figure>
+  );
+}
+
+/** 하단 정보줄. 시계·날씨·D-day·끼니와 다음 장면, 진행 막대 */
+function InfoBar({
+  nextLabel,
+  index,
+  playing,
+}: {
+  nextLabel: string;
+  index: number;
+  playing: boolean;
+}) {
+  return (
+    <div className="flex h-[4.4cqw] flex-none items-center gap-[2.1cqw] border-t border-zinc-800 bg-hero px-[2.5cqw] text-[1.35cqw]">
+      <LiveClock
+        format="time"
+        className="text-[1.8cqw] font-extrabold text-hero-ink"
+      />
+      <span>맑음 14°</span>
+      <span>종강 D-50</span>
+      <span className="text-zinc-300">점심 11:30–13:30</span>
+      <span className="ml-auto text-zinc-300">다음 · {nextLabel}</span>
+      <span className="h-[0.4cqw] w-[10.4cqw] overflow-hidden rounded-pill bg-zinc-700">
+        {playing && (
+          <span
+            key={index}
+            className="block h-full origin-left bg-accent"
+            style={{
+              animation: `tv-sample-progress ${SCENE_MS}ms linear forwards`,
+            }}
+          />
+        )}
+      </span>
+    </div>
+  );
+}
+
+/** 예시 포스터 한 장. 그림 대신 색과 글자로 만든다. */
+function PosterArt({
+  poster,
+  className,
+  size = "md",
+}: {
+  poster: SamplePoster;
+  className?: string;
+  size?: "md" | "lg";
+}) {
+  const large = size === "lg";
+  return (
+    <div
+      className={cn(
+        "flex aspect-3/4 flex-col justify-between overflow-hidden rounded-[0.8cqw]",
+        large ? "p-[2cqw]" : "p-[1.1cqw]",
+        poster.tone,
+        className,
+      )}
+    >
+      <span
+        className={cn(
+          "tracking-[0.12em] opacity-80",
+          large ? "text-[1.1cqw]" : "text-[0.7cqw]",
+        )}
+      >
+        {poster.kicker}
+      </span>
+      <span
+        className={cn(
+          "leading-[1.15] font-extrabold",
+          large ? "text-[3.2cqw]" : "text-[1.6cqw]",
+        )}
+      >
+        {poster.title}
+      </span>
+      <span
+        className={cn("opacity-85", large ? "text-[1.1cqw]" : "text-[0.75cqw]")}
+      >
+        {poster.date}
+      </span>
+    </div>
+  );
+}
+
+function SpotlightScene() {
+  const poster = POSTERS[0]!;
+  return (
+    <div className="flex h-full items-center gap-[4cqw]">
+      <PosterArt poster={poster} size="lg" className="h-full" />
+      <div className="min-w-0 flex-1">
+        <span className="inline-flex rounded-pill bg-type-poster-bar px-[1.2cqw] py-[0.4cqw] text-[1.3cqw] font-bold text-white">
+          공연
+        </span>
+        <p className="mt-[1.4cqw] text-[3.6cqw] leading-[1.2] font-extrabold tracking-[-0.03em]">
+          {poster.title}
+        </p>
+        <p className="mt-[0.8cqw] text-[1.8cqw] text-hero-muted">
+          {poster.date} · {poster.place}
+        </p>
+        <div className="mt-[2cqw] flex items-center gap-[1.4cqw]">
+          <QrMark className="size-[8cqw]" />
+          <span className="text-[1.5cqw] font-bold">
+            폰으로 찍으면
+            <br />
+            자세히 보기
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 포스터가 옆으로 흐르는 띠. 같은 목록을 두 번 이어 붙여 끊김 없이 돈다. */
+function WallScene() {
+  return (
+    <div className="flex h-full items-center overflow-hidden">
+      <div className="flex h-[76%] w-max animate-tv-sample-strip gap-[1.6cqw]">
+        {[...POSTERS, ...POSTERS].map((poster, i) => (
+          <PosterArt key={i} poster={poster} className="h-full flex-none" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StoryScene() {
+  return (
+    <SceneCard tag="소식 제보" note="이름 없이 전하는 기숙사 소식" qr="폰으로 제보하기">
+      <div className="grid h-full grid-cols-2 gap-[1.6cqw]">
+        <StoryCard number={128} tag="칭찬">
+          B동 3층 세탁실 건조기 2번이 고쳐졌어요! 고쳐 주신 분 감사합니다.
+        </StoryCard>
+        <StoryCard number={127} tag="분실물">
+          A동 로비 소파에서 파란 텀블러를 주웠어요. 하우스오피스에 맡겨 둘게요.
+        </StoryCard>
+      </div>
+    </SceneCard>
+  );
+}
+
+function StoryCard({
+  number,
+  tag,
+  children,
+}: {
+  number: number;
+  tag: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col rounded-[1cqw] bg-hero-raised p-[1.8cqw]">
+      <div className="flex items-center gap-[0.8cqw] text-[1.2cqw]">
+        <span className="rounded-pill bg-type-story-bar px-[0.9cqw] py-[0.25cqw] font-bold text-stage">
+          {tag}
+        </span>
+        <span className="text-zinc-400">#{number}</span>
+      </div>
+      <p className="mt-[1.2cqw] text-[2cqw] leading-[1.45] font-bold">{children}</p>
+    </div>
+  );
+}
+
+function EventScene() {
+  return (
+    <SceneCard tag="생일 축하" note="10월 31일 하루" qr="나도 올리기">
+      <div className="flex h-full flex-col justify-center gap-[1.4cqw]">
+        <p className="text-[5cqw] leading-[1.15] font-extrabold tracking-[-0.035em]">
+          지민아, 생일 축하해
+        </p>
+        <p className="text-[2.4cqw] leading-[1.4] font-bold">
+          스물한 살 생일 축하해! 오늘 하루는 네가 주인공
+        </p>
+        <p className="text-[1.7cqw] text-hero-muted">3층 친구들이</p>
+      </div>
+    </SceneCard>
+  );
+}
+
+/** 카드 틀(PR #36): 빨간 말머리 + 보조 문구, 오른쪽에 QR */
+function SceneCard({
+  tag,
+  note,
+  qr,
+  children,
+}: {
+  tag: string;
+  note: string;
+  qr: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex h-full gap-[3cqw] rounded-[1.25cqw] bg-hero-raised/60 px-[3.6cqw] py-[2.6cqw]">
+      <div className="flex min-w-0 flex-1 flex-col gap-[1.4cqw]">
+        <div className="flex items-center gap-[1cqw]">
+          <span className="rounded-pill bg-accent px-[1.3cqw] py-[0.45cqw] text-[1.45cqw] font-bold text-accent-on">
+            {tag}
+          </span>
+          <span className="text-[1.6cqw] text-hero-muted">{note}</span>
+        </div>
+        <div className="min-h-0 flex-1">{children}</div>
+      </div>
+      <div className="flex flex-none flex-col items-center justify-center gap-[1cqw]">
+        <QrMark className="size-[11cqw]" />
+        <p className="text-[1.6cqw] font-extrabold">{qr}</p>
+      </div>
+    </div>
+  );
+}
+
+/** QR 자리. 소개 화면은 실제 주소를 싣지 않으므로 모양만 그린다. */
+function QrMark({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "grid grid-cols-5 grid-rows-5 gap-[6%] rounded-[0.3cqw] bg-white p-[8%]",
+        className,
+      )}
+    >
+      {[1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1].map(
+        (on, i) => (
+          <span key={i} className={on ? "bg-stage" : ""} />
+        ),
+      )}
+    </div>
   );
 }
