@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { onRequestGet } from "../../functions/api/cafeteria";
-import { CAFETERIAS, fetchCafeteriaWeek, latestPost, pdfFileName, pdfUrl } from "./board";
+import { CAFETERIAS, fetchCafeteriaWeek, listPosts, pdfFileName, pdfUrl } from "./board";
 import { cleanMenu, parseMenuPage } from "./parse-menu";
 import { readPdfPage } from "./pdf-text";
 
@@ -105,12 +105,15 @@ describe("식단표 PDF 읽기", () => {
 
 describe("학식 게시판", () => {
   it("목록에서 최신 글, 글에서 PDF 뷰어 파일을 찾는다", () => {
-    expect(latestPost(LIST_HTML)).toEqual({ no: "224406", title: "2026년10월5주 (10월26월-10월30일)" });
+    expect(listPosts(LIST_HTML)).toEqual([
+      { no: "224406", title: "2026년10월5주 (10월26월-10월30일)" },
+      { no: "224173", title: "2026년10월4주" },
+    ]);
     expect(pdfFileName(POST_HTML)).toBe("20261026094055_01f0ct1nrbmu83421b35ciq45u61yl.pdf");
     expect(pdfUrl("050601", "a.pdf")).toBe(
       "https://www.gist.ac.kr/_prog/download/?code=050601&site_dvs_cd=kr&file=a.pdf&bbsPdfViewer=Y",
     );
-    expect(latestPost("<html></html>")).toBeNull();
+    expect(listPosts("<html></html>")).toEqual([]);
   });
 
   /** 목록 → 글 → PDF 순서로 답하는 가짜 학교 사이트 */
@@ -130,6 +133,54 @@ describe("학식 게시판", () => {
     expect(week.place).toBe("제1학생식당");
     expect(week.title).toContain("10월5주");
     expect(week.days).toHaveLength(5);
+  });
+
+  it("최신 글에 오늘이 없으면(다음 주 글을 미리 올림) 앞 글까지 본다", async () => {
+    const postsRead = (fetchImpl: typeof fetch) =>
+      (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls
+        .map(([url]) => String(url))
+        .filter((url) => url.includes("mode=V"));
+
+    const thisWeek = fakeSite({ "050602": SECOND });
+    await fetchCafeteriaWeek(CAFETERIAS[1], NOW, thisWeek);
+    expect(postsRead(thisWeek)).toHaveLength(1);
+
+    // 10/25(일): 최신 글은 10/26 주라 오늘이 없다.
+    const weekend = fakeSite({ "050602": SECOND });
+    const week = await fetchCafeteriaWeek(CAFETERIAS[1], new Date("2026-10-25T03:00:00Z"), weekend);
+    expect(postsRead(weekend).map((url) => new URL(url).searchParams.get("no"))).toEqual([
+      "224406",
+      "224173",
+    ]);
+    expect(week.days.map((day) => day.date)).toContain("2026-10-26");
+  });
+
+  it("함수: 식당이 실패하면 캐시를 짧게, 캐시에서 꺼내도 TV에는 30분까지만", async () => {
+    const stored = new Map<string, Response>();
+    vi.stubGlobal("caches", {
+      default: {
+        match: async (request: Request) => stored.get(request.url)?.clone(),
+        put: async (request: Request, response: Response) => void stored.set(request.url, response),
+      },
+    });
+    const pending: Promise<unknown>[] = [];
+    const call = (fetchImpl: typeof fetch) => {
+      vi.stubGlobal("fetch", fetchImpl);
+      return onRequestGet({
+        request: new Request("https://tv.example/api/cafeteria"),
+        waitUntil: (promise) => pending.push(promise),
+      });
+    };
+
+    const first = await call(fakeSite({ "050602": SECOND }));
+    await Promise.all(pending);
+    expect(first.headers.get("Cache-Control")).toBe("public, max-age=1800");
+    expect([...stored.values()][0]!.headers.get("Cache-Control")).toBe("public, max-age=1800");
+
+    const hit = await call(fakeSite({}));
+    expect(hit.status).toBe(200);
+    expect(hit.headers.get("Cache-Control")).toBe("public, max-age=1800");
+    vi.unstubAllGlobals();
   });
 
   it("함수: 읽은 식당만 보내고, 모두 실패하면 502", async () => {
