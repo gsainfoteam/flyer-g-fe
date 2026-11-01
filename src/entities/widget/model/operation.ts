@@ -61,12 +61,12 @@ export interface TimeSlotRule {
 }
 
 export const TIME_SLOTS: readonly TimeSlotRule[] = [
-  // 실제 TV 시험용. 11/2 01:50–02:05에만 적용되고 지나면 저절로 끝난다(지워도 됨).
+  // 실제 TV 시험용. 11/2 02:35–02:40에만 적용되고 지나면 저절로 끝난다(지워도 됨).
   {
     id: "2026-11-02-tv-test",
     widget: "CLICK_BATTLE",
     dates: { from: "2026-11-02", to: "2026-11-02" },
-    time: { from: "01:50", to: "02:05" },
+    time: { from: "02:35", to: "02:40" },
     label: "클릭 배틀 시험",
     survey: { url: SURVEY_URL, label: "이벤트 설문" },
   },
