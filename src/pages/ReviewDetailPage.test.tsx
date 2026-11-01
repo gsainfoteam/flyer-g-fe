@@ -17,7 +17,7 @@ function reviewRepositories() {
 
 describe("검토 상세", () => {
   it("검토 근거를 한 화면에 보여준다", async () => {
-    renderRoute(`/reviews/${PENDING_ID}`, { role: "REVIEWER" });
+    renderRoute(`/review/${PENDING_ID}`, { role: "REVIEWER" });
 
     // 페이지 제목과 TV 미리보기가 같은 제목을 그린다. 하나 이상 있으면 된다.
     expect(
@@ -38,7 +38,7 @@ describe("검토 상세", () => {
   it("승인하면 서버가 정한 상태로 바뀌고 다음 대기 건으로 넘어간다", async () => {
     const user = userEvent.setup();
     const repositories = reviewRepositories();
-    const { router } = renderRoute(`/reviews/${PENDING_ID}`, {
+    const { router } = renderRoute(`/review/${PENDING_ID}`, {
       role: "REVIEWER",
       repositories,
     });
@@ -55,14 +55,14 @@ describe("검토 상세", () => {
     });
     // 가장 오래 기다린 다음 건(fixture notice-005)으로 이어진다.
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe("/reviews/notice-005"),
+      expect(router.state.location.pathname).toBe("/review/notice-005"),
     );
   });
 
   it("반려는 분류와 사유 없이 실행되지 않는다", async () => {
     const user = userEvent.setup();
     const repositories = reviewRepositories();
-    renderRoute(`/reviews/${PENDING_ID}`, {
+    renderRoute(`/review/${PENDING_ID}`, {
       role: "REVIEWER",
       repositories,
     });
@@ -102,7 +102,7 @@ describe("검토 상세", () => {
     const user = userEvent.setup();
     const repositories = reviewRepositories();
 
-    renderRoute(`/reviews/${PENDING_ID}`, {
+    renderRoute(`/review/${PENDING_ID}`, {
       role: "REVIEWER",
       repositories,
     });
@@ -137,7 +137,7 @@ describe("검토 상세", () => {
     const user = userEvent.setup();
     const repositories = reviewRepositories();
     // fixture notice-001은 PUBLISHED다.
-    renderRoute("/reviews/notice-001", { role: "REVIEWER", repositories });
+    renderRoute("/review/notice-001", { role: "REVIEWER", repositories });
 
     await user.click(
       await screen.findByRole("button", { name: "게시 중단하기" }),
@@ -159,7 +159,7 @@ describe("검토 상세", () => {
   });
 
   it("게시자 역할은 검토 상세에 접근할 수 없다", async () => {
-    renderRoute(`/reviews/${PENDING_ID}`, { role: "SUBMITTER" });
+    renderRoute(`/review/${PENDING_ID}`, { role: "SUBMITTER" });
 
     expect(
       await screen.findByText("이 화면을 볼 권한이 없어요"),
@@ -168,7 +168,7 @@ describe("검토 상세", () => {
   });
 
   it("대상 위치를 신청에 지정된 위치 이름으로 보여준다", async () => {
-    renderRoute(`/reviews/${PENDING_ID}`, { role: "REVIEWER" });
+    renderRoute(`/review/${PENDING_ID}`, { role: "REVIEWER" });
 
     const label = await screen.findByText("대상 위치");
     expect(label.nextElementSibling).toHaveTextContent("학사기숙사 A동");
@@ -176,7 +176,7 @@ describe("검토 상세", () => {
 
   it("기타로 반려하려면 무엇이 문제인지 10자 이상 적어야 한다", async () => {
     const user = userEvent.setup();
-    renderRoute(`/reviews/${PENDING_ID}`, { role: "REVIEWER" });
+    renderRoute(`/review/${PENDING_ID}`, { role: "REVIEWER" });
 
     await user.click(await screen.findByRole("button", { name: "반려" }));
     const dialog = await screen.findByRole("dialog");
@@ -192,11 +192,11 @@ describe("검토 상세", () => {
   });
 
   it("승인 대기가 아닌 건에서는 전체 신청 목록으로 돌아간다", async () => {
-    renderRoute("/reviews/notice-001", { role: "REVIEWER" });
+    renderRoute("/review/notice-001", { role: "REVIEWER" });
 
     expect(
       await screen.findByRole("link", { name: /전체 신청으로/ }),
-    ).toHaveAttribute("href", "/submissions?scope=all");
+    ).toHaveAttribute("href", "/contents");
   });
 });
 

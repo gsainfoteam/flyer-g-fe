@@ -47,7 +47,7 @@ export function SubmitterActions({
     <div className="flex flex-wrap items-center gap-2.5">
       {editLabel && (
         <Button size="sm" asChild>
-          <Link to={to.studioEdit(submission.id)}>{editLabel}</Link>
+          <Link to={to.editPoster(submission.id)}>{editLabel}</Link>
         </Button>
       )}
 
@@ -60,7 +60,7 @@ export function SubmitterActions({
             setConfirmingCancel(true);
           }}
         >
-          신청 취소하기
+          신청 취소
         </Button>
       )}
 
@@ -113,5 +113,5 @@ export function SubmitterActions({
 function editLabelOf(status: SubmissionStatus): string | null {
   if (!canSubmitterEdit(status)) return null;
   if (status === "DRAFT") return "이어서 작성";
-  return canSubmitterResubmit(status) ? "수정해서 다시 신청" : "수정하기";
+  return canSubmitterResubmit(status) ? "고쳐서 다시 내기" : "고치기";
 }

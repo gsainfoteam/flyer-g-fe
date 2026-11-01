@@ -5,6 +5,7 @@ import {
   formatSeoulDate,
   formatSeoulDateTime,
   formatSeoulDateWithWeekday,
+  formatSeoulDayRange,
   formatSeoulDayTime,
   formatSeoulPeriod,
   formatSeoulShortDateWithWeekday,
@@ -12,6 +13,7 @@ import {
   fromSeoulInput,
   getSeoulParts,
   parseIsoUtc,
+  seoulDayCount,
   seoulDayDiff,
   toIsoUtc,
   toSeoulDateInputValue,
@@ -149,6 +151,15 @@ describe("서울 달력 기준 날짜 차이와 가까운 시각", () => {
     expect(
       formatSeoulDayTime(parseIsoUtc("2026-09-21T15:00:00.000Z"), now),
     ).toBe("09. 22. 00:00");
+  });
+
+  it("서울 자정에 끝나는 기간은 그 전날까지로 센다", () => {
+    const start = parseIsoUtc("2026-11-02T15:00:00.000Z"); // 11-03 00:00 KST
+    const end = parseIsoUtc("2026-11-14T15:00:00.000Z"); // 11-15 00:00 KST
+    expect(seoulDayCount(start, end)).toBe(12);
+    expect(formatSeoulDayRange(start, end)).toBe("11월 3일 – 14일");
+    // 자정이 아니면 그날까지 센다.
+    expect(seoulDayCount(start, parseIsoUtc("2026-11-14T09:00:00.000Z"))).toBe(12);
   });
 
   it("요일을 붙인 짧은 날짜", () => {

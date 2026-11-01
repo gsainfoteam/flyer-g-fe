@@ -6,18 +6,13 @@ import type {
 } from "@/entities/review/model/types";
 import type { SubmissionView } from "@/entities/submission/model/types";
 import { useReviewHistories } from "@/features/submissions/api/queries";
-import {
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  Panel,
-} from "@/shared/components";
+import { EmptyState, ErrorState, LoadingState } from "@/shared/components";
 import { to } from "@/shared/config/routes";
 import { formatSeoulDayTime } from "@/shared/lib/datetime";
 import { cn } from "@/shared/lib/utils";
 
 /**
- * 게시자 홈의 "최근 소식". 내 신청에 일어난 일을 최신순으로 한 줄씩. 기록이라
+ * 사용자 홈의 "최근 소식". 내 컨텐츠에 일어난 일을 최신순으로 한 줄씩. 기록이라
  * "제목 + 일" 명사형으로 짧게 쓴다.
  *
  * 홈에 다시 왔을 때 "그사이 무엇이 바뀌었나"에 답한다. 반려·중단에는 관리자가 남긴
@@ -37,7 +32,7 @@ function lastActivityOf(submission: SubmissionView, now: Date): number {
   );
 }
 
-export function ActivityFeedPanel({
+export function ActivityFeed({
   submissions,
   now,
 }: {
@@ -60,7 +55,13 @@ export function ActivityFeedPanel({
     .slice(0, SHOWN_EVENTS);
 
   return (
-    <Panel title="최근 소식">
+    <section
+      aria-labelledby="activity-feed"
+      className="rounded-block bg-surface px-6 py-5.5 ring-1 ring-line"
+    >
+      <h2 id="activity-feed" className="mb-3 text-subhead text-ink">
+        최근 소식
+      </h2>
       {pending ? (
         <LoadingState rows={3} label="소식을 불러오고 있어요." />
       ) : failed ? (
@@ -77,7 +78,7 @@ export function ActivityFeedPanel({
       ) : events.length === 0 ? (
         <EmptyState
           title="아직 소식이 없어요"
-          description="신청하면 검토 결과와 게시 시작·종료 소식이 여기에 쌓여요."
+          description="올리면 심사 결과와 게시 시작·끝 소식이 여기에 쌓여요."
           className="py-1"
         />
       ) : (
@@ -86,14 +87,14 @@ export function ActivityFeedPanel({
             <FeedItem
               key={event.id}
               event={event}
-              title={titles.get(event.submissionId) ?? "신청"}
+              title={titles.get(event.submissionId) ?? "컨텐츠"}
               now={now}
               last={index === events.length - 1}
             />
           ))}
         </ol>
       )}
-    </Panel>
+    </section>
   );
 }
 

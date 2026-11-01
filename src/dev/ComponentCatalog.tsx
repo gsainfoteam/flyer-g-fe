@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { SUBMISSION_STATUSES } from "@/entities/submission";
 import { MockControlPanel } from "./MockControlPanel";
 import { TvRotationDemo } from "./TvRotationDemo";
+import { VisualLanguageGallery } from "./VisualLanguageGallery";
 import { WidgetGallery } from "./WidgetGallery";
 import { ApiError } from "@/shared/api/error";
 import { ConfirmActionDialog, EmptyState, ErrorState, FormField, LoadingState, Panel, SectionHeader } from "@/shared/components";
@@ -183,6 +184,13 @@ export default function ComponentCatalog() {
           description="넘치기 쉬운 값을 모은 경계 사례. 각 칸은 1920x1080 TV 화면을 줄인 것이다."
         >
           <WidgetGallery />
+        </Section>
+
+        <Section
+          title="첫 화면 시각 언어"
+          description="종류 색과 아이콘, 숫자 칸, 어두운 강조 카드, 단축키"
+        >
+          <VisualLanguageGallery />
         </Section>
 
         <Section title="디자인 토큰" description="색, 타이포, 모서리, 그림자">

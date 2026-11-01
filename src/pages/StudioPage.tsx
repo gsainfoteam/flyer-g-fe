@@ -315,7 +315,7 @@ export function StudioPage() {
   return (
     <>
       <header className="sticky top-0 z-(--layer-header) flex h-(--layout-header-height) shrink-0 items-center gap-3 border-b border-line bg-surface px-4 sm:gap-4 sm:px-6">
-        <Link to={to.dashboard()} className="flex shrink-0">
+        <Link to={to.home()} className="flex shrink-0">
           <Logo size="md" />
         </Link>
         <div className="hidden h-7 w-px bg-line sm:block" />
