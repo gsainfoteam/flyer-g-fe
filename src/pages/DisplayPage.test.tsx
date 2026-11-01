@@ -332,3 +332,64 @@ describe("기기 연결 (`API-CHANGES-BACKEND.md` 8절)", () => {
     }
   });
 });
+
+describe("11/2–11/8 저녁 클릭 배틀 행사", () => {
+  function eventRepositories(now: string) {
+    const time = new Date(now);
+    const repositories = createMockRepositories({ clock: createFixedClock(time) });
+    const playlist = toPlaylist({
+      serverTime: toIsoUtc(time),
+      playlistVersion: "event-test",
+      refreshAfterSeconds: 60,
+      layout: { type: "STRIP", rotationSeconds: 10 },
+      items: [{
+        submissionId: "normal-poster", revision: 1, title: "평소 포스터",
+        category: "공지", assetUrl: "/posters/vesper.webp", detailUrl: null,
+        startsAt: "2026-11-01T00:00:00Z", endsAt: "2026-11-10T00:00:00Z",
+        priority: 0, checksum: "normal-poster", kind: "IMAGE",
+        width: 828, height: 1171, durationMs: null, subtitle: null,
+        location: null, organizerName: null,
+      }],
+    });
+    vi.spyOn(repositories.displays, "getPlaylist").mockResolvedValue(playlist);
+    // 위젯이 모두 꺼져 있어도 이번 주 저녁의 게임 전용 편성은 동작한다.
+    vi.spyOn(repositories.widgets, "getDeviceWidgets").mockResolvedValue(NO_WIDGETS);
+    return repositories;
+  }
+
+  it("저녁에는 포스터·위젯 설정과 관계없이 게임을 띄우고 수동 넘김도 막는다", async () => {
+    const repositories = eventRepositories("2026-11-02T19:00:00+09:00");
+    renderRoute("/display/device-preview?preview=1", { repositories });
+    expect(await screen.findByText("클릭 배틀 · 20:00까지")).toBeInTheDocument();
+    expect(screen.getByText("참가자 모집 중")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "평소 포스터" })).toBeNull();
+    expect(screen.getByRole("button", { name: "다음 화면" })).toBeDisabled();
+    expect(screen.getByText("시간대 고정")).toBeInTheDocument();
+  });
+
+  it("게임 화면을 열어 둔 상태에서도 20시 서버 시각을 받으면 평소 편성으로 복귀한다", async () => {
+    const repositories = eventRepositories("2026-11-02T19:00:00+09:00");
+    const playlist = await repositories.displays.getPlaylist("device-preview");
+    renderRoute("/display/device-preview", { repositories });
+    await screen.findByText("클릭 배틀 · 20:00까지");
+    vi.mocked(repositories.displays.getPlaylist).mockResolvedValue({
+      ...playlist,
+      serverTime: new Date("2026-11-02T20:00:00+09:00"),
+    });
+    fireEvent(window, new Event("visibilitychange"));
+    expect(await screen.findByRole("heading", { name: "평소 포스터" })).toBeInTheDocument();
+    expect(screen.queryByText("클릭 배틀 · 20:00까지")).toBeNull();
+    expect(screen.queryByText("참가자 모집 중")).toBeNull();
+  });
+
+  it.each([
+    "2026-11-01T19:00:00+09:00",
+    "2026-11-02T17:59:00+09:00",
+    "2026-11-02T20:00:00+09:00",
+    "2026-11-09T19:00:00+09:00",
+  ])("%s 에는 평소 편성을 재생한다", async (now) => {
+    renderRoute("/display/device-preview", { repositories: eventRepositories(now) });
+    expect(await screen.findByRole("heading", { name: "평소 포스터" })).toBeInTheDocument();
+    expect(screen.queryByText("클릭 배틀 · 20:00까지")).toBeNull();
+  });
+});

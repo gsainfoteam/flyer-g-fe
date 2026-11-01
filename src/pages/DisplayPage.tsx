@@ -12,6 +12,7 @@ import {
   usePrefetchImages,
 } from "@/features/display";
 import { useRotation } from "@/features/display/model/use-rotation";
+import { useTemporaryBattleWindow } from "@/features/display/model/use-temporary-battle-window";
 import {
   DEFAULT_LAYOUT_TYPE,
   PREVIEW_DEVICE_ID,
@@ -140,6 +141,8 @@ export function DisplayPage() {
   const [gameToken] = useState(() => deviceCredentials.get(deviceId));
   const canHostGame = socketBase === null || gameToken !== null;
   const previewGame = !canHostGame && deviceId === PREVIEW_DEVICE_ID;
+  const inTemporaryBattleWindow = useTemporaryBattleWindow(serverTime);
+  const temporaryBattle = inTemporaryBattleWindow && (canHostGame || previewGame);
 
   // 포스터 한 바퀴가 짧으면(편성이 한두 장) 남는 시간을 위젯으로 채운다. 서버에 위젯
   // API가 아직 없으면 그때만 데이터가 필요 없는 기본 위젯을 쓴다. 포스터가 충분하면
@@ -226,7 +229,7 @@ export function DisplayPage() {
     ),
     pickWidget,
     paused: isPreview && paused,
-    hold: gameActive,
+    hold: gameActive || temporaryBattle,
   });
 
   const nextFrame = rotation.nextFrame;
@@ -251,10 +254,20 @@ export function DisplayPage() {
     [playlistVersion],
   );
 
-  // 위젯 화면은 게시물 노출이 아니다. 노출 기록에서 뺀다.
+  // 행사 시간에는 기존 편성을 그대로 보관하고 게임 화면만 띄운다. 20:00에는 복귀.
+  const frame: PlayerFrame | undefined = temporaryBattle
+    ? {
+        kind: "widget",
+        key: "temporary-evening-click-battle",
+        slot: { id: "temporary-evening-click-battle", type: "CLICK_BATTLE", durationSeconds: 20, params: {} },
+        content: { type: "CLICK_BATTLE" },
+      }
+    : rotation.currentFrame;
+
+  // 위젯 화면은 게시물 노출이 아니다. 행사 화면 뒤에 보관한 포스터도 집계하지 않는다.
   const exposed =
-    rotation.currentFrame && rotation.currentFrame.kind !== "widget"
-      ? exposedPosters(rotation.currentFrame, posters)
+    frame && frame.kind !== "widget"
+      ? exposedPosters(frame, posters)
       : [];
   usePlaybackReporting({
     page: exposed,
@@ -267,7 +280,6 @@ export function DisplayPage() {
 
   // 화면이 바뀔 때 새로 그려 부드럽게 나타나게 한다. 띠는 한 덩어리로 두고
   // 칸만 미끄러지게 한다.
-  const frame = rotation.currentFrame;
   const frameKey = frame?.kind === "strip" ? "strip" : (frame?.key ?? "");
 
   // 아래 정보줄. 같은 내용의 위젯이 화면을 채우는 동안에는 그 칩을 숨긴다.
@@ -305,7 +317,7 @@ export function DisplayPage() {
           ? null
           : ddayChip(widgetSlots, serverTime)
       }
-      status={gameActive ? "클릭 배틀 진행 중" : null}
+      status={temporaryBattle ? "클릭 배틀 · 20:00까지" : gameActive ? "클릭 배틀 진행 중" : null}
       next={
         rotation.moving && upcoming && serverTime
           ? {
@@ -353,7 +365,9 @@ export function DisplayPage() {
                     deviceLabel={deviceLabel}
                     serverTime={serverTime}
                     onActiveChange={setGameActive}
-                    onSessionEnd={rotation.advance}
+                    onSessionEnd={() => {
+                      if (!temporaryBattle) rotation.advance();
+                    }}
                   />
                 )}
               </div>
@@ -414,13 +428,13 @@ export function DisplayPage() {
               size="icon-xs"
               className="text-ink-inverse hover:bg-white/15 hover:text-ink-inverse"
               onClick={rotation.advance}
-              disabled={rotation.frameCount <= 1}
+              disabled={temporaryBattle || rotation.frameCount <= 1}
               aria-label="다음 화면"
             >
               <SkipForward aria-hidden="true" />
             </Button>
             <span className="text-caption tabular-nums text-white/70">
-              {rotation.frameIndex + 1} / {Math.max(rotation.frameCount, 1)}
+              {temporaryBattle ? "시간대 고정" : `${rotation.frameIndex + 1} / ${Math.max(rotation.frameCount, 1)}`}
             </span>
           </div>
         )}
