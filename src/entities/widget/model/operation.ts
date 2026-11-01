@@ -6,8 +6,13 @@ import type { WidgetSlotDto, WidgetType } from "./types";
  * `widgets`·`durations`는 서버 값을 따르고, 시간대 점유(`TIME_SLOTS`)는 계속 여기서 읽는다.
  */
 
-/** 설문 링크. 비워 두면 설문 QR과 설문 위젯이 숨는다. */
-export const SURVEY_URL = "";
+/**
+ * 설문 링크. 비워 두면 설문 QR과 설문 위젯이 숨는다.
+ *
+ * ⚠️ 공개 설정 필요: 2026-11-02 기준 이 Notion 페이지는 로그인해야 열린다. QR을 찍은
+ * 사람이 바로 응답할 수 있게 Notion에서 "웹에 게시"(또는 양식 공유)를 켜 둘 것.
+ */
+export const SURVEY_URL = "https://app.notion.com/p/409084b8aa7980be943ad6c656b91bf7?pvs=106";
 
 /** 위젯별 머무는 시간(초). 서버 설정이 없을 때 쓴다. 없는 종류는 기본값 */
 export const WIDGET_DURATIONS: Partial<Record<WidgetType, number>> = {
