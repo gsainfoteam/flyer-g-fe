@@ -121,7 +121,7 @@ describe("useRotation", () => {
     const pickWidget = (avoidId?: string) => {
       avoided.push(avoidId);
       const slot = [w1, w2].filter((item) => item.id !== avoidId)[turn++ % 2] ?? w1;
-      return { slot, content: { type: "FORTUNE" as const, dateKey: "2026-10-31", fortunes: [] } };
+      return { slot, content: { type: "CLICK_BATTLE" as const } };
     };
     const { result } = renderHook(() =>
       useRotation({
