@@ -1,4 +1,8 @@
-import { STAGE_HEADER_HEIGHT, TV_STAGE_WIDTH } from "../ui/stage-metrics";
+import {
+  STAGE_BODY_HEIGHT,
+  STAGE_HEADER_HEIGHT,
+  TV_STAGE_WIDTH,
+} from "../ui/stage-metrics";
 import { posterAspect } from "./types";
 import type { PosterRenderModel } from "./types";
 
@@ -10,10 +14,10 @@ import type { PosterRenderModel } from "./types";
 /**
  * 가운데 칸 높이. 칸은 이 크기로 그리고, 양옆은 `NEIGHBOR_SCALE`배로 줄인다. 가운데를
  * 키우지 않고 양옆을 줄이므로 가운데 이미지는 늘 원래 해상도로 또렷하다.
- * 아래 정보줄이 생겨 줄어든 본문 높이만큼 680에서 줄였다(아래 제목 줄 자리는 그대로).
+ * 아래 제목·QR 영역 240px을 남기고 본문 높이에 맞춘다.
  */
-const FOCUS_HEIGHT = 644;
-/** 양옆 칸은 가운데의 이만큼(높이 약 490px)으로 작게, 흐리게 둔다. */
+const FOCUS_HEIGHT = STAGE_BODY_HEIGHT - 240;
+/** 양옆 칸은 가운데의 이만큼(높이 약 444px)으로 작게, 흐리게 둔다. */
 export const NEIGHBOR_SCALE = 0.72;
 /** 아주 넓은 배너가 화면을 혼자 차지하지 않게 칸 폭을 막는다. */
 const ITEM_MAX_WIDTH = 1500;

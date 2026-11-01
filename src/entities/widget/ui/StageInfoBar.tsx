@@ -52,42 +52,58 @@ export function StageInfoBar({
   const sky = weather ? SKY_LABEL[weather.sky] : null;
   const air = airChip(weather);
   return (
-    <div className="flex h-full items-center gap-10 border-t border-line bg-surface px-[80px] text-[28px] whitespace-nowrap text-ink-muted tabular-nums">
+    <div className="flex h-full items-center gap-8 overflow-hidden border-t border-line bg-surface px-[80px] text-[28px] whitespace-nowrap text-ink-muted tabular-nums">
       <LiveClock
         now={now ?? undefined}
         ticking={clockTicking || now === null}
         format="time"
-        className="text-[40px] font-extrabold text-ink"
+        className="shrink-0 text-[40px] font-extrabold text-ink"
       />
       {weather && sky && (
-        <span className="flex items-center gap-3">
+        <span className="flex shrink-0 items-center gap-3">
           <sky.icon aria-hidden="true" strokeWidth={2} className={cn("size-8", sky.tone)} />
           <span className="font-bold text-ink">{weather.temperature}°</span>
           {sky.text}
         </span>
       )}
-      {air && <span className={cn("font-bold", air.tone)}>{air.text}</span>}
-      {meal && <span className="text-ink">{meal}</span>}
-      {dday && <span>{dday}</span>}
+      {air && <span className={cn("shrink-0 font-bold", air.tone)}>{air.text}</span>}
+      {/* 시계·날씨·경고는 유지하고, 가변 길이 안내가 남은 폭을 나눠 쓴다. */}
+      {(meal || dday) && (
+        <span className="flex min-w-0 flex-1 items-center gap-8">
+          {meal && (
+            <span title={meal} className="min-w-0 max-w-[360px] flex-[1.3] truncate text-ink">
+              {meal}
+            </span>
+          )}
+          {dday && (
+            <span title={dday} className="min-w-0 max-w-[280px] flex-1 truncate">
+              {dday}
+            </span>
+          )}
+        </span>
+      )}
 
-      <span className="ml-auto flex min-w-0 items-center gap-5">
-        {status ? (
-          <span className="font-bold text-ink">{status}</span>
-        ) : (
-          next && (
-            <>
-              <span className="min-w-0 truncate">다음 · {next.label}</span>
-              <span className="h-1.5 w-[200px] shrink-0 overflow-hidden rounded-pill bg-surface-muted">
-                <span
-                  key={next.key}
-                  className="block h-full origin-left bg-accent"
-                  style={{ animation: `tv-info-progress ${next.seconds}s linear forwards` }}
-                />
-              </span>
-            </>
-          )
-        )}
-      </span>
+      {(status || next) && (
+        <span className="ml-auto flex w-[420px] shrink-0 items-center gap-4">
+          {status ? (
+            <span title={status} className="min-w-0 truncate font-bold text-ink">{status}</span>
+          ) : (
+            next && (
+              <>
+                <span className="shrink-0">다음 ·</span>
+                <span title={next.label} className="min-w-0 flex-1 truncate">{next.label}</span>
+                <span className="h-1.5 w-[120px] shrink-0 overflow-hidden rounded-pill bg-surface-muted">
+                  <span
+                    key={next.key}
+                    className="block h-full origin-left bg-accent"
+                    style={{ animation: `tv-info-progress ${next.seconds}s linear forwards` }}
+                  />
+                </span>
+              </>
+            )
+          )}
+        </span>
+      )}
     </div>
   );
 }

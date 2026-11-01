@@ -132,23 +132,23 @@ describe("크게 보기", () => {
       width: 1080,
       height: 1440,
     });
-    // 본문 높이: 1080 − 위 여백 80 − 정보줄 96 − 간격 20 − 머리 줄 56 − 간격 32 = 796
-    expect(portrait).toMatchObject({ stacked: false, height: 796 });
-    expect(portrait.width).toBeCloseTo(597);
+    // 본문 높이: 1080 − 위 여백 80 − 정보줄 96 − 간격 48 − 머리 줄 56 − 간격 32 = 768
+    expect(portrait).toMatchObject({ stacked: false, height: 768 });
+    expect(portrait.width).toBeCloseTo(576);
 
     const square = spotlightImageSize({
       ...poster("a"),
       width: 1080,
       height: 1080,
     });
-    expect(square).toMatchObject({ stacked: false, width: 796, height: 796 });
+    expect(square).toMatchObject({ stacked: false, width: 768, height: 768 });
 
     const banner = spotlightImageSize({
       ...poster("a"),
       width: 3000,
       height: 1000,
     });
-    expect(banner).toMatchObject({ stacked: true, width: 1680, height: 560 });
+    expect(banner).toMatchObject({ stacked: true, width: 1488, height: 496 });
   });
 });
 

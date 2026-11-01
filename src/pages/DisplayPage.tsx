@@ -22,6 +22,7 @@ import {
   imagesOf,
 } from "@/entities/poster/model/frames";
 import { StageFrame } from "@/entities/poster/ui/StageFrame";
+import { INFO_BAR_HEIGHT } from "@/entities/poster/ui/stage-metrics";
 import {
   buildCafeteriaContent,
   buildWeatherContent,
@@ -381,44 +382,49 @@ export function DisplayPage() {
             )}
           </StageFrame>
         )}
-      </ScaledStage>
-
-      {isPreview && (
-        <div className="absolute top-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-pill bg-ink/85 px-4 py-2 text-ink-inverse shadow-floating backdrop-blur">
-          <span className="text-caption font-bold">미리보기</span>
-          {feed.source === "cache" && (
-            <span className="rounded-pill bg-white/15 px-2 py-0.5 text-caption">
-              오프라인 편성
-            </span>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-ink-inverse hover:bg-white/15 hover:text-ink-inverse"
-            onClick={() => setPaused((value) => !value)}
-            aria-label={paused ? "재생" : "일시정지"}
+        {/* 배포 환경에서도 preview=1이면 표시. 본문과 정보줄 사이 간격 안에 둔다. */}
+        {isPreview && (
+          <div
+            role="toolbar"
+            aria-label="미리보기 조작"
+            className="absolute left-1/2 z-10 flex h-10 -translate-x-1/2 items-center gap-2 rounded-pill bg-ink/85 px-3 text-ink-inverse shadow-floating"
+            style={{ bottom: INFO_BAR_HEIGHT + 4 }}
           >
-            {paused ? (
-              <Play aria-hidden="true" />
-            ) : (
-              <Pause aria-hidden="true" />
+            <span className="text-caption font-bold">미리보기</span>
+            {feed.source === "cache" && (
+              <span className="rounded-pill bg-white/15 px-2 py-0.5 text-caption">
+                오프라인 편성
+              </span>
             )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-ink-inverse hover:bg-white/15 hover:text-ink-inverse"
-            onClick={rotation.advance}
-            disabled={rotation.frameCount <= 1}
-            aria-label="다음 화면"
-          >
-            <SkipForward aria-hidden="true" />
-          </Button>
-          <span className="text-caption tabular-nums text-white/70">
-            {rotation.frameIndex + 1} / {Math.max(rotation.frameCount, 1)}
-          </span>
-        </div>
-      )}
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="text-ink-inverse hover:bg-white/15 hover:text-ink-inverse"
+              onClick={() => setPaused((value) => !value)}
+              aria-label={paused ? "재생" : "일시정지"}
+            >
+              {paused ? (
+                <Play aria-hidden="true" />
+              ) : (
+                <Pause aria-hidden="true" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="text-ink-inverse hover:bg-white/15 hover:text-ink-inverse"
+              onClick={rotation.advance}
+              disabled={rotation.frameCount <= 1}
+              aria-label="다음 화면"
+            >
+              <SkipForward aria-hidden="true" />
+            </Button>
+            <span className="text-caption tabular-nums text-white/70">
+              {rotation.frameIndex + 1} / {Math.max(rotation.frameCount, 1)}
+            </span>
+          </div>
+        )}
+      </ScaledStage>
     </div>
   );
 }

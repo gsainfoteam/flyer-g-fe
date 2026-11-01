@@ -23,7 +23,7 @@ export const STACKED_ASPECT = 2;
 /** 옆에 둘 때 이미지 최대 폭. 글 칸이 이 정도는 남아야 제목이 읽힌다. */
 const SIDE_IMAGE_MAX_WIDTH = 1000;
 /** 위에 둘 때 이미지 최대 높이. 아래 글 줄이 QR(240px)을 담을 만큼 남긴다. */
-const STACKED_IMAGE_MAX_HEIGHT = 560;
+const STACKED_IMAGE_MAX_HEIGHT = Math.min(560, CONTENT_HEIGHT - 32 - 240);
 
 /** 이미지 칸 크기. 비율을 지키며 정해진 상자 안에서 가장 크게 잡는다. */
 export function spotlightImageSize(poster: PosterRenderModel): {

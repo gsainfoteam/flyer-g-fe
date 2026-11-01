@@ -16,7 +16,8 @@ export const STAGE_HEADER_GAP = 32;
  * 아래 여백(80px)을 정보줄이 쓰므로 본문은 `INFO_BAR_HEIGHT - 여백 + 간격`만 줄어든다.
  */
 export const INFO_BAR_HEIGHT = 96;
-export const INFO_BAR_GAP = 20;
+/** 본문과 정보줄 사이의 숨 쉴 공간. 미리보기 조작도 이 간격 안에 둔다. */
+export const INFO_BAR_GAP = 48;
 
 /** 여백 안쪽에서 정보줄을 뺀 본문 높이(머리 줄 포함) */
 export const STAGE_BODY_HEIGHT =

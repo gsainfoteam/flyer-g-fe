@@ -38,6 +38,7 @@ export function WidgetDisplay({
   serverTime,
   clockTicking = false,
 }: WidgetDisplayProps) {
+  const dense = content.type === "CAFETERIA" || content.type === "FORTUNE" || content.type === "QUIZ";
   return (
     <div className="flex h-full flex-col" style={{ gap: STAGE_HEADER_GAP }}>
       <StageHeader
@@ -45,7 +46,10 @@ export function WidgetDisplay({
         serverTime={serverTime}
         clockTicking={clockTicking}
       />
-      <div className="flex min-h-0 flex-1 flex-col rounded-tv-card bg-surface px-[96px] py-[72px]">
+      <div className={cn(
+        "flex min-h-0 flex-1 flex-col rounded-tv-card bg-surface",
+        dense ? "px-[80px] py-[56px]" : "px-[96px] py-[72px]",
+      )}>
         <WidgetBody content={content} />
       </div>
     </div>
@@ -201,7 +205,7 @@ function CafeteriaBody({ content }: { content: CafeteriaContent }) {
             <li
               key={meal.type}
               className={cn(
-                "flex min-h-0 flex-col gap-5 overflow-hidden rounded-tv-poster px-10 py-9",
+                "flex min-h-0 flex-col gap-4 overflow-hidden rounded-tv-poster px-8 py-6",
                 "bg-surface-muted",
                 // TV는 어두운 면이라 옅은 강조 배경이 조명처럼 튄다. 테두리로만 짚는다.
                 isCurrent && "ring-4 ring-accent",
@@ -229,7 +233,7 @@ function CafeteriaBody({ content }: { content: CafeteriaContent }) {
               </div>
               <ul
                 className={cn(
-                  "flex flex-col gap-2 text-[34px] leading-snug",
+                  "flex flex-col gap-2 text-[34px] leading-tight",
                   isCurrent ? "font-bold text-ink" : "text-ink-muted",
                 )}
               >
