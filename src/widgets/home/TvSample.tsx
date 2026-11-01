@@ -8,7 +8,7 @@ import { LogoMark } from "@/shared/components";
  */
 export function TvSample() {
   return (
-    <figure className="relative m-0 min-w-0">
+    <figure className="m-0 min-w-0">
       <div className="rounded-[1.125rem] bg-zinc-800 p-2.5 shadow-[0_30px_60px_rgb(0_0_0/0.45)]">
         <div className="@container">
           <div className="flex aspect-video flex-col overflow-hidden rounded-[0.625rem] bg-stage text-hero-ink">
@@ -54,9 +54,10 @@ export function TvSample() {
         aria-hidden="true"
         className="mx-auto h-2.5 w-36 rounded-b-lg bg-zinc-800"
       />
-      <figcaption className="absolute top-6 left-6 inline-flex h-6.5 items-center gap-1.5 rounded-pill bg-stage/80 px-2.5 text-overline text-white">
-        <span className="size-1.75 rounded-full bg-accent" />
-        예시 화면
+      {/* TV 머리 줄을 가리지 않게 화면 밖 아래에 둔다. */}
+      <figcaption className="mt-3 flex items-center justify-center gap-1.5 text-caption text-zinc-400">
+        <span aria-hidden="true" className="size-1.75 rounded-full bg-accent" />
+        예시 화면 · 실제 TV와 같은 틀
       </figcaption>
     </figure>
   );

@@ -54,7 +54,7 @@ describe("세션 동기화", () => {
 
     await user.click(screen.getByRole("button", { name: "계정 메뉴" }));
     await user.click(
-      await screen.findByRole("menuitemradio", { name: "게시자" }),
+      await screen.findByRole("menuitemradio", { name: "사용자" }),
     );
 
     expect(

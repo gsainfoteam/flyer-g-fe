@@ -49,7 +49,7 @@ export function DeviceNow({
       {active.length === 0 ? (
         <p className="mt-3 text-label text-ink-muted">등록한 TV 없음</p>
       ) : (
-        <ul className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3.5">
+        <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(180px,1fr))] sm:gap-3.5">
           {active.map((device) => {
             const posters = published.filter((item) =>
               isTargetedTo(device, item.targetGroupIds),

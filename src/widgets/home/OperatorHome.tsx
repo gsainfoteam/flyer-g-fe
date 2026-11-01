@@ -134,7 +134,7 @@ function formatClock(now: Date): string {
 
 function periodOf(hour: number): string {
   if (hour < 6) return "새벽";
-  if (hour < 10) return "아침 시간대";
+  if (hour < 11) return "오전";
   if (hour < 14) return "점심 시간대";
   if (hour < 17) return "오후";
   if (hour < 20) return "저녁 시간대";

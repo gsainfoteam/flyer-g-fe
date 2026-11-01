@@ -83,7 +83,8 @@ export function SubmissionDetailPage() {
             >
               내 컨텐츠
             </Link>
-            <div className="mt-1 flex flex-wrap items-end gap-x-4 gap-y-3">
+            {/* 좁은 화면에서는 버튼을 제목 아래로 내려 제목이 쪼개지지 않게 한다. */}
+            <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
               <div className="min-w-0 flex-1">
                 <h1 className="text-title text-ink">{view.title}</h1>
                 <p className="mt-1 text-label text-ink-muted">

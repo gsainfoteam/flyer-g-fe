@@ -10,7 +10,7 @@ export const ROLES = ["SUBMITTER", "REVIEWER", "SUPER_ADMIN"] as const;
 export type Role = (typeof ROLES)[number];
 
 const ROLE_LABELS: Record<Role, string> = {
-  SUBMITTER: "게시자",
+  SUBMITTER: "사용자",
   REVIEWER: "하우스 관리자",
   SUPER_ADMIN: "시스템 운영자",
 };

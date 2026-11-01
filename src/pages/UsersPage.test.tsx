@@ -181,13 +181,13 @@ describe("사용자 권한", () => {
     expect(moved!.grantedRoles).toEqual(["REVIEWER"]);
   });
 
-  it("게시자로 내리면 권한자 목록에서 빠진다", async () => {
+  it("사용자로 내리면 권한자 목록에서 빠진다", async () => {
     renderRoute("/settings/roles", {
       role: "SUPER_ADMIN",
       repositories: operatorRepositories(),
     });
 
-    await chooseRole("오세린", "게시자");
+    await chooseRole("오세린", "사용자");
 
     expect(await screen.findByText("권한 있는 사용자 4명")).toBeInTheDocument();
     expect(tableRows().join()).not.toContain("오세린");
@@ -205,7 +205,7 @@ describe("사용자 권한", () => {
     };
     renderRoute("/settings/roles", { role: "SUPER_ADMIN", repositories });
 
-    await chooseRole("오세린", "게시자");
+    await chooseRole("오세린", "사용자");
 
     expect(
       await screen.findByText("역할을 바꾸지 못했어요"),
