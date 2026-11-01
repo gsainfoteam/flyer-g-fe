@@ -142,4 +142,21 @@ describe("placeWidgetSlots", () => {
   it("위젯이 없으면(간격 0) 포스터 화면을 그대로 둔다", () => {
     expect(placeWidgetSlots(frames, 0)).toBe(frames);
   });
+
+  it("자리가 최소 개수보다 적으면 포스터 사이에 고르게 나눠 둔다", () => {
+    expect(keys(placeWidgetSlots(frames.slice(0, 1), 4, 3))).toEqual([
+      "strip:a",
+      "wslot:fill:0",
+      "wslot:fill:1",
+      "wslot:fill:2",
+    ]);
+    expect(keys(placeWidgetSlots(frames.slice(0, 2), 4, 2))).toEqual([
+      "strip:a",
+      "wslot:fill:0",
+      "strip:b",
+      "wslot:fill:1",
+    ]);
+    // 간격으로 둔 자리가 이미 충분하면 그대로
+    expect(keys(placeWidgetSlots(frames, 2, 1))).toEqual(keys(placeWidgetSlots(frames, 2)));
+  });
 });
