@@ -64,12 +64,14 @@ export const isWidgetsUnsupported = (feed: DeviceWidgets) =>
   feed.version === WIDGETS_UNSUPPORTED.version;
 
 /**
- * 서버 없이 화면이 스스로 만들거나 직접 받는 위젯. 날씨는 TV가 Open-Meteo에서 받는다.
- * 학식·맛집은 서버 데이터가, D-day·시험 응원은 운영자가 정한 날짜가 있어야 해서 빠진다.
+ * 서버 없이 화면이 스스로 만들거나 직접 받는 위젯. 날씨는 TV가 Open-Meteo에서, 학식은
+ * 같은 도메인 함수(`/api/cafeteria`)에서 받는다. 맛집은 서버 데이터가, D-day·시험 응원은
+ * 운영자가 정한 날짜가 있어야 해서 빠진다.
  */
 const STANDALONE_TYPES: readonly WidgetType[] = [
   "FORTUNE",
   "MEAL_PICK",
+  "CAFETERIA",
   "WEATHER",
   "QUIZ",
   "CLICK_BATTLE",

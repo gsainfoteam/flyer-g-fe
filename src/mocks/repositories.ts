@@ -1307,6 +1307,18 @@ export function createMockRepositories(
       return { ...createWidgetData(clock.now()).WEATHER, source: "Open-Meteo 제공" };
     },
 
+    async getLocalCafeteria(signal) {
+      await settle(signal);
+      // 실제로는 Pages 함수가 학교 게시판에서 읽는다. mock은 오늘 하루만 같은 형식으로 준다.
+      const today = createWidgetData(clock.now()).CAFETERIA!;
+      const date = new Date(clock.now().getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      return {
+        fetchedAt: clock.now().toISOString(),
+        places: [{ place: today.place, title: "mock", days: [{ date, meals: today.meals }] }],
+        errors: [],
+      };
+    },
+
     async getDeviceWidgets(deviceId, signal) {
       await settle(signal);
       const settings = toDeviceWidgetSettings(widgetSettingsOf(deviceId));

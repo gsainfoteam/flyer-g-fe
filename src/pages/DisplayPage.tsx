@@ -23,6 +23,8 @@ import {
 } from "@/entities/poster/model/frames";
 import { StageAmbientContext } from "@/entities/poster/ui/stage-ambient";
 import { buildWeatherContent } from "@/entities/widget/model/data-content";
+import { cafeteriaDataFor } from "@/entities/widget/model/cafeteria-week";
+import { seoulDateKey } from "@/entities/widget/model/content";
 import {
   isWidgetsUnsupported,
   standaloneWidgets,
@@ -37,6 +39,7 @@ import type { PlayerFrame } from "@/entities/widget/model/schedule";
 import { HeaderWeather } from "@/entities/widget/ui/HeaderWeather";
 import { WidgetDisplay } from "@/entities/widget/ui/WidgetDisplay";
 import { useDeviceWidgets } from "@/features/display/model/use-device-widgets";
+import { useLocalCafeteria } from "@/features/display/model/use-local-cafeteria";
 import { useLocalWeather } from "@/features/display/model/use-local-weather";
 import { gameSocketBase } from "@/features/click-battle/api/game-socket";
 import { BattlePreview } from "@/features/click-battle/ui/BattlePreview";
@@ -137,24 +140,39 @@ export function DisplayPage() {
   );
   const shortCycle = posterFrameCount * rotationSeconds < MIN_CYCLE_SECONDS;
   const fillWithStandalone = shortCycle && isWidgetsUnsupported(widgetFeed);
+  const baseSlots = useMemo(
+    () => (fillWithStandalone ? standaloneWidgets() : widgetFeed.widgets),
+    [fillWithStandalone, widgetFeed.widgets],
+  );
+  // 서버가 학식을 주지 않으면 같은 도메인 함수(/api/cafeteria)가 학교 게시판에서 읽은
+  // 이번 주 식단을 쓴다. 데이터 없는 학식 위젯이 있을 때만 부른다.
+  const localCafeteria = useLocalCafeteria(
+    baseSlots.some((slot) => slot.type === "CAFETERIA" && !slot.params.data),
+  );
+  const todayKey = serverTime ? seoulDateKey(serverTime) : null;
   const widgetSlots = useMemo(() => {
-    const slots = (
-      fillWithStandalone ? standaloneWidgets() : widgetFeed.widgets
-    ).map((slot) =>
-      // 데이터 없는 날씨 위젯(기본 위젯·미리보기)에는 TV가 받은 날씨를 붙인다.
-      slot.type === "WEATHER" && !slot.params.data && weatherData
-        ? { ...slot, params: { ...slot.params, data: weatherData } }
-        : slot,
-    );
+    const today = todayKey ? new Date(`${todayKey}T12:00:00+09:00`) : null;
+    const slots = baseSlots.map((slot) => {
+      if (slot.params.data) return slot;
+      // 데이터 없는 날씨·학식 위젯(기본 위젯·미리보기)에는 TV가 받은 데이터를 붙인다.
+      const data =
+        slot.type === "WEATHER"
+          ? weatherData
+          : slot.type === "CAFETERIA" && today
+            ? cafeteriaDataFor(localCafeteria, slot.params.place, today)
+            : null;
+      return data ? { ...slot, params: { ...slot.params, data } } : slot;
+    });
     return canHostGame || previewGame
       ? slots
       : slots.filter((slot) => slot.type !== "CLICK_BATTLE");
   }, [
     canHostGame,
     previewGame,
-    fillWithStandalone,
-    widgetFeed.widgets,
+    baseSlots,
     weatherData,
+    localCafeteria,
+    todayKey,
   ]);
 
   // 위젯 노출 정책: 포스터 N장마다 한 자리, 비율 상한, 시간대·간격 (policy.ts)

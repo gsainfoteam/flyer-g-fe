@@ -214,6 +214,11 @@ export interface WidgetRepository {
    * 같은 형식이다. 받을 수 없으면 null.
    */
   getLocalWeather(signal?: AbortSignal): Promise<Record<string, unknown> | null>;
+  /**
+   * 같은 도메인 함수(`/api/cafeteria`)가 학교 게시판에서 읽은 이번 주 학식. 서버가 학식을
+   * 주지 않을 때 쓴다. 함수가 없거나(로컬 개발) 실패하면 null.
+   */
+  getLocalCafeteria(signal?: AbortSignal): Promise<unknown>;
   /** 기기 위젯 설정. SUPER_ADMIN만. */
   getSettings(deviceId: string, signal?: AbortSignal): Promise<DeviceWidgetSettings>;
   /** 기기 위젯 설정 전체 교체. SUPER_ADMIN만. */
