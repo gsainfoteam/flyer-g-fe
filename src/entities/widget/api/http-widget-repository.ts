@@ -4,6 +4,7 @@ import type { HttpClient } from "@/shared/api/http-client";
 import type { WidgetRepository } from "@/shared/api/repositories";
 import type { DeviceCredentials } from "@/shared/lib/device-credential";
 import { NO_WIDGETS, WIDGETS_UNSUPPORTED, toDeviceWidgets } from "../model/feed";
+import { fetchOpenMeteoWeather } from "./open-meteo";
 import type { DeviceWidgets, DeviceWidgetsDto } from "../model/feed";
 import {
   defaultDeviceWidgetSettings,
@@ -151,6 +152,10 @@ export function createHttpWidgetRepository({
         if (notFound(error)) return WIDGETS_UNSUPPORTED;
         throw error;
       }
+    },
+
+    getLocalWeather(signal) {
+      return fetchOpenMeteoWeather(new Date(), signal);
     },
 
     async getSettings(deviceId, signal) {

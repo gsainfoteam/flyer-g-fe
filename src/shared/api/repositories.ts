@@ -209,6 +209,11 @@ export interface DisplayRepository {
 export interface WidgetRepository {
   /** TV가 받는 위젯과 상단 바 날씨. 기기 토큰으로 접근한다. */
   getDeviceWidgets(deviceId: string, signal?: AbortSignal): Promise<DeviceWidgets>;
+  /**
+   * 서버가 날씨를 주지 않을 때 TV가 직접 받는 날씨(Open-Meteo). 날씨 위젯 데이터와
+   * 같은 형식이다. 받을 수 없으면 null.
+   */
+  getLocalWeather(signal?: AbortSignal): Promise<Record<string, unknown> | null>;
   /** 기기 위젯 설정. SUPER_ADMIN만. */
   getSettings(deviceId: string, signal?: AbortSignal): Promise<DeviceWidgetSettings>;
   /** 기기 위젯 설정 전체 교체. SUPER_ADMIN만. */

@@ -48,6 +48,24 @@ export interface WeatherContent {
   fetchedAt: Date;
   /** 데이터 제공처 표기. 기상청 자료는 공공누리 1유형이라 출처를 밝혀야 한다. */
   source: string;
+  /** 미세먼지 등급. 데이터가 없으면 null */
+  air: { pm10: AirGrade | null; pm25: AirGrade | null } | null;
+}
+
+export const AIR_GRADES = ["GOOD", "NORMAL", "BAD", "VERY_BAD"] as const;
+export type AirGrade = (typeof AIR_GRADES)[number];
+
+/**
+ * 농도(μg/m³) → 등급. 환경부 예보 기준: 미세먼지(PM10) 30·80·150,
+ * 초미세먼지(PM2.5) 15·35·75 이하가 각각 좋음·보통·나쁨, 그 위는 매우 나쁨.
+ */
+export function airGrade(kind: "pm10" | "pm25", value: number | null): AirGrade | null {
+  if (value === null || value < 0) return null;
+  const [good, normal, bad] = kind === "pm10" ? [30, 80, 150] : [15, 35, 75];
+  if (value <= good) return "GOOD";
+  if (value <= normal) return "NORMAL";
+  if (value <= bad) return "BAD";
+  return "VERY_BAD";
 }
 
 export interface RestaurantPlace {
@@ -200,7 +218,15 @@ export function buildWeatherContent(
     hourly,
     fetchedAt,
     source: readText(data.source) ?? "",
+    air: readAir(data.air),
   };
+}
+
+function readAir(value: unknown): WeatherContent["air"] {
+  if (!isRecord(value)) return null;
+  const pm10 = airGrade("pm10", readNumber(value.pm10));
+  const pm25 = airGrade("pm25", readNumber(value.pm25));
+  return pm10 || pm25 ? { pm10, pm25 } : null;
 }
 
 export function buildRestaurantContent(

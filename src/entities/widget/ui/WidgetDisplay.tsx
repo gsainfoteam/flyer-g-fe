@@ -4,6 +4,7 @@ import { STAGE_HEADER_GAP } from "@/entities/poster/ui/stage-metrics";
 import { formatSeoulDateWithWeekday } from "@/shared/lib/datetime";
 import type { WidgetContent, ZodiacFortune } from "@/entities/widget/model/content";
 import type {
+  AirGrade,
   CafeteriaContent,
   MealType,
   RestaurantContent,
@@ -274,6 +275,22 @@ function WeatherBody({ content }: { content: WeatherContent }) {
           <dd className="font-extrabold text-ink tabular-nums">
             {content.precipitationChance}%
           </dd>
+          {content.air?.pm10 && (
+            <>
+              <dt className="text-ink-subtle">미세먼지</dt>
+              <dd className={cn("font-extrabold", AIR_LABEL[content.air.pm10].tone)}>
+                {AIR_LABEL[content.air.pm10].text}
+              </dd>
+            </>
+          )}
+          {content.air?.pm25 && (
+            <>
+              <dt className="text-ink-subtle">초미세먼지</dt>
+              <dd className={cn("font-extrabold", AIR_LABEL[content.air.pm25].tone)}>
+                {AIR_LABEL[content.air.pm25].text}
+              </dd>
+            </>
+          )}
         </dl>
       </div>
       {content.hourly.length > 0 && (
@@ -297,6 +314,13 @@ function WeatherBody({ content }: { content: WeatherContent }) {
     </div>
   );
 }
+
+const AIR_LABEL: Record<AirGrade, { text: string; tone: string }> = {
+  GOOD: { text: "좋음", tone: "text-success" },
+  NORMAL: { text: "보통", tone: "text-ink" },
+  BAD: { text: "나쁨", tone: "text-warning" },
+  VERY_BAD: { text: "매우 나쁨", tone: "text-danger" },
+};
 
 function HourIcon({ sky }: { sky: Sky }) {
   const { icon: Icon, tone } = SKY_LABEL[sky];

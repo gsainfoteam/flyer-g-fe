@@ -34,6 +34,8 @@ export const queryKeys = {
     all: () => ["displays"] as const,
     playlist: (deviceId: string) => ["displays", "playlist", deviceId] as const,
     widgets: (deviceId: string) => ["displays", "widgets", deviceId] as const,
+    /** 서버가 날씨를 주지 않을 때 TV가 직접 받는 날씨. 기기와 무관하다. */
+    localWeather: () => ["displays", "local-weather"] as const,
   },
   widgetSettings: {
     detail: (deviceId: string) => ["widget-settings", deviceId] as const,
