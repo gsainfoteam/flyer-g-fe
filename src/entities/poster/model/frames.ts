@@ -7,7 +7,7 @@ import { packWallPages } from "./wall-layout";
  * TV가 차례로 보여 주는 화면 한 장. 한 장은 기기의 전환 간격만큼 머문다.
  *
  * - `wall`: 모아 보기. 다음에 크게 나올 게시물이 있는 쪽을 보여 준다.
- * - `spotlight`: 하나씩 크게. 제목·장소·QR과 다음 차례를 함께 보여 준다.
+ * - `spotlight`: 하나씩 크게. 제목·장소·QR을 보여 준다. 다음 차례는 아래 정보줄이 맡는다.
  * - `strip`: 흐르는 띠. `focusIndex`번째 게시물이 가운데에 온다.
  */
 export type DisplayFrame =
@@ -16,23 +16,8 @@ export type DisplayFrame =
       kind: "spotlight";
       key: string;
       poster: PosterRenderModel;
-      upNext: PosterRenderModel[];
     }
   | { kind: "strip"; key: string; focusIndex: number };
-
-/** 크게 보기 머리에 미리 보여 주는 다음 차례 수 */
-const UP_NEXT_COUNT = 3;
-
-function upNextOf(
-  posters: PosterRenderModel[],
-  index: number,
-): PosterRenderModel[] {
-  const count = Math.min(UP_NEXT_COUNT, posters.length - 1);
-  return Array.from(
-    { length: count },
-    (_, offset) => posters[(index + offset + 1) % posters.length]!,
-  );
-}
 
 /**
  * 편성을 화면 순서로 펼친다. 규칙은 `entities/playlist/model/rotation.ts`와 같다.
@@ -60,7 +45,6 @@ export function buildFrames(
         kind: "spotlight",
         key: `spot:${posters[0]!.id}`,
         poster: posters[0]!,
-        upNext: [],
       },
     ];
   }
@@ -84,7 +68,6 @@ export function buildFrames(
         kind: "spotlight",
         key: `spot:${posters[index]!.id}`,
         poster: posters[index]!,
-        upNext: upNextOf(posters, index),
       });
     }
   }

@@ -52,14 +52,13 @@ function frameFor(
   mode: PreviewMode,
   posters: PosterRenderModel[],
 ): DisplayFrame {
-  const [poster, ...others] = posters;
+  const [poster] = posters;
   switch (mode) {
     case "spotlight":
       return {
         kind: "spotlight",
         key: "preview",
         poster: poster!,
-        upNext: others.slice(0, 3),
       };
     case "wall":
       return {

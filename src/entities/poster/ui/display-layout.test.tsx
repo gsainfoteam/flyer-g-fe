@@ -87,14 +87,13 @@ describe("모아 보기", () => {
 });
 
 describe("크게 보기", () => {
-  it("제목·장소와 QR을 보여 주고 다음 차례를 머리에 둔다", () => {
+  it("제목·장소와 QR을 보여 주고 머리에는 다음 차례를 중복 표시하지 않는다", () => {
     render(
       <DisplayStage
         frame={{
           kind: "spotlight",
           key: "spot:a",
           poster: { ...poster("a"), location: "대강당" },
-          upNext: [poster("b")],
         }}
         posters={[poster("a"), poster("b")]}
         deviceLabel="A동 로비"
@@ -107,7 +106,7 @@ describe("크게 보기", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("대강당")).toBeInTheDocument();
     expect(screen.getByText("Ziggle에서 자세히 보기")).toBeInTheDocument();
-    expect(screen.getByText("다음")).toBeInTheDocument();
+    expect(screen.queryByText("다음")).not.toBeInTheDocument();
   });
 
   it("상세 링크가 없으면 QR 칸을 그리지 않는다", () => {
@@ -117,7 +116,6 @@ describe("크게 보기", () => {
           kind: "spotlight",
           key: "spot:a",
           poster: { ...poster("a"), detailUrl: null },
-          upNext: [],
         }}
         posters={[poster("a")]}
         deviceLabel={null}
