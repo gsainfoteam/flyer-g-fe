@@ -212,23 +212,6 @@
       transform: translateX(-50%);
     }
   }
-  @keyframes tv-sample-progress {
-    from {
-      transform: scaleX(0);
-    }
-    to {
-      transform: scaleX(1);
-    }
-  }
-  /* TV 정보줄의 진행 막대. 화면 하나가 머무는 시간 동안 찬다. */
-  @keyframes tv-info-progress {
-    from {
-      transform: scaleX(0);
-    }
-    to {
-      transform: scaleX(1);
-    }
-  }
   @keyframes tv-sample-fade {
     from {
       opacity: 0;
@@ -243,6 +226,27 @@
   --container-form: 720px;
   /* TV 기준 해상도. 플레이어 레이아웃 검증용 breakpoint. */
   --breakpoint-tv: 1920px;
+}
+
+/*
+ * 진행 막대(소개 화면 예시 TV, TV 정보줄). inline style로 걸어서 @theme 안에 두면
+ * 쓰는 유틸리티가 없다며 빌드에서 빠진다. 그래서 바깥에 둔다.
+ */
+@keyframes tv-sample-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes tv-info-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 :root {

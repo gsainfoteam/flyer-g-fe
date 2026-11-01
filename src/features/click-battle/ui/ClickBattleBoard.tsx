@@ -89,7 +89,7 @@ export function ClickBattleBoard({
     <div className="flex h-full flex-col gap-8">
       {header}
 
-      <div className="flex shrink-0 items-baseline gap-8">
+      <div className="flex shrink-0 items-center gap-8">
         <p
           className={cn(
             "text-[88px] leading-none font-extrabold tracking-tight tabular-nums",
@@ -105,6 +105,9 @@ export function ClickBattleBoard({
             ? idleHint
             : status.detail}
         </p>
+        {survey && (
+          <SurveyCorner survey={survey} finished={state.phase === "RESULT"} />
+        )}
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-2 gap-8">
@@ -133,11 +136,7 @@ export function ClickBattleBoard({
         ))}
       </div>
 
-      {survey ? (
-        <SurveyBand survey={survey} finished={state.phase === "RESULT"} />
-      ) : (
-        <p className="shrink-0 text-[24px] text-ink-subtle">{RULES_TEXT}</p>
-      )}
+      <p className="shrink-0 text-[24px] text-ink-subtle">{RULES_TEXT}</p>
     </div>
   );
 }
@@ -147,10 +146,11 @@ const RULES_TEXT = `팀당 최대 ${BATTLE_RULES.maxPlayersPerTeam}명 · 한 �
 }초 동안 더 많이 누른 팀이 이겨요 · 로그인 없이 이름만 적고 참가해요`;
 
 /**
- * 설문 띠. 판이 끝난 직후가 폰을 들고 있어 응답하기 가장 좋은 때라, 결과 화면에서는
- * 띠를 강조하고 문구를 바꾼다.
+ * 설문 QR. 상태 줄 오른쪽 끝(화면 우상단)에 둔다. 두 팀 칸 밖이라 팀 참가 QR과 헷갈리지
+ * 않고 양 팀 칸의 대칭도 그대로다. 판이 끝난 직후가 폰을 들고 있어 응답하기 좋은 때라,
+ * 결과 화면에서는 테두리로 강조하고 문구를 바꾼다.
  */
-function SurveyBand({
+function SurveyCorner({
   survey,
   finished,
 }: {
@@ -160,17 +160,18 @@ function SurveyBand({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center gap-10 rounded-tv-card bg-surface px-12 py-5",
+        "ml-auto flex shrink-0 items-center gap-6 rounded-tv-card bg-surface py-4 pr-8 pl-4",
         finished && "ring-6 ring-accent",
       )}
     >
       <QRCodeBox value={survey.url} size="band" />
-      <div className="flex min-w-0 flex-col gap-3">
-        <p className="text-[44px] leading-tight font-extrabold text-ink">
-          {finished ? `판이 끝났어요! ${survey.label}에 참여해 주세요` : `${survey.label}에 참여해 주세요`}
+      <div className="flex flex-col gap-2">
+        <p className="text-[34px] leading-tight font-extrabold text-ink">
+          {finished ? "판이 끝났어요!" : survey.label}
         </p>
-        <p className="text-[26px] text-ink-muted">왼쪽 QR을 찍으면 설문으로 가요</p>
-        <p className="truncate text-[22px] text-ink-subtle">{RULES_TEXT}</p>
+        <p className="text-[26px] text-ink-muted">
+          {finished ? `${survey.label}에 참여해 주세요` : "QR로 참여해 주세요"}
+        </p>
       </div>
     </div>
   );

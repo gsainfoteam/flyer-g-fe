@@ -74,14 +74,14 @@ describe("클릭 배틀", () => {
     const counting = apply(initialBattle(), [join("a1", "A"), join("b1", "B")]);
     expect(apply(counting, [{ kind: "taps", playerId: "a1", count: 5 }]).scores.A).toBe(0);
 
-    // 1초에 100번은 15번만
+    // 1초에 100번은 (1초 + 여유 1초) × 초당 상한까지만
     const capped = applyClientMessage(
       playing(),
       { kind: "taps", playerId: "a1", count: 100 },
       start + 1_000,
     ).state;
-    expect(capped.scores).toEqual({ A: BATTLE_RULES.maxTapsPerSecond, B: 0 });
-    expect(capped.players[0]!.taps).toBe(BATTLE_RULES.maxTapsPerSecond);
+    expect(capped.scores).toEqual({ A: BATTLE_RULES.maxTapsPerSecond * 2, B: 0 });
+    expect(capped.players[0]!.taps).toBe(BATTLE_RULES.maxTapsPerSecond * 2);
 
     // 명단에 없는 사람의 연타는 무시
     const stranger = applyClientMessage(
@@ -90,6 +90,17 @@ describe("클릭 배틀", () => {
       start + 1_200,
     ).state;
     expect(stranger.scores).toEqual(capped.scores);
+  });
+
+  it("정상 속도의 연타는 150ms 묶음이 몰려 와도 하나도 버리지 않는다", () => {
+    const start = T0 + BATTLE_RULES.startCountdownMs;
+    // 초당 13번을 2초 동안. 묶음 도착 간격이 고르지 않다(50ms, 250ms…).
+    const arrivals = [150, 200, 450, 500, 750, 900, 1_050, 1_100, 1_350, 1_500, 1_650, 1_900, 2_000];
+    let state = playing();
+    for (const at of arrivals) {
+      state = applyClientMessage(state, { kind: "taps", playerId: "a1", count: 2 }, start + at).state;
+    }
+    expect(state.scores.A).toBe(arrivals.length * 2);
   });
 
   it("시간이 끝나면 승자를 정하고, 결과 뒤에는 참가자와 점수를 비운다", () => {
