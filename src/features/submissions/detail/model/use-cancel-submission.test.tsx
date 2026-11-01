@@ -22,7 +22,7 @@ describe("신청 취소", () => {
     });
 
     await user.click(
-      await screen.findByRole("button", { name: "신청 취소하기" }),
+      await screen.findByRole("button", { name: "신청 취소" }),
     );
     await user.click(
       within(await screen.findByRole("dialog")).getByRole("button", {
@@ -35,34 +35,36 @@ describe("신청 취소", () => {
       const detail = await repositories.submissions.getById("notice-901");
       expect(detail.status).toBe("CANCELED");
     });
-    expect(await screen.findByText("신청 취소")).toBeInTheDocument();
+    // 취소하면 상태 줄이 "취소"가 되고 취소 버튼이 사라진다.
+    expect(await screen.findByText("취소")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "신청 취소" })).toBeNull();
   });
 
   it("게시 중단된 신청은 취소할 수 없고, 고쳐서 다시 신청할 수 있다", async () => {
     renderRoute("/mine/notice-903", { role: "SUBMITTER" });
 
     expect(
-      await screen.findByRole("link", { name: "수정해서 다시 신청" }),
+      await screen.findByRole("link", { name: "고쳐서 다시 내기" }),
     ).toHaveAttribute("href", "/new/poster?submissionId=notice-903");
-    expect(screen.queryByRole("button", { name: "신청 취소하기" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "신청 취소" })).toBeNull();
   });
 
   it("승인 대기 중인 신청은 고치거나 취소할 수 있다", async () => {
     renderRoute("/mine/notice-905", { role: "SUBMITTER" });
 
     expect(
-      await screen.findByRole("link", { name: "수정하기" }),
+      await screen.findByRole("link", { name: "고치기" }),
     ).toHaveAttribute("href", "/new/poster?submissionId=notice-905");
     expect(
-      screen.getByRole("button", { name: "신청 취소하기" }),
+      screen.getByRole("button", { name: "신청 취소" }),
     ).toBeInTheDocument();
   });
 
   it("게시 중인 신청은 게시자가 직접 내리거나 고치지 못한다", async () => {
     renderRoute("/mine/notice-001", { role: "SUBMITTER" });
 
-    await screen.findByText("처리 이력");
-    expect(screen.queryByRole("button", { name: "신청 취소하기" })).toBeNull();
+    await screen.findByRole("heading", { name: "진행" });
+    expect(screen.queryByRole("button", { name: "신청 취소" })).toBeNull();
     expect(screen.queryByRole("link", { name: /다시 신청/ })).toBeNull();
     expect(screen.getByText(/게시 중단을 요청해 주세요/)).toBeInTheDocument();
   });
@@ -71,7 +73,7 @@ describe("신청 취소", () => {
     renderRoute("/mine/notice-901", { role: "SUBMITTER" });
 
     const link = await screen.findByRole("link", {
-      name: "수정해서 다시 신청",
+      name: "고쳐서 다시 내기",
     });
     expect(link).toHaveAttribute("href", "/new/poster?submissionId=notice-901");
   });

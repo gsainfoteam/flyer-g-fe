@@ -116,8 +116,12 @@ describe("게시 신청 스튜디오", () => {
     await user.type(screen.getByRole("textbox", { name: /장소/ }), "대강당");
 
     const preview = screen.getByRole("main");
+    // 미리보기는 그림(role="img")이라 안쪽 제목은 보조기기에서 숨겨져 있다.
     expect(
-      await within(preview).findByRole("heading", { name: "새 제목" }),
+      await within(preview).findByRole("heading", {
+        name: "새 제목",
+        hidden: true,
+      }),
     ).toBeInTheDocument();
     expect(within(preview).getByText("금요일 저녁 7시")).toBeInTheDocument();
     expect(within(preview).getByText("페이드인")).toBeInTheDocument();

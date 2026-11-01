@@ -64,7 +64,7 @@ describe("접근성 자동 검사", () => {
     const { container } = renderRoute("/mine/notice-901", {
       role: "SUBMITTER",
     });
-    await screen.findByText("처리 이력");
+    await screen.findByRole("heading", { name: "진행" });
     await expectNoViolations(container);
   });
 
