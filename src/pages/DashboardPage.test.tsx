@@ -99,14 +99,12 @@ describe("사용자 홈", () => {
     );
   });
 
-  it("지금 TV에는 내 게시 중 건수와 노출 수를 보여준다", async () => {
+  it("지금 TV에·오늘의 퀴즈 칸은 두지 않는다", async () => {
     renderRoute("/", { role: "SUBMITTER" });
+    await screen.findByRole("heading", { name: "내 컨텐츠" });
 
-    const onTv = (
-      await screen.findByRole("heading", { name: "지금 TV에" })
-    ).closest("section")!;
-    expect(within(onTv).getByText("게시 중")).toBeInTheDocument();
-    expect(within(onTv).getByText("TV 노출")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "지금 TV에" })).toBeNull();
+    expect(screen.queryByText("오늘의 퀴즈")).toBeNull();
   });
 });
 

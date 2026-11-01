@@ -30,16 +30,14 @@ import { IconTile, PageState } from "@/shared/components";
 import { to } from "@/shared/config/routes";
 import { cn } from "@/shared/lib/utils";
 import { ActivityFeed } from "./ActivityFeed";
-import { QuizCard } from "./QuizCard";
 import { UploadChoicesCompact, UploadChoicesLarge } from "./UploadChoices";
 
 /**
  * 사용자 홈 (기획 4-0, 4-1).
  *
- * - 처음(올린 것 0건): "무엇을 TV에 띄워 볼까요?" 세 종류를 크게, 진행 순서 4단계,
- *   오늘의 퀴즈. 빈 "내 컨텐츠" 칸은 그리지 않는다.
- * - 다시 온 사람: 올리기 세 종류를 작게, 내 컨텐츠 진행 상황, 옆 칸에 지금 TV에·
- *   오늘의 퀴즈·최근 소식.
+ * - 처음(올린 것 0건): "무엇을 TV에 띄워 볼까요?" 세 종류를 크게, 진행 순서 4단계.
+ *   빈 "내 컨텐츠" 칸은 그리지 않는다.
+ * - 다시 온 사람: 올리기 세 종류를 작게, 내 컨텐츠 진행 상황, 옆 칸에 최근 소식.
  */
 const ACTIVE: readonly SubmissionStatus[] = [
   "REJECTED",
@@ -93,7 +91,7 @@ export function UserHome() {
         active.data &&
         past.data &&
         (summary.data.total === 0 ? (
-          <FirstVisit now={summary.data.calculatedAt} />
+          <FirstVisit />
         ) : (
           <Returning
             active={active.data.items}
@@ -106,7 +104,7 @@ export function UserHome() {
   );
 }
 
-function FirstVisit({ now }: { now: Date }) {
+function FirstVisit() {
   const user = useSessionUser();
   return (
     <>
@@ -138,7 +136,7 @@ function FirstVisit({ now }: { now: Date }) {
             <Step icon={ShieldCheck} title="하우스 관리자 심사">
               반려되면 사유를 알려 드려요. 고쳐서 다시 낼 수 있어요.
             </Step>
-            <Step icon={MonitorPlay} title="TV에 게시" highlighted>
+            <Step icon={MonitorPlay} title="TV에 게시">
               정한 기간 동안 여러 TV에서 번갈아 나와요. 몇 번 나왔는지도 보여
               드려요.
             </Step>
@@ -147,9 +145,6 @@ function FirstVisit({ now }: { now: Date }) {
             </Step>
           </ol>
         </section>
-        <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-5">
-          <QuizCard now={now} />
-        </div>
       </div>
     </>
   );
@@ -158,13 +153,11 @@ function FirstVisit({ now }: { now: Date }) {
 function Step({
   icon,
   title,
-  highlighted = false,
   last = false,
   children,
 }: {
   icon: LucideIcon;
   title: string;
-  highlighted?: boolean;
   last?: boolean;
   children: ReactNode;
 }) {
@@ -173,10 +166,7 @@ function Step({
       <IconTile
         icon={icon}
         size="md"
-        className={cn(
-          "rounded-full",
-          highlighted ? "bg-accent text-accent-on" : "bg-surface-muted text-ink",
-        )}
+        className="rounded-full bg-accent-100 text-accent-700 ring-2 ring-accent-200"
       />
       <div>
         <b className="text-ink">{title}</b>
@@ -201,7 +191,6 @@ function Returning({
     (a, b) => (ORDER[a.status] ?? 9) - (ORDER[b.status] ?? 9),
   );
   const shown = (ordered.length > 0 ? ordered : past).slice(0, SHOWN);
-  const live = active.filter((item) => item.status === "PUBLISHED");
 
   return (
     <>
@@ -211,7 +200,7 @@ function Returning({
             무엇을 올릴까요?
           </h1>
           <p className="mt-1 text-label text-ink-muted">
-            심사를 거쳐 기숙사·학생회관 TV에 나와요.
+            심사를 거쳐 기숙사 로비 TV에 나와요.
           </p>
         </div>
         <UploadChoicesCompact />
@@ -246,8 +235,6 @@ function Returning({
         </section>
 
         <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-5">
-          <OnTvCard live={live} impressions={impressions} />
-          <QuizCard now={now} />
           <ActivityFeed submissions={[...active, ...past]} now={now} />
         </aside>
       </div>
@@ -292,76 +279,5 @@ function MineRow({
         {fix ? "고쳐서 다시 내기" : "상세"}
       </Link>
     </li>
-  );
-}
-
-/**
- * 지금 TV에 (내 것). 사용자는 편성을 읽을 수 없어 재노출 간격 대신 노출 수를 보여
- * 준다. (백엔드 답 7절)
- */
-function OnTvCard({
-  live,
-  impressions,
-}: {
-  live: SubmissionView[];
-  impressions: Map<string, ImpressionStatsItem>;
-}) {
-  const total = live.reduce(
-    (sum, item) => sum + (impressions.get(item.id)?.impressions ?? 0),
-    0,
-  );
-  const screens = Math.max(
-    0,
-    ...live.map((item) => impressions.get(item.id)?.deviceCount ?? 0),
-  );
-  return (
-    <section
-      aria-labelledby="on-tv"
-      className="rounded-block bg-hero px-6 py-5.5 text-hero-ink"
-    >
-      <div className="flex items-center gap-2">
-        <span aria-hidden="true" className="size-2 rounded-full bg-accent" />
-        <h2 id="on-tv" className="text-body font-extrabold">
-          지금 TV에
-        </h2>
-      </div>
-      <dl className="mt-4 grid grid-cols-3 gap-2">
-        <Figure label="게시 중" value={live.length} unit="건" />
-        <Figure
-          label="TV 노출"
-          value={total.toLocaleString("ko-KR")}
-          unit="번"
-        />
-        <Figure label="나온 TV" value={screens} unit="대" />
-      </dl>
-      {live.length === 0 && (
-        <p className="mt-3 text-caption text-hero-muted">
-          지금 TV에 나오는 내 컨텐츠 없음
-        </p>
-      )}
-    </section>
-  );
-}
-
-function Figure({
-  label,
-  value,
-  unit,
-}: {
-  label: string;
-  value: ReactNode;
-  unit: string;
-}) {
-  return (
-    // 숫자를 위에 보이되 읽는 순서는 이름 → 값으로 둔다.
-    <div className="flex flex-col-reverse rounded-tile bg-hero-raised px-3.5 py-3">
-      <dt className="text-caption text-hero-muted">{label}</dt>
-      <dd className="text-[1.5rem] leading-tight font-extrabold text-type-poster-bright tabular-nums">
-        {value}
-        <span className="ml-0.5 text-caption font-bold text-hero-muted">
-          {unit}
-        </span>
-      </dd>
-    </div>
   );
 }
