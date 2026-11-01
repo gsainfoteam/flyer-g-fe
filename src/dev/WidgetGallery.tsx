@@ -175,6 +175,26 @@ const CASES: { id: string; title: string; content: WidgetContent }[] = [
     },
   },
   {
+    id: "survey",
+    title: "설문 · 제목과 설명",
+    content: {
+      type: "SURVEY",
+      url: "https://example.com/survey",
+      title: "전단지 설문에 참여해 주세요",
+      description: "기숙사 로비 TV를 어떻게 쓰고 계신지 알려 주세요. 1분이면 끝나요.",
+    },
+  },
+  {
+    id: "survey-long",
+    title: "설문 · 긴 제목, 설명 없음",
+    content: {
+      type: "SURVEY",
+      url: "https://example.com/survey",
+      title: "2026 가을학기 기숙사 생활 만족도와 로비 TV 이용 경험 설문",
+      description: null,
+    },
+  },
+  {
     id: "quiz-long",
     title: "퀴즈 · 긴 문제와 보기",
     content: { type: "QUIZ", dateKey: "2026-10-29", quiz: LONG_QUIZ, yesterday: LONG_QUIZ },

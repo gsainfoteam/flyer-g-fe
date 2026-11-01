@@ -56,6 +56,27 @@ export function WidgetDisplay({
   );
 }
 
+/** 설문 QR. 지나가며 찍기 쉽게 QR을 크게, 글은 짧게 둔다. */
+function SurveyBody({ content }: { content: Extract<WidgetContent, { type: "SURVEY" }> }) {
+  return (
+    <div className="flex min-h-0 flex-1 items-center gap-24">
+      <div className="flex min-w-0 flex-1 flex-col gap-10">
+        <Eyebrow>설문</Eyebrow>
+        <p className="text-[80px] leading-tight font-extrabold tracking-tight text-ink">
+          {content.title}
+        </p>
+        {content.description && (
+          <p className="text-[40px] leading-snug text-ink-muted">{content.description}</p>
+        )}
+      </div>
+      <div className="flex shrink-0 flex-col items-center gap-6">
+        <QRCodeBox value={content.url} size="tv" />
+        <p className="text-[38px] font-extrabold text-ink">폰으로 참여하기</p>
+      </div>
+    </div>
+  );
+}
+
 function Eyebrow({ children }: { children: string }) {
   return (
     <span className="self-start rounded-pill bg-accent px-[26px] py-2.5 text-[30px] font-bold text-accent-on">
@@ -141,6 +162,8 @@ function WidgetBody({ content }: { content: WidgetContent }): ReactNode {
     case "CLICK_BATTLE":
       // 게임 방을 여는 화면이라 플레이어가 따로 그린다(BattleWidget).
       return null;
+    case "SURVEY":
+      return <SurveyBody content={content} />;
   }
 }
 
