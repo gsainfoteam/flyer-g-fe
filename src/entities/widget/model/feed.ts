@@ -91,6 +91,7 @@ const STANDALONE_TYPES: readonly WidgetType[] = [
   "WEATHER",
   "QUIZ",
   "CLICK_BATTLE",
+  "SHUFFLEBOARD",
 ];
 
 /** 운영 설정(`operation.ts`)의 위젯별 시간을 입힌다. */

@@ -48,16 +48,16 @@ import type {
   PlayerFrame,
 } from "@/entities/widget/model/schedule";
 import { WIDGET_LABELS } from "@/entities/widget/model/settings";
-import { DEFAULT_WIDGET_DURATION } from "@/entities/widget/model/types";
+import { DEFAULT_WIDGET_DURATION, isGameWidget } from "@/entities/widget/model/types";
 import type { WidgetSlot } from "@/entities/widget/model/types";
 import { StageInfoBar } from "@/entities/widget/ui/StageInfoBar";
 import { WidgetDisplay } from "@/entities/widget/ui/WidgetDisplay";
 import { useDeviceWidgets } from "@/features/display/model/use-device-widgets";
 import { useLocalCafeteria } from "@/features/display/model/use-local-cafeteria";
 import { useLocalWeather } from "@/features/display/model/use-local-weather";
-import { gameSocketBase } from "@/features/click-battle/api/game-socket";
-import { BattlePreview } from "@/features/click-battle/ui/BattlePreview";
-import { BattleWidget } from "@/features/click-battle/ui/BattleWidget";
+import { gameSocketBase } from "@/shared/lib/game-socket";
+import { isWidgetReleased } from "@/entities/widget/model/operation";
+import { GameFrame } from "@/widgets/game-frame/GameFrame";
 import { toUserMessage } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
 import {
@@ -139,7 +139,7 @@ export function DisplayPage() {
 
   // 게임 위젯은 이 TV가 게임 방을 열 수 있을 때 실제로 돈다. 서버 중계면 기기 토큰이
   // 있어야 하고, mock이면 같은 브라우저 탭끼리 연다. 토큰이 없는 미리보기는 방 없이
-  // 모양만 보여 준다(BattlePreview). 그 밖에 방을 못 여는 화면에서는 건너뛴다.
+  // 모양만 보여 준다(GameFrame의 previewOnly). 그 밖에 방을 못 여는 화면에서는 건너뛴다.
   const socketBase = gameSocketBase();
   const [gameToken] = useState(() => deviceCredentials.get(deviceId));
   const canHostGame = socketBase === null || gameToken !== null;
@@ -186,9 +186,13 @@ export function DisplayPage() {
             : null;
       return data ? { ...slot, params: { ...slot.params, data } } : slot;
     });
+    // 공개일 전 위젯(11/5의 셔플보드)은 평소 순환에서 뺀다. 시간대 고정은 따로 띄운다.
+    const released = todayKey
+      ? slots.filter((slot) => isWidgetReleased(slot.type, todayKey))
+      : slots;
     return canHostGame || previewGame
-      ? slots
-      : slots.filter((slot) => slot.type !== "CLICK_BATTLE");
+      ? released
+      : released.filter((slot) => !isGameWidget(slot.type));
   }, [
     canHostGame,
     previewGame,
@@ -224,7 +228,7 @@ export function DisplayPage() {
   const takeoverFrame: PlayerFrame | null = (() => {
     if (!timeSlot || !serverTime) return null;
     const { rule } = timeSlot;
-    if (rule.widget === "CLICK_BATTLE" && !(canHostGame || previewGame)) return null;
+    if (isGameWidget(rule.widget) && !(canHostGame || previewGame)) return null;
     const slot = widgetSlots.find((item) => item.type === rule.widget) ?? {
       id: `time-slot-${rule.id}`,
       type: rule.widget,
@@ -304,7 +308,7 @@ export function DisplayPage() {
     gameActive &&
     shown !== null &&
     shown.frame.kind === "widget" &&
-    shown.frame.content.type === "CLICK_BATTLE" &&
+    isGameWidget(shown.frame.content.type) &&
     shown.frame.key !== nextShown?.key;
   const shownLabel = takeoverFrame && timeSlot ? timeSlot.rule.label : null;
   if (
@@ -410,31 +414,26 @@ export function DisplayPage() {
             {!frame ? (
               <EmptyDisplay deviceLabel={deviceLabel} serverTime={serverTime} />
             ) : frame.kind === "widget" &&
-              frame.content.type === "CLICK_BATTLE" ? (
+              isGameWidget(frame.content.type) ? (
               <div
                 key={frameKey}
                 className="h-full animate-in duration-500 fade-in"
               >
-                {previewGame ? (
-                  <BattlePreview
-                    deviceLabel={deviceLabel}
-                    serverTime={serverTime}
-                  />
-                ) : (
-                  <BattleWidget
-                    roomId={deviceId}
-                    socketBase={socketBase}
-                    token={gameToken}
-                    deviceLabel={deviceLabel}
-                    serverTime={serverTime}
-                    onActiveChange={setGameActive}
-                    onSessionEnd={() => {
-                      if (!takeover) rotation.advance();
-                    }}
-                    pinned={takeover && !overtime}
-                    survey={overtime ? overtime.survey : takeoverSurvey}
-                  />
-                )}
+                <GameFrame
+                  type={frame.content.type}
+                  previewOnly={previewGame}
+                  roomId={deviceId}
+                  socketBase={socketBase}
+                  token={gameToken}
+                  deviceLabel={deviceLabel}
+                  serverTime={serverTime}
+                  onActiveChange={setGameActive}
+                  onSessionEnd={() => {
+                    if (!takeover) rotation.advance();
+                  }}
+                  pinned={takeover && !overtime}
+                  survey={overtime ? overtime.survey : takeoverSurvey}
+                />
               </div>
             ) : frame.kind === "widget" ? (
               <WidgetFrame

@@ -8,6 +8,7 @@ import type {
 } from "@/entities/game/model/click-battle";
 import { createBroadcastGameChannel } from "@/shared/lib/game-channel";
 import type { GameChannel } from "@/shared/lib/game-channel";
+import { hostTimeOf, nextClockOffset } from "@/shared/lib/host-clock";
 import { createWsClientChannel } from "@/shared/lib/ws-game-channel";
 import type { GameLinkStatus } from "@/shared/lib/ws-game-channel";
 
@@ -20,23 +21,6 @@ import type { GameLinkStatus } from "@/shared/lib/ws-game-channel";
 const FLUSH_MS = 150;
 /** TV가 이 시간 넘게 말이 없으면 연결이 끊겼다고 본다. */
 const SILENCE_MS = 3_000;
-/** TV 시계가 이만큼 넘게 뒤로 가면 TV가 시계를 고친 것으로 보고 새로 잰다. */
-const CLOCK_RESET_MS = 3_000;
-
-/**
- * TV 시계 - 폰 시계(ms). 남은 초와 경기 끝은 TV 시계로 정해지므로 폰 시계로 바로 세면
- * 두 기기의 시계 차이만큼 틀린다(TV가 12초 빠르면 "22초 뒤 시작").
- *
- * 받은 시각 차이는 전송 지연만큼 작게 나온다. 그래서 가장 큰 값을 참값에 가깝다고 보고
- * 지킨다. 다만 TV가 시계를 크게 고치면(뒤로 3초 넘게) 그 값으로 다시 시작한다.
- */
-export function nextClockOffset(current: number | null, sample: number): number {
-  if (current === null || sample > current || current - sample > CLOCK_RESET_MS) {
-    return sample;
-  }
-  return current;
-}
-
 /**
  * `crypto.randomUUID`는 https나 localhost에서만 있다. 개발 중 폰이 LAN 주소(http)로
  * 들어오면 없으므로 대신 만든다. 식별용일 뿐 보안 값이 아니다.
@@ -97,8 +81,9 @@ export function useBattlePlayer(roomId: string, options: UseBattlePlayerOptions 
       heardAtRef.current = Date.now();
       setConnected(true);
       if (message.kind === "state") {
-        if (typeof message.now === "number" && Number.isFinite(message.now)) {
-          const next = nextClockOffset(offsetRef.current, message.now - Date.now());
+        const hostTime = hostTimeOf(message);
+        if (hostTime !== null) {
+          const next = nextClockOffset(offsetRef.current, hostTime - Date.now());
           if (next !== offsetRef.current) {
             offsetRef.current = next;
             setClockOffsetMs(next);
