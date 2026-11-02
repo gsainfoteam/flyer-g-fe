@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { BATTLE_RULES, TEAMS, secondsLeft } from "@/entities/game/model/click-battle";
 import type { Team } from "@/entities/game/model/click-battle";
-import { gameSocketBase } from "@/features/click-battle/api/game-socket";
+import { gameSocketBase } from "@/shared/lib/game-socket";
 import { useBattlePlayer } from "@/features/click-battle/model/use-battle-player";
+import { useHostNow } from "@/shared/lib/host-clock";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -22,19 +23,6 @@ const TEAM_STYLE: Record<Team, { text: string; button: string }> = {
 
 function readTeam(value: string | null): Team {
   return (TEAMS as readonly string[]).includes(value ?? "") ? (value as Team) : "A";
-}
-
-/**
- * 남은 초를 그리려고 1초보다 촘촘히 다시 그린다. 시각은 TV 시계로 맞춘다(`offsetMs`).
- * 단계의 끝 시각은 TV가 정하므로 폰 시계로 세면 두 시계 차이만큼 틀린다.
- */
-function useHostNow(offsetMs: number, intervalMs = 250) {
-  const [deviceNow, setDeviceNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setDeviceNow(Date.now()), intervalMs);
-    return () => window.clearInterval(id);
-  }, [intervalMs]);
-  return deviceNow + offsetMs;
 }
 
 export function ClickBattlePlayPage() {

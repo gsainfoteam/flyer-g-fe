@@ -24,6 +24,17 @@ export const WIDGET_TYPES = [
 export type WidgetType = (typeof WIDGET_TYPES)[number];
 
 /**
+ * 게임 위젯. TV가 게임 방을 열고 폰이 QR로 붙는다(서버 중계). 화면은 플레이어가 따로
+ * 그리고(`GameFrame`), 게임 방을 열 수 없는 TV에서는 빠진다. 누가 참가하면 판이 끝날
+ * 때까지 머물고, 시간대가 바뀌어도 하던 판은 마저 한다.
+ */
+export const GAME_WIDGETS = ["CLICK_BATTLE"] as const satisfies readonly WidgetType[];
+export type GameWidgetType = (typeof GAME_WIDGETS)[number];
+
+export const isGameWidget = (type: WidgetType): type is GameWidgetType =>
+  (GAME_WIDGETS as readonly WidgetType[]).includes(type);
+
+/**
  * 위젯이 화면에 머무는 기본 시간(초). 콘텐츠마다 읽는 데 걸리는 시간이 달라 종류별로
  * 둔다. 운영자가 슬롯마다 `durationSeconds`로 바꿀 수 있다.
  */

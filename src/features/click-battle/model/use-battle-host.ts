@@ -5,7 +5,7 @@ import {
   initialBattle,
 } from "@/entities/game/model/click-battle";
 import { parseClientMessage } from "@/entities/game/model/messages";
-import { createPlayerBinding } from "./player-binding";
+import { createPlayerBinding } from "@/shared/lib/player-binding";
 import type {
   BattleClientMessage,
   BattleHostMessage,
