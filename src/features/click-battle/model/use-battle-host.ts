@@ -11,6 +11,7 @@ import type {
   BattleHostMessage,
   BattleState,
 } from "@/entities/game/model/click-battle";
+import { useGameBusy } from "@/shared/lib/game-busy";
 import { createBroadcastGameChannel } from "@/shared/lib/game-channel";
 import type { GameChannel } from "@/shared/lib/game-channel";
 import { createWsHostChannel } from "@/shared/lib/ws-game-channel";
@@ -166,10 +167,13 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
     };
   }, [roomId, injected, now, socketBase, token]);
 
+  const active = isBattleActive(state);
+  useGameBusy(active);
+
   return {
     state,
     now: clock,
-    active: isBattleActive(state),
+    active,
     status: socketBase && !token && !injected ? ("unauthorized" as const) : status,
   };
 }

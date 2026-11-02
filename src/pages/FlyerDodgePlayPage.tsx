@@ -48,7 +48,26 @@ export function FlyerDodgePlayPage() {
     );
   }
 
+  // 내 판이 끝나 결과를 닫았다. TV는 결과를 몇 초 더 보여 준 뒤 새 QR로 모집한다.
+  if (player.isMe && view.phase === "RESULT") {
+    return (
+      <Notice
+        title="수고했어요!"
+        description="다시 하려면 잠시 뒤 TV에 새로 뜨는 QR을 찍어 주세요."
+      />
+    );
+  }
+
   if (!player.isMe) {
+    // 지난 판의 QR이다(판마다 QR이 바뀐다). 시작해도 받지 않으니 미리 알린다.
+    if (view.phase === "LOBBY" && ticket !== view.ticket) {
+      return (
+        <Notice
+          title="TV의 새 QR을 찍어 주세요"
+          description="이 QR은 지난 판의 것이에요. 판마다 QR이 바뀌어요."
+        />
+      );
+    }
     if (view.phase !== "LOBBY") {
       return (
         <Notice

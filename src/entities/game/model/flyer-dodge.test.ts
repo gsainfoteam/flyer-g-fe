@@ -126,7 +126,8 @@ describe("전단지 피하기 · 플레이", () => {
     }
     expect(state.phase).toBe("RESULT");
     expect(state.result!.survivedMs).toBe(DODGE_RULES.durationMs);
-    expect(state.result!.score).toBeGreaterThanOrEqual(4_000);
+    // 시간 점수만 40초 × 50 = 2,000점(피한 전단지 점수는 더해진다).
+    expect(state.result!.score).toBeGreaterThanOrEqual(2_000);
     expect(state.phaseEndsAt).toBe(startedAt + DODGE_RULES.durationMs + DODGE_RULES.resultMs);
   });
 

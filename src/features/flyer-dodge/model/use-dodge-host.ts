@@ -15,6 +15,7 @@ import type {
   DodgeState,
 } from "@/entities/game/model/flyer-dodge";
 import { parseDodgeMessage } from "@/entities/game/model/flyer-dodge-messages";
+import { useGameBusy } from "@/shared/lib/game-busy";
 import { createBroadcastGameChannel } from "@/shared/lib/game-channel";
 import type { GameChannel } from "@/shared/lib/game-channel";
 import { createPlayerBinding } from "@/shared/lib/player-binding";
@@ -190,6 +191,8 @@ export function useDodgeHost(roomId: string, options: UseDodgeHostOptions = {}) 
 
   /** 초당 30번 바뀌는 원본. 캔버스가 매 프레임 읽는다. */
   const readState = useCallback(() => stateRef.current, []);
+  const active = isDodgeActive(state);
+  useGameBusy(active);
 
   return {
     state,
@@ -198,7 +201,7 @@ export function useDodgeHost(roomId: string, options: UseDodgeHostOptions = {}) 
     ranking,
     /** 방금 끝난 판의 이 TV 순위 */
     rank: lastRank?.round === state.round ? lastRank.rank : null,
-    active: isDodgeActive(state),
+    active,
     status: socketBase && !token && !injected ? ("unauthorized" as const) : status,
   };
 }

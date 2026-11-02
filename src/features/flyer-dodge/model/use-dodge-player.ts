@@ -67,6 +67,8 @@ export function useDodgePlayer(roomId: string, options: UseDodgePlayerOptions = 
   const [rejection, setRejection] = useState<DodgeRejection | null>(null);
   const [connected, setConnected] = useState(false);
   const [myResult, setMyResult] = useState<MyDodgeResult | null>(null);
+  /** 결과 화면을 닫은 판. TV가 결과를 몇 초 더 보내는 동안 다시 뜨지 않게 한다. */
+  const dismissedRoundRef = useRef<number | null>(null);
   const [clockOffsetMs, setClockOffsetMs] = useState(0);
   const offsetRef = useRef<number | null>(null);
   const channelRef = useRef<GameChannel<DodgeHostMessage, DodgeClientMessage> | null>(null);
@@ -98,7 +100,12 @@ export function useDodgePlayer(roomId: string, options: UseDodgePlayerOptions = 
         }
         const next = message.view;
         setView(next);
-        if (next.phase === "RESULT" && next.result && next.player?.id === playerId) {
+        if (
+          next.phase === "RESULT" &&
+          next.result &&
+          next.player?.id === playerId &&
+          dismissedRoundRef.current !== next.round
+        ) {
           const result = { ...next.result, round: next.round, rank: next.rank };
           setMyResult((current) =>
             current?.round === result.round && current.rank === result.rank ? current : result,
@@ -156,7 +163,12 @@ export function useDodgePlayer(roomId: string, options: UseDodgePlayerOptions = 
     [playerId],
   );
 
-  const dismissResult = useCallback(() => setMyResult(null), []);
+  const dismissResult = useCallback(() => {
+    setMyResult((current) => {
+      if (current) dismissedRoundRef.current = current.round;
+      return null;
+    });
+  }, []);
 
   return {
     playerId,

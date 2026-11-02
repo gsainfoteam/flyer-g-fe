@@ -10,6 +10,7 @@ import type {
   MatchState,
 } from "@/entities/game/model/shuffleboard";
 import { parseClientMessage } from "@/entities/game/model/shuffleboard-messages";
+import { useGameBusy } from "@/shared/lib/game-busy";
 import { createBroadcastGameChannel } from "@/shared/lib/game-channel";
 import type { GameChannel } from "@/shared/lib/game-channel";
 import { createWsHostChannel } from "@/shared/lib/ws-game-channel";
@@ -62,22 +63,38 @@ export function newMatchId(): string {
 /**
  * TV를 새로고침해도 경기가 이어지게 이 탭에 상태를 남긴다. (명세 13장 "TV 새로고침")
  * 시각은 모두 절대 시각(ms)이라 그대로 되살리면 남은 시간도 맞다.
+ *
+ * 새로고침 직후(30초 안)에만 되살린다. 오래된 경기(시간대가 끝나 위젯이 닫혔다가 몇 시간
+ * 뒤 다시 뜰 때 등)를 되살리면 지난 턴들이 한꺼번에 시간 초과로 넘어가 몇 번 던지지도
+ * 않고 끝나고, 떠난 사람의 자리가 남아 새 참가자가 못 들어온다.
  */
 const storageKey = (roomId: string) => `flyerg:shuffleboard-host:${roomId}`;
+export const RESTORE_WITHIN_MS = 30_000;
 
-function restore(roomId: string): MatchState {
+export function restoreMatch(saved: string | null, now: number): MatchState | null {
+  if (!saved) return null;
   try {
-    const saved = window.sessionStorage.getItem(storageKey(roomId));
-    if (saved) return JSON.parse(saved) as MatchState;
+    const value = JSON.parse(saved) as { state?: MatchState; savedAt?: number };
+    if (!value.state || typeof value.savedAt !== "number") return null;
+    return now - value.savedAt <= RESTORE_WITHIN_MS ? value.state : null;
+  } catch {
+    return null;
+  }
+}
+
+function restore(roomId: string, now: number): MatchState {
+  try {
+    const restored = restoreMatch(window.sessionStorage.getItem(storageKey(roomId)), now);
+    if (restored) return restored;
   } catch {
     // 저장소를 못 쓰면 새 경기로 시작한다.
   }
   return initialMatch(1, newMatchId());
 }
 
-function save(roomId: string, state: MatchState) {
+function save(roomId: string, state: MatchState, now: number) {
   try {
-    window.sessionStorage.setItem(storageKey(roomId), JSON.stringify(state));
+    window.sessionStorage.setItem(storageKey(roomId), JSON.stringify({ state, savedAt: now }));
   } catch {
     // 저장소를 못 써도 경기는 계속한다.
   }
@@ -93,7 +110,7 @@ export function useShuffleboardHost(roomId: string, options: UseShuffleboardHost
     sessionLimitMs,
   } = options;
   const [status, setStatus] = useState<GameLinkStatus | null>(null);
-  const [state, setState] = useState<MatchState>(() => restore(roomId));
+  const [state, setState] = useState<MatchState>(() => restore(roomId, now()));
   const stateRef = useRef<MatchState>(state);
   const [clock, setClock] = useState(() => now());
   // 상한은 도중에 바뀔 수 있다(시간대가 끝나 고정이 풀릴 때). 방을 다시 열면 하던 경기가
@@ -134,7 +151,7 @@ export function useShuffleboardHost(roomId: string, options: UseShuffleboardHost
       if (next === stateRef.current) return;
       stateRef.current = next;
       dirty = true;
-      save(roomId, next);
+      save(roomId, next, now());
     };
 
     const unsubscribe = channel.subscribe((raw, from) => {
@@ -196,10 +213,13 @@ export function useShuffleboardHost(roomId: string, options: UseShuffleboardHost
     };
   }, [roomId, injected, now, socketBase, token]);
 
+  const active = isMatchActive(state);
+  useGameBusy(active);
+
   return {
     state,
     now: clock,
-    active: isMatchActive(state),
+    active,
     status: socketBase && !token && !injected ? ("unauthorized" as const) : status,
   };
 }

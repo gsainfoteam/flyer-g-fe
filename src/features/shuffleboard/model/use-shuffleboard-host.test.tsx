@@ -2,7 +2,8 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MatchClientMessage, MatchHostMessage } from "@/entities/game/model/shuffleboard";
 import type { GameChannel } from "@/shared/lib/game-channel";
-import { useShuffleboardHost } from "./use-shuffleboard-host";
+import { initialMatch } from "@/entities/game/model/shuffleboard";
+import { RESTORE_WITHIN_MS, restoreMatch, useShuffleboardHost } from "./use-shuffleboard-host";
 
 function fakeChannel() {
   let listener: ((message: MatchClientMessage, from?: string) => void) | null = null;
@@ -78,5 +79,20 @@ describe("useShuffleboardHost", () => {
     expect(result.current.state.phase).toBe("FINISHED");
     act(() => vi.advanceTimersByTime(5_000));
     expect(result.current.state.phase).toBe("FINISHED");
+  });
+
+  it("새로고침 직후(30초 안)의 경기만 되살리고, 오래된 경기는 새로 시작한다", () => {
+    const saved = (savedAt: number) =>
+      JSON.stringify({ state: { ...initialMatch(3, "old"), phase: "PLAYING", turn: 7 }, savedAt });
+    expect(restoreMatch(saved(1_000), 1_000 + RESTORE_WITHIN_MS)?.matchId).toBe("old");
+    expect(restoreMatch(saved(1_000), 1_000 + RESTORE_WITHIN_MS + 1)).toBeNull();
+    // 예전 형식(시각 없음)은 언제 저장했는지 몰라 되살리지 않는다.
+    expect(restoreMatch(JSON.stringify(initialMatch(1, "legacy")), 0)).toBeNull();
+    expect(restoreMatch("{", 0)).toBeNull();
+
+    sessionStorage.setItem("flyerg:shuffleboard-host:room", saved(Date.now() - 60_000));
+    const { channel } = fakeChannel();
+    const { result } = renderHook(() => useShuffleboardHost("room", { channel }));
+    expect(result.current.state).toMatchObject({ phase: "WAITING", round: 1 });
   });
 });
