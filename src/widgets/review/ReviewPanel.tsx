@@ -1,15 +1,16 @@
 import { useMemo } from "react";
-import { ArrowLeft, ExternalLink } from "lucide-react";
-import { Link, useNavigate, useParams } from "react-router";
-import { to } from "@/shared/config/routes";
+import type { ReactNode, Ref } from "react";
+import { ExternalLink } from "lucide-react";
 import { PosterArtwork } from "@/entities/poster/ui/PosterArtwork";
 import { fromSubmissionView } from "@/entities/poster";
 import {
   EVENT_BANNER_OCCASION_LABELS,
+  KIND_INFO,
   STORY_TAG_LABELS,
   getStatusSentence,
   toSubmissionView,
 } from "@/entities/submission";
+import type { SignageSubmissionExpanded } from "@/entities/submission";
 import type {
   EventBanner,
   Story,
@@ -17,9 +18,13 @@ import type {
 } from "@/entities/submission/model/types";
 import { useTargetGroupLabel } from "@/entities/device/api/queries";
 import { DisplayPreview } from "@/features/display-preview";
-import { useNextPendingReview } from "@/features/reviews/api/queries";
 import { DecisionActions } from "@/features/reviews/ui/DecisionActions";
+import type {
+  DecisionActionsHandle,
+  ReviewDecisionKind,
+} from "@/features/reviews/ui/DecisionActions";
 import { ReviewWarnings } from "@/features/reviews/ui/ReviewWarnings";
+import type { RejectionReasonCode } from "@/entities/review";
 import {
   useReviewHistory,
   useSubmissionDetail,
@@ -33,17 +38,36 @@ import { formatSeoulDateTime } from "@/shared/lib/datetime";
 import { Button } from "@/shared/ui/button";
 
 /**
- * 검토 상세 (명세 FR-REV-02).
+ * 심사할 신청 한 건 (명세 FR-REV-02, 기획 4-2).
  *
- * 관리자가 결정에 필요한 근거를 한 화면에서 본다: 원본 포스터, 실제 TV와 같은
- * 미리보기, 자동 경고, 이전 검토 이력. 화면에 보이는 검토 버전(v)이 결정과 함께
- * 서버로 가며, 그 사이 바뀌었으면 409로 거절된다. (명세 FR-REV-03)
+ * 관리자가 결정에 필요한 근거를 한 칸에서 본다: 원본, 실제 TV와 같은 미리보기,
+ * 자동 경고, 이전 검토 이력. 화면에 보이는 검토 버전(v)이 결정과 함께 서버로 가며,
+ * 그 사이 바뀌었으면 409로 거절된다. (명세 FR-REV-03)
+ *
+ * 심사 화면(`ReviewsPage`)의 오른쪽 칸이다. 결정은 호출부가 받아 늦게 보낸다.
  */
-export function ReviewDetailPage() {
-  const { submissionId = "" } = useParams();
-  const navigate = useNavigate();
-  const nextPending = useNextPendingReview();
+interface ReviewPanelProps {
+  submissionId: string;
+  /** 제목 위에 놓을 것. 모바일의 "대기열로" 같은 링크 */
+  header?: ReactNode;
+  onApprove?: (submission: SignageSubmissionExpanded) => void;
+  onReject?: (
+    submission: SignageSubmissionExpanded,
+    values: { reasonCode: RejectionReasonCode; comment: string },
+  ) => void;
+  /** 중단처럼 바로 보내는 결정이 끝난 뒤 */
+  onDecided?: (kind: ReviewDecisionKind) => void;
+  actionsRef?: Ref<DecisionActionsHandle>;
+}
 
+export function ReviewPanel({
+  submissionId,
+  header,
+  onApprove,
+  onReject,
+  onDecided,
+  actionsRef,
+}: ReviewPanelProps) {
   const detail = useSubmissionDetail(submissionId);
   const history = useReviewHistory(submissionId);
   const summary = useSubmissionSummary("all");
@@ -82,23 +106,14 @@ export function ReviewDetailPage() {
       {view && detail.data && (
         <>
           <div>
-            <Button variant="ghost" size="sm" asChild className="-ml-2.5">
-              {view.status === "PENDING_REVIEW" ? (
-                <Link to={to.review()}>
-                  <ArrowLeft aria-hidden="true" />
-                  승인 대기 목록으로
-                </Link>
-              ) : (
-                <Link to={to.contents()}>
-                  <ArrowLeft aria-hidden="true" />
-                  전체 신청으로
-                </Link>
-              )}
-            </Button>
+            {header}
 
-            <div className="mt-2 flex flex-wrap items-start gap-x-4 gap-y-2">
+            <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
               <div className="min-w-0 flex-1">
-                <h1 className="text-display text-ink">{view.title}</h1>
+                <p className="text-caption text-ink-subtle">
+                  {KIND_INFO[view.type].name}
+                </p>
+                <h2 className="mt-0.5 text-heading text-ink">{view.title}</h2>
                 <p className="mt-1.5 text-label text-ink-muted">
                   {view.requesterName ?? "작성자 가림"} 신청 ·{" "}
                   {getStatusSentence({ status: view.status })} · 검토 버전 v
@@ -110,25 +125,33 @@ export function ReviewDetailPage() {
 
             <div className="mt-4">
               <DecisionActions
+                key={detail.data.id}
+                ref={actionsRef}
                 submission={detail.data}
                 status={view.status}
-                onDecided={async (kind) => {
-                  // 승인·반려는 대기열을 처리하는 흐름이다. 다음 건으로 넘긴다.
-                  // 중단은 대기열과 무관해 이 화면에 머문다.
-                  if (kind === "suspend") return;
-                  const nextId = await nextPending(submissionId);
-                  void navigate(
-                    nextId ? to.reviewDetail(nextId) : to.review(),
-                  );
-                }}
+                shortcuts
+                onApprove={onApprove ? () => onApprove(detail.data) : undefined}
+                onReject={
+                  onReject
+                    ? (values) => onReject(detail.data, values)
+                    : undefined
+                }
+                onDecided={onDecided}
               />
             </div>
           </div>
 
           <ReviewWarnings submission={detail.data} serverNow={serverNow} />
 
-          <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[344px_1fr]">
-            <div className="flex min-w-0 flex-col gap-5">
+          <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+            <Panel title="TV 미리보기">
+              <DisplayPreview
+                poster={fromSubmissionView(view)}
+                companions={companions}
+                serverTime={serverNow}
+              />
+            </Panel>
+            <div className="grid min-w-0 items-start gap-5 md:grid-cols-2 xl:grid-cols-1">
               <OriginalPanel view={view} />
 
               <Panel title="게시 정보">
@@ -168,9 +191,7 @@ export function ReviewDetailPage() {
                       </div>
                       {view.location && (
                         <div>
-                          <dt className="text-caption text-ink-subtle">
-                            장소
-                          </dt>
+                          <dt className="text-caption text-ink-subtle">장소</dt>
                           <dd className="mt-0.5 text-body text-ink">
                             {view.location}
                           </dd>
@@ -178,9 +199,7 @@ export function ReviewDetailPage() {
                       )}
                       {view.description && (
                         <div>
-                          <dt className="text-caption text-ink-subtle">
-                            설명
-                          </dt>
+                          <dt className="text-caption text-ink-subtle">설명</dt>
                           <dd className="mt-0.5 text-body whitespace-pre-line text-ink">
                             {view.description}
                           </dd>
@@ -222,18 +241,10 @@ export function ReviewDetailPage() {
                 </dl>
               </Panel>
 
-              <Panel title="처리 이력">
+              <Panel title="처리 이력" className="md:col-span-2 xl:col-span-1">
                 <SubmissionHistory events={history.data ?? []} />
               </Panel>
             </div>
-
-            <Panel title="TV 미리보기">
-              <DisplayPreview
-                poster={fromSubmissionView(view)}
-                companions={companions}
-                serverTime={serverNow}
-              />
-            </Panel>
           </div>
         </>
       )}

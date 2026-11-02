@@ -63,11 +63,6 @@ const submissionDetailPage = lazyPage(() =>
 const reviewsPage = lazyPage(() =>
   import("@/pages/ReviewsPage").then((m) => ({ default: m.ReviewsPage })),
 );
-const reviewDetailPage = lazyPage(() =>
-  import("@/pages/ReviewDetailPage").then((m) => ({
-    default: m.ReviewDetailPage,
-  })),
-);
 const devicesPage = lazyPage(() =>
   import("@/pages/DevicesPage").then((m) => ({ default: m.DevicesPage })),
 );
@@ -201,9 +196,10 @@ export const routeTree = [
                     element: reviewsPage,
                     handle: title("심사"),
                   },
+                  // 목록과 고른 건을 한 화면에 둔다. 주소의 id가 오른쪽 칸이다.
                   {
                     path: paths.reviewDetail,
-                    element: reviewDetailPage,
+                    element: reviewsPage,
                     handle: title("심사"),
                   },
                   {
