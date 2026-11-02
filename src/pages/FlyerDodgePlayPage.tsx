@@ -35,6 +35,20 @@ export function FlyerDodgePlayPage() {
     return <ResultView result={player.myResult} onClose={player.dismissResult} />;
   }
 
+  // 쓰지 않아 연결을 쉬는 중이다. 손대면 다시 붙는다.
+  if (player.paused) {
+    return (
+      <Notice
+        title="연결을 잠시 쉬고 있어요"
+        description="한동안 쓰지 않아 TV와의 연결을 쉬었어요. 다시 하려면 아래 버튼을 눌러 주세요."
+      >
+        <Button size="lg" className="mx-auto mt-2 h-12 px-8" onClick={player.resume}>
+          다시 연결
+        </Button>
+      </Notice>
+    );
+  }
+
   if (!player.connected || !view) {
     return (
       <Notice
@@ -232,11 +246,20 @@ function ResultView({ result, onClose }: { result: MyDodgeResult; onClose: () =>
   );
 }
 
-function Notice({ title, description }: { title: string; description: string }) {
+function Notice({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children?: ReactNode;
+}) {
   return (
     <div role="status" className="flex flex-1 flex-col justify-center gap-4 text-center">
       <h1 className="text-title text-ink">{title}</h1>
       <p className="text-body text-ink-muted">{description}</p>
+      {children}
     </div>
   );
 }

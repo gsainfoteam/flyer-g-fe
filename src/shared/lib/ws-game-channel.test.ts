@@ -111,10 +111,16 @@ describe("createWsHostChannel", () => {
 
   it("밀려나면 되찾지 않고 방을 지켜보다가, 다른 화면이 떠나면 다시 TV로 붙는다", () => {
     const statuses: GameLinkStatus[] = [];
+    const onReclaim = vi.fn();
     const channel = createWsHostChannel(BASE, "d", {
       token: "t",
       onStatus: (status) => statuses.push(status),
+      onReclaim,
     });
+    // 처음 붙을 때는 새 판으로 바꾸라고 하지 않는다.
+    last().serverOpen();
+    last().serverSend({ type: "ready" });
+    expect(onReclaim).not.toHaveBeenCalled();
     last().serverClose(4010);
     expect(statuses.at(-1)).toBe("replaced");
     // 참가자로 방을 지켜본다. 다른 화면이 TV로 있는 동안은 그대로 둔다.
@@ -135,6 +141,8 @@ describe("createWsHostChannel", () => {
     host.serverOpen();
     host.serverSend({ type: "ready" });
     expect(statuses.at(-1)).toBe("open");
+    // 그 사이 다른 화면이 판을 진행했을 수 있으니 새 판으로 시작하라고 한 번 알린다.
+    expect(onReclaim).toHaveBeenCalledTimes(1);
 
     // 닫으면 지켜보기도 함께 멈춘다.
     host.serverClose(4010);

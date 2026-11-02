@@ -18,7 +18,7 @@ import { parseDodgeMessage } from "@/entities/game/model/flyer-dodge-messages";
 import { useGameBusy } from "@/shared/lib/game-busy";
 import { createBroadcastGameChannel } from "@/shared/lib/game-channel";
 import type { GameChannel } from "@/shared/lib/game-channel";
-import { createPlayerBinding } from "@/shared/lib/player-binding";
+import { createPlayerBinding, readSecret } from "@/shared/lib/player-binding";
 import { createWsHostChannel } from "@/shared/lib/ws-game-channel";
 import type { GameLinkStatus } from "@/shared/lib/ws-game-channel";
 
@@ -50,7 +50,13 @@ export interface UseDodgeHostOptions {
   seed?: number;
 }
 
-const rankingKey = (roomId: string) => `flyerg:dodge-ranking:${roomId}`;
+/**
+ * 점수 규칙 판마다 순위를 따로 둔다. 규칙이 바뀌면 이전 규칙의 높은 점수가 새 기록을
+ * 누르지 않게 새 칸에 모으고, 이전 순위는 지우지 않고 그대로 남긴다.
+ * (판 1은 판을 붙이기 전의 키 `flyerg:dodge-ranking:<방>`이다.)
+ */
+const rankingKey = (roomId: string) =>
+  `flyerg:dodge-ranking:v${DODGE_RULES.scoreVersion}:${roomId}`;
 
 function loadRanking(roomId: string): DodgeRecord[] {
   try {
@@ -107,6 +113,11 @@ export function useDodgeHost(roomId: string, options: UseDodgeHostOptions = {}) 
         ? createWsHostChannel<DodgeClientMessage, DodgeHostMessage>(socketBase, roomId, {
             token,
             onStatus: setStatus,
+            // 다른 화면에 밀려났다 되찾으면 그 사이 판을 알 수 없으니 새 판(새 QR)으로 시작한다.
+            onReclaim: () => {
+              commit(initialDodge(stateRef.current.round + 1, stateRef.current.seed));
+              activeSince = null;
+            },
             // 탭을 닫은 폰은 "나간다"를 못 보낸다. 연결이 끊기면 그 연결의 참가자를 내보낸다.
             onDisconnect: (from) => {
               const playerId = binding.release(from);
@@ -146,7 +157,8 @@ export function useDodgeHost(roomId: string, options: UseDodgeHostOptions = {}) 
     const unsubscribe = channel.subscribe((raw, from) => {
       // 폰은 로그인하지 않는다. 모양이 틀리거나 남의 참가자 id를 쓴 메시지는 버린다.
       const message = parseDodgeMessage(raw);
-      if (!message || !binding.claim(from, message.playerId)) return;
+      // 같은 폰의 새 연결(네트워크가 바뀜)은 비밀 값으로 알아본다.
+      if (!message || !binding.claim(from, message.playerId, readSecret(raw))) return;
       const result = applyDodgeMessage(stateRef.current, message, now());
       commit(result.state);
       if (result.reply) channel.send(result.reply);

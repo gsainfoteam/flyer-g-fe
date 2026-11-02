@@ -8,6 +8,8 @@ import type {
   Direction,
 } from "@/entities/game/model/flyer-dodge";
 import { createBroadcastGameChannel } from "@/shared/lib/game-channel";
+import { playerIdentityOf, signed } from "@/shared/lib/player-identity";
+import { useIdlePause } from "@/shared/lib/use-idle-pause";
 import type { GameChannel } from "@/shared/lib/game-channel";
 import { hostTimeOf, nextClockOffset } from "@/shared/lib/host-clock";
 import { createWsClientChannel } from "@/shared/lib/ws-game-channel";
@@ -25,27 +27,6 @@ const MIN_GAP_MS = 80;
 /** TV가 이 시간 넘게 말이 없으면 연결이 끊겼다고 본다. */
 const SILENCE_MS = 3_000;
 
-function randomId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-/** 같은 탭에서는 같은 참가자다. 새로고침해도 하던 판으로 돌아온다. */
-function playerIdOf(roomId: string): string {
-  const key = `flyerg:dodge-player:${roomId}`;
-  try {
-    const saved = window.sessionStorage.getItem(key);
-    if (saved) return saved;
-    const created = randomId();
-    window.sessionStorage.setItem(key, created);
-    return created;
-  } catch {
-    return randomId();
-  }
-}
-
 export interface UseDodgePlayerOptions {
   /** 백엔드 게임 중계 주소. 없으면 같은 브라우저 탭끼리 잇는다(개발용). */
   socketBase?: string | null;
@@ -62,7 +43,8 @@ export interface MyDodgeResult extends DodgeResult {
 export function useDodgePlayer(roomId: string, options: UseDodgePlayerOptions = {}) {
   const { channel: injected, socketBase = null } = options;
   const [link, setLink] = useState<GameLinkStatus | null>(null);
-  const [playerId] = useState(() => playerIdOf(roomId));
+  // 이 폰의 참가자 id와 비밀 값. 같은 탭이면 새로고침해도 같다.
+  const [{ id: playerId, secret }] = useState(() => playerIdentityOf(`flyerg:dodge-player:${roomId}`));
   const [view, setView] = useState<DodgeView | null>(null);
   const [rejection, setRejection] = useState<DodgeRejection | null>(null);
   const [connected, setConnected] = useState(false);
@@ -76,7 +58,13 @@ export function useDodgePlayer(roomId: string, options: UseDodgePlayerOptions = 
   const directionRef = useRef<Direction>(0);
   const sentRef = useRef<{ direction: Direction; at: number }>({ direction: 0, at: 0 });
 
+  // 내 판이 아니고 쓰지 않으면 연결을 쉰다(같은 IP 연결 수 제한).
+  const { paused, resume } = useIdlePause(
+    view?.player?.id === playerId && view.phase !== "LOBBY",
+  );
+
   useEffect(() => {
+    if (paused) return;
     const channel =
       injected ??
       (socketBase
@@ -115,7 +103,7 @@ export function useDodgePlayer(roomId: string, options: UseDodgePlayerOptions = 
         setRejection(message.reason);
       }
     });
-    channel.send({ kind: "hello", playerId });
+    channel.send(signed({ kind: "hello", playerId }, secret));
 
     const tick = window.setInterval(() => {
       const at = Date.now();
@@ -126,7 +114,7 @@ export function useDodgePlayer(roomId: string, options: UseDodgePlayerOptions = 
         (direction !== 0 && at - sent.at >= REPEAT_MS) ||
         (direction !== sent.direction && at - sent.at >= MIN_GAP_MS);
       if (due) {
-        channel.send({ kind: "move", playerId, direction });
+        channel.send(signed({ kind: "move", playerId, direction }, secret));
         sentRef.current = { direction, at };
       }
       if (at - heardAtRef.current > SILENCE_MS) setConnected(false);
@@ -135,19 +123,19 @@ export function useDodgePlayer(roomId: string, options: UseDodgePlayerOptions = 
     return () => {
       window.clearInterval(tick);
       unsubscribe();
-      channel.send({ kind: "leave", playerId });
+      channel.send(signed({ kind: "leave", playerId }, secret));
       if (!injected) channel.close();
       channelRef.current = null;
     };
-  }, [roomId, injected, playerId, socketBase]);
+  }, [roomId, injected, playerId, secret, socketBase, paused]);
 
   const join = useCallback(
     (name: string, ticket: string) => {
       setRejection(null);
       setMyResult(null);
-      channelRef.current?.send({ kind: "join", playerId, name, ticket });
+      channelRef.current?.send(signed({ kind: "join", playerId, name, ticket }, secret));
     },
-    [playerId],
+    [playerId, secret],
   );
 
   /** 버튼을 누르거나 뗄 때. 간격이 허락하면 바로 보낸다. */
@@ -156,11 +144,11 @@ export function useDodgePlayer(roomId: string, options: UseDodgePlayerOptions = 
       directionRef.current = direction;
       const at = Date.now();
       if (direction !== sentRef.current.direction && at - sentRef.current.at >= MIN_GAP_MS) {
-        channelRef.current?.send({ kind: "move", playerId, direction });
+        channelRef.current?.send(signed({ kind: "move", playerId, direction }, secret));
         sentRef.current = { direction, at };
       }
     },
-    [playerId],
+    [playerId, secret],
   );
 
   const dismissResult = useCallback(() => {
@@ -176,7 +164,10 @@ export function useDodgePlayer(roomId: string, options: UseDodgePlayerOptions = 
     /** 이 판의 참가자가 나인가 */
     isMe: view?.player?.id === playerId,
     rejection,
-    connected,
+    connected: connected && !paused,
+    /** 쓰지 않아 연결을 쉬는 중. `resume`으로 다시 붙는다. */
+    paused,
+    resume,
     link,
     /** TV 시계 - 폰 시계(ms). 화면은 `useHostNow`로 TV 시계에 맞춰 센다. */
     clockOffsetMs,

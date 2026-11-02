@@ -49,6 +49,12 @@ export interface WsHostOptions<Incoming> extends Options {
    * 탭을 닫아 "나간다"를 못 보낸 폰도 명단에서 빼려는 것이다.
    */
   onDisconnect?: (from: string) => Incoming | null;
+  /**
+   * 다른 화면에 밀려났다가 그 화면이 떠나 다시 TV로 붙었을 때. 그동안 다른 화면이 판을
+   * 진행했을 수 있는데 중계는 판 상태를 갖고 있지 않아 맞출 길이 없다. 그래서 하던 판을
+   * 이어 보내지 말고 새 판으로 시작하라고 알린다.
+   */
+  onReclaim?: () => void;
 }
 
 function socketUrl(base: string, room: string, role: "host" | "player"): string {
@@ -158,6 +164,8 @@ export function createWsHostChannel<Incoming, Outgoing>(
   let ready = false;
   let watcher: { close(): void } | null = null;
   let closed = false;
+  /** 밀려났다가 다시 붙는 중. 다시 준비되면 새 판으로 시작하게 알린다. */
+  let reclaiming = false;
 
   const onStatus = (status: GameLinkStatus) => {
     options.onStatus?.(status);
@@ -166,6 +174,7 @@ export function createWsHostChannel<Incoming, Outgoing>(
       watcher?.close();
       watcher = watchUntilHostGone(baseUrl, room, () => {
         watcher = null;
+        reclaiming = true;
         link.restart();
       });
     }
@@ -187,6 +196,11 @@ export function createWsHostChannel<Incoming, Outgoing>(
         if (!frame) return;
         if (frame.type === "ready") {
           ready = true;
+          // 하던 판(옛 상태)을 보내기 전에 새 판으로 바꾸게 한다.
+          if (reclaiming) {
+            reclaiming = false;
+            options.onReclaim?.();
+          }
           options.onStatus?.("open");
         } else if (frame.type === "message" && typeof frame.from === "string") {
           emit(frame.data as Incoming, frame.from);

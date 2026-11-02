@@ -67,7 +67,7 @@ describe("useBattlePlayer", () => {
     act(() => result.current.tap());
     expect(result.current.localTaps).toBe(2);
     expect(sent.filter((message) => message.kind === "taps")).toEqual([
-      { kind: "taps", playerId: me, count: 2 },
+      expect.objectContaining({ kind: "taps", playerId: me, count: 2 }),
     ]);
   });
 
@@ -81,7 +81,15 @@ describe("useBattlePlayer", () => {
     expect(result.current.localTaps).toBe(1);
     act(() => vi.advanceTimersByTime(200));
     expect(sent.filter((message) => message.kind === "taps")).toEqual([
-      { kind: "taps", playerId: me, count: 1 },
+      expect.objectContaining({ kind: "taps", playerId: me, count: 1 }),
     ]);
+  });
+
+  it("메시지마다 이 폰만 아는 비밀 값을 싣는다(상태에는 실리지 않는다)", () => {
+    const { channel, sent } = fakeChannel();
+    renderHook(() => useBattlePlayer("room", { channel }));
+    const hello = sent[0] as { secret?: string; playerId: string };
+    expect(hello.secret).toMatch(/^[\w-]{16,64}$/);
+    expect(hello.secret).not.toBe(hello.playerId);
   });
 });
