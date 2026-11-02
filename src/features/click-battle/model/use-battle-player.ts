@@ -126,21 +126,19 @@ export function useBattlePlayer(roomId: string, options: UseBattlePlayerOptions 
     [playerId],
   );
 
-  /** TV 시계로 본 지금(ms) */
-  const hostNow = useCallback(() => Date.now() + (offsetRef.current ?? 0), []);
-
   // 경기가 끝난 뒤(TV 시계 기준) 누른 수는 TV가 받지 않는다. 화면의 수도 멈춰 둘이 맞게 한다.
+  // TV 시각을 아직 모르면(시각을 보내지 않는 옛 TV) 폰 시계로는 끝을 판단하지 않는다.
+  // 두 시계가 다르면 경기 중 연타를 버리게 된다. 그때는 결과 화면이 올 때 멈춘다.
   const tap = useCallback(() => {
     const current = stateRef.current;
-    if (
-      current?.phase !== "PLAYING" ||
-      (current.phaseEndsAt !== null && hostNow() >= current.phaseEndsAt)
-    ) {
+    if (current?.phase !== "PLAYING") return;
+    const offset = offsetRef.current;
+    if (offset !== null && current.phaseEndsAt !== null && Date.now() + offset >= current.phaseEndsAt) {
       return;
     }
     pendingRef.current += 1;
     setLocalTaps((count) => count + 1);
-  }, [hostNow]);
+  }, []);
 
   const me = state?.players.find((player) => player.id === playerId) ?? null;
 

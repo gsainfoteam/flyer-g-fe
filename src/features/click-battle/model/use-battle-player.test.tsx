@@ -70,4 +70,18 @@ describe("useBattlePlayer", () => {
       { kind: "taps", playerId: me, count: 2 },
     ]);
   });
+
+  it("TV 시각을 모르면(옛 TV) 폰 시계로 경기 끝을 판단하지 않는다", () => {
+    const { channel, sent, host } = fakeChannel();
+    const { result } = renderHook(() => useBattlePlayer("room", { channel }));
+    const me = result.current.playerId;
+    // 폰 시계가 TV보다 빨라 폰 시계로는 이미 끝난 것처럼 보인다.
+    host({ kind: "state", state: playingState(me, PHONE_NOW - 5_000) });
+    act(() => result.current.tap());
+    expect(result.current.localTaps).toBe(1);
+    act(() => vi.advanceTimersByTime(200));
+    expect(sent.filter((message) => message.kind === "taps")).toEqual([
+      { kind: "taps", playerId: me, count: 1 },
+    ]);
+  });
 });

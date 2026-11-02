@@ -41,4 +41,16 @@ describe("useShuffleboardPlayer", () => {
     host({ kind: "state", state: initialMatch(1, "m1") });
     expect(result.current.clockOffsetMs).toBe(12_000);
   });
+
+  it("보낸 발사는 같은 경기의 같은 턴에서만 기다리고, 다음 경기의 같은 턴은 막지 않는다", () => {
+    const { channel, host } = fakeChannel();
+    const { result } = renderHook(() => useShuffleboardPlayer("room", { channel }));
+    const playing = (matchId: string) => ({ ...initialMatch(1, matchId), phase: "PLAYING" as const });
+    host({ kind: "state", state: playing("m1") });
+    act(() => result.current.shoot(0, 0.5));
+    expect(result.current.waitingForTv).toBe(true);
+    host({ kind: "state", state: playing("m2") });
+    expect(result.current.state?.turn).toBe(playing("m1").turn);
+    expect(result.current.waitingForTv).toBe(false);
+  });
 });
