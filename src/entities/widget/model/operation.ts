@@ -31,7 +31,9 @@ export const WIDGET_DURATIONS: Partial<Record<WidgetType, number>> = {
  * 시간대 고정은 공개일과 상관없이 고를 수 있다(미리 시험해 보거나 행사에 먼저 쓸 때).
  */
 export const WIDGET_RELEASES: Partial<Record<WidgetType, string | null>> = {
-  SHUFFLEBOARD: "2026-11-05",
+  // 평소 순환에는 아직 클릭 배틀만 둔다. 11/5–11/7 이벤트 시간에는 시간대 고정으로 띄운다.
+  // 순환에 넣을 때 날짜를 적는다.
+  SHUFFLEBOARD: null,
   // 시험 중. 공개할 때 날짜를 적는다.
   FLYER_DODGE: null,
 };
