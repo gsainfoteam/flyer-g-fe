@@ -5,12 +5,13 @@ import {
   initialBattle,
 } from "@/entities/game/model/click-battle";
 import { parseClientMessage } from "@/entities/game/model/messages";
-import { createPlayerBinding } from "@/shared/lib/player-binding";
+import { createPlayerBinding, readSecret } from "@/shared/lib/player-binding";
 import type {
   BattleClientMessage,
   BattleHostMessage,
   BattleState,
 } from "@/entities/game/model/click-battle";
+import { useGameBusy } from "@/shared/lib/game-busy";
 import { createBroadcastGameChannel } from "@/shared/lib/game-channel";
 import type { GameChannel } from "@/shared/lib/game-channel";
 import { createWsHostChannel } from "@/shared/lib/ws-game-channel";
@@ -87,6 +88,13 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
         ? createWsHostChannel<BattleClientMessage, BattleHostMessage>(socketBase, roomId, {
             token,
             onStatus: setStatus,
+            // 다른 화면에 밀려났다 되찾으면 그 사이 판을 알 수 없으니 새 판으로 시작한다.
+            onReclaim: () => {
+              stateRef.current = initialBattle(stateRef.current.round + 1);
+              activeSince = null;
+              waitingSince = null;
+              dirty = true;
+            },
             // 탭을 닫은 폰은 "나간다"를 못 보낸다. 연결이 끊기면 그 연결의 참가자를 내보낸다.
             onDisconnect: (from) => {
               const playerId = binding.release(from);
@@ -103,7 +111,8 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
     const unsubscribe = channel.subscribe((raw, from) => {
       // 폰은 로그인하지 않는다. 모양이 틀리거나 남의 참가자 id를 쓴 메시지는 버린다.
       const message = parseClientMessage(raw);
-      if (!message || !binding.claim(from, message.playerId)) return;
+      // 같은 폰의 새 연결(네트워크가 바뀜)은 비밀 값으로 알아본다.
+      if (!message || !binding.claim(from, message.playerId, readSecret(raw))) return;
       const result = applyClientMessage(stateRef.current, message, now());
       if (result.state !== stateRef.current) {
         stateRef.current = result.state;
@@ -166,10 +175,13 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
     };
   }, [roomId, injected, now, socketBase, token]);
 
+  const active = isBattleActive(state);
+  useGameBusy(active);
+
   return {
     state,
     now: clock,
-    active: isBattleActive(state),
+    active,
     status: socketBase && !token && !injected ? ("unauthorized" as const) : status,
   };
 }

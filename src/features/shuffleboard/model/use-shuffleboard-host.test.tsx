@@ -2,7 +2,8 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MatchClientMessage, MatchHostMessage } from "@/entities/game/model/shuffleboard";
 import type { GameChannel } from "@/shared/lib/game-channel";
-import { useShuffleboardHost } from "./use-shuffleboard-host";
+import { initialMatch } from "@/entities/game/model/shuffleboard";
+import { RESTORE_WITHIN_MS, restoreMatch, useShuffleboardHost } from "./use-shuffleboard-host";
 
 function fakeChannel() {
   let listener: ((message: MatchClientMessage, from?: string) => void) | null = null;
@@ -78,5 +79,41 @@ describe("useShuffleboardHost", () => {
     expect(result.current.state.phase).toBe("FINISHED");
     act(() => vi.advanceTimersByTime(5_000));
     expect(result.current.state.phase).toBe("FINISHED");
+  });
+
+  it("새로고침 직후(30초 안)의 경기만 되살리고, 오래된 경기는 새로 시작한다", () => {
+    const saved = (savedAt: number) =>
+      JSON.stringify({ state: { ...initialMatch(3, "old"), phase: "PLAYING", turn: 7 }, savedAt });
+    expect(restoreMatch(saved(1_000), 1_000 + RESTORE_WITHIN_MS)?.matchId).toBe("old");
+    expect(restoreMatch(saved(1_000), 1_000 + RESTORE_WITHIN_MS + 1)).toBeNull();
+    // 예전 형식(시각 없음)은 언제 저장했는지 몰라 되살리지 않는다.
+    expect(restoreMatch(JSON.stringify(initialMatch(1, "legacy")), 0)).toBeNull();
+    expect(restoreMatch("{", 0)).toBeNull();
+    // 기기 시계가 뒤로 가 저장 시각이 미래면 믿지 않는다.
+    expect(restoreMatch(saved(10_000), 9_000)).toBeNull();
+
+    sessionStorage.setItem("flyerg:shuffleboard-host:room", saved(Date.now() - 60_000));
+    const { channel } = fakeChannel();
+    const { result } = renderHook(() => useShuffleboardHost("room", { channel }));
+    expect(result.current.state).toMatchObject({ phase: "WAITING", round: 1 });
+  });
+
+  it("사람이 있는 동안에는 바뀐 것이 없어도 저장 시각을 새로 한다", () => {
+    const { channel, from } = fakeChannel();
+    const { unmount } = renderHook(() => useShuffleboardHost("room", { channel }));
+    from("c1", { kind: "join", playerId: "p1", seat: "A" });
+    act(() => vi.advanceTimersByTime(400));
+    const read = () =>
+      (JSON.parse(sessionStorage.getItem("flyerg:shuffleboard-host:room")!) as { savedAt: number }).savedAt;
+    const first = read();
+    // 한 명이 상대를 기다리는 동안(상태 변화 없음) 40초가 지나도 새로고침하면 되살릴 수 있다.
+    act(() => vi.advanceTimersByTime(40_000));
+    expect(Date.now() - read()).toBeLessThan(RESTORE_WITHIN_MS);
+    expect(read()).toBeGreaterThan(first);
+    // 화면을 떠나면 더 저장하지 않는다.
+    unmount();
+    const last = read();
+    act(() => vi.advanceTimersByTime(40_000));
+    expect(read()).toBe(last);
   });
 });

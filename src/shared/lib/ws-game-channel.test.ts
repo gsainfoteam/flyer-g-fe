@@ -95,7 +95,7 @@ describe("createWsHostChannel", () => {
     ]);
   });
 
-  it("끊기면 다시 붙지만, 인증 실패나 밀려남이면 멈춘다", () => {
+  it("끊기면 다시 붙지만, 인증 실패면 멈춘다", () => {
     const statuses: GameLinkStatus[] = [];
     createWsHostChannel(BASE, "d", { token: "t", onStatus: (status) => statuses.push(status) });
     last().serverClose(1006);
@@ -103,10 +103,52 @@ describe("createWsHostChannel", () => {
     vi.advanceTimersByTime(1_000);
     expect(FakeSocket.instances).toHaveLength(2);
 
-    last().serverClose(4010);
-    expect(statuses.at(-1)).toBe("replaced");
+    last().serverClose(4001);
+    expect(statuses.at(-1)).toBe("unauthorized");
     vi.advanceTimersByTime(60_000);
     expect(FakeSocket.instances).toHaveLength(2);
+  });
+
+  it("밀려나면 되찾지 않고 방을 지켜보다가, 다른 화면이 떠나면 다시 TV로 붙는다", () => {
+    const statuses: GameLinkStatus[] = [];
+    const onReclaim = vi.fn();
+    const channel = createWsHostChannel(BASE, "d", {
+      token: "t",
+      onStatus: (status) => statuses.push(status),
+      onReclaim,
+    });
+    // 처음 붙을 때는 새 판으로 바꾸라고 하지 않는다.
+    last().serverOpen();
+    last().serverSend({ type: "ready" });
+    expect(onReclaim).not.toHaveBeenCalled();
+    last().serverClose(4010);
+    expect(statuses.at(-1)).toBe("replaced");
+    // 참가자로 방을 지켜본다. 다른 화면이 TV로 있는 동안은 그대로 둔다.
+    const watcher = last();
+    expect(watcher.url).toBe(`${BASE}?room=d&role=player`);
+    watcher.serverOpen();
+    watcher.serverSend({ type: "host", online: true });
+    vi.advanceTimersByTime(60_000);
+    expect(FakeSocket.instances).toHaveLength(2);
+    expect(watcher.sent).toEqual([]);
+
+    // 다른 화면이 떠났다.
+    watcher.serverSend({ type: "host", online: false });
+    expect(watcher.readyState).toBe(3);
+    const host = last();
+    expect(host.url).toBe(`${BASE}?room=d&role=host`);
+    expect(statuses.at(-1)).toBe("connecting");
+    host.serverOpen();
+    host.serverSend({ type: "ready" });
+    expect(statuses.at(-1)).toBe("open");
+    // 그 사이 다른 화면이 판을 진행했을 수 있으니 새 판으로 시작하라고 한 번 알린다.
+    expect(onReclaim).toHaveBeenCalledTimes(1);
+
+    // 닫으면 지켜보기도 함께 멈춘다.
+    host.serverClose(4010);
+    const second = last();
+    channel.close();
+    expect(second.readyState).toBe(3);
   });
 });
 

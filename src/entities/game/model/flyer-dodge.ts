@@ -28,7 +28,13 @@ export const DODGE_RULES = {
   resultMs: 12_000,
   /** 플레이 중 폰 연결이 끊기면 이만큼 기다렸다가 판을 취소한다(기록하지 않는다). */
   disconnectGraceMs: 15_000,
-  pointsPerSecond: 100,
+  /**
+   * 버틴 1초당 점수. 시간 점수가 너무 빨리 올라 피한 전단지·보너스가 묻히지 않게 50으로 둔다.
+   * 점수 규칙을 바꾸면 `scoreVersion`을 올린다(이전 규칙의 순위와 섞지 않는다).
+   */
+  pointsPerSecond: 50,
+  /** 점수 규칙 판. TV별 순위를 판마다 따로 둔다. 1: 초당 100점, 2: 초당 50점 */
+  scoreVersion: 2,
   dodgePoints: 25,
   bonusPoints: 300,
   hitPenalty: 150,
@@ -209,7 +215,7 @@ export function normalizeDodgeName(name: string): string {
   return trimmed;
 }
 
-/** 지금 점수. 버틴 시간 × 100 + 피한 전단지 × 25 + 보너스 − 부딪힘 감점(0 아래로는 안 감) */
+/** 지금 점수. 버틴 시간 × 50 + 피한 전단지 × 25 + 보너스 − 부딪힘 감점(0 아래로는 안 감) */
 export function dodgeScore(player: DodgePlayer, elapsedMs: number): number {
   const seconds = Math.min(Math.max(elapsedMs, 0), DODGE_RULES.durationMs) / 1_000;
   return Math.max(
