@@ -22,6 +22,11 @@ export interface ApiErrorBody {
    * (`API-REQUIREMENTS.md` 1.2) 있으면 화면이 해당 입력 칸에 오류를 붙인다.
    */
   fields?: Record<string, string>;
+  /**
+   * code별 부가 정보. 지금은 `DAILY_LIMIT_EXCEEDED`의 `{ type, limit }`뿐이다.
+   * 모양은 code마다 다르므로 읽는 쪽이 확인한다.
+   */
+  details?: Record<string, unknown>;
 }
 
 export class ApiError extends Error {
@@ -31,6 +36,8 @@ export class ApiError extends Error {
   readonly requestId: string | null;
   /** 입력 필드별 오류. 없으면 null. */
   readonly fields: Record<string, string> | null;
+  /** code별 부가 정보. 없으면 null. */
+  readonly details: Record<string, unknown> | null;
 
   constructor(init: {
     kind: ApiErrorKind;
@@ -39,6 +46,7 @@ export class ApiError extends Error {
     status?: number | null;
     requestId?: string | null;
     fields?: Record<string, string> | null;
+    details?: Record<string, unknown> | null;
   }) {
     super(init.message);
     this.name = "ApiError";
@@ -47,7 +55,22 @@ export class ApiError extends Error {
     this.status = init.status ?? null;
     this.requestId = init.requestId ?? null;
     this.fields = init.fields ?? null;
+    this.details = init.details ?? null;
   }
+}
+
+/**
+ * 하루 신청 한도를 넘었을 때(429 `DAILY_LIMIT_EXCEEDED`)의 종류와 한도.
+ * 다른 오류거나 모양이 다르면 null이다.
+ */
+export function dailyLimitOf(
+  error: ApiError,
+): { type: string; limit: number } | null {
+  if (error.code !== "DAILY_LIMIT_EXCEEDED" || !error.details) return null;
+  const { type, limit } = error.details;
+  return typeof type === "string" && typeof limit === "number"
+    ? { type, limit }
+    : null;
 }
 
 export function isApiError(value: unknown): value is ApiError {
@@ -97,10 +120,12 @@ export function normalizeApiError(cause: unknown): ApiError {
  *
  * 네트워크·5xx·408·429만 재시도한다. 401/403/404/409/422 같은 4xx는 다시 보내도
  * 같은 답이 오므로, 재시도하면 오류 표시만 늦어진다. 취소는 사용자가 원한 것이다.
+ * 429 중 하루 한도 초과는 다음 날까지 같은 답이라 재시도하지 않는다.
  */
 export function isRetryableError(error: unknown): boolean {
   const apiError = normalizeApiError(error);
   if (apiError.kind === "canceled") return false;
+  if (apiError.code === "DAILY_LIMIT_EXCEEDED") return false;
   if (apiError.status === null) return apiError.kind !== "parse";
   return (
     apiError.status >= 500 || apiError.status === 408 || apiError.status === 429
@@ -127,6 +152,14 @@ export function toUserMessage(error: ApiError): string {
       return "파일 용량이 허용 범위를 넘었습니다.";
     case "RATE_LIMITED":
       return "요청이 많습니다. 잠시 후 다시 시도해 주세요.";
+    case "DAILY_LIMIT_EXCEEDED": {
+      const limit = dailyLimitOf(error)?.limit;
+      return limit !== undefined
+        ? `이 종류는 하루에 ${limit}건까지 올릴 수 있어요. 내일 다시 올려 주세요.`
+        : "오늘 올릴 수 있는 수를 다 썼어요. 내일 다시 올려 주세요.";
+    }
+    case "NOT_RESUBMITTABLE":
+      return "반려되거나 중단된 제보는 고쳐서 다시 낼 수 없어요. 새로 써 주세요.";
     case "NETWORK_ERROR":
       return "네트워크에 연결할 수 없습니다. 연결을 확인한 뒤 다시 시도해 주세요.";
     case "TIMEOUT":

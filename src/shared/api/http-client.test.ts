@@ -206,6 +206,30 @@ describe("createHttpClient", () => {
     });
   });
 
+  it("code별 부가 정보(details)를 그대로 전달한다", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(
+        {
+          code: "DAILY_LIMIT_EXCEEDED",
+          message: "limit",
+          requestId: "req_1",
+          details: { type: "STORY", limit: 5 },
+        },
+        { status: 429 },
+      ),
+    );
+    const client = createHttpClient({
+      baseUrl: "https://api.example.com",
+      fetchImpl,
+    });
+
+    await expect(client.request({ path: "/x" })).rejects.toMatchObject({
+      status: 429,
+      code: "DAILY_LIMIT_EXCEEDED",
+      details: { type: "STORY", limit: 5 },
+    });
+  });
+
   it("인증 헤더를 준비하지 못해도 ApiError로 알린다", async () => {
     const client = createHttpClient({
       baseUrl: "https://api.example.com",
