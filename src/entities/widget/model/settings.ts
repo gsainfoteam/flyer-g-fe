@@ -67,6 +67,7 @@ export const WIDGET_LABELS: Record<WidgetType, string> = {
   CLICK_BATTLE: "클릭 배틀",
   SURVEY: "설문",
   SHUFFLEBOARD: "컬링",
+  FLYER_DODGE: "전단지 피하기",
 };
 
 export const WIDGET_DESCRIPTIONS: Record<WidgetType, string> = {
@@ -82,6 +83,8 @@ export const WIDGET_DESCRIPTIONS: Record<WidgetType, string> = {
   SURVEY: "설문 링크를 QR로 보여 줘요. 링크는 운영 설정(operation.ts)에서 정해요.",
   SHUFFLEBOARD:
     "폰 두 대로 1:1 컬링(원반 밀기). 아직 평소 순환에는 나오지 않고 시간대 고정으로 띄워요.",
+  FLYER_DODGE:
+    "한 명이 폰 버튼으로 떨어지는 전단지를 피해요(40초). 준비 중이라 아직 순환에 나오지 않아요. 시간대 고정으로 시험할 수 있어요.",
 };
 
 /** 운영자가 날짜를 정해야 하는 종류의 기본값. 새 기기에도 바로 쓸 수 있게 둔다. */

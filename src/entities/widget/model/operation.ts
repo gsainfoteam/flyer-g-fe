@@ -22,6 +22,7 @@ export const WIDGET_DURATIONS: Partial<Record<WidgetType, number>> = {
   CLICK_BATTLE: 20,
   SURVEY: 15,
   SHUFFLEBOARD: 20,
+  FLYER_DODGE: 20,
 };
 
 /**
@@ -33,6 +34,8 @@ export const WIDGET_RELEASES: Partial<Record<WidgetType, string | null>> = {
   // 평소 순환에는 아직 클릭 배틀만 둔다. 11/5–11/7 이벤트 시간에는 시간대 고정으로 띄운다.
   // 순환에 넣을 때 날짜를 적는다.
   SHUFFLEBOARD: null,
+  // 시험 중. 공개할 때 날짜를 적는다.
+  FLYER_DODGE: null,
 };
 
 /** 오늘(서울 날짜 "YYYY-MM-DD") 평소 순환에 넣어도 되는 위젯인가 */

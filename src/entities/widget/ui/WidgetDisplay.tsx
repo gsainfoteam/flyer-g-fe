@@ -162,6 +162,7 @@ function WidgetBody({ content }: { content: WidgetContent }): ReactNode {
       return <QuizBody content={content} />;
     case "CLICK_BATTLE":
     case "SHUFFLEBOARD":
+    case "FLYER_DODGE":
       // 게임 방을 여는 화면이라 플레이어가 따로 그린다(GameFrame).
       return null;
     case "SURVEY":

@@ -1,6 +1,8 @@
 import type { GameWidgetType } from "@/entities/widget/model/types";
 import { BattlePreview } from "@/features/click-battle/ui/BattlePreview";
 import { BattleWidget } from "@/features/click-battle/ui/BattleWidget";
+import { DodgePreview } from "@/features/flyer-dodge/ui/DodgePreview";
+import { DodgeWidget } from "@/features/flyer-dodge/ui/DodgeWidget";
 import { ShuffleboardPreview } from "@/features/shuffleboard/ui/ShuffleboardPreview";
 import { ShuffleboardWidget } from "@/features/shuffleboard/ui/ShuffleboardWidget";
 
@@ -40,6 +42,12 @@ export function GameFrame({ type, previewOnly, ...props }: GameFrameProps) {
         <ShuffleboardPreview deviceLabel={props.deviceLabel} serverTime={props.serverTime} />
       ) : (
         <ShuffleboardWidget {...props} />
+      );
+    case "FLYER_DODGE":
+      return previewOnly ? (
+        <DodgePreview deviceLabel={props.deviceLabel} serverTime={props.serverTime} />
+      ) : (
+        <DodgeWidget {...props} />
       );
   }
 }

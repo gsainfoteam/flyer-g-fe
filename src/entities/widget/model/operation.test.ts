@@ -8,6 +8,8 @@ describe("위젯 공개일", () => {
     expect(isWidgetReleased("SHUFFLEBOARD", "2026-11-05")).toBe(false);
     expect(isWidgetReleased("SHUFFLEBOARD", "2099-01-01")).toBe(false);
     expect(isWidgetReleased("CLICK_BATTLE", "2026-11-01")).toBe(true);
+    // 준비 중(null)은 언제든 순환에 넣지 않는다.
+    expect(isWidgetReleased("FLYER_DODGE", "2099-01-01")).toBe(false);
   });
 });
 

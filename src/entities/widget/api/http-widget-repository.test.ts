@@ -95,6 +95,7 @@ describe("createHttpWidgetRepository", () => {
       "QUIZ",
       "CLICK_BATTLE",
       "SHUFFLEBOARD",
+      "FLYER_DODGE",
     ]);
   });
 
@@ -104,7 +105,7 @@ describe("createHttpWidgetRepository", () => {
     const preview = await repository.getDeviceWidgets("device-preview");
     expect(preview.widgets.map((slot) => slot.type)).toContain("CLICK_BATTLE");
     expect(preview.widgets.map((slot) => slot.type)).toContain("SHUFFLEBOARD");
-    expect(preview.widgets).toHaveLength(11);
+    expect(preview.widgets).toHaveLength(12);
     expect(deviceClient.calls).toHaveLength(0);
   });
 

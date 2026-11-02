@@ -24,6 +24,8 @@ export const paths = {
   clickBattle: "/games/click-battle/:roomId",
   playShuffleboard: "/play/shuffleboard/:roomId",
   shuffleboard: "/games/shuffleboard/:roomId",
+  playFlyerDodge: "/play/flyer-dodge/:roomId",
+  flyerDodge: "/games/flyer-dodge/:roomId",
   login: "/login",
   /** 로그인 제공자에서 돌아오는 곳. `VITE_AUTH_REDIRECT_URI`의 경로와 같아야 한다. */
   authCallback: "/auth/callback",
@@ -79,6 +81,10 @@ export const to = {
   playShuffleboard: (roomId: string, seat?: "A" | "B") =>
     `/play/shuffleboard/${encodeURIComponent(roomId)}${seat ? `?team=${seat}` : ""}`,
   shuffleboard: (roomId: string) => `/games/shuffleboard/${encodeURIComponent(roomId)}`,
+  /** 전단지 피하기 폰 참가. `t`는 이번 판 QR의 표다. */
+  playFlyerDodge: (roomId: string, ticket: string) =>
+    `/play/flyer-dodge/${encodeURIComponent(roomId)}?t=${encodeURIComponent(ticket)}`,
+  flyerDodge: (roomId: string) => `/games/flyer-dodge/${encodeURIComponent(roomId)}`,
   login: (returnTo?: string) =>
     returnTo && returnTo !== "/"
       ? `/login?returnTo=${encodeURIComponent(returnTo)}`
