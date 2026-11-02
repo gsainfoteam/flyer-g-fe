@@ -41,6 +41,15 @@ export const EVENT_BANNER_OCCASIONS = [
 ] as const;
 export type EventBannerOccasion = (typeof EVENT_BANNER_OCCASIONS)[number];
 
+export const EVENT_BANNER_OCCASION_LABELS: Record<EventBannerOccasion, string> =
+  {
+    BIRTHDAY: "생일",
+    ADMISSION: "합격",
+    AWARD: "수상",
+    WELCOME: "환영",
+    OTHER: "기타",
+  };
+
 /**
  * 이벤트 배너 내용. 입력과 같은 필드에 서버가 만든 미리보기 주소를 더한다.
  * TEMPLATE은 TV가 문구로 그리고 사진은 선택, IMAGE는 올린 이미지를 그대로 띄운다.
@@ -70,6 +79,14 @@ export const STORY_TAGS = [
   "OTHER",
 ] as const;
 export type StoryTag = (typeof STORY_TAGS)[number];
+
+export const STORY_TAG_LABELS: Record<StoryTag, string> = {
+  NEWS: "소식",
+  PRAISE: "칭찬",
+  LOST_FOUND: "분실물",
+  SUGGESTION: "건의",
+  OTHER: "기타",
+};
 
 /**
  * 제보 작성자. 운영자만 열람한다(`reveal-author`). 열람할 때마다 서버가 감사
