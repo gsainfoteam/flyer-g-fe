@@ -95,8 +95,11 @@ export function useShuffleboardPlayer(roomId: string, options: UseShuffleboardPl
   const [finished, setFinished] = useState<FinishedMatch | null>(() =>
     readStored<FinishedMatch>(finishedKey(roomId)),
   );
-  /** 이번에 보낸 발사의 턴. TV가 받아 줄 때까지 같은 턴에 다시 못 쏘게 한다. */
-  const [pendingTurn, setPendingTurn] = useState<number | null>(null);
+  /**
+   * 이번에 보낸 발사(경기와 턴). TV가 받아 줄 때까지 같은 턴에 다시 못 쏘게 한다. 경기도
+   * 함께 기억해, 다음 경기의 같은 번호 턴을 지난 발사로 막지 않는다.
+   */
+  const [pendingShot, setPendingShot] = useState<{ matchId: string; turn: number } | null>(null);
   const channelRef = useRef<GameChannel<MatchHostMessage, MatchClientMessage> | null>(null);
   const heardAtRef = useRef(0);
   // TV 시계 - 폰 시계. 턴·카운트다운의 끝 시각은 TV 시계라 폰은 이 차이를 더해 센다.
@@ -178,7 +181,7 @@ export function useShuffleboardPlayer(roomId: string, options: UseShuffleboardPl
   const shoot = useCallback(
     (angle: number, power: number) => {
       if (!state) return;
-      setPendingTurn(state.turn);
+      setPendingShot({ matchId: state.matchId, turn: state.turn });
       channelRef.current?.send({ kind: "shoot", playerId, turn: state.turn, angle, power });
     },
     [playerId, state],
@@ -193,7 +196,11 @@ export function useShuffleboardPlayer(roomId: string, options: UseShuffleboardPl
   }, [roomId]);
 
   const mySeat = state ? seatOf(state, playerId) : null;
-  const waitingForTv = pendingTurn !== null && state?.turn === pendingTurn && state.rollingUntil === null;
+  const waitingForTv =
+    pendingShot !== null &&
+    state?.matchId === pendingShot.matchId &&
+    state.turn === pendingShot.turn &&
+    state.rollingUntil === null;
 
   return {
     playerId,
