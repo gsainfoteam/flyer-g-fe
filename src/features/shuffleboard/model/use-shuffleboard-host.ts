@@ -166,11 +166,13 @@ export function useShuffleboardHost(roomId: string, options: UseShuffleboardHost
       waitingSince = waiting ? (waitingSince ?? at) : null;
       const waitedTooLong =
         lobbyWaitMs !== undefined && waitingSince !== null && at - waitingSince >= lobbyWaitMs;
+      // 경기 중과 결과 화면은 끊지 않는다. 결과는 끝까지 보여 주고 폰에도 전한 뒤 비운다.
       const sessionTooLong =
         sessionLimitMs !== undefined &&
         activeSince !== null &&
         at - activeSince >= sessionLimitMs &&
-        next.phase !== "PLAYING";
+        next.phase !== "PLAYING" &&
+        next.phase !== "FINISHED";
       if (waitedTooLong || sessionTooLong) {
         next = initialMatch(next.round + 1, newMatchId());
         activeSince = null;
