@@ -20,6 +20,7 @@ export const WIDGET_TYPES = [
   "QUIZ",
   "CLICK_BATTLE",
   "SURVEY",
+  "SHUFFLEBOARD",
 ] as const;
 export type WidgetType = (typeof WIDGET_TYPES)[number];
 
@@ -28,7 +29,7 @@ export type WidgetType = (typeof WIDGET_TYPES)[number];
  * 그리고(`GameFrame`), 게임 방을 열 수 없는 TV에서는 빠진다. 누가 참가하면 판이 끝날
  * 때까지 머물고, 시간대가 바뀌어도 하던 판은 마저 한다.
  */
-export const GAME_WIDGETS = ["CLICK_BATTLE"] as const satisfies readonly WidgetType[];
+export const GAME_WIDGETS = ["CLICK_BATTLE", "SHUFFLEBOARD"] as const satisfies readonly WidgetType[];
 export type GameWidgetType = (typeof GAME_WIDGETS)[number];
 
 export const isGameWidget = (type: WidgetType): type is GameWidgetType =>
@@ -51,6 +52,8 @@ export const DEFAULT_WIDGET_DURATION: Record<WidgetType, number> = {
   CLICK_BATTLE: 20,
   // QR을 찍을 시간
   SURVEY: 15,
+  // 클릭 배틀과 같다. 누가 참가하면 경기가 끝날 때까지 머문다.
+  SHUFFLEBOARD: 20,
 };
 
 /** 위젯 머무는 시간의 안전 범위. 포스터 노출을 너무 오래 막지 않게 한다. */

@@ -56,6 +56,7 @@ import { useDeviceWidgets } from "@/features/display/model/use-device-widgets";
 import { useLocalCafeteria } from "@/features/display/model/use-local-cafeteria";
 import { useLocalWeather } from "@/features/display/model/use-local-weather";
 import { gameSocketBase } from "@/shared/lib/game-socket";
+import { isWidgetReleased } from "@/entities/widget/model/operation";
 import { GameFrame } from "@/widgets/game-frame/GameFrame";
 import { toUserMessage } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
@@ -185,9 +186,13 @@ export function DisplayPage() {
             : null;
       return data ? { ...slot, params: { ...slot.params, data } } : slot;
     });
+    // 공개일 전 위젯(11/5의 셔플보드)은 평소 순환에서 뺀다. 시간대 고정은 따로 띄운다.
+    const released = todayKey
+      ? slots.filter((slot) => isWidgetReleased(slot.type, todayKey))
+      : slots;
     return canHostGame || previewGame
-      ? slots
-      : slots.filter((slot) => !isGameWidget(slot.type));
+      ? released
+      : released.filter((slot) => !isGameWidget(slot.type));
   }, [
     canHostGame,
     previewGame,

@@ -94,6 +94,7 @@ describe("createHttpWidgetRepository", () => {
       "WEATHER",
       "QUIZ",
       "CLICK_BATTLE",
+      "SHUFFLEBOARD",
     ]);
   });
 
@@ -102,7 +103,8 @@ describe("createHttpWidgetRepository", () => {
     await expect(repository.getDeviceWidgets("unknown")).resolves.toEqual(NO_WIDGETS);
     const preview = await repository.getDeviceWidgets("device-preview");
     expect(preview.widgets.map((slot) => slot.type)).toContain("CLICK_BATTLE");
-    expect(preview.widgets).toHaveLength(10);
+    expect(preview.widgets.map((slot) => slot.type)).toContain("SHUFFLEBOARD");
+    expect(preview.widgets).toHaveLength(11);
     expect(deviceClient.calls).toHaveLength(0);
   });
 

@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { buildWidgetContent } from "./content";
 import { operationWidgets, standaloneWidgets } from "./feed";
-import { WIDGET_DURATIONS } from "./operation";
+import { WIDGET_DURATIONS, isWidgetReleased } from "./operation";
+
+describe("위젯 공개일", () => {
+  it("셔플보드는 11/5부터 평소 순환에 들어가고, 공개일이 없는 위젯은 늘 들어간다", () => {
+    expect(isWidgetReleased("SHUFFLEBOARD", "2026-11-04")).toBe(false);
+    expect(isWidgetReleased("SHUFFLEBOARD", "2026-11-05")).toBe(true);
+    expect(isWidgetReleased("CLICK_BATTLE", "2026-11-01")).toBe(true);
+  });
+});
 
 describe("운영 설정 위젯", () => {
   it("기본 위젯은 운영 설정의 시간을 쓴다", () => {

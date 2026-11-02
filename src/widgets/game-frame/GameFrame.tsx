@@ -1,6 +1,8 @@
 import type { GameWidgetType } from "@/entities/widget/model/types";
 import { BattlePreview } from "@/features/click-battle/ui/BattlePreview";
 import { BattleWidget } from "@/features/click-battle/ui/BattleWidget";
+import { ShuffleboardPreview } from "@/features/shuffleboard/ui/ShuffleboardPreview";
+import { ShuffleboardWidget } from "@/features/shuffleboard/ui/ShuffleboardWidget";
 
 /**
  * 게임 위젯 화면. 게임 종류마다 위젯을 고른다. 새 게임은 여기에 한 줄을 더한다.
@@ -32,6 +34,12 @@ export function GameFrame({ type, previewOnly, ...props }: GameFrameProps) {
         <BattlePreview deviceLabel={props.deviceLabel} serverTime={props.serverTime} />
       ) : (
         <BattleWidget {...props} />
+      );
+    case "SHUFFLEBOARD":
+      return previewOnly ? (
+        <ShuffleboardPreview deviceLabel={props.deviceLabel} serverTime={props.serverTime} />
+      ) : (
+        <ShuffleboardWidget {...props} />
       );
   }
 }

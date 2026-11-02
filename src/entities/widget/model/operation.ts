@@ -21,7 +21,20 @@ export const WIDGET_DURATIONS: Partial<Record<WidgetType, number>> = {
   QUIZ: 15,
   CLICK_BATTLE: 20,
   SURVEY: 15,
+  SHUFFLEBOARD: 20,
 };
+
+/**
+ * 위젯 공개일(서울 날짜). 이 날짜 전에는 평소 순환에서 뺀다. 0시가 되면 배포 없이 들어온다.
+ * 시간대 고정은 공개일과 상관없이 고를 수 있다(미리 시험해 보거나 행사에 먼저 쓸 때).
+ */
+export const WIDGET_RELEASES: Partial<Record<WidgetType, string>> = {
+  SHUFFLEBOARD: "2026-11-05",
+};
+
+/** 오늘(서울 날짜 "YYYY-MM-DD") 평소 순환에 넣어도 되는 위젯인가 */
+export const isWidgetReleased = (type: WidgetType, today: string): boolean =>
+  (WIDGET_RELEASES[type] ?? "") <= today;
 
 /**
  * 설문 위젯 내용. 설문 링크는 화면(이 파일)이 정하므로, 서버·mock이 주는 설문 위젯에
@@ -60,22 +73,25 @@ export interface TimeSlotRule {
   survey?: { url: string; label: string };
 }
 
+/**
+ * 기본 규칙. 관리 화면에서 한 번이라도 저장했으면 TV는 저장된 규칙(KV)을 쓰고 이 값은
+ * 쓰지 않는다. 11월 이벤트(20:00–22:00)는 11/4까지 클릭 배틀, 11/5부터 셔플보드다.
+ */
 export const TIME_SLOTS: readonly TimeSlotRule[] = [
-  // 실제 TV 시험용. 11/2 01:50–02:05에만 적용되고 지나면 저절로 끝난다(지워도 됨).
-  {
-    id: "2026-11-02-tv-test",
-    widget: "CLICK_BATTLE",
-    dates: { from: "2026-11-02", to: "2026-11-02" },
-    time: { from: "01:50", to: "02:05" },
-    label: "클릭 배틀 시험",
-    survey: { url: SURVEY_URL, label: "이벤트 설문" },
-  },
   {
     id: "2026-11-event-click-battle",
     widget: "CLICK_BATTLE",
-    dates: { from: "2026-11-02", to: "2026-11-07" },
+    dates: { from: "2026-11-02", to: "2026-11-04" },
     time: { from: "20:00", to: "22:00" },
     label: "클릭 배틀 이벤트",
+    survey: { url: SURVEY_URL, label: "이벤트 설문" },
+  },
+  {
+    id: "2026-11-event-shuffleboard",
+    widget: "SHUFFLEBOARD",
+    dates: { from: "2026-11-05", to: "2026-11-07" },
+    time: { from: "20:00", to: "22:00" },
+    label: "셔플보드 이벤트",
     survey: { url: SURVEY_URL, label: "이벤트 설문" },
   },
 ];
