@@ -1159,10 +1159,13 @@ export function createMockRepositories(
           endsAt: toIsoUtc(item.endAt!),
           priority: item.priority,
           checksum: `mock-${item.id}`,
-          kind: "IMAGE",
+          kind: item.posterKind ?? "IMAGE",
           width: item.posterWidth ?? 0,
           height: item.posterHeight ?? 0,
-          durationMs: null,
+          durationMs: item.posterDurationMs,
+          video: item.posterVideoUrl
+            ? { url: item.posterVideoUrl, hasAudio: false }
+            : null,
           subtitle: item.subtitle,
           location: item.location,
           organizerName: item.organizerName,

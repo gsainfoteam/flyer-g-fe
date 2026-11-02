@@ -30,6 +30,12 @@ export interface PosterRenderModel {
   endAt: Date | null;
   /** 편성에 실린 신청 버전. 노출 이벤트가 어느 버전을 보여줬는지 남긴다. */
   revision?: number | null;
+  /**
+   * 영상 포스터의 재생 파일과 길이(ms). 이미지면 없다. 영상이어도 `posterUrl`은
+   * 대표 프레임이라, 재생하지 않는 칸과 재생 실패 때 그것을 그린다.
+   */
+  videoUrl?: string | null;
+  durationMs?: number | null;
 }
 
 /** 크기를 모를 때 쓰는 비율. 게시물 대부분이 A판 세로 포스터다. */
@@ -72,6 +78,8 @@ export function fromSubmissionView(view: SubmissionView): PosterRenderModel {
     startAt: view.startAt,
     endAt: view.endAt,
     revision: view.version,
+    videoUrl: view.posterVideoUrl,
+    durationMs: view.posterDurationMs,
   };
 }
 
@@ -90,5 +98,7 @@ export function fromPlaylistItem(item: PlaylistItem): PosterRenderModel {
     startAt: item.startsAt,
     endAt: item.endsAt,
     revision: item.revision,
+    videoUrl: item.video?.url ?? null,
+    durationMs: item.durationMs,
   };
 }

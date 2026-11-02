@@ -113,6 +113,33 @@ describe("createHttpDisplayRepository", () => {
     expect(ctx.deviceCalls).toHaveLength(1);
   });
 
+  it("영상 포스터는 재생 파일과 길이를 읽고, 영상 필드가 없으면 이미지로 본다", async () => {
+    const video = {
+      ...PLAYLIST.items[0]!,
+      submissionId: "sub_02",
+      kind: "VIDEO",
+      width: 1080,
+      height: 1920,
+      durationMs: 15_000,
+      video: { url: "https://cdn.example/asset_02/video.mp4", hasAudio: true },
+    };
+    const ctx = setup({
+      "/signage/devices/dev_01/playlist": () => ({
+        body: { ...PLAYLIST, items: [PLAYLIST.items[0], video] },
+      }),
+    });
+    ctx.credentials.save("dev_01", "fgd_token");
+
+    const playlist = await ctx.repository.getPlaylist("dev_01");
+
+    expect(playlist.items[0]).toMatchObject({ kind: "IMAGE", video: null });
+    expect(playlist.items[1]).toMatchObject({
+      kind: "VIDEO",
+      durationMs: 15_000,
+      video: { url: "https://cdn.example/asset_02/video.mp4", hasAudio: true },
+    });
+  });
+
   it("받은 ETag로 조건부 요청하고, 304면 편성은 그대로 두고 서버 시각만 옮긴다", async () => {
     const ctx = setup({
       "/signage/devices/dev_01/playlist": (call) =>

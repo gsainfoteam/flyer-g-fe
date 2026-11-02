@@ -3,7 +3,7 @@ import type { PosterRenderModel } from "@/entities/poster";
 import { cn } from "@/shared/lib/utils";
 
 /**
- * 포스터 이미지.
+ * 포스터 이미지. `play`이면 영상 포스터를 음소거로 자동 재생한다.
  *
  * 불러오지 못하면 자리를 비우지 않고 "없음"을 밝힌다. 한 항목의 미디어 오류가
  * 화면 전체를 망가뜨리지 않게 하기 위한 것이다. (명세 FR-PLY-06)
@@ -13,7 +13,8 @@ import { cn } from "@/shared/lib/utils";
  *
  * 실패는 URL 단위로 기억한다. 같은 자리에서 다음 포스터로 넘어가거나 이미지를
  * 새로 올리면 다시 시도해야 하기 때문이다. 실패 항목을 편성에서 건너뛰는 처리는
- * 플레이어 몫이다.
+ * 플레이어 몫이다. 영상을 받지 못하거나 재생하지 못하면 대표 프레임(`posterUrl`)을
+ * 그린다.
  */
 interface PosterArtworkProps {
   poster: PosterRenderModel;
@@ -24,6 +25,8 @@ interface PosterArtworkProps {
   onLoadError?: (posterId: string) => void;
   /** 이미지가 실제로 그려졌을 때 호출한다. 플레이어의 정상 렌더링 보고에 쓴다. */
   onLoad?: (posterId: string) => void;
+  /** 영상 포스터를 재생한다. 한 화면에 하나만 켠다. */
+  play?: boolean;
 }
 
 export function PosterArtwork({
@@ -32,9 +35,35 @@ export function PosterArtwork({
   className,
   onLoadError,
   onLoad,
+  play = false,
 }: PosterArtworkProps) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const [failedVideoUrl, setFailedVideoUrl] = useState<string | null>(null);
   const imageFailed = failedUrl !== null && failedUrl === poster.posterUrl;
+  const videoUrl = play ? poster.videoUrl : null;
+
+  if (videoUrl && videoUrl !== failedVideoUrl) {
+    return (
+      <video
+        // 같은 자리에서 다른 영상으로 넘어가면 처음부터 다시 튼다.
+        key={videoUrl}
+        src={videoUrl}
+        poster={poster.posterUrl || undefined}
+        aria-label={`${poster.title} 포스터 영상`}
+        autoPlay
+        muted
+        loop
+        playsInline
+        className={cn(
+          "h-full w-full bg-canvas",
+          fit === "cover" ? "object-cover" : "object-contain",
+          className,
+        )}
+        onLoadedData={() => onLoad?.(poster.id)}
+        onError={() => setFailedVideoUrl(videoUrl)}
+      />
+    );
+  }
 
   if (poster.posterUrl && !imageFailed) {
     return (

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { framesPerCycle } from "@/entities/playlist/model/rotation";
-import { buildFrames, exposedPosters, imagesOf } from "./frames";
+import {
+  buildFrames,
+  exposedPosters,
+  imagesOf,
+  playingVideoOf,
+  posterFrameSeconds,
+} from "./frames";
 import type { DisplayFrame } from "./frames";
 import type { PosterRenderModel } from "./types";
 
@@ -92,5 +98,33 @@ describe("imagesOf", () => {
     const items = posters("a", "b", "c", "d");
     const [strip] = buildFrames(items, "STRIP");
     expect(imagesOf(strip, items)).toEqual(["/posters/c.webp"]);
+  });
+});
+
+describe("영상 포스터", () => {
+  const video = (id: string, durationMs: number): PosterRenderModel => ({
+    ...poster(id),
+    videoUrl: `/videos/${id}.mp4`,
+    durationMs,
+  });
+
+  it("크게 보기와 띠 가운데만 재생하고 벽에서는 재생하지 않는다", () => {
+    const items = [video("v", 15_000), poster("a"), poster("b")];
+    const wall = buildFrames(items, "WALL");
+    expect(
+      wall.map((frame) => playingVideoOf(frame, items)?.id ?? null),
+    ).toEqual([null, "v", null, null]);
+
+    const strip = buildFrames(items, "STRIP");
+    expect(playingVideoOf(strip[0]!, items)?.id).toBe("v");
+    expect(playingVideoOf(strip[1]!, items)).toBeNull();
+  });
+
+  it("영상은 끝까지 보여 주고, 전환 간격보다 짧으면 간격만큼 머문다", () => {
+    const items = [video("long", 24_500), video("short", 4_000), poster("a")];
+    const strip = buildFrames(items, "STRIP");
+    expect(strip.map((frame) => posterFrameSeconds(frame, items, 10))).toEqual([
+      25, 10, 10,
+    ]);
   });
 });

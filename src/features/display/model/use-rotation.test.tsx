@@ -81,6 +81,23 @@ describe("useRotation", () => {
     expect(focusOf(result.current.currentFrame, items)).toBe("a");
   });
 
+  it("영상 포스터는 영상이 끝날 때까지 머문다", () => {
+    const items = [
+      { ...poster("v"), videoUrl: "/v.mp4", durationMs: 24_500 },
+      poster("a"),
+    ];
+    const { result } = renderHook(() =>
+      useRotation({ posters: items, layout: "STRIP", rotationSeconds: 10 }),
+    );
+
+    expect(result.current.frameSeconds).toBe(25);
+    act(() => vi.advanceTimersByTime(24_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("v");
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("a");
+    expect(result.current.frameSeconds).toBe(10);
+  });
+
   it("고를 위젯이 없으면 그 자리는 건너뛴다", () => {
     const items = posters("a", "b");
     const { result } = renderHook(() =>

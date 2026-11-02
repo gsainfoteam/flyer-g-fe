@@ -15,6 +15,7 @@ function toPlaylistItem(dto: PlaylistItemDto): PlaylistItem {
     width: dto.width ?? 0,
     height: dto.height ?? 0,
     durationMs: dto.durationMs ?? null,
+    video: dto.video ?? null,
   };
 }
 
