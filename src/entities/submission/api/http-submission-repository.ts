@@ -12,6 +12,8 @@ import {
 } from "@/shared/api/parse";
 import type { JsonObject } from "@/shared/api/parse";
 import type {
+  CreateEventBannerInput,
+  CreateStoryInput,
   CreateSubmissionInput,
   SubmissionRepository,
   UpdateSubmissionInput,
@@ -376,6 +378,26 @@ function toUpdateBody(
   };
 }
 
+/**
+ * 이벤트 배너·제보 생성 본문. 생성된 계약 타입은 배포 ③④ 전 문서라 종류 필드가 없다.
+ * `bun run api:sync` 뒤에는 캐스트 없이 `CreateSubmissionDto`에 맞는다.
+ */
+function toCreateContentBody(
+  input: CreateEventBannerInput | CreateStoryInput,
+): ApiRequestBody<"CreateSubmissionDto"> {
+  const body =
+    input.type === "STORY"
+      ? { type: input.type, story: input.story }
+      : {
+          type: input.type,
+          eventBanner: input.eventBanner,
+          startAt: toIsoUtc(input.startAt),
+          endAt: toIsoUtc(input.endAt),
+          targetGroupIds: input.targetGroupIds,
+        };
+  return body as unknown as ApiRequestBody<"CreateSubmissionDto">;
+}
+
 const submissionPath = (id: string) =>
   `/signage/submissions/${encodeURIComponent(id)}`;
 
@@ -421,6 +443,18 @@ export function createHttpSubmissionRepository(
           method: "POST",
           path: "/signage/submissions",
           body: toCreateBody(input),
+          idempotencyKey: options?.idempotencyKey,
+          signal: options?.signal,
+        }),
+      );
+    },
+
+    async createContent(input, options) {
+      return parseSubmission(
+        await client.request({
+          method: "POST",
+          path: "/signage/submissions",
+          body: toCreateContentBody(input),
           idempotencyKey: options?.idempotencyKey,
           signal: options?.signal,
         }),

@@ -25,6 +25,12 @@ import {
   toSignageSubmissionExpanded,
 } from "@/entities/submission";
 import type { SubmissionKind } from "@/entities/submission/model/kind";
+import {
+  checkEventBanner,
+  checkStory,
+  eventBannerTitle,
+  storyTitle,
+} from "@/entities/submission/model/content-rules";
 import type {
   Page,
   SignageSubmissionExpanded,
@@ -64,6 +70,8 @@ import { getMockAsset } from "@/features/media-upload/api/fake-upload-service";
 import { ApiError, codeForStatus } from "@/shared/api/error";
 import type {
   ApproveInput,
+  CreateEventBannerInput,
+  CreateStoryInput,
   CreateSubmissionInput,
   DeviceRepository,
   WidgetRepository,
@@ -85,6 +93,7 @@ import { systemClock } from "@/shared/lib/clock";
 import {
   fromSeoulInput,
   parseIsoUtc,
+  seoulDayDiff,
   toIsoUtc,
   toSeoulDateInputValue,
 } from "@/shared/lib/datetime";
@@ -96,6 +105,8 @@ import {
   DEVICE_FIXTURES,
   TARGET_GROUP_FIXTURES,
   createEventFixtures,
+  createDemoContentEvents,
+  createDemoContentFixtures,
   createDemoSubmissionFixtures,
   createSubmissionFixtures,
   createDefaultWidgetSettings,
@@ -163,6 +174,24 @@ const alreadySubmitted = () =>
     fields: { detailUrl: "이 공지로 이미 신청한 게시물이 있습니다." },
   });
 const conflict = (message: string) => httpError(409, message);
+/** 반려·중단된 제보는 고쳐서 다시 낼 수 없다(배포 ④). 새로 써야 한다. */
+const notResubmittable = () =>
+  new ApiError({
+    kind: "http",
+    code: "NOT_RESUBMITTABLE",
+    message: "이 종류는 다시 낼 수 없습니다. 새로 작성하세요.",
+    status: 409,
+    requestId: "mock-request",
+  });
+const dailyLimitExceeded = (type: SubmissionKind, limit: number) =>
+  new ApiError({
+    kind: "http",
+    code: "DAILY_LIMIT_EXCEEDED",
+    message: "오늘 올릴 수 있는 수를 넘었습니다.",
+    status: 429,
+    requestId: "mock-request",
+    details: { type, limit },
+  });
 const invalid = (message: string, fields?: Record<string, string>) =>
   httpError(422, message, fields);
 const forbidden = (message = "이 작업을 수행할 권한이 없습니다.") =>
@@ -200,11 +229,16 @@ class MockStore {
   >();
 
   constructor(now: Date, demoContent = false) {
+    const content = demoContent ? createDemoContentFixtures(now) : [];
     this.submissions = [
       ...createSubmissionFixtures(now),
+      ...content,
       ...(demoContent ? createDemoSubmissionFixtures(now) : []),
     ];
-    this.events = createEventFixtures(now);
+    this.events = [
+      ...createEventFixtures(now),
+      ...createDemoContentEvents(content),
+    ];
   }
 
   all(): SignageSubmissionExpandedDto[] {
@@ -654,6 +688,142 @@ export function createMockRepositories(
     return toSignageSubmissionExpanded(saved);
   };
 
+  /**
+   * 제보 작성자는 작성자 본인 말고는 가린다(배포 ④). 관리자도 `reveal-author`로만 본다.
+   */
+  const present = (
+    dto: SignageSubmissionExpandedDto,
+  ): SignageSubmissionExpandedDto => {
+    if (dto.type !== "STORY") return dto;
+    const user = options.session?.() ?? null;
+    return user && dto.requesterId === user.id
+      ? dto
+      : { ...dto, requesterId: null, requesterName: null };
+  };
+
+  /** 서울 하루에 그 종류를 몇 건 만들었는가. 취소·반려까지 모두 센다. */
+  const createdTodayOf = (userId: string, type: SubmissionKind, now: Date) =>
+    store
+      .all()
+      .filter(
+        (item) =>
+          item.requesterId === userId &&
+          item.type === type &&
+          seoulDayDiff(parseIsoUtc(item.createdAt), now) === 0,
+      ).length;
+
+  const runCreateContent = async (
+    input: CreateEventBannerInput | CreateStoryInput,
+    mutationOptions?: MutationOptions,
+  ): Promise<SignageSubmissionExpanded> => {
+    await settle(mutationOptions?.signal);
+    const user = actor() ?? MOCK_USERS.SUBMITTER;
+    const existingId = store.resolveIdempotency(
+      "create",
+      mutationOptions?.idempotencyKey,
+    );
+    if (existingId) {
+      return toSignageSubmissionExpanded(present(store.find(existingId)));
+    }
+
+    const now = clock.now();
+    const errors =
+      input.type === "STORY"
+        ? checkStory(input.story)
+        : checkEventBanner(input.eventBanner, input, now, config);
+    if (input.type === "EVENT_BANNER") {
+      const badGroups = unselectableGroupIds(input.targetGroupIds);
+      if (badGroups.length > 0) {
+        errors.targetGroupIds = `선택할 수 없는 대상 위치가 있습니다: ${badGroups.join(", ")}`;
+      }
+    }
+    throwIfInvalid(errors);
+    const limit = config.dailySubmissionLimits[input.type];
+    if (limit !== undefined && createdTodayOf(user.id, input.type, now) >= limit) {
+      throw dailyLimitExceeded(input.type, limit);
+    }
+
+    const id = `submission-${store.all().length + 1}-${now.getTime()}`;
+    const banner = input.type === "EVENT_BANNER" ? input.eventBanner : null;
+    const mediaId = banner
+      ? banner.mode === "TEMPLATE"
+        ? banner.photoAssetId
+        : banner.assetId
+      : null;
+    const media = mediaId ? getMockAsset(mediaId) : null;
+    const created: SignageSubmissionExpandedDto = {
+      id,
+      ziggleNoticeId: null,
+      requesterId: user.id,
+      requesterName: user.displayName,
+      type: input.type,
+      title: banner
+        ? eventBannerTitle(banner.occasion, banner.recipient)
+        : storyTitle((input as CreateStoryInput).story.body),
+      categoryId: null,
+      assetId: mediaId,
+      detailUrl: null,
+      // 제보 기간은 승인할 때 정한다.
+      startAt: input.type === "EVENT_BANNER" ? toIsoUtc(input.startAt) : null,
+      endAt: input.type === "EVENT_BANNER" ? toIsoUtc(input.endAt) : null,
+      status: "PENDING_REVIEW",
+      priority: 0,
+      // 제보는 모든 TV에 나간다.
+      targetGroupIds:
+        input.type === "EVENT_BANNER" ? input.targetGroupIds : [],
+      createdAt: toIsoUtc(now),
+      updatedAt: toIsoUtc(now),
+      submittedAt: toIsoUtc(now),
+      version: 1,
+      lastDecision: null,
+      categoryName: null,
+      organizerName: null,
+      posterUrl: null,
+      posterThumbUrl: null,
+      posterWidth: null,
+      posterHeight: null,
+      posterKind: null,
+      posterDurationMs: null,
+      posterVideoUrl: null,
+      subtitle: null,
+      location: null,
+      description: null,
+      eventBanner: banner && {
+        mode: banner.mode,
+        occasion: banner.occasion,
+        recipient: banner.recipient.trim(),
+        message: optionalText(banner.message),
+        sender: optionalText(banner.sender),
+        photoAssetId: banner.mode === "TEMPLATE" ? banner.photoAssetId : null,
+        photoUrl:
+          banner.mode === "TEMPLATE" && media ? media.url : null,
+        photoConsent:
+          banner.mode === "TEMPLATE" && mediaId !== null && banner.photoConsent,
+        assetId: banner.mode === "IMAGE" ? banner.assetId : null,
+        assetUrl: banner.mode === "IMAGE" && media ? media.url : null,
+      },
+      story:
+        input.type === "STORY"
+          ? {
+              tag: input.story.tag,
+              body: input.story.body.trim(),
+              storyNumber: null,
+            }
+          : null,
+    };
+    store.insert(created);
+    store.addEvent(eventOf(created, "SUBMITTED", user, now));
+    store.rememberIdempotency("create", mutationOptions?.idempotencyKey, id);
+    return toSignageSubmissionExpanded(created);
+  };
+
+  /** 제보 번호. 승인할 때 차례로 붙는다. */
+  const nextStoryNumber = () =>
+    Math.max(
+      127,
+      ...store.all().map((item) => item.story?.storyNumber ?? 0),
+    ) + 1;
+
   const submissions: SubmissionRepository = {
     async list(params, signal) {
       await settle(signal);
@@ -673,12 +843,12 @@ export function createMockRepositories(
         }
         return effective === params.status;
       });
-      return paginate(filtered, params, now);
+      return paginate(filtered.map(present), params, now);
     },
 
     async getById(id, signal) {
       await settle(signal);
-      return toSignageSubmissionExpanded(findVisible(id));
+      return toSignageSubmissionExpanded(present(findVisible(id)));
     },
 
     async getSummary(params, signal) {
@@ -705,6 +875,17 @@ export function createMockRepositories(
       return running;
     },
 
+    async createContent(input, mutationOptions) {
+      const key = mutationOptions?.idempotencyKey;
+      if (key) {
+        const pending = store.pendingCreate(key);
+        if (pending) return pending;
+      }
+      const running = runCreateContent(input, mutationOptions);
+      if (key) store.rememberPendingCreate(key, running);
+      return running;
+    },
+
     /**
      * 신청자 본인만 고친다. 값이 실제로 바뀐 필드만 반영하고, 바뀐 것이 없으면
      * version도 그대로다. 게시 시작 전 승인 건을 고치면 승인 대기로 돌아간다(재승인).
@@ -713,6 +894,9 @@ export function createMockRepositories(
       await settle(mutationOptions?.signal);
       const current = findOwned(id, input.version);
       const status = effectiveOf(current);
+      if (current.type === "STORY" && (status === "REJECTED" || status === "SUSPENDED")) {
+        throw notResubmittable();
+      }
       if (!canSubmitterEdit(status)) {
         throw conflict("게시가 시작되어 수정할 수 없습니다.");
       }
@@ -837,6 +1021,7 @@ export function createMockRepositories(
         return toSignageSubmissionExpanded(store.find(id));
       }
       const current = findOwned(id, input.version);
+      if (current.type === "STORY") throw notResubmittable();
       if (!canSubmitterResubmit(effectiveOf(current))) {
         throw conflict("다시 검토를 요청할 수 있는 상태가 아닙니다.");
       }
@@ -987,7 +1172,7 @@ export function createMockRepositories(
             (!params.categoryId || item.categoryId === params.categoryId),
         )
         .sort((a, b) => waitingSince(a).localeCompare(waitingSince(b)));
-      return paginate(pending, params, clock.now());
+      return paginate(pending.map(present), params, clock.now());
     },
 
     async listHistory(submissionId, signal) {
@@ -1034,7 +1219,26 @@ export function createMockRepositories(
       }
 
       const now = clock.now();
-      // 제보는 승인한 순간부터 정해진 일수 동안 걸린다(배포 ④).
+      // 제보는 승인한 순간부터 정해진 일수 동안 걸리고, 이때 번호가 붙는다(배포 ④).
+      if (current.type === "STORY") {
+        store.addEvent(eventOf(current, "APPROVED", reviewer, now));
+        return decided(
+          "approve",
+          touch(current, now, {
+            status: "PUBLISHED",
+            lastDecision: "APPROVED",
+            startAt: toIsoUtc(now),
+            endAt: toIsoUtc(
+              new Date(now.getTime() + config.storyDisplayDays * 24 * HOUR_MS),
+            ),
+            story: current.story && {
+              ...current.story,
+              storyNumber: nextStoryNumber(),
+            },
+          }),
+          mutationOptions,
+        );
+      }
       if (!current.startAt || !current.endAt) {
         throw conflict("게시 기간이 정해지지 않은 신청입니다.");
       }

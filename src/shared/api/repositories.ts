@@ -35,8 +35,11 @@ import type {
   UserListParams,
 } from "@/entities/user/model/types";
 import type {
+  EventBannerMode,
+  EventBannerOccasion,
   Page,
   SignageSubmissionExpanded,
+  StoryTag,
   SubmissionListParams,
   SubmissionSummary,
   RecentStory,
@@ -73,6 +76,37 @@ export interface CreateSubmissionInput {
   startAt: Date;
   endAt: Date;
   targetGroupIds: string[];
+}
+
+/**
+ * 이벤트 배너 신청 (배포 ③). TEMPLATE은 종류·문구가 필수이고 사진은 선택(있으면
+ * 동의 필수), IMAGE는 배너 이미지(`assetId`)가 필수다. 기간은 서울 자정부터 자정까지
+ * `eventBannerMaxDays`일 이하. 목록 제목은 서버가 만든다("생일 · 지민에게").
+ */
+export interface CreateEventBannerInput {
+  type: "EVENT_BANNER";
+  eventBanner: {
+    mode: EventBannerMode;
+    occasion: EventBannerOccasion | null;
+    recipient: string;
+    message: string | null;
+    sender: string | null;
+    photoAssetId: string | null;
+    photoConsent: boolean;
+    assetId: string | null;
+  };
+  startAt: Date;
+  endAt: Date;
+  targetGroupIds: string[];
+}
+
+/**
+ * 소식 제보 (배포 ④). 기간은 승인할 때 서버가 정하고, 모든 TV에 나간다. 작성자는
+ * TV·다른 사람에게 가린다.
+ */
+export interface CreateStoryInput {
+  type: "STORY";
+  story: { tag: StoryTag; body: string };
 }
 
 /**
@@ -114,6 +148,16 @@ export interface SubmissionRepository {
 
   create(
     input: CreateSubmissionInput,
+    options?: MutationOptions,
+  ): Promise<SignageSubmissionExpanded>;
+
+  /**
+   * 포스터가 아닌 종류(이벤트 배너·소식 제보)를 만든다. 포스터처럼 만들면 바로 검토
+   * 대기다. 종류별 하루 한도(`dailySubmissionLimits`)를 넘으면 429
+   * `DAILY_LIMIT_EXCEEDED`.
+   */
+  createContent(
+    input: CreateEventBannerInput | CreateStoryInput,
     options?: MutationOptions,
   ): Promise<SignageSubmissionExpanded>;
 

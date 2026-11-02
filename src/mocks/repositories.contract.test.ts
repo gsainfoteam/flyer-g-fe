@@ -4,6 +4,7 @@ import type {
   CreateSubmissionInput,
   Repositories,
 } from "@/shared/api/repositories";
+import type { EventBannerValues } from "@/entities/submission/model/content-rules";
 import { parseIsoUtc } from "@/shared/lib/datetime";
 import { createMemoryHeartbeatLog } from "./heartbeats";
 import type { HeartbeatLog } from "./heartbeats";
@@ -68,6 +69,7 @@ async function errorOf(promise: Promise<unknown>): Promise<{
   status?: number;
   code?: string;
   fields?: Record<string, string> | null;
+  details?: Record<string, unknown> | null;
 } | null> {
   try {
     await promise;
@@ -1039,5 +1041,147 @@ describe("신청 종류 (배포 ②③④)", () => {
     expect(
       await statusOf(repos.submissions.listRecentStories({ limit: 11 })),
     ).toBe(422);
+  });
+});
+
+describe("이벤트 배너·소식 제보 만들기 (배포 ③④)", () => {
+  /** NOW(서울 6/8 12:00) 다음 날 서울 자정 */
+  const TOMORROW = parseIsoUtc("2026-06-08T15:00:00.000Z");
+  const banner: EventBannerValues = {
+    mode: "TEMPLATE",
+    occasion: "BIRTHDAY",
+    recipient: "지민",
+    message: "생일 축하해!",
+    sender: "3층 친구들",
+    photoAssetId: null,
+    photoConsent: false,
+    assetId: null,
+  };
+  const eventInput = (overrides: Partial<EventBannerValues> = {}) => ({
+    type: "EVENT_BANNER" as const,
+    eventBanner: { ...banner, ...overrides },
+    startAt: TOMORROW,
+    endAt: new Date(TOMORROW.getTime() + DAY_MS),
+    targetGroupIds: [],
+  });
+  const storyInput = (
+    body = "B동 세탁실 건조기가 고쳐졌어요. 고맙습니다!",
+  ) => ({
+    type: "STORY" as const,
+    story: { tag: "PRAISE" as const, body },
+  });
+
+  it("이벤트 배너는 바로 검토 대기이고, 제목은 서버가 만든다", async () => {
+    const { repos } = setup();
+    const created = await repos.submissions.createContent(eventInput());
+    expect(created).toMatchObject({
+      type: "EVENT_BANNER",
+      status: "PENDING_REVIEW",
+      title: "생일 · 지민에게",
+      eventBanner: { recipient: "지민", photoConsent: false },
+    });
+  });
+
+  it("이벤트 배너는 템플릿 필수 칸과 서울 자정 기간을 지킨다", async () => {
+    const { repos } = setup();
+    const error = await errorOf(
+      repos.submissions.createContent({
+        ...eventInput({ occasion: null, message: null }),
+        startAt: new Date(TOMORROW.getTime() + HOUR_MS),
+        endAt: new Date(TOMORROW.getTime() + 4 * DAY_MS),
+      }),
+    );
+    expect(error).toMatchObject({ status: 422 });
+    expect(Object.keys(error?.fields ?? {}).sort()).toEqual([
+      "endAt",
+      "eventBanner.message",
+      "eventBanner.occasion",
+      "startAt",
+    ]);
+  });
+
+  it("사진을 넣으면 받는 사람 동의가 있어야 한다", async () => {
+    const { repos } = setup();
+    const error = await errorOf(
+      repos.submissions.createContent(
+        eventInput({ photoAssetId: "asset-photo", photoConsent: false }),
+      ),
+    );
+    expect(error?.fields).toHaveProperty("eventBanner.photoConsent");
+  });
+
+  it("제보는 기간 없이 대기하고, 작성자는 본인에게만 보인다", async () => {
+    const { repos, signInAs } = setup();
+    const created = await repos.submissions.createContent(storyInput());
+    expect(created).toMatchObject({
+      type: "STORY",
+      startAt: null,
+      endAt: null,
+      requesterName: MOCK_USERS.SUBMITTER.displayName,
+      story: { tag: "PRAISE", storyNumber: null },
+    });
+
+    signInAs(MOCK_USERS.REVIEWER);
+    const seen = await repos.submissions.getById(created.id);
+    expect(seen).toMatchObject({ requesterId: null, requesterName: null });
+    const queue = await repos.reviews.listPending({ types: ["STORY"] });
+    expect(queue.items[0]).toMatchObject({
+      id: created.id,
+      requesterName: null,
+    });
+  });
+
+  it("제보는 승인할 때 번호와 게시 기간(2일)을 받는다", async () => {
+    const { repos, signInAs } = setup();
+    const created = await repos.submissions.createContent(storyInput());
+    signInAs(MOCK_USERS.REVIEWER);
+
+    const approved = await repos.reviews.approve({
+      submissionId: created.id,
+      revision: created.version,
+    });
+
+    expect(approved.status).toBe("PUBLISHED");
+    expect(approved.story?.storyNumber).toEqual(expect.any(Number));
+    expect(approved.startAt).toEqual(NOW);
+    expect(approved.endAt).toEqual(new Date(NOW.getTime() + 2 * DAY_MS));
+  });
+
+  it("반려된 제보는 고쳐서 다시 낼 수 없다", async () => {
+    const { repos, signInAs } = setup();
+    const created = await repos.submissions.createContent(storyInput());
+    signInAs(MOCK_USERS.REVIEWER);
+    const rejected = await repos.reviews.reject({
+      submissionId: created.id,
+      revision: created.version,
+      reasonCode: "PERSONAL_INFO",
+      comment: "전화번호를 빼 주세요.",
+    });
+    signInAs(MOCK_USERS.SUBMITTER);
+
+    expect(
+      await errorOf(
+        repos.submissions.submit(created.id, { version: rejected.version }),
+      ),
+    ).toMatchObject({ status: 409, code: "NOT_RESUBMITTABLE" });
+  });
+
+  it("종류별 하루 한도를 넘으면 429와 한도를 준다", async () => {
+    const { repos } = setup();
+    for (let index = 0; index < 5; index++) {
+      await repos.submissions.createContent(
+        storyInput(`제보 본문 ${index}번째예요.`),
+      );
+    }
+    const error = await errorOf(repos.submissions.createContent(storyInput()));
+    expect(error).toMatchObject({
+      status: 429,
+      code: "DAILY_LIMIT_EXCEEDED",
+      details: { type: "STORY", limit: 5 },
+    });
+    // 다른 종류는 따로 센다.
+    await expect(
+      repos.submissions.createContent(eventInput()),
+    ).resolves.toMatchObject({ type: "EVENT_BANNER" });
   });
 });
