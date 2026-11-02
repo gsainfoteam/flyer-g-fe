@@ -13,7 +13,10 @@ import {
   readString,
   readStringArray,
 } from "@/shared/api/parse";
+import type { JsonObject } from "@/shared/api/parse";
 import type { ReferenceRepository } from "@/shared/api/repositories";
+import { SUBMISSION_KINDS } from "../model/kind";
+import type { SubmissionKind } from "../model/kind";
 import type { Category, SignageConfig } from "../model/policy";
 
 /**
@@ -27,15 +30,61 @@ import type { Category, SignageConfig } from "../model/policy";
  *
  * 조회는 로그인한 누구나 한다. 응답은 화면이 쓰는 필드만 검증해 도메인 값으로 옮긴다.
  */
+/**
+ * 배포마다 새로 생긴 값. 아직 그 배포가 나가지 않은 서버는 주지 않으므로 서버가
+ * 정한 기본값으로 둔다(`API-FOLLOWUP-2026-10-30` 백엔드 알림 1-3).
+ */
+const CONFIG_DEFAULTS = {
+  /** 지원 중단. ②부터 항상 0이고 정리 배포에서 지워진다. */
+  minLeadTimeHours: 0,
+  maxVideoUploadBytes: 100 * 1024 * 1024,
+  maxVideoDurationSeconds: 30,
+  eventBannerMaxDays: 3,
+  storyDisplayDays: 2,
+} as const;
+
+function readOptionalNumber(
+  body: JsonObject,
+  key: keyof typeof CONFIG_DEFAULTS,
+): number {
+  return body[key] === undefined || body[key] === null
+    ? CONFIG_DEFAULTS[key]
+    : readNumber(body, key);
+}
+
+/** 종류별 하루 한도. 한도가 있는 종류만 온다. 모르는 종류는 버린다. */
+function readDailyLimits(
+  value: unknown,
+): Partial<Record<SubmissionKind, number>> {
+  if (value === undefined || value === null) return {};
+  const limits = readObject(value, "dailySubmissionLimits");
+  return Object.fromEntries(
+    SUBMISSION_KINDS.filter((kind) => limits[kind] !== undefined).map(
+      (kind) => [
+        kind,
+        readNumber(limits, kind, `dailySubmissionLimits.${kind}`),
+      ],
+    ),
+  );
+}
+
 export function parseSignageConfig(payload: unknown): SignageConfig {
   const body = readObject(payload);
   return {
     maxUploadBytes: readNumber(body, "maxUploadBytes"),
     titleMaxLength: readNumber(body, "titleMaxLength"),
     maxPublishMonths: readNumber(body, "maxPublishMonths"),
-    minLeadTimeHours: readNumber(body, "minLeadTimeHours"),
+    minLeadTimeHours: readOptionalNumber(body, "minLeadTimeHours"),
     allowedMimeTypes: readStringArray(body, "allowedMimeTypes"),
     allowedDetailUrlHosts: readStringArray(body, "allowedDetailUrlHosts"),
+    maxVideoUploadBytes: readOptionalNumber(body, "maxVideoUploadBytes"),
+    maxVideoDurationSeconds: readOptionalNumber(
+      body,
+      "maxVideoDurationSeconds",
+    ),
+    eventBannerMaxDays: readOptionalNumber(body, "eventBannerMaxDays"),
+    storyDisplayDays: readOptionalNumber(body, "storyDisplayDays"),
+    dailySubmissionLimits: readDailyLimits(body.dailySubmissionLimits),
   };
 }
 

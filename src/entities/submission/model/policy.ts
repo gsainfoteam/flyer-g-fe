@@ -1,4 +1,5 @@
 import { addSeoulMonths } from "@/shared/lib/datetime";
+import type { SubmissionKind } from "./kind";
 
 /**
  * 게시 운영 제한값 (`GET /signage/config`, `API-REQUIREMENTS.md` 10.3).
@@ -12,11 +13,27 @@ export interface SignageConfig {
   titleMaxLength: number;
   /** 최대 게시 기간(개월, 서울 달력 기준) */
   maxPublishMonths: number;
-  /** 게시 시작 전 최소 신청 시간(시간). 0이면 제한 없음 */
+  /**
+   * 게시 시작 전 최소 신청 시간(시간). 0이면 제한 없음.
+   * 서버는 규칙을 없앴고(배포 ②) 항상 0을 주다가 정리 배포에서 필드를 지운다.
+   */
   minLeadTimeHours: number;
+  /** 지금 업로드를 받는 MIME. 영상(`video/*`)은 영상 업로드를 연 환경에서만 있다. */
   allowedMimeTypes: string[];
   /** 상세 링크(QR)로 허용하는 호스트. HTTPS만 허용한다 */
   allowedDetailUrlHosts: string[];
+  /** 영상 포스터 최대 용량(바이트)과 길이(초). 배포 ① */
+  maxVideoUploadBytes: number;
+  maxVideoDurationSeconds: number;
+  /** 이벤트 배너 최대 게시 일수(서울 자정 기준 1일 이상). 배포 ③ */
+  eventBannerMaxDays: number;
+  /** 소식 제보 게시 일수. 승인한 순간부터 센다. 배포 ④ */
+  storyDisplayDays: number;
+  /**
+   * 사용자당 서울 하루 신청 한도. 한도가 있는 종류만 들어 있다. 그날 만든 그 종류의
+   * 신청을 취소·반려까지 모두 센다. 넘으면 429 `DAILY_LIMIT_EXCEEDED`.
+   */
+  dailySubmissionLimits: Partial<Record<SubmissionKind, number>>;
 }
 
 /** 게시 카테고리 (`GET /signage/categories`) */
