@@ -62,11 +62,16 @@ export function getUserStatus(view: SubmissionView, now: Date): UserStatus {
 
 /**
  * 표의 기간 칸. "11월 3일 – 14일". 제보는 승인한 순간부터 기간이 정해지므로
- * 승인 전에는 기간이 없다.
+ * 승인 전에는 기간이 없다. 그때는 승인 뒤 걸리는 날 수(`storyDisplayDays`)를 적는다.
  */
 export function formatPeriod(
-  view: Pick<SubmissionView, "startAt" | "endAt">,
+  view: Pick<SubmissionView, "startAt" | "endAt" | "type">,
+  storyDisplayDays = 2,
 ): string {
-  if (!view.startAt || !view.endAt) return "승인 후 정해짐";
+  if (!view.startAt || !view.endAt) {
+    return view.type === "STORY"
+      ? `승인 후 ${storyDisplayDays}일`
+      : "승인 후 정해짐";
+  }
   return formatSeoulDayRange(view.startAt, view.endAt);
 }

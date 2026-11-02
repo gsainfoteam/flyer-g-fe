@@ -146,3 +146,15 @@ export function useReviewHistories(submissionIds: readonly string[]) {
     })),
   });
 }
+
+/**
+ * 지금 게시 중인 제보. 최근 승인 순이다(`GET /signage/stories/recent`). 사용자 홈의
+ * "최근 소식"과 제보 작성 화면의 미리보기가 쓴다.
+ */
+export function useRecentStories(limit: number) {
+  const { submissions } = useRepositories();
+  return useQuery({
+    queryKey: queryKeys.submissions.recentStories(limit),
+    queryFn: ({ signal }) => submissions.listRecentStories({ limit }, signal),
+  });
+}

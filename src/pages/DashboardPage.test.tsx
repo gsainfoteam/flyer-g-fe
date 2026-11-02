@@ -70,7 +70,7 @@ describe("사용자 홈", () => {
     expect(screen.queryByRole("heading", { name: "내 컨텐츠" })).toBeNull();
   });
 
-  it("포스터만 지금 올릴 수 있고 이벤트·제보는 곧 열린다", async () => {
+  it("세 종류 모두 올리는 화면으로 간다", async () => {
     renderRoute("/", { role: "SUBMITTER" });
     await screen.findByRole("heading", { name: "무엇을 올릴까요?" });
 
@@ -78,8 +78,15 @@ describe("사용자 홈", () => {
       "href",
       "/new/poster",
     );
-    expect(screen.getAllByText("곧 열려요")).toHaveLength(2);
-    expect(screen.queryByRole("link", { name: /이벤트 배너/ })).toBeNull();
+    expect(screen.getByRole("link", { name: /이벤트 배너/ })).toHaveAttribute(
+      "href",
+      "/new/event",
+    );
+    expect(screen.getByRole("link", { name: /소식 제보/ })).toHaveAttribute(
+      "href",
+      "/new/story",
+    );
+    expect(screen.queryByText("곧 열려요")).toBeNull();
   });
 
   it("반려·중단된 컨텐츠는 고쳐서 다시 내러 가는 길을 둔다", async () => {
