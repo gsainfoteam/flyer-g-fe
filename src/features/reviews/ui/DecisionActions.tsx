@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import {
-  REJECTION_REASON_CODES,
   getRejectionReasonLabel,
+  rejectionReasonsFor,
 } from "@/entities/review";
 import type { RejectionReasonCode } from "@/entities/review";
 import {
@@ -213,7 +213,7 @@ export function DecisionActions({
                   <SelectValue placeholder="선택하세요" />
                 </SelectTrigger>
                 <SelectContent>
-                  {REJECTION_REASON_CODES.map((code) => (
+                  {rejectionReasonsFor(submission.type).map((code) => (
                     <SelectItem key={code} value={code}>
                       {getRejectionReasonLabel(code)}
                     </SelectItem>

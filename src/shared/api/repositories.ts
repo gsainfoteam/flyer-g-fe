@@ -153,6 +153,7 @@ export interface SuspendInput {
   reason: string;
 }
 
+/** `types`로 종류를 거른다(배포 ②). 비우면 모든 종류다. */
 export interface PendingReviewParams extends Omit<
   SubmissionListParams,
   "status" | "statuses" | "scope"

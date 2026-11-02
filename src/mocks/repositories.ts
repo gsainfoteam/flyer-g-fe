@@ -24,6 +24,7 @@ import {
   summarizeSubmissions,
   toSignageSubmissionExpanded,
 } from "@/entities/submission";
+import type { SubmissionKind } from "@/entities/submission/model/kind";
 import type {
   Page,
   SignageSubmissionExpanded,
@@ -351,6 +352,14 @@ function hashPlaylist(items: SignageSubmissionExpanded[]): string {
   return `mock-${hash.toString(36)}`;
 }
 
+/** 종류 필터(`type`). 비우면 모든 종류다. */
+function matchesTypes(
+  item: SignageSubmissionExpandedDto,
+  types: readonly SubmissionKind[] | undefined,
+): boolean {
+  return !types || types.length === 0 || types.includes(item.type);
+}
+
 function isReviewer(user: SessionUser): boolean {
   return hasAnyRole(user, ["REVIEWER", "SUPER_ADMIN"]);
 }
@@ -650,6 +659,7 @@ export function createMockRepositories(
       await settle(signal);
       const now = clock.now();
       const filtered = inScope(params.scope).filter((item) => {
+        if (!matchesTypes(item, params.types)) return false;
         const effective = resolveEffectiveStatus(
           toSignageSubmissionExpanded(item),
           now,
@@ -926,6 +936,7 @@ export function createMockRepositories(
         .filter(
           (item) =>
             item.status === "PENDING_REVIEW" &&
+            matchesTypes(item, params.types) &&
             (!params.categoryId || item.categoryId === params.categoryId),
         )
         .sort((a, b) => waitingSince(a).localeCompare(waitingSince(b)));
