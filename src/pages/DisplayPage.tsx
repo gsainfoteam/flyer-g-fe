@@ -246,6 +246,21 @@ export function DisplayPage() {
       ? { url: takeoverSurveyUrl, label: timeSlot.rule.survey.label }
       : null;
 
+  // 시간대가 끝날 때 게임이 진행 중이면 그 판은 마저 하게 둔다. 끝나는 순간의 화면을
+  // 들고 있다가, 판이 끝나면(onSessionEnd) 순환으로 돌아간다. 이때는 고정이 아니므로
+  // 위젯의 세션 상한이 다시 걸려, 끝난 판 뒤 새 판으로 이어지지 않는다.
+  const [lastTakeover, setLastTakeover] = useState<{
+    frame: PlayerFrame;
+    survey: typeof takeoverSurvey;
+    label: string;
+  } | null>(null);
+  if (takeoverFrame && timeSlot && lastTakeover?.frame.key !== takeoverFrame.key) {
+    setLastTakeover({ frame: takeoverFrame, survey: takeoverSurvey, label: timeSlot.rule.label });
+  } else if (!takeoverFrame && !gameActive && lastTakeover) {
+    setLastTakeover(null);
+  }
+  const overtime = !takeover && gameActive ? lastTakeover : null;
+
   const [paused, setPaused] = useState(false);
   const rotation = useRotation({
     posters,
@@ -289,7 +304,8 @@ export function DisplayPage() {
   );
 
   // 점유 시간에는 하던 순환을 그대로 보관하고 그 화면만 띄운다. 끝나면 이어서 돈다.
-  const frame: PlayerFrame | undefined = takeoverFrame ?? rotation.currentFrame;
+  const frame: PlayerFrame | undefined =
+    takeoverFrame ?? overtime?.frame ?? rotation.currentFrame;
 
   // 위젯 화면은 게시물 노출이 아니다. 행사 화면 뒤에 보관한 포스터도 집계하지 않는다.
   const exposed =
@@ -347,7 +363,9 @@ export function DisplayPage() {
       status={
         takeover && timeSlot
           ? `${timeSlot.rule.label} · ${timeSlot.rule.time.to}까지`
-          : gameActive
+          : overtime
+            ? `${overtime.label} · 마지막 판 진행 중`
+            : gameActive
             ? "클릭 배틀 진행 중"
             : null
       }
@@ -402,7 +420,7 @@ export function DisplayPage() {
                       if (!takeover) rotation.advance();
                     }}
                     pinned={takeover}
-                    survey={takeoverSurvey}
+                    survey={takeoverSurvey ?? overtime?.survey ?? null}
                   />
                 )}
               </div>

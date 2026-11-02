@@ -103,4 +103,28 @@ describe("useBattleHost", () => {
     act(() => vi.advanceTimersByTime(20_400));
     expect(result.current.active).toBe(false);
   });
+
+  it("고정이 풀려 상한이 생겨도 방을 다시 열지 않고, 하던 경기는 마저 한 뒤 비운다", () => {
+    const { channel, from } = fakeChannel();
+    const subscribe = vi.spyOn(channel, "subscribe");
+    const { result, rerender } = renderHook(
+      (limits: { sessionLimitMs?: number }) => useBattleHost("room", { channel, ...limits }),
+      { initialProps: {} },
+    );
+    from("c1", { kind: "join", playerId: "p1", name: "하윤", team: "A" });
+    from("c2", { kind: "join", playerId: "p2", name: "민준", team: "B" });
+    act(() => vi.advanceTimersByTime(10_400));
+    expect(result.current.state.phase).toBe("PLAYING");
+
+    // 시간대가 끝났다. 세션은 이미 상한을 넘었지만 경기 중이라 끊지 않는다.
+    rerender({ sessionLimitMs: 5_000 });
+    expect(subscribe).toHaveBeenCalledTimes(1);
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(result.current.state.phase).toBe("PLAYING");
+    expect(result.current.state.players).toHaveLength(2);
+
+    // 경기가 끝나면 판을 비워 순환으로 돌려보낸다.
+    act(() => vi.advanceTimersByTime(20_400));
+    expect(result.current.active).toBe(false);
+  });
 });
