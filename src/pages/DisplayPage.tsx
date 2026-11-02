@@ -347,8 +347,10 @@ export function DisplayPage() {
     const today =
       serverCafeteria?.params.data ??
       cafeteriaDataFor(localCafeteria, cafeteriaPlace, serverTime);
-    const mealsOf = (data: unknown, day: Date) =>
-      buildCafeteriaContent({ data }, day)?.meals ?? [];
+    const mealsOf = (data: unknown, day: Date) => {
+      const content = buildCafeteriaContent({ data }, day);
+      return { place: content?.place ?? null, meals: content?.meals ?? [] };
+    };
     return mealChip(
       mealsOf(today, serverTime),
       mealsOf(

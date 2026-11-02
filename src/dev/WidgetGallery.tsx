@@ -225,7 +225,7 @@ export function WidgetGallery() {
               <StageInfoBar
                 now={NOW}
                 weather={weather.type === "WEATHER" ? { ...weather, sky: "PARTLY_CLOUDY" } : null}
-                meal="제2학생식당 점심 운영 중 · 특별식 제공 · 13:30까지"
+                meal="지금 2학 점심 · 13:30까지"
                 dday="2026학년도 2학기 기말고사 및 종강 행사 D-14"
                 next={{ label: "광주과학기술원 학사기숙사 전체 입주생 대상 문화행사 및 동아리 공연 안내", seconds: 30, key: "long" }}
               />

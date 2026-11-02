@@ -30,26 +30,38 @@ function timedMeals(meals: readonly CafeteriaMeal[]) {
     .sort((a, b) => a.start - b.start || ORDER[a.type] - ORDER[b.type]);
 }
 
+/** "제2학생식당" → "2학". 학생들이 부르는 이름이다. 모르는 이름은 그대로 쓴다. */
+export function shortPlace(place: string | null | undefined): string | null {
+  const trimmed = place?.trim();
+  if (!trimmed) return null;
+  const student = /^제?\s*(\d)\s*학생\s*식당$/.exec(trimmed);
+  return student ? `${student[1]}학` : trimmed;
+}
+
+/** 어느 식당의 하루 끼니. 식당 이름은 칩 앞에 붙여 1학·2학을 가른다. */
+export interface PlaceMeals {
+  place: string | null;
+  meals: readonly CafeteriaMeal[];
+}
+
 /**
- * 식사 칩. 지금 운영 중이면 "점심 운영 중 · 13:30까지", 아니면 오늘 다음 끼니
- * "점심 11:30–13:30", 오늘 끼니가 끝났으면 "내일 아침 08:00". 알 수 없으면 null.
+ * 식사 칩. 지금 먹을 수 있으면 "지금 2학 점심 · 13:30까지", 아니면 오늘 다음 끼니
+ * "2학 점심 11:30–13:30", 오늘 끼니가 끝났으면 "내일 2학 아침 08:00". 알 수 없으면 null.
  */
-export function mealChip(
-  today: readonly CafeteriaMeal[],
-  tomorrow: readonly CafeteriaMeal[],
-  now: Date,
-): string | null {
+export function mealChip(today: PlaceMeals, tomorrow: PlaceMeals, now: Date): string | null {
   const { hour24, minute } = getSeoulParts(now);
   const minutes = hour24 * 60 + minute;
-  for (const meal of timedMeals(today)) {
+  const label = (place: string | null, type: MealType) =>
+    [shortPlace(place), MEAL_NAMES[type]].filter(Boolean).join(" ");
+  for (const meal of timedMeals(today.meals)) {
     if (minutes >= meal.end) continue;
-    const name = MEAL_NAMES[meal.type];
+    const name = label(today.place, meal.type);
     return minutes >= meal.start
-      ? `${name} 운영 중 · ${clock(meal.end)}까지`
+      ? `지금 ${name} · ${clock(meal.end)}까지`
       : `${name} ${clock(meal.start)}–${clock(meal.end)}`;
   }
-  const first = timedMeals(tomorrow)[0];
-  return first ? `내일 ${MEAL_NAMES[first.type]} ${clock(first.start)}` : null;
+  const first = timedMeals(tomorrow.meals)[0];
+  return first ? `내일 ${label(tomorrow.place, first.type)} ${clock(first.start)}` : null;
 }
 
 /**
