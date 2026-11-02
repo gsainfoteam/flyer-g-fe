@@ -183,8 +183,8 @@ describe("createHttpDisplayRepository", () => {
 
     expect(ctx.deviceCalls).toHaveLength(0);
     expect(ctx.userCalls.map((call) => call.query)).toEqual([
-      { statuses: "PUBLISHED", limit: 100, scope: "all" },
-      { statuses: "PUBLISHED", limit: 100, scope: "me" },
+      { statuses: "PUBLISHED", type: "POSTER", limit: 100, scope: "all" },
+      { statuses: "PUBLISHED", type: "POSTER", limit: 100, scope: "me" },
     ]);
     expect(playlist).toMatchObject({ deviceName: null, items: [] });
   });

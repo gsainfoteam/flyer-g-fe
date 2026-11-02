@@ -202,7 +202,8 @@ export function createHttpDisplayRepository({
     `/signage/devices/${encodeURIComponent(deviceId)}`;
 
   const previewPlaylist = async (signal?: AbortSignal): Promise<Playlist> => {
-    const query = { statuses: "PUBLISHED", limit: 100 };
+    // 편성 v1은 포스터만 띄운다. 다른 종류가 첫 페이지를 채우지 않게 서버에서 거른다.
+    const query = { statuses: "PUBLISHED", type: "POSTER", limit: 100 };
     // 관리자는 전체 게시물을, 게시자는 자기 게시물을 본다.
     const page = parseSubmissionPage(
       await userClient

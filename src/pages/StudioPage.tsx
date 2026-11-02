@@ -118,7 +118,12 @@ export function StudioPage() {
   const createSubmission = useCreateSubmission();
 
   // 벽·띠 미리보기의 나머지 자리를 채울 게시 중 포스터와, 판정 기준이 되는 서버 시각.
-  const published = useSubmissionViews({ status: "PUBLISHED", limit: 7 });
+  // 편성 v1은 포스터만 띄우므로 이웃 자리도 포스터로만 채운다.
+  const published = useSubmissionViews({
+    status: "PUBLISHED",
+    types: ["POSTER"],
+    limit: 7,
+  });
   const serverNow = useServerNow(
     published.data?.serverTime,
     published.dataUpdatedAt,
