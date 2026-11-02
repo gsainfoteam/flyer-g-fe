@@ -121,4 +121,31 @@ describe("클릭 배틀", () => {
     const start = T0 + BATTLE_RULES.startCountdownMs;
     expect(advanceBattle(playing(), start + BATTLE_RULES.matchMs).winner).toBe("DRAW");
   });
+
+  it("끝난 직후 잠깐은 늦게 도착한 연타를 받고 승패를 다시 정한다", () => {
+    const start = playing();
+    const matchEnd = start.phaseEndsAt!;
+    const scored = apply(start, [{ kind: "taps", playerId: "a1", count: 10 }], matchEnd - 5_000);
+    const result = advanceBattle(scored, matchEnd);
+    expect(result).toMatchObject({ phase: "RESULT", winner: "A" });
+
+    // 끝나기 직전에 누른 B팀 묶음이 결과로 바뀐 뒤 도착했다.
+    const late = apply(result, [{ kind: "taps", playerId: "b1", count: 12 }], matchEnd + 400);
+    expect(late.scores).toEqual({ A: 10, B: 12 });
+    expect(late.winner).toBe("B");
+
+    // 여유 시간이 지나면 받지 않는다.
+    const tooLate = apply(late, [{ kind: "taps", playerId: "a1", count: 5 }], matchEnd + 800);
+    expect(tooLate).toBe(late);
+  });
+
+  it("두 손가락 연타(초당 20번)까지는 버리지 않는다", () => {
+    const start = playing();
+    const startedAt = start.phaseEndsAt! - BATTLE_RULES.matchMs;
+    let state = start;
+    for (let ms = 100; ms <= 10_000; ms += 100) {
+      state = apply(state, [{ kind: "taps", playerId: "a1", count: 2 }], startedAt + ms);
+    }
+    expect(state.scores.A).toBe(200);
+  });
 });
