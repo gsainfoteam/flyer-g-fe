@@ -303,6 +303,9 @@ describe("게시 신청 스튜디오", () => {
           height: 1600,
           mimeType: "image/jpeg",
           sizeBytes: 4096,
+          kind: "IMAGE",
+          videoUrl: null,
+          durationMs: null,
         };
       },
     };
