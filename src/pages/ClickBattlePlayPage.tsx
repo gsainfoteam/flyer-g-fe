@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { BATTLE_RULES, TEAMS, secondsLeft } from "@/entities/game/model/click-battle";
 import type { Team } from "@/entities/game/model/click-battle";
-import { gameSocketBase } from "@/features/click-battle/api/game-socket";
+import { gameSocketBase } from "@/shared/lib/game-socket";
 import { useBattlePlayer } from "@/features/click-battle/model/use-battle-player";
+import { useHostNow } from "@/shared/lib/host-clock";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -24,23 +25,13 @@ function readTeam(value: string | null): Team {
   return (TEAMS as readonly string[]).includes(value ?? "") ? (value as Team) : "A";
 }
 
-/** 남은 초를 그리려고 1초보다 촘촘히 다시 그린다. */
-function useNow(intervalMs = 250) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
-    return () => window.clearInterval(id);
-  }, [intervalMs]);
-  return now;
-}
-
 export function ClickBattlePlayPage() {
   const { roomId = "lobby" } = useParams();
   const [searchParams] = useSearchParams();
   const team = readTeam(searchParams.get("team"));
   const player = useBattlePlayer(roomId, { socketBase: gameSocketBase() });
   const [name, setName] = useState("");
-  const now = useNow();
+  const now = useHostNow(player.clockOffsetMs);
   const style = TEAM_STYLE[team];
 
   const state = player.state;
@@ -111,6 +102,8 @@ export function ClickBattlePlayPage() {
   const myStyle = TEAM_STYLE[myTeam];
 
   if (state.phase === "PLAYING") {
+    // TV 시계로 경기가 끝났으면 더 세지 않는다. 결과 화면이 오기 전 잠깐 보인다.
+    const over = state.phaseEndsAt !== null && now >= state.phaseEndsAt;
     return (
       <div className="flex flex-1 flex-col gap-4 pt-2">
         <Scoreboard scores={state.scores} myTeam={myTeam} seconds={seconds} />
@@ -129,7 +122,7 @@ export function ClickBattlePlayPage() {
           <span className="text-[64px] leading-none font-extrabold tabular-nums">
             {player.localTaps.toLocaleString("ko-KR")}
           </span>
-          <span className="mt-3 text-subhead font-bold">누르세요!</span>
+          <span className="mt-3 text-subhead font-bold">{over ? "끝!" : "누르세요!"}</span>
         </button>
       </div>
     );

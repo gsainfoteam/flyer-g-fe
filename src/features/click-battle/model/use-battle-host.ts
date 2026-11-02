@@ -5,7 +5,7 @@ import {
   initialBattle,
 } from "@/entities/game/model/click-battle";
 import { parseClientMessage } from "@/entities/game/model/messages";
-import { createPlayerBinding } from "./player-binding";
+import { createPlayerBinding } from "@/shared/lib/player-binding";
 import type {
   BattleClientMessage,
   BattleHostMessage,
@@ -112,7 +112,7 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
       if (result.reply) channel.send(result.reply);
       // 새로 연결한 폰은 다음 방송을 기다리지 않고 바로 상태를 받는다.
       if (message.kind === "hello") {
-        channel.send({ kind: "state", state: stateRef.current });
+        channel.send({ kind: "state", state: stateRef.current, now: now() });
       }
     });
 
@@ -134,11 +134,13 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
       waitingSince = waiting ? (waitingSince ?? at) : null;
       const waitedTooLong =
         lobbyWaitMs !== undefined && waitingSince !== null && at - waitingSince >= lobbyWaitMs;
+      // 경기 중과 결과 화면은 끊지 않는다. 결과는 끝까지 보여 주고 폰에도 전한 뒤 비운다.
       const sessionTooLong =
         sessionLimitMs !== undefined &&
         activeSince !== null &&
         at - activeSince >= sessionLimitMs &&
-        next.phase !== "PLAYING";
+        next.phase !== "PLAYING" &&
+        next.phase !== "RESULT";
       if (waitedTooLong || sessionTooLong) {
         next = initialBattle(next.round + 1);
         activeSince = null;
@@ -152,7 +154,7 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
       if (dirty || at - sentAt >= HEARTBEAT_MS) {
         dirty = false;
         sentAt = at;
-        channel.send({ kind: "state", state: stateRef.current });
+        channel.send({ kind: "state", state: stateRef.current, now: at });
       }
       setClock(at);
     }, FRAME_MS);

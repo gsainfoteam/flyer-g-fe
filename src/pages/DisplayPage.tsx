@@ -48,16 +48,16 @@ import type {
   PlayerFrame,
 } from "@/entities/widget/model/schedule";
 import { WIDGET_LABELS } from "@/entities/widget/model/settings";
-import { DEFAULT_WIDGET_DURATION } from "@/entities/widget/model/types";
+import { DEFAULT_WIDGET_DURATION, isGameWidget } from "@/entities/widget/model/types";
 import type { WidgetSlot } from "@/entities/widget/model/types";
 import { StageInfoBar } from "@/entities/widget/ui/StageInfoBar";
 import { WidgetDisplay } from "@/entities/widget/ui/WidgetDisplay";
 import { useDeviceWidgets } from "@/features/display/model/use-device-widgets";
 import { useLocalCafeteria } from "@/features/display/model/use-local-cafeteria";
 import { useLocalWeather } from "@/features/display/model/use-local-weather";
-import { gameSocketBase } from "@/features/click-battle/api/game-socket";
-import { BattlePreview } from "@/features/click-battle/ui/BattlePreview";
-import { BattleWidget } from "@/features/click-battle/ui/BattleWidget";
+import { gameSocketBase } from "@/shared/lib/game-socket";
+import { isWidgetReleased } from "@/entities/widget/model/operation";
+import { GameFrame } from "@/widgets/game-frame/GameFrame";
 import { toUserMessage } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
 import {
@@ -139,7 +139,7 @@ export function DisplayPage() {
 
   // 게임 위젯은 이 TV가 게임 방을 열 수 있을 때 실제로 돈다. 서버 중계면 기기 토큰이
   // 있어야 하고, mock이면 같은 브라우저 탭끼리 연다. 토큰이 없는 미리보기는 방 없이
-  // 모양만 보여 준다(BattlePreview). 그 밖에 방을 못 여는 화면에서는 건너뛴다.
+  // 모양만 보여 준다(GameFrame의 previewOnly). 그 밖에 방을 못 여는 화면에서는 건너뛴다.
   const socketBase = gameSocketBase();
   const [gameToken] = useState(() => deviceCredentials.get(deviceId));
   const canHostGame = socketBase === null || gameToken !== null;
@@ -186,9 +186,13 @@ export function DisplayPage() {
             : null;
       return data ? { ...slot, params: { ...slot.params, data } } : slot;
     });
+    // 공개일 전 위젯(11/5의 셔플보드)은 평소 순환에서 뺀다. 시간대 고정은 따로 띄운다.
+    const released = todayKey
+      ? slots.filter((slot) => isWidgetReleased(slot.type, todayKey))
+      : slots;
     return canHostGame || previewGame
-      ? slots
-      : slots.filter((slot) => slot.type !== "CLICK_BATTLE");
+      ? released
+      : released.filter((slot) => !isGameWidget(slot.type));
   }, [
     canHostGame,
     previewGame,
@@ -224,7 +228,7 @@ export function DisplayPage() {
   const takeoverFrame: PlayerFrame | null = (() => {
     if (!timeSlot || !serverTime) return null;
     const { rule } = timeSlot;
-    if (rule.widget === "CLICK_BATTLE" && !(canHostGame || previewGame)) return null;
+    if (isGameWidget(rule.widget) && !(canHostGame || previewGame)) return null;
     const slot = widgetSlots.find((item) => item.type === rule.widget) ?? {
       id: `time-slot-${rule.id}`,
       type: rule.widget,
@@ -233,7 +237,7 @@ export function DisplayPage() {
     };
     const content = buildWidgetContent(slot, serverTime);
     return content
-      ? { kind: "widget", key: `time-slot:${rule.id}`, slot, content }
+      ? { kind: "widget", key: `time-slot:${rule.widget}`, slot, content }
       : null;
   })();
   const takeover = takeoverFrame !== null;
@@ -245,21 +249,6 @@ export function DisplayPage() {
     takeoverSurveyUrl && timeSlot?.rule.survey
       ? { url: takeoverSurveyUrl, label: timeSlot.rule.survey.label }
       : null;
-
-  // 시간대가 끝날 때 게임이 진행 중이면 그 판은 마저 하게 둔다. 끝나는 순간의 화면을
-  // 들고 있다가, 판이 끝나면(onSessionEnd) 순환으로 돌아간다. 이때는 고정이 아니므로
-  // 위젯의 세션 상한이 다시 걸려, 끝난 판 뒤 새 판으로 이어지지 않는다.
-  const [lastTakeover, setLastTakeover] = useState<{
-    frame: PlayerFrame;
-    survey: typeof takeoverSurvey;
-    label: string;
-  } | null>(null);
-  if (takeoverFrame && timeSlot && lastTakeover?.frame.key !== takeoverFrame.key) {
-    setLastTakeover({ frame: takeoverFrame, survey: takeoverSurvey, label: timeSlot.rule.label });
-  } else if (!takeoverFrame && !gameActive && lastTakeover) {
-    setLastTakeover(null);
-  }
-  const overtime = !takeover && gameActive ? lastTakeover : null;
 
   const [paused, setPaused] = useState(false);
   const rotation = useRotation({
@@ -304,8 +293,33 @@ export function DisplayPage() {
   );
 
   // 점유 시간에는 하던 순환을 그대로 보관하고 그 화면만 띄운다. 끝나면 이어서 돈다.
-  const frame: PlayerFrame | undefined =
-    takeoverFrame ?? overtime?.frame ?? rotation.currentFrame;
+  const nextShown = takeoverFrame ?? rotation.currentFrame;
+  // 화면이 바뀔 때(시간대 시작·끝, 다른 위젯 시간대로 넘어감) 게임이 진행 중이면 그 판은
+  // 마저 하게 둔다. 띄우던 게임 화면을 들고 있다가 판이 끝나면 다음 화면으로 넘어간다.
+  // 이때는 고정이 아니므로 위젯의 세션 상한이 다시 걸려, 끝난 판 뒤 새 판으로 이어지지
+  // 않는다. 같은 위젯 시간대가 이어지면 화면 key가 같아 끊기지 않는다.
+  const [shown, setShown] = useState<{
+    frame: PlayerFrame;
+    survey: typeof takeoverSurvey;
+    /** 시간대 이름. 평소 순환이면 null */
+    label: string | null;
+  } | null>(null);
+  const finishing =
+    gameActive &&
+    shown !== null &&
+    shown.frame.kind === "widget" &&
+    isGameWidget(shown.frame.content.type) &&
+    shown.frame.key !== nextShown?.key;
+  const shownLabel = takeoverFrame && timeSlot ? timeSlot.rule.label : null;
+  if (
+    !finishing &&
+    nextShown &&
+    (shown?.frame.key !== nextShown.key || shown.label !== shownLabel)
+  ) {
+    setShown({ frame: nextShown, survey: takeoverSurvey, label: shownLabel });
+  }
+  const overtime = finishing ? shown : null;
+  const frame: PlayerFrame | undefined = overtime?.frame ?? nextShown;
 
   // 위젯 화면은 게시물 노출이 아니다. 행사 화면 뒤에 보관한 포스터도 집계하지 않는다.
   const exposed =
@@ -337,8 +351,10 @@ export function DisplayPage() {
     const today =
       serverCafeteria?.params.data ??
       cafeteriaDataFor(localCafeteria, cafeteriaPlace, serverTime);
-    const mealsOf = (data: unknown, day: Date) =>
-      buildCafeteriaContent({ data }, day)?.meals ?? [];
+    const mealsOf = (data: unknown, day: Date) => {
+      const content = buildCafeteriaContent({ data }, day);
+      return { place: content?.place ?? null, meals: content?.meals ?? [] };
+    };
     return mealChip(
       mealsOf(today, serverTime),
       mealsOf(
@@ -361,10 +377,10 @@ export function DisplayPage() {
           : ddayChip(widgetSlots, serverTime)
       }
       status={
-        takeover && timeSlot
-          ? `${timeSlot.rule.label} · ${timeSlot.rule.time.to}까지`
-          : overtime
-            ? `${overtime.label} · 마지막 판 진행 중`
+        overtime
+          ? `${overtime.label ?? "클릭 배틀"} · 마지막 판 진행 중`
+          : takeover && timeSlot
+            ? `${timeSlot.rule.label} · ${timeSlot.rule.time.to}까지`
             : gameActive
             ? "클릭 배틀 진행 중"
             : null
@@ -398,31 +414,26 @@ export function DisplayPage() {
             {!frame ? (
               <EmptyDisplay deviceLabel={deviceLabel} serverTime={serverTime} />
             ) : frame.kind === "widget" &&
-              frame.content.type === "CLICK_BATTLE" ? (
+              isGameWidget(frame.content.type) ? (
               <div
                 key={frameKey}
                 className="h-full animate-in duration-500 fade-in"
               >
-                {previewGame ? (
-                  <BattlePreview
-                    deviceLabel={deviceLabel}
-                    serverTime={serverTime}
-                  />
-                ) : (
-                  <BattleWidget
-                    roomId={deviceId}
-                    socketBase={socketBase}
-                    token={gameToken}
-                    deviceLabel={deviceLabel}
-                    serverTime={serverTime}
-                    onActiveChange={setGameActive}
-                    onSessionEnd={() => {
-                      if (!takeover) rotation.advance();
-                    }}
-                    pinned={takeover}
-                    survey={takeoverSurvey ?? overtime?.survey ?? null}
-                  />
-                )}
+                <GameFrame
+                  type={frame.content.type}
+                  previewOnly={previewGame}
+                  roomId={deviceId}
+                  socketBase={socketBase}
+                  token={gameToken}
+                  deviceLabel={deviceLabel}
+                  serverTime={serverTime}
+                  onActiveChange={setGameActive}
+                  onSessionEnd={() => {
+                    if (!takeover) rotation.advance();
+                  }}
+                  pinned={takeover && !overtime}
+                  survey={overtime ? overtime.survey : takeoverSurvey}
+                />
               </div>
             ) : frame.kind === "widget" ? (
               <WidgetFrame

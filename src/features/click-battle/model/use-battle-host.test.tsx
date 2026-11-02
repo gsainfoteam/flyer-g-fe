@@ -99,8 +99,11 @@ describe("useBattleHost", () => {
     expect(result.current.state.phase).toBe("PLAYING");
     act(() => vi.advanceTimersByTime(10_000));
     expect(result.current.state.phase).toBe("PLAYING");
-    // 경기가 끝나 결과가 되면 끊는다.
-    act(() => vi.advanceTimersByTime(20_400));
+    // 경기가 끝나도 결과 화면(10초)은 끝까지 보여 준다.
+    act(() => vi.advanceTimersByTime(25_000));
+    expect(result.current.state.phase).toBe("RESULT");
+    // 결과가 끝나면 비운다.
+    act(() => vi.advanceTimersByTime(5_400));
     expect(result.current.active).toBe(false);
   });
 
@@ -123,8 +126,10 @@ describe("useBattleHost", () => {
     expect(result.current.state.phase).toBe("PLAYING");
     expect(result.current.state.players).toHaveLength(2);
 
-    // 경기가 끝나면 판을 비워 순환으로 돌려보낸다.
-    act(() => vi.advanceTimersByTime(20_400));
+    // 경기가 끝나면 결과를 끝까지 보여 준 뒤 판을 비워 순환으로 돌려보낸다.
+    act(() => vi.advanceTimersByTime(25_000));
+    expect(result.current.state.phase).toBe("RESULT");
+    act(() => vi.advanceTimersByTime(5_400));
     expect(result.current.active).toBe(false);
   });
 });
