@@ -66,4 +66,22 @@ describe("useDodgeHost", () => {
     act(() => vi.advanceTimersByTime(2_000));
     expect(result.current.state.phase).toBe("PLAYING");
   });
+
+  it("세션 상한이 지나도 결과 화면을 끝까지 보여 주고 이 TV 순위에 남긴다", () => {
+    const { channel, from } = fakeChannel();
+    const { result, rerender } = renderHook(
+      (limits: { sessionLimitMs?: number }) => useDodgeHost("tv-1", { channel, seed: 5, ...limits }),
+      { initialProps: {} },
+    );
+    from("c1", { kind: "join", playerId: "p1", name: "하윤", ticket: result.current.state.ticket });
+    act(() => vi.advanceTimersByTime(4_000));
+    rerender({ sessionLimitMs: 1_000 });
+    for (let second = 0; second < 50 && result.current.state.phase !== "RESULT"; second++) {
+      act(() => vi.advanceTimersByTime(1_000));
+    }
+    expect(result.current.state.phase).toBe("RESULT");
+    expect(result.current.ranking).toHaveLength(1);
+    act(() => vi.advanceTimersByTime(5_000));
+    expect(result.current.state.phase).toBe("RESULT");
+  });
 });

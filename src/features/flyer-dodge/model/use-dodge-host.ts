@@ -159,7 +159,10 @@ export function useDodgeHost(roomId: string, options: UseDodgeHostOptions = {}) 
       const active = isDodgeActive(next);
       activeSince = active ? (activeSince ?? at) : null;
       const limit = limitRef.current;
-      if (limit !== undefined && activeSince !== null && at - activeSince >= limit && next.phase !== "PLAYING") {
+      // 플레이 중과 결과 화면은 끊지 않는다. 결과로 넘어가는 순간을 commit해야 이 TV 순위에
+      // 남고, 결과는 끝까지 보여 주고 폰에도 전한 뒤 비운다.
+      const running = next.phase === "PLAYING" || next.phase === "RESULT";
+      if (limit !== undefined && activeSince !== null && at - activeSince >= limit && !running) {
         next = initialDodge(next.round + 1, next.seed);
         activeSince = null;
       }
