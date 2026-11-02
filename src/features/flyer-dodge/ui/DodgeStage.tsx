@@ -9,6 +9,8 @@ import {
 } from "@/entities/game/model/flyer-dodge";
 import type { DodgeState } from "@/entities/game/model/flyer-dodge";
 import { QRCodeBox } from "@/shared/components/QRCodeBox";
+import { SurveyCorner } from "@/shared/components/SurveyCorner";
+import type { EventSurvey } from "@/shared/components/SurveyCorner";
 import { cn } from "@/shared/lib/utils";
 import { DodgeField } from "./DodgeField";
 
@@ -32,7 +34,7 @@ interface DodgeStageProps {
   /** 방금 끝난 판의 이 TV 순위 */
   rank: number | null;
   /** 행사 시간대 화면에만 붙이는 설문 QR */
-  survey: { url: string; label: string } | null;
+  survey: EventSurvey | null;
   /** 맨 위 머리 줄. 화면마다 다르다. */
   header: ReactNode;
 }
@@ -219,25 +221,3 @@ function RankingPanel({
   );
 }
 
-/** 설문 QR. 판이 끝난 직후가 응답하기 좋은 때라 결과 화면에서 강조한다(다른 게임과 같다). */
-function SurveyCorner({ survey, finished }: { survey: { url: string; label: string }; finished: boolean }) {
-  return (
-    <section
-      aria-label={survey.label}
-      className={cn(
-        "flex shrink-0 items-center gap-7 rounded-tv-card bg-surface py-4 pr-9 pl-4",
-        finished && "ring-6 ring-accent",
-      )}
-    >
-      <QRCodeBox value={survey.url} size="lg" />
-      <div>
-        <p className="text-[30px] leading-tight font-extrabold text-ink">{survey.label}</p>
-        <p className="mt-2 text-[24px] leading-snug text-ink-muted">
-          QR을 찍고 의견을
-          <br />
-          들려주세요
-        </p>
-      </div>
-    </section>
-  );
-}

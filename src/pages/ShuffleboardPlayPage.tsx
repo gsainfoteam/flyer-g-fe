@@ -16,6 +16,7 @@ import type { FinishedMatch } from "@/features/shuffleboard/model/use-shuffleboa
 import { AimPad } from "@/features/shuffleboard/ui/AimPad";
 import { HowToPlay } from "@/features/shuffleboard/ui/HowToPlay";
 import { SEAT_TEXT } from "@/features/shuffleboard/ui/seat-style";
+import { SurveyPrizeNote } from "@/entities/widget/ui/SurveyPrizeNote";
 import { SURVEY_URL } from "@/entities/widget/model/operation";
 import { readWebUrl } from "@/entities/widget/model/data-content";
 import { gameSocketBase } from "@/shared/lib/game-socket";
@@ -266,6 +267,7 @@ function FinishView({
           <p className="text-body text-ink-muted">
             로비 TV 게시판을 써 본 느낌을 들려주세요. 1분이면 끝나요.
           </p>
+          <SurveyPrizeNote />
         </div>
       )}
 
