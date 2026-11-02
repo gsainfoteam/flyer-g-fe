@@ -131,6 +131,7 @@ function edgesAt(rects: Rect[], x: number): number[] {
     .flatMap((rect) => [rect.y1, rect.y2]);
 }
 
+/** 식단표 한 쪽 → 날짜별 끼니 메뉴. 머리줄(날짜)을 못 찾으면 빈 배열이다. */
 export function parseMenuPage({ items, rects }: PdfPage, now: Date): MenuDay[] {
   // 1. 머리줄: 날짜가 든 조각이 가장 많은 줄
   const dated = items.filter((item) => headerDate(item.text));
@@ -212,14 +213,16 @@ export function parseMenuPage({ items, rects }: PdfPage, now: Date): MenuDay[] {
           return menu === null ? [] : [{ menu, corner: cornerOf(line.y) }];
         });
         const menus = cleaned.map((line) => line.menu);
-        // 코너 이름 칸 안의 줄만 코너로 묶는다. 둘 이상 나올 때만 코너가 의미 있다.
+        // 코너 이름 칸 안의 줄만 코너로 묶는다. 둘 이상 나오고 모든 줄이 코너에 들 때만
+        // 코너로 나눈다(코너 밖 줄이 있으면 나눠 그릴 때 빠진다).
         const named = corners
           .map((corner) => ({
             name: corner.name,
             menus: cleaned.filter((line) => line.corner === corner.name).map((line) => line.menu),
           }))
           .filter((corner) => corner.menus.length > 0);
-        return named.length > 1
+        const covered = named.reduce((sum, corner) => sum + corner.menus.length, 0) === menus.length;
+        return named.length > 1 && covered
           ? { type, hours: MEAL_HOURS[type], menus, corners: named }
           : { type, hours: MEAL_HOURS[type], menus };
       })

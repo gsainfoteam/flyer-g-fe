@@ -215,6 +215,7 @@ const MEAL_LABEL: Record<MealType, string> = {
 /** 끼니마다 보여 줄 메뉴 수. 넘치면 "외 N가지"로 줄인다. 카드 높이에 맞춘 값이다. */
 const MAX_MENUS = 7;
 
+/** 메뉴 목록. `limit`을 넘으면 "외 N가지"로 줄인다. */
 function MenuList({
   menus,
   limit,
@@ -274,6 +275,7 @@ function CornerMenus({
   );
 }
 
+/** 학식 위젯 본문. 끼니마다 한 칸, 코너가 나뉜 끼니는 두 배 폭 칸이다. */
 function CafeteriaBody({ content }: { content: CafeteriaContent }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-10">

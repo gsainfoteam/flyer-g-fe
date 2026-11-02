@@ -140,6 +140,10 @@ export function currentMealType(now: Date): MealType {
   return "DINNER";
 }
 
+/**
+ * 오늘의 학식. 오늘 날짜가 아니거나 메뉴가 없으면 null이다. 지금 시각에 맞는 끼니를
+ * `current`로 짚는다.
+ */
 export function buildCafeteriaContent(
   params: Record<string, unknown>,
   now: Date,
@@ -168,12 +172,16 @@ export function buildCafeteriaContent(
           return name && items.length > 0 ? [{ name, menus: items }] : [];
         })
       : [];
+    // 코너가 둘 이상이고 코너 메뉴를 이은 것이 전체 메뉴와 같을 때만 코너로 그린다.
+    // 코너 밖 메뉴가 있으면 코너로 그릴 때 빠지므로 전체 목록으로 그린다.
+    const covered =
+      corners.flatMap((corner) => corner.menus).join("\n") === menus.join("\n");
     return [
       {
         type,
         hours: readText(raw.hours),
         menus,
-        ...(corners.length > 1 ? { corners } : {}),
+        ...(corners.length > 1 && covered ? { corners } : {}),
       },
     ];
   });
