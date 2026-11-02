@@ -67,6 +67,12 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
   const [state, setState] = useState<BattleState>(initialBattle);
   const stateRef = useRef<BattleState>(state);
   const [clock, setClock] = useState(() => now());
+  // 상한은 도중에 바뀔 수 있다(시간대가 끝나 고정이 풀릴 때). 방을 다시 열면 하던 판이
+  // 사라지므로 effect가 아니라 ref로 읽는다.
+  const limitsRef = useRef({ lobbyWaitMs, sessionLimitMs });
+  useEffect(() => {
+    limitsRef.current = { lobbyWaitMs, sessionLimitMs };
+  }, [lobbyWaitMs, sessionLimitMs]);
 
   useEffect(() => {
     // 기기 토큰이 없으면 방을 열 수 없다. 설정 링크로 다시 열어야 한다.
@@ -121,6 +127,7 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
       }
       // 세션 시간과 상대 팀 기다림을 잰다. 넘으면 판을 비워 순환으로 돌려보낸다.
       // 경기 중에는 끊지 않는다.
+      const { lobbyWaitMs, sessionLimitMs } = limitsRef.current;
       const active = isBattleActive(next);
       activeSince = active ? (activeSince ?? at) : null;
       const waiting = next.phase === "LOBBY" && next.players.length > 0;
@@ -155,7 +162,7 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
       unsubscribe();
       if (!injected) channel.close();
     };
-  }, [roomId, injected, now, socketBase, token, lobbyWaitMs, sessionLimitMs]);
+  }, [roomId, injected, now, socketBase, token]);
 
   return {
     state,
