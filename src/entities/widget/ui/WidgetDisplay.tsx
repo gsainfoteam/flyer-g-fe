@@ -215,9 +215,6 @@ const MEAL_LABEL: Record<MealType, string> = {
 /** 끼니마다 보여 줄 메뉴 수. 넘치면 "외 N가지"로 줄인다. 카드 높이에 맞춘 값이다. */
 const MAX_MENUS = 7;
 
-/** 코너가 나뉜 끼니에서 보여 줄 메뉴 수. 코너 이름 줄이 늘어난 만큼 줄인다. */
-const MAX_CORNER_MENUS = 6;
-
 function MenuList({
   menus,
   limit,
@@ -246,20 +243,9 @@ function MenuList({
   );
 }
 
-/** 위 코너부터 남은 칸만큼 나눠 준다. 코너마다 적어도 한 가지는 보인다. */
-function cornerLimits(counts: readonly number[], total: number): number[] {
-  return counts.reduce<{ limits: number[]; left: number }>(
-    ({ limits, left }, count) => {
-      const limit = Math.max(1, Math.min(count, left));
-      return { limits: [...limits, limit], left: left - limit };
-    },
-    { limits: [], left: total },
-  ).limits;
-}
-
 /**
- * 일품·한식처럼 코너가 나뉜 끼니. 코너 이름을 작게 얹고, 위 코너부터 칸에 들어가는
- * 만큼 채운다(일품은 보통 두 가지라 다 보이고, 한식이 "외 N가지"로 줄어든다).
+ * 일품·한식처럼 코너가 나뉜 끼니. 코너를 나란히 두 열로 둔다. 이 끼니 칸은 두 배로
+ * 넓혀(CafeteriaBody) 열마다 다른 끼니 칸만큼의 폭을 가진다. 그래서 줄이지 않고 다 보인다.
  */
 function CornerMenus({
   corners,
@@ -268,13 +254,20 @@ function CornerMenus({
   corners: NonNullable<CafeteriaMeal["corners"]>;
   isCurrent: boolean;
 }) {
-  const limits = cornerLimits(corners.map((corner) => corner.menus.length), MAX_CORNER_MENUS);
   return (
-    <div className="flex flex-col gap-3">
+    <div
+      className="grid min-h-0 flex-1 gap-8"
+      style={{ gridTemplateColumns: `repeat(${corners.length}, minmax(0, 1fr))` }}
+    >
       {corners.map((corner, index) => (
-        <div key={corner.name} className="flex flex-col gap-1">
-          <p className="text-[24px] font-bold text-ink-subtle">{corner.name}</p>
-          <MenuList menus={corner.menus} limit={limits[index]!} isCurrent={isCurrent} />
+        <div
+          key={corner.name}
+          className={cn("flex min-w-0 flex-col gap-1", index > 0 && "border-l-2 border-line pl-8")}
+        >
+          <p className={cn("text-[28px] font-extrabold", isCurrent ? "text-accent" : "text-ink-subtle")}>
+            {corner.name}
+          </p>
+          <MenuList menus={corner.menus} limit={MAX_MENUS} isCurrent={isCurrent} />
         </div>
       ))}
     </div>
@@ -288,7 +281,15 @@ function CafeteriaBody({ content }: { content: CafeteriaContent }) {
         <Eyebrow>오늘의 학식</Eyebrow>
         <p className="text-[34px] font-bold text-ink-muted">{content.place}</p>
       </div>
-      <ul className="grid min-h-0 flex-1 auto-cols-fr grid-flow-col gap-8">
+      <ul
+        className="grid min-h-0 flex-1 gap-8"
+        // 코너가 나뉜 끼니(점심 일품·한식)는 두 배 폭으로 두 열을 담는다.
+        style={{
+          gridTemplateColumns: content.meals
+            .map((meal) => `minmax(0, ${meal.corners ? 2 : 1}fr)`)
+            .join(" "),
+        }}
+      >
         {content.meals.map((meal) => {
           const isCurrent = meal.type === content.current;
           return (
