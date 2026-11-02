@@ -26,15 +26,21 @@ export const WIDGET_DURATIONS: Partial<Record<WidgetType, number>> = {
 
 /**
  * 위젯 공개일(서울 날짜). 이 날짜 전에는 평소 순환에서 뺀다. 0시가 되면 배포 없이 들어온다.
+ * `null`이면 아직 공개하지 않는다(준비 중). 없는 종류는 늘 공개다.
  * 시간대 고정은 공개일과 상관없이 고를 수 있다(미리 시험해 보거나 행사에 먼저 쓸 때).
  */
-export const WIDGET_RELEASES: Partial<Record<WidgetType, string>> = {
-  SHUFFLEBOARD: "2026-11-05",
+export const WIDGET_RELEASES: Partial<Record<WidgetType, string | null>> = {
+  // 평소 순환에는 아직 클릭 배틀만 둔다. 11/5–11/7 이벤트 시간에는 시간대 고정으로 띄운다.
+  // 순환에 넣을 때 날짜를 적는다.
+  SHUFFLEBOARD: null,
 };
 
 /** 오늘(서울 날짜 "YYYY-MM-DD") 평소 순환에 넣어도 되는 위젯인가 */
-export const isWidgetReleased = (type: WidgetType, today: string): boolean =>
-  (WIDGET_RELEASES[type] ?? "") <= today;
+export function isWidgetReleased(type: WidgetType, today: string): boolean {
+  const release = WIDGET_RELEASES[type];
+  if (release === undefined) return true;
+  return release !== null && release <= today;
+}
 
 /**
  * 설문 위젯 내용. 설문 링크는 화면(이 파일)이 정하므로, 서버·mock이 주는 설문 위젯에

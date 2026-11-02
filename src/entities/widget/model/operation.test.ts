@@ -4,9 +4,9 @@ import { operationWidgets, standaloneWidgets } from "./feed";
 import { WIDGET_DURATIONS, isWidgetReleased } from "./operation";
 
 describe("위젯 공개일", () => {
-  it("셔플보드는 11/5부터 평소 순환에 들어가고, 공개일이 없는 위젯은 늘 들어간다", () => {
-    expect(isWidgetReleased("SHUFFLEBOARD", "2026-11-04")).toBe(false);
-    expect(isWidgetReleased("SHUFFLEBOARD", "2026-11-05")).toBe(true);
+  it("준비 중(null)인 컬링은 평소 순환에 넣지 않고, 공개일이 없는 위젯은 늘 들어간다", () => {
+    expect(isWidgetReleased("SHUFFLEBOARD", "2026-11-05")).toBe(false);
+    expect(isWidgetReleased("SHUFFLEBOARD", "2099-01-01")).toBe(false);
     expect(isWidgetReleased("CLICK_BATTLE", "2026-11-01")).toBe(true);
   });
 });
