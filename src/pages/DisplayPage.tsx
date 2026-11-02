@@ -56,7 +56,7 @@ import { useDeviceWidgets } from "@/features/display/model/use-device-widgets";
 import { useLocalCafeteria } from "@/features/display/model/use-local-cafeteria";
 import { useLocalWeather } from "@/features/display/model/use-local-weather";
 import { gameSocketBase } from "@/shared/lib/game-socket";
-import { isWidgetReleased } from "@/entities/widget/model/operation";
+import { isWidgetReleased, surveyPrizeOn } from "@/entities/widget/model/operation";
 import { GameFrame } from "@/widgets/game-frame/GameFrame";
 import { toUserMessage } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
@@ -245,9 +245,14 @@ export function DisplayPage() {
   const takeoverSurveyUrl = takeover
     ? readWebUrl(timeSlot?.rule.survey?.url)
     : null;
+  // 경품 안내는 응모 마감(operation.ts의 SURVEY_PRIZE)까지만 붙인다.
   const takeoverSurvey =
     takeoverSurveyUrl && timeSlot?.rule.survey
-      ? { url: takeoverSurveyUrl, label: timeSlot.rule.survey.label }
+      ? {
+          url: takeoverSurveyUrl,
+          label: timeSlot.rule.survey.label,
+          prize: todayKey ? surveyPrizeOn(todayKey) : null,
+        }
       : null;
 
   const [paused, setPaused] = useState(false);

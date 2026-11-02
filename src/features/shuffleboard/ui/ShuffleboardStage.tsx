@@ -10,6 +10,8 @@ import {
 import type { MatchState, Seat } from "@/entities/game/model/shuffleboard";
 import { SHUFFLEBOARD_RULES } from "@/entities/game/model/shuffleboard-rules";
 import { QRCodeBox } from "@/shared/components/QRCodeBox";
+import { SurveyCorner } from "@/shared/components/SurveyCorner";
+import type { EventSurvey } from "@/shared/components/SurveyCorner";
 import { cn } from "@/shared/lib/utils";
 import { BoardView } from "./BoardView";
 import { SEAT_DOT, SEAT_TEXT } from "./seat-style";
@@ -73,7 +75,7 @@ interface ShuffleboardStageProps {
    * 오른쪽 위 설문 QR. 클릭 배틀 위젯의 `survey`와 같은 값이다(전단지 운영 설정의 설문 링크).
    * 없으면 그 자리를 비운다.
    */
-  survey: { url: string; label: string } | null;
+  survey: EventSurvey | null;
   /** 맨 위 머리 줄. 화면마다 다르다. */
   header: ReactNode;
 }
@@ -138,42 +140,6 @@ export function ShuffleboardStage({
         <Lobby state={state} joinUrls={joinUrls} closedLabel={closedLabel} />
       )}
     </div>
-  );
-}
-
-/**
- * 오른쪽 위 설문 자리. 노션폼 QR이 대기 중에도 경기 중에도 늘 떠 있다.
- * 경기를 기다리는 사람, 구경하는 사람, 막 끝낸 사람 누구든 찍을 수 있다.
- */
-/**
- * 판이 끝난 직후가 폰을 들고 있어 응답하기 가장 좋은 때라, 결과 화면에서는 강조한다
- * (전단지 클릭 배틀의 설문 띠와 같은 규칙).
- */
-function SurveyCorner({
-  survey,
-  finished,
-}: {
-  survey: { url: string; label: string };
-  finished: boolean;
-}) {
-  return (
-    <section
-      aria-label={survey.label}
-      className={cn(
-        "flex shrink-0 items-center gap-7 rounded-tv-card bg-surface py-4 pr-9 pl-4",
-        finished && "ring-6 ring-accent",
-      )}
-    >
-      <QRCodeBox value={survey.url} size="lg" />
-      <div>
-        <p className="text-[30px] leading-tight font-extrabold text-ink">{survey.label}</p>
-        <p className="mt-2 text-[24px] leading-snug text-ink-muted">
-          QR을 찍고 의견을
-          <br />
-          들려주세요
-        </p>
-      </div>
-    </section>
   );
 }
 

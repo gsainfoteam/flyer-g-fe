@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "react-router";
 import { DODGE_RULES, dodgeSecondsLeft } from "@/entities/game/model/flyer-dodge";
 import type { Direction } from "@/entities/game/model/flyer-dodge";
 import { readWebUrl } from "@/entities/widget/model/data-content";
+import { SurveyPrizeNote } from "@/entities/widget/ui/SurveyPrizeNote";
 import { SURVEY_URL } from "@/entities/widget/model/operation";
 import { useDodgePlayer } from "@/features/flyer-dodge/model/use-dodge-player";
 import type { MyDodgeResult } from "@/features/flyer-dodge/model/use-dodge-player";
@@ -227,6 +228,7 @@ function ResultView({ result, onClose }: { result: MyDodgeResult; onClose: () =>
         <div className="rounded-card bg-surface px-5 py-4">
           <p className="text-subhead font-bold text-ink">전단지 설문에 참여해 주세요</p>
           <p className="mt-1 text-label text-ink-muted">로비 TV 게시판을 써 본 느낌을 들려주세요. 1분이면 끝나요.</p>
+          <SurveyPrizeNote />
         </div>
       )}
       <div className="mt-auto flex flex-col gap-3">

@@ -56,6 +56,23 @@ export const SURVEY_PARAMS = {
 } as const;
 
 /**
+ * 설문 경품 안내. 이벤트 시간대 게임 화면의 설문 QR 칸과 폰 결과 화면에 쓴다. 경품이 아직
+ * 정해지지 않아 공지 문구("추첨을 통해 소정의 상품")를 그대로 쓴다. `until`(서울 날짜)이
+ * 지나면 저절로 내린다.
+ */
+export const SURVEY_PRIZE = {
+  headline: "추첨으로 소정의 상품",
+  note: "11/8까지 응모",
+  until: "2026-11-08",
+} as const;
+
+/** 오늘(서울 날짜 "YYYY-MM-DD") 보일 경품 안내. 마감이 지났으면 null */
+export const surveyPrizeOn = (today: string) =>
+  today <= SURVEY_PRIZE.until
+    ? { headline: SURVEY_PRIZE.headline, note: SURVEY_PRIZE.note }
+    : null;
+
+/**
  * 포스터가 많아도 평소 순환에 늘 넣는 위젯(위젯 비율 상한은 지킨다). 서버 설정이 없을 때만.
  * 설문 위젯은 이벤트 시간 밖에서 설문 QR을 보여 준다.
  */
