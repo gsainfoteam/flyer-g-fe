@@ -96,6 +96,31 @@ const CASES: { id: string; title: string; content: WidgetContent }[] = [
     },
   },
   {
+    id: "cafeteria-corners",
+    title: "학식 · 점심 일품/한식 코너",
+    content: {
+      type: "CAFETERIA",
+      place: "제2학생식당",
+      current: "LUNCH",
+      meals: [
+        { type: "BREAKFAST", hours: "08:00~09:00", menus: ["쌀밥 & 햄볶음밥", "얼갈이된장국", "계란후라이"] },
+        {
+          type: "LUNCH",
+          hours: "11:30~13:30",
+          menus: ["부대찌개 & 라면사리", "햄계란찜", "흑미밥", "얼갈이된장국", "닭갈비", "볶음우동", "도토리묵오이무침", "마카로니콘샐러드", "깍두기"],
+          corners: [
+            { name: "일품", menus: ["부대찌개 & 라면사리", "햄계란찜"] },
+            {
+              name: "한식",
+              menus: ["흑미밥", "얼갈이된장국", "닭갈비", "볶음우동", "도토리묵오이무침", "마카로니콘샐러드", "깍두기"],
+            },
+          ],
+        },
+        { type: "DINNER", hours: "17:00~19:00", menus: ["흑미밥", "감자수제비", "돈육장조림", "미트볼떡강정", "단무지무침", "요구르트", "배추김치"] },
+      ],
+    },
+  },
+  {
     id: "cafeteria-two",
     title: "학식 · 아침 없는 날",
     content: {

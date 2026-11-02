@@ -16,6 +16,8 @@ export interface CafeteriaMeal {
   /** "07:30~09:00" */
   hours: string | null;
   menus: string[];
+  /** 점심의 일품·한식처럼 코너가 나뉘면 코너별 메뉴. `menus`는 이를 이은 전체 목록이다. */
+  corners?: { name: string; menus: string[] }[];
 }
 
 export interface CafeteriaContent {
@@ -156,7 +158,24 @@ export function buildCafeteriaContent(
       ? raw.menus.flatMap((menu) => readText(menu) ?? [])
       : [];
     if (!type || menus.length === 0) return [];
-    return [{ type, hours: readText(raw.hours), menus }];
+    const corners = Array.isArray(raw.corners)
+      ? raw.corners.flatMap((corner) => {
+          if (!isRecord(corner)) return [];
+          const name = readText(corner.name);
+          const items = Array.isArray(corner.menus)
+            ? corner.menus.flatMap((menu) => readText(menu) ?? [])
+            : [];
+          return name && items.length > 0 ? [{ name, menus: items }] : [];
+        })
+      : [];
+    return [
+      {
+        type,
+        hours: readText(raw.hours),
+        menus,
+        ...(corners.length > 1 ? { corners } : {}),
+      },
+    ];
   });
   if (meals.length === 0) return null;
 

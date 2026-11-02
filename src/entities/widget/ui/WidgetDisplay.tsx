@@ -6,6 +6,7 @@ import type { WidgetContent, ZodiacFortune } from "@/entities/widget/model/conte
 import type {
   AirGrade,
   CafeteriaContent,
+  CafeteriaMeal,
   MealType,
   RestaurantContent,
   Sky,
@@ -214,6 +215,72 @@ const MEAL_LABEL: Record<MealType, string> = {
 /** 끼니마다 보여 줄 메뉴 수. 넘치면 "외 N가지"로 줄인다. 카드 높이에 맞춘 값이다. */
 const MAX_MENUS = 7;
 
+/** 코너가 나뉜 끼니에서 보여 줄 메뉴 수. 코너 이름 줄이 늘어난 만큼 줄인다. */
+const MAX_CORNER_MENUS = 6;
+
+function MenuList({
+  menus,
+  limit,
+  isCurrent,
+}: {
+  menus: readonly string[];
+  limit: number;
+  isCurrent: boolean;
+}) {
+  return (
+    <ul
+      className={cn(
+        "flex flex-col gap-2 text-[34px] leading-tight",
+        isCurrent ? "font-bold text-ink" : "text-ink-muted",
+      )}
+    >
+      {menus.slice(0, limit).map((menu) => (
+        <li key={menu} className="truncate">
+          {menu}
+        </li>
+      ))}
+      {menus.length > limit && (
+        <li className="text-ink-subtle">외 {menus.length - limit}가지</li>
+      )}
+    </ul>
+  );
+}
+
+/** 위 코너부터 남은 칸만큼 나눠 준다. 코너마다 적어도 한 가지는 보인다. */
+function cornerLimits(counts: readonly number[], total: number): number[] {
+  return counts.reduce<{ limits: number[]; left: number }>(
+    ({ limits, left }, count) => {
+      const limit = Math.max(1, Math.min(count, left));
+      return { limits: [...limits, limit], left: left - limit };
+    },
+    { limits: [], left: total },
+  ).limits;
+}
+
+/**
+ * 일품·한식처럼 코너가 나뉜 끼니. 코너 이름을 작게 얹고, 위 코너부터 칸에 들어가는
+ * 만큼 채운다(일품은 보통 두 가지라 다 보이고, 한식이 "외 N가지"로 줄어든다).
+ */
+function CornerMenus({
+  corners,
+  isCurrent,
+}: {
+  corners: NonNullable<CafeteriaMeal["corners"]>;
+  isCurrent: boolean;
+}) {
+  const limits = cornerLimits(corners.map((corner) => corner.menus.length), MAX_CORNER_MENUS);
+  return (
+    <div className="flex flex-col gap-3">
+      {corners.map((corner, index) => (
+        <div key={corner.name} className="flex flex-col gap-1">
+          <p className="text-[24px] font-bold text-ink-subtle">{corner.name}</p>
+          <MenuList menus={corner.menus} limit={limits[index]!} isCurrent={isCurrent} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CafeteriaBody({ content }: { content: CafeteriaContent }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-10">
@@ -254,21 +321,11 @@ function CafeteriaBody({ content }: { content: CafeteriaContent }) {
                   </p>
                 )}
               </div>
-              <ul
-                className={cn(
-                  "flex flex-col gap-2 text-[34px] leading-tight",
-                  isCurrent ? "font-bold text-ink" : "text-ink-muted",
-                )}
-              >
-                {meal.menus.slice(0, MAX_MENUS).map((menu) => (
-                  <li key={menu} className="truncate">
-                    {menu}
-                  </li>
-                ))}
-                {meal.menus.length > MAX_MENUS && (
-                  <li className="text-ink-subtle">외 {meal.menus.length - MAX_MENUS}가지</li>
-                )}
-              </ul>
+              {meal.corners ? (
+                <CornerMenus corners={meal.corners} isCurrent={isCurrent} />
+              ) : (
+                <MenuList menus={meal.menus} limit={MAX_MENUS} isCurrent={isCurrent} />
+              )}
             </li>
           );
         })}
