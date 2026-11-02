@@ -20,7 +20,6 @@ export const SIGNAGE_CONFIG_FIXTURE: SignageConfig = {
   maxUploadBytes: 10 * 1024 * 1024,
   titleMaxLength: 80,
   maxPublishMonths: 3,
-  minLeadTimeHours: 24,
   allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
   allowedDetailUrlHosts: ["ziggle.gistory.me"],
   maxVideoUploadBytes: 100 * 1024 * 1024,

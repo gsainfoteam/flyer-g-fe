@@ -19,7 +19,6 @@ const CONFIG = {
   maxUploadBytes: 10485760,
   titleMaxLength: 80,
   maxPublishMonths: 3,
-  minLeadTimeHours: 24,
   allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
   allowedDetailUrlHosts: ["ziggle.gistory.me"],
 };
@@ -59,12 +58,10 @@ describe("createHttpReferenceRepository", () => {
     expect(calls[0]).toMatchObject({ path: "/signage/config", signal });
   });
 
-  it("배포 ①~④의 설정을 읽고, 지원 중단된 24시간 규칙은 없어도 0으로 둔다", async () => {
-    const { minLeadTimeHours: _removed, ...withoutLeadTime } = CONFIG;
-    void _removed;
+  it("배포 ①~④의 설정을 읽는다", async () => {
     const { client } = fakeClient({
       "/signage/config": {
-        ...withoutLeadTime,
+        ...CONFIG,
         allowedMimeTypes: ["image/jpeg", "video/mp4"],
         maxVideoUploadBytes: 52428800,
         maxVideoDurationSeconds: 20,
@@ -77,7 +74,6 @@ describe("createHttpReferenceRepository", () => {
     await expect(
       createHttpReferenceRepository(client).getConfig(),
     ).resolves.toMatchObject({
-      minLeadTimeHours: 0,
       allowedMimeTypes: ["image/jpeg", "video/mp4"],
       maxVideoUploadBytes: 52428800,
       maxVideoDurationSeconds: 20,

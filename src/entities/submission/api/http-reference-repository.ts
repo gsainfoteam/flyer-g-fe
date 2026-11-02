@@ -35,8 +35,6 @@ import type { Category, SignageConfig } from "../model/policy";
  * 정한 기본값으로 둔다(`API-FOLLOWUP-2026-10-30` 백엔드 알림 1-3).
  */
 const CONFIG_DEFAULTS = {
-  /** 지원 중단. ②부터 항상 0이고 정리 배포에서 지워진다. */
-  minLeadTimeHours: 0,
   maxVideoUploadBytes: 100 * 1024 * 1024,
   maxVideoDurationSeconds: 30,
   eventBannerMaxDays: 3,
@@ -74,7 +72,6 @@ export function parseSignageConfig(payload: unknown): SignageConfig {
     maxUploadBytes: readNumber(body, "maxUploadBytes"),
     titleMaxLength: readNumber(body, "titleMaxLength"),
     maxPublishMonths: readNumber(body, "maxPublishMonths"),
-    minLeadTimeHours: readOptionalNumber(body, "minLeadTimeHours"),
     allowedMimeTypes: readStringArray(body, "allowedMimeTypes"),
     allowedDetailUrlHosts: readStringArray(body, "allowedDetailUrlHosts"),
     maxVideoUploadBytes: readOptionalNumber(body, "maxVideoUploadBytes"),

@@ -127,20 +127,13 @@ describe("validateSubmissionForm", () => {
       ).toBeDefined();
     });
 
-    it("시작은 신청 시각에서 24시간 이후여야 한다", () => {
-      // 지금은 6/8 12:00. 6/9 12:00은 통과하고 11:59는 막는다.
-      expect(
-        validateSubmissionForm(
-          validValues({ startAt: "2026-06-09T12:00" }),
-          OPTIONS,
-        ).startAt,
-      ).toBeUndefined();
-      expect(
-        validateSubmissionForm(
-          validValues({ startAt: "2026-06-09T11:59" }),
-          OPTIONS,
-        ).startAt,
-      ).toContain("24시간");
+    it("시작은 제한하지 않는다. 이미 지났어도 승인하면 바로 게시된다", () => {
+      // 지금은 6/8 12:00.
+      for (const startAt of ["2026-06-08T12:30", "2026-06-01T09:00"]) {
+        expect(
+          validateSubmissionForm(validValues({ startAt }), OPTIONS),
+        ).toEqual({});
+      }
     });
 
     it("기간은 서울 달력 기준 3개월까지다", () => {
@@ -178,8 +171,8 @@ describe("validateSubmissionForm", () => {
     });
 
     it("수정은 기간을 바꿨거나 다시 검토·승인을 받을 때만 기간 규칙을 다시 본다", () => {
-      // 시작까지 1시간. 새 신청이면 24시간 규칙에 걸린다.
-      const soon = { startAt: "2026-06-08T13:00", endAt: "2026-06-09T13:00" };
+      // 종료가 이미 지났다. 새 신청이면 기간 규칙에 걸린다.
+      const soon = { startAt: "2026-06-01T09:00", endAt: "2026-06-08T11:00" };
       const values = validValues(soon);
       const editing = (
         status: "PENDING_REVIEW" | "REJECTED" | "SCHEDULED",
@@ -188,23 +181,23 @@ describe("validateSubmissionForm", () => {
         editing: { status, schedule: soon },
       });
 
-      expect(validateSubmissionForm(values, OPTIONS).startAt).toBeDefined();
+      expect(validateSubmissionForm(values, OPTIONS).endAt).toBeDefined();
       expect(
         validateSubmissionForm(values, editing("PENDING_REVIEW")),
-      ).not.toHaveProperty("startAt");
+      ).not.toHaveProperty("endAt");
       // 재검토 요청과 재승인은 서버가 기간을 다시 본다.
       expect(
-        validateSubmissionForm(values, editing("REJECTED")).startAt,
+        validateSubmissionForm(values, editing("REJECTED")).endAt,
       ).toBeDefined();
       expect(
-        validateSubmissionForm(values, editing("SCHEDULED")).startAt,
+        validateSubmissionForm(values, editing("SCHEDULED")).endAt,
       ).toBeDefined();
       // 기간을 바꾸면 다시 본다.
       expect(
         validateSubmissionForm(
-          validValues({ ...soon, startAt: "2026-06-08T14:00" }),
+          validValues({ ...soon, startAt: "2026-06-02T09:00" }),
           editing("PENDING_REVIEW"),
-        ).startAt,
+        ).endAt,
       ).toBeDefined();
     });
 
@@ -262,11 +255,11 @@ describe("summarizeErrors", () => {
 });
 
 describe("createEmptyDraft / draftFromSubmission", () => {
-  it("기본 시작은 모레 09:00이라 24시간 전 신청 규칙을 늘 지킨다", () => {
-    // 밤 11시에 열어도 모레 아침이면 24시간이 넘는다.
+  it("기본 기간은 내일 09:00부터 일주일 뒤 18:00까지다", () => {
     for (const now of ["2026-06-08T00:00", "2026-06-08T23:59"]) {
       const draft = createEmptyDraft(fromSeoulInput(now));
-      expect(draft.startAt).toBe("2026-06-10T09:00");
+      expect(draft.startAt).toBe("2026-06-09T09:00");
+      expect(draft.endAt).toBe("2026-06-16T18:00");
       expect(
         validateSubmissionForm(
           validValues({ startAt: draft.startAt, endAt: draft.endAt }),
