@@ -73,4 +73,24 @@ describe("useDodgePlayer", () => {
     }
     expect(moves().length - before).toBeLessThanOrEqual(20);
   });
+
+  it("결과를 닫으면 TV가 같은 결과를 계속 보내도 다시 띄우지 않는다", () => {
+    const { channel, host } = fakeChannel();
+    const { result } = renderHook(() => useDodgePlayer("tv-1", { channel }));
+    const me = result.current.playerId;
+    const resultView = (): DodgeView => ({
+      ...lobbyView(),
+      phase: "RESULT",
+      phaseEndsAt: Date.now() + 10_000,
+      player: { id: me, name: "하윤", lives: 0, score: 0 },
+      result: { name: "하윤", score: 1_200, survivedMs: 20_000 },
+      rank: 2,
+    });
+    host({ kind: "state", view: resultView() });
+    expect(result.current.myResult).toMatchObject({ score: 1_200, rank: 2 });
+    act(() => result.current.dismissResult());
+    host({ kind: "state", view: resultView() });
+    host({ kind: "state", view: resultView() });
+    expect(result.current.myResult).toBeNull();
+  });
 });

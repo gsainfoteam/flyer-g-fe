@@ -8,6 +8,8 @@ import type {
   Seat,
 } from "@/entities/game/model/shuffleboard";
 import { createBroadcastGameChannel } from "@/shared/lib/game-channel";
+import { playerIdentityOf, signed } from "@/shared/lib/player-identity";
+import { useIdlePause } from "@/shared/lib/use-idle-pause";
 import type { GameChannel } from "@/shared/lib/game-channel";
 import { hostTimeOf, nextClockOffset } from "@/shared/lib/host-clock";
 import { createWsClientChannel } from "@/shared/lib/ws-game-channel";
@@ -21,27 +23,6 @@ import type { GameLinkStatus } from "@/shared/lib/ws-game-channel";
  */
 /** TV가 이 시간 넘게 말이 없으면 연결이 끊겼다고 본다. */
 const SILENCE_MS = 3_000;
-
-function randomId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-/** 같은 탭이면 새로고침해도 같은 참가자다. 경기 중 끊겨도 돌아와 이어 한다. */
-function playerIdOf(roomId: string): string {
-  const key = `flyerg:shuffleboard-player:${roomId}`;
-  try {
-    const saved = window.sessionStorage.getItem(key);
-    if (saved) return saved;
-    const created = randomId();
-    window.sessionStorage.setItem(key, created);
-    return created;
-  } catch {
-    return randomId();
-  }
-}
 
 /**
  * 끝난 경기의 내 결과. 방은 바로 다음 참가자를 받으므로 TV 상태에서 내가 빠져도
@@ -88,7 +69,8 @@ export interface UseShuffleboardPlayerOptions {
 export function useShuffleboardPlayer(roomId: string, options: UseShuffleboardPlayerOptions = {}) {
   const { channel: injected, socketBase = null } = options;
   const [link, setLink] = useState<GameLinkStatus | null>(null);
-  const [playerId] = useState(() => playerIdOf(roomId));
+  // 이 폰의 참가자 id와 비밀 값. 같은 탭이면 새로고침해도 같다.
+  const [{ id: playerId, secret }] = useState(() => playerIdentityOf(`flyerg:shuffleboard-player:${roomId}`));
   const [state, setState] = useState<MatchState | null>(null);
   const [rejection, setRejection] = useState<JoinRejection | null>(null);
   const [connected, setConnected] = useState(false);
@@ -106,7 +88,11 @@ export function useShuffleboardPlayer(roomId: string, options: UseShuffleboardPl
   const [clockOffsetMs, setClockOffsetMs] = useState(0);
   const offsetRef = useRef<number | null>(null);
 
+  // 자리에 앉아 있지 않고 쓰지 않으면 연결을 쉰다(같은 IP 연결 수 제한).
+  const { paused, resume } = useIdlePause(state ? seatOf(state, playerId) !== null : false);
+
   useEffect(() => {
+    if (paused) return;
     const channel =
       injected ??
       (socketBase
@@ -155,7 +141,7 @@ export function useShuffleboardPlayer(roomId: string, options: UseShuffleboardPl
         setRejection(message.reason);
       }
     });
-    channel.send({ kind: "hello", playerId });
+    channel.send(signed({ kind: "hello", playerId }, secret));
 
     const watch = window.setInterval(() => {
       if (Date.now() - heardAtRef.current > SILENCE_MS) setConnected(false);
@@ -164,27 +150,29 @@ export function useShuffleboardPlayer(roomId: string, options: UseShuffleboardPl
     return () => {
       window.clearInterval(watch);
       unsubscribe();
-      channel.send({ kind: "leave", playerId });
+      channel.send(signed({ kind: "leave", playerId }, secret));
       if (!injected) channel.close();
       channelRef.current = null;
     };
-  }, [roomId, injected, playerId, socketBase]);
+  }, [roomId, injected, playerId, secret, socketBase, paused]);
 
   const join = useCallback(
     (seat: Seat | null) => {
       setRejection(null);
-      channelRef.current?.send({ kind: "join", playerId, seat });
+      channelRef.current?.send(signed({ kind: "join", playerId, seat }, secret));
     },
-    [playerId],
+    [playerId, secret],
   );
 
   const shoot = useCallback(
     (angle: number, power: number) => {
       if (!state) return;
       setPendingShot({ matchId: state.matchId, turn: state.turn });
-      channelRef.current?.send({ kind: "shoot", playerId, turn: state.turn, angle, power });
+      channelRef.current?.send(
+        signed({ kind: "shoot", playerId, turn: state.turn, angle, power }, secret),
+      );
     },
-    [playerId, state],
+    [playerId, secret, state],
   );
 
   /** 결과 화면을 닫고 다음 경기에 참가할 수 있게 한다. */
@@ -207,7 +195,10 @@ export function useShuffleboardPlayer(roomId: string, options: UseShuffleboardPl
     state,
     mySeat,
     rejection,
-    connected,
+    connected: connected && !paused,
+    /** 쓰지 않아 연결을 쉬는 중. `resume`으로 다시 붙는다. */
+    paused,
+    resume,
     link,
     /** TV 시계 - 폰 시계(ms). 화면은 `useHostNow`로 TV 시계에 맞춰 센다. */
     clockOffsetMs,

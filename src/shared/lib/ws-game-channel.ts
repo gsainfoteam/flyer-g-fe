@@ -8,8 +8,9 @@ import type { GameChannel } from "./game-channel";
  * 모든 참가자에게 간다.
  *
  * - TV(호스트)는 연결 뒤 첫 메시지로 기기 토큰을 보낸다. URL에 싣지 않는다.
- * - 끊기면 점점 길게 기다리며 다시 붙는다. 토큰이 틀렸거나 다른 탭이 같은 기기로
- *   붙어 밀려났으면 다시 붙지 않는다. 두 TV가 서로를 계속 밀어내지 않게.
+ * - 끊기면 점점 길게 기다리며 다시 붙는다. 토큰이 틀렸으면 다시 붙지 않는다.
+ * - 다른 화면이 같은 기기로 붙어 밀려나면 바로 되찾지 않는다(두 화면이 서로를 계속
+ *   밀어내지 않게). 대신 참가자로 방을 지켜보다가 그 화면이 떠나면 다시 TV로 붙는다.
  */
 export type GameLinkStatus =
   /** 서버에 붙는 중 */
@@ -48,6 +49,12 @@ export interface WsHostOptions<Incoming> extends Options {
    * 탭을 닫아 "나간다"를 못 보낸 폰도 명단에서 빼려는 것이다.
    */
   onDisconnect?: (from: string) => Incoming | null;
+  /**
+   * 다른 화면에 밀려났다가 그 화면이 떠나 다시 TV로 붙었을 때. 그동안 다른 화면이 판을
+   * 진행했을 수 있는데 중계는 판 상태를 갖고 있지 않아 맞출 길이 없다. 그래서 하던 판을
+   * 이어 보내지 말고 새 판으로 시작하라고 알린다.
+   */
+  onReclaim?: () => void;
 }
 
 function socketUrl(base: string, room: string, role: "host" | "player"): string {
@@ -109,12 +116,43 @@ function reconnecting(
 
   return {
     current: () => socket,
+    /** 멈춘 연결(밀려남 등)을 처음부터 다시 붙인다. */
+    restart() {
+      if (closed) return;
+      window.clearTimeout(timer);
+      retryMs = RETRY_MS.first;
+      open();
+    },
     close() {
       closed = true;
       window.clearTimeout(timer);
       socket?.close(1000, "Closed by client");
     },
   };
+}
+
+/**
+ * 밀려난 TV가 방을 지켜본다. 참가자로 붙어 "TV 있음/없음" 알림만 듣고, 다른 화면이
+ * 떠나 TV가 없어지면 `onHostGone`을 한 번 부르고 닫는다. 메시지는 보내지 않는다.
+ */
+function watchUntilHostGone(base: string, room: string, onHostGone: () => void) {
+  let done = false;
+  const link = reconnecting(
+    socketUrl(base, room, "player"),
+    undefined,
+    (socket) => {
+      socket.addEventListener("message", (event) => {
+        const frame = parse(event.data);
+        if (!done && frame?.type === "host" && frame.online === false) {
+          done = true;
+          link.close();
+          onHostGone();
+        }
+      });
+    },
+    () => null,
+  );
+  return { close: link.close };
 }
 
 export function createWsHostChannel<Incoming, Outgoing>(
@@ -124,13 +162,30 @@ export function createWsHostChannel<Incoming, Outgoing>(
 ): GameChannel<Incoming, Outgoing> {
   const listeners = new Set<(message: Incoming, from?: string) => void>();
   let ready = false;
+  let watcher: { close(): void } | null = null;
+  let closed = false;
+  /** 밀려났다가 다시 붙는 중. 다시 준비되면 새 판으로 시작하게 알린다. */
+  let reclaiming = false;
+
+  const onStatus = (status: GameLinkStatus) => {
+    options.onStatus?.(status);
+    // 밀려났으면 방을 지켜보다가 다른 화면이 떠나면 다시 붙는다.
+    if (status === "replaced" && !closed) {
+      watcher?.close();
+      watcher = watchUntilHostGone(baseUrl, room, () => {
+        watcher = null;
+        reclaiming = true;
+        link.restart();
+      });
+    }
+  };
 
   const emit = (message: Incoming, from?: string) =>
     listeners.forEach((listener) => listener(message, from));
 
   const link = reconnecting(
     socketUrl(baseUrl, room, "host"),
-    options.onStatus,
+    onStatus,
     (socket) => {
       ready = false;
       socket.addEventListener("open", () => {
@@ -141,6 +196,11 @@ export function createWsHostChannel<Incoming, Outgoing>(
         if (!frame) return;
         if (frame.type === "ready") {
           ready = true;
+          // 하던 판(옛 상태)을 보내기 전에 새 판으로 바꾸게 한다.
+          if (reclaiming) {
+            reclaiming = false;
+            options.onReclaim?.();
+          }
           options.onStatus?.("open");
         } else if (frame.type === "message" && typeof frame.from === "string") {
           emit(frame.data as Incoming, frame.from);
@@ -171,7 +231,11 @@ export function createWsHostChannel<Incoming, Outgoing>(
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    close: link.close,
+    close() {
+      closed = true;
+      watcher?.close();
+      link.close();
+    },
   };
 }
 

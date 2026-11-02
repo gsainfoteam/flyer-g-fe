@@ -7,6 +7,8 @@ import type {
   Team,
 } from "@/entities/game/model/click-battle";
 import { createBroadcastGameChannel } from "@/shared/lib/game-channel";
+import { playerIdentityOf, signed } from "@/shared/lib/player-identity";
+import { useIdlePause } from "@/shared/lib/use-idle-pause";
 import type { GameChannel } from "@/shared/lib/game-channel";
 import { hostTimeOf, nextClockOffset } from "@/shared/lib/host-clock";
 import { createWsClientChannel } from "@/shared/lib/ws-game-channel";
@@ -21,29 +23,6 @@ import type { GameLinkStatus } from "@/shared/lib/ws-game-channel";
 const FLUSH_MS = 150;
 /** TV가 이 시간 넘게 말이 없으면 연결이 끊겼다고 본다. */
 const SILENCE_MS = 3_000;
-/**
- * `crypto.randomUUID`는 https나 localhost에서만 있다. 개발 중 폰이 LAN 주소(http)로
- * 들어오면 없으므로 대신 만든다. 식별용일 뿐 보안 값이 아니다.
- */
-function randomId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function playerIdOf(roomId: string): string {
-  const key = `flyerg:battle-player:${roomId}`;
-  try {
-    const saved = window.sessionStorage.getItem(key);
-    if (saved) return saved;
-    const created = randomId();
-    window.sessionStorage.setItem(key, created);
-    return created;
-  } catch {
-    return randomId();
-  }
-}
 
 export interface UseBattlePlayerOptions {
   /** 백엔드 게임 중계 주소. 없으면 같은 브라우저 탭끼리 잇는다(개발용). */
@@ -55,7 +34,8 @@ export interface UseBattlePlayerOptions {
 export function useBattlePlayer(roomId: string, options: UseBattlePlayerOptions = {}) {
   const { channel: injected, socketBase = null } = options;
   const [link, setLink] = useState<GameLinkStatus | null>(null);
-  const [playerId] = useState(() => playerIdOf(roomId));
+  // 이 폰의 참가자 id와 비밀 값. 같은 탭이면 새로고침해도 같다.
+  const [{ id: playerId, secret }] = useState(() => playerIdentityOf(`flyerg:battle-player:${roomId}`));
   const [state, setState] = useState<BattleState | null>(null);
   const [rejection, setRejection] = useState<JoinRejection | null>(null);
   const [connected, setConnected] = useState(false);
@@ -66,8 +46,12 @@ export function useBattlePlayer(roomId: string, options: UseBattlePlayerOptions 
   const channelRef = useRef<GameChannel<BattleHostMessage, BattleClientMessage> | null>(null);
   const pendingRef = useRef(0);
   const heardAtRef = useRef(0);
+  // 판에 들어와 있지 않고 쓰지 않으면 연결을 쉰다(같은 IP 연결 수 제한).
+  const participating = state?.players.some((player) => player.id === playerId) ?? false;
+  const { paused, resume } = useIdlePause(participating);
 
   useEffect(() => {
+    if (paused) return;
     const channel =
       injected ??
       (socketBase
@@ -99,11 +83,11 @@ export function useBattlePlayer(roomId: string, options: UseBattlePlayerOptions 
         setRejection(message.reason);
       }
     });
-    channel.send({ kind: "hello", playerId });
+    channel.send(signed({ kind: "hello", playerId }, secret));
 
     const flush = window.setInterval(() => {
       if (pendingRef.current > 0) {
-        channel.send({ kind: "taps", playerId, count: pendingRef.current });
+        channel.send(signed({ kind: "taps", playerId, count: pendingRef.current }, secret));
         pendingRef.current = 0;
       }
       if (Date.now() - heardAtRef.current > SILENCE_MS) setConnected(false);
@@ -112,18 +96,18 @@ export function useBattlePlayer(roomId: string, options: UseBattlePlayerOptions 
     return () => {
       window.clearInterval(flush);
       unsubscribe();
-      channel.send({ kind: "leave", playerId });
+      channel.send(signed({ kind: "leave", playerId }, secret));
       if (!injected) channel.close();
       channelRef.current = null;
     };
-  }, [roomId, injected, playerId, socketBase]);
+  }, [roomId, injected, playerId, secret, socketBase, paused]);
 
   const join = useCallback(
     (name: string, team: Team) => {
       setRejection(null);
-      channelRef.current?.send({ kind: "join", playerId, name, team });
+      channelRef.current?.send(signed({ kind: "join", playerId, name, team }, secret));
     },
-    [playerId],
+    [playerId, secret],
   );
 
   // 경기가 끝난 뒤(TV 시계 기준) 누른 수는 TV가 받지 않는다. 화면의 수도 멈춰 둘이 맞게 한다.
@@ -147,7 +131,10 @@ export function useBattlePlayer(roomId: string, options: UseBattlePlayerOptions 
     state,
     me,
     rejection,
-    connected,
+    connected: connected && !paused,
+    /** 쓰지 않아 연결을 쉬는 중. `resume`으로 다시 붙는다. */
+    paused,
+    resume,
     link,
     localTaps,
     clockOffsetMs,

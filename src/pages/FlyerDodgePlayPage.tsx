@@ -35,6 +35,20 @@ export function FlyerDodgePlayPage() {
     return <ResultView result={player.myResult} onClose={player.dismissResult} />;
   }
 
+  // 쓰지 않아 연결을 쉬는 중이다. 손대면 다시 붙는다.
+  if (player.paused) {
+    return (
+      <Notice
+        title="연결을 잠시 쉬고 있어요"
+        description="한동안 쓰지 않아 TV와의 연결을 쉬었어요. 다시 하려면 아래 버튼을 눌러 주세요."
+      >
+        <Button size="lg" className="mx-auto mt-2 h-12 px-8" onClick={player.resume}>
+          다시 연결
+        </Button>
+      </Notice>
+    );
+  }
+
   if (!player.connected || !view) {
     return (
       <Notice
@@ -48,7 +62,26 @@ export function FlyerDodgePlayPage() {
     );
   }
 
+  // 내 판이 끝나 결과를 닫았다. TV는 결과를 몇 초 더 보여 준 뒤 새 QR로 모집한다.
+  if (player.isMe && view.phase === "RESULT") {
+    return (
+      <Notice
+        title="수고했어요!"
+        description="다시 하려면 잠시 뒤 TV에 새로 뜨는 QR을 찍어 주세요."
+      />
+    );
+  }
+
   if (!player.isMe) {
+    // 지난 판의 QR이다(판마다 QR이 바뀐다). 시작해도 받지 않으니 미리 알린다.
+    if (view.phase === "LOBBY" && ticket !== view.ticket) {
+      return (
+        <Notice
+          title="TV의 새 QR을 찍어 주세요"
+          description="이 QR은 지난 판의 것이에요. 판마다 QR이 바뀌어요."
+        />
+      );
+    }
     if (view.phase !== "LOBBY") {
       return (
         <Notice
@@ -213,11 +246,20 @@ function ResultView({ result, onClose }: { result: MyDodgeResult; onClose: () =>
   );
 }
 
-function Notice({ title, description }: { title: string; description: string }) {
+function Notice({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children?: ReactNode;
+}) {
   return (
     <div role="status" className="flex flex-1 flex-col justify-center gap-4 text-center">
       <h1 className="text-title text-ink">{title}</h1>
       <p className="text-body text-ink-muted">{description}</p>
+      {children}
     </div>
   );
 }

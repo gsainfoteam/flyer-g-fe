@@ -44,7 +44,7 @@ describe("useDodgeHost", () => {
     expect(result.current.state.phase).toBe("RESULT");
     expect(result.current.ranking).toHaveLength(1);
     expect(result.current.rank).toBe(1);
-    expect(JSON.parse(localStorage.getItem("flyerg:dodge-ranking:tv-1")!)).toHaveLength(1);
+    expect(JSON.parse(localStorage.getItem("flyerg:dodge-ranking:v2:tv-1")!)).toHaveLength(1);
 
     const last = sent.filter((message) => message.kind === "state").at(-1)!;
     expect(last.kind === "state" && last.view).toMatchObject({ phase: "RESULT", rank: 1 });
@@ -83,5 +83,14 @@ describe("useDodgeHost", () => {
     expect(result.current.ranking).toHaveLength(1);
     act(() => vi.advanceTimersByTime(5_000));
     expect(result.current.state.phase).toBe("RESULT");
+  });
+
+  it("이전 점수 규칙의 순위는 섞지 않고 그대로 둔다", () => {
+    const old = JSON.stringify([{ name: "옛", score: 9_999, at: 1 }]);
+    localStorage.setItem("flyerg:dodge-ranking:tv-1", old);
+    const { channel } = fakeChannel();
+    const { result } = renderHook(() => useDodgeHost("tv-1", { channel, seed: 5 }));
+    expect(result.current.ranking).toEqual([]);
+    expect(localStorage.getItem("flyerg:dodge-ranking:tv-1")).toBe(old);
   });
 });

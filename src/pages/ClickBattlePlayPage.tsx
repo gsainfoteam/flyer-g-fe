@@ -37,6 +37,20 @@ export function ClickBattlePlayPage() {
   const state = player.state;
   const seconds = state ? secondsLeft(state, now) : null;
 
+  // 쓰지 않아 연결을 쉬는 중이다. 손대면 다시 붙는다.
+  if (player.paused) {
+    return (
+      <Notice
+        title="연결을 잠시 쉬고 있어요"
+        description="한동안 쓰지 않아 TV와의 연결을 쉬었어요. 다시 하려면 아래 버튼을 눌러 주세요."
+      >
+        <Button size="lg" className="mx-auto mt-2 h-12 px-8" onClick={player.resume}>
+          다시 연결
+        </Button>
+      </Notice>
+    );
+  }
+
   if (!player.connected || !state) {
     return (
       <Notice
