@@ -112,7 +112,7 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
       if (result.reply) channel.send(result.reply);
       // 새로 연결한 폰은 다음 방송을 기다리지 않고 바로 상태를 받는다.
       if (message.kind === "hello") {
-        channel.send({ kind: "state", state: stateRef.current });
+        channel.send({ kind: "state", state: stateRef.current, now: now() });
       }
     });
 
@@ -152,7 +152,7 @@ export function useBattleHost(roomId: string, options: UseBattleHostOptions = {}
       if (dirty || at - sentAt >= HEARTBEAT_MS) {
         dirty = false;
         sentAt = at;
-        channel.send({ kind: "state", state: stateRef.current });
+        channel.send({ kind: "state", state: stateRef.current, now: at });
       }
       setClock(at);
     }, FRAME_MS);
