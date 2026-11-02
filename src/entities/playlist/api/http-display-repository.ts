@@ -149,8 +149,25 @@ function readContentKind(
   return value as ContentKind;
 }
 
-/** 게시 중 신청 → 편성 항목. 포스터는 미리보기 변형(1280px 안)을 쓴다. */
-function toPreviewItem(submission: SignageSubmissionExpanded): PlaylistItem {
+/**
+ * 게시 중 신청 → 편성 항목. 포스터는 미리보기 변형(1280px 안)을 쓴다.
+ *
+ * 편성 v1은 포스터만 싣는다(이벤트 배너·제보는 편성 v2부터). 포스터 필드가 비어
+ * 있는 신청은 그릴 수 없어 뺀다.
+ */
+function toPreviewItem(
+  submission: SignageSubmissionExpanded,
+): PlaylistItem | null {
+  if (
+    submission.type !== "POSTER" ||
+    submission.categoryName === null ||
+    submission.posterUrl === null ||
+    submission.assetId === null ||
+    submission.startAt === null ||
+    submission.endAt === null
+  ) {
+    return null;
+  }
   return {
     submissionId: submission.id,
     revision: submission.version,
@@ -164,8 +181,8 @@ function toPreviewItem(submission: SignageSubmissionExpanded): PlaylistItem {
     // asset은 내용이 바뀌지 않는다. 포스터를 바꾸면 새 asset이 된다.
     checksum: submission.assetId,
     kind: "IMAGE",
-    width: submission.posterWidth,
-    height: submission.posterHeight,
+    width: submission.posterWidth ?? 0,
+    height: submission.posterHeight ?? 0,
     durationMs: null,
     subtitle: submission.subtitle,
     location: submission.location,
@@ -205,7 +222,9 @@ export function createHttpDisplayRepository({
           throw error;
         }),
     );
-    const items = page.items.map(toPreviewItem);
+    const items = page.items
+      .map(toPreviewItem)
+      .filter((item): item is PlaylistItem => item !== null);
     return {
       serverTime: page.serverTime,
       deviceName: null,

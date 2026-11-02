@@ -142,7 +142,10 @@ export function SubmissionDetailPage() {
                   <Meta label="주최">{view.organizerName ?? "없음"}</Meta>
                   <Meta label="분류">{view.categoryName}</Meta>
                   <Meta label="기간">
-                    {formatPeriod(view)} · {seoulDayCount(view.startAt, view.endAt)}일
+                    {formatPeriod(view)}
+                    {view.startAt &&
+                      view.endAt &&
+                      ` · ${seoulDayCount(view.startAt, view.endAt)}일`}
                   </Meta>
                   <Meta label="위치">{targetLabel ?? "확인하는 중"}</Meta>
                   <Meta label="QR 링크">

@@ -131,8 +131,14 @@ export function ReviewDetailPage() {
                   <div>
                     <dt className="text-caption text-ink-subtle">게시 기간</dt>
                     <dd className="mt-0.5 text-body text-ink">
-                      {formatSeoulDateTime(view.startAt)} ~{" "}
-                      {formatSeoulDateTime(view.endAt)}
+                      {view.startAt && view.endAt ? (
+                        <>
+                          {formatSeoulDateTime(view.startAt)} ~{" "}
+                          {formatSeoulDateTime(view.endAt)}
+                        </>
+                      ) : (
+                        "승인 후 정해짐"
+                      )}
                     </dd>
                   </div>
                   <div>

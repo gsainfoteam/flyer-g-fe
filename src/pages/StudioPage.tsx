@@ -221,8 +221,8 @@ export function StudioPage() {
       ? upload.state.dimensions
       : editingSubmission
         ? {
-            width: editingSubmission.posterWidth,
-            height: editingSubmission.posterHeight,
+            width: editingSubmission.posterWidth ?? 0,
+            height: editingSubmission.posterHeight ?? 0,
           }
         : null,
     now: serverNow,

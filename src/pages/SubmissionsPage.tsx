@@ -38,10 +38,17 @@ const PANEL_ID = "submission-list";
 function sentenceFor(submission: SubmissionView, withRequester: boolean) {
   const sentence = getStatusSentence({
     status: submission.status,
-    startsAtLabel: formatSeoulDateTime(submission.startAt),
-    endsAtLabel: formatSeoulShortDate(submission.endAt),
+    startsAtLabel: submission.startAt
+      ? formatSeoulDateTime(submission.startAt)
+      : undefined,
+    endsAtLabel: submission.endAt
+      ? formatSeoulShortDate(submission.endAt)
+      : undefined,
   });
-  return withRequester ? `${submission.requesterName} · ${sentence}` : sentence;
+  // 제보는 작성자를 가린다(작성자 본인 말고는 신청자가 비어 온다).
+  return withRequester
+    ? `${submission.requesterName ?? "작성자 가림"} · ${sentence}`
+    : sentence;
 }
 
 export function SubmissionsPage() {

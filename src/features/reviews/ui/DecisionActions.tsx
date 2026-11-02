@@ -148,8 +148,14 @@ export function DecisionActions({
         title="이 신청을 승인할까요?"
         description={
           <>
-            게시 기간 {formatSeoulDateTime(submission.startAt)} ~{" "}
-            {formatSeoulDateTime(submission.endAt)}
+            {submission.startAt && submission.endAt ? (
+              <>
+                게시 기간 {formatSeoulDateTime(submission.startAt)} ~{" "}
+                {formatSeoulDateTime(submission.endAt)}
+              </>
+            ) : (
+              "승인 즉시 게시 시작"
+            )}
             {targetLabel && <> · {targetLabel}</>} · 검토 버전 v
             {submission.version}
           </>

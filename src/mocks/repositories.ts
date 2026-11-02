@@ -606,9 +606,14 @@ export function createMockRepositories(
       posterThumbUrl: posterUrl,
       posterWidth: asset?.width ?? 0,
       posterHeight: asset?.height ?? 0,
+      posterKind: "IMAGE",
+      posterDurationMs: null,
+      posterVideoUrl: null,
       subtitle: optionalText(input.subtitle),
       location: optionalText(input.location),
       description: optionalText(input.description),
+      eventBanner: null,
+      story: null,
     };
     store.insert(created);
     store.addEvent(eventOf(created, "SUBMITTED", user, now));
@@ -756,12 +761,19 @@ export function createMockRepositories(
 
       const now = clock.now();
       const reapproval = needsReapproval(status);
-      if (changes.startAt || changes.endAt || reapproval) {
+      const nextStart = changes.startAt ?? current.startAt;
+      const nextEnd = changes.endAt ?? current.endAt;
+      // 기간이 없는 종류(제보)는 기간 규칙을 보지 않는다.
+      if (
+        (changes.startAt || changes.endAt || reapproval) &&
+        nextStart &&
+        nextEnd
+      ) {
         Object.assign(
           errors,
           checkSchedule(
-            parseIsoUtc(changes.startAt ?? current.startAt),
-            parseIsoUtc(changes.endAt ?? current.endAt),
+            parseIsoUtc(nextStart),
+            parseIsoUtc(nextEnd),
             now,
             config,
           ),
@@ -817,12 +829,14 @@ export function createMockRepositories(
       }
       const now = clock.now();
       throwIfInvalid({
-        ...checkSchedule(
-          parseIsoUtc(current.startAt),
-          parseIsoUtc(current.endAt),
-          now,
-          config,
-        ),
+        ...(current.startAt && current.endAt
+          ? checkSchedule(
+              parseIsoUtc(current.startAt),
+              parseIsoUtc(current.endAt),
+              now,
+              config,
+            )
+          : {}),
       });
       const submitted = store.replace(
         touch(current, now, {
@@ -875,6 +889,7 @@ export function createMockRepositories(
       actorName: "",
     };
     const events: SubmissionEventDto[] = [];
+    if (!dto.startAt || !dto.endAt) return events;
     if (dto.startAt < stoppedAt) {
       events.push({
         id: `event-publish-${dto.id}`,
@@ -961,6 +976,10 @@ export function createMockRepositories(
       }
 
       const now = clock.now();
+      // 제보는 승인한 순간부터 정해진 일수 동안 걸린다(배포 ④).
+      if (!current.startAt || !current.endAt) {
+        throw conflict("게시 기간이 정해지지 않은 신청입니다.");
+      }
       // 기간이 끝난 신청은 승인하지 않는다. 기간 문제로 반려한다.
       if (parseIsoUtc(current.endAt).getTime() <= now.getTime()) {
         throw conflict("게시 기간이 이미 끝났습니다.");
@@ -1054,8 +1073,10 @@ export function createMockRepositories(
         .map(toSignageSubmissionExpanded)
         .filter(
           (item) =>
+            // 편성 v1은 포스터만 싣는다(이벤트 배너·제보는 편성 v2부터).
+            item.type === "POSTER" &&
             resolveEffectiveStatus(item, now) === "PUBLISHED" &&
-            item.posterUrl.length > 0 &&
+            Boolean(item.posterUrl) &&
             (!device ||
               item.targetGroupIds.length === 0 ||
               item.targetGroupIds.some((id) => device.groupIds.includes(id))),
@@ -1075,16 +1096,17 @@ export function createMockRepositories(
           submissionId: item.id,
           revision: item.version,
           title: item.title,
-          category: item.categoryName,
-          assetUrl: item.posterUrl,
+          category: item.categoryName ?? "",
+          assetUrl: item.posterUrl ?? "",
           detailUrl: item.detailUrl,
-          startsAt: toIsoUtc(item.startAt),
-          endsAt: toIsoUtc(item.endAt),
+          // 위에서 게시 중인 포스터만 골랐다. 게시 중이면 기간이 있다.
+          startsAt: toIsoUtc(item.startAt!),
+          endsAt: toIsoUtc(item.endAt!),
           priority: item.priority,
           checksum: `mock-${item.id}`,
           kind: "IMAGE",
-          width: item.posterWidth,
-          height: item.posterHeight,
+          width: item.posterWidth ?? 0,
+          height: item.posterHeight ?? 0,
           durationMs: null,
           subtitle: item.subtitle,
           location: item.location,
@@ -1454,7 +1476,9 @@ export function createMockRepositories(
     rangeEnd: number,
   ): ImpressionStatsItem | null => {
     const status = effectiveOf(dto);
-    if (!ON_AIR_ONCE.includes(status)) return null;
+    if (!ON_AIR_ONCE.includes(status) || !dto.startAt || !dto.endAt) {
+      return null;
+    }
     const stoppedAt =
       status === "SUSPENDED"
         ? parseIsoUtc(suspendedAtOf(dto)).getTime()

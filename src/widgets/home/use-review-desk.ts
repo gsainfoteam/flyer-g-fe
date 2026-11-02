@@ -78,9 +78,14 @@ export function useReviewDesk() {
       },
       oldest: pending.data.items,
       board: items,
-      startsToday: items.filter((item) => today(item.startAt)),
+      startsToday: items.filter(
+        (item) => item.startAt !== null && today(item.startAt),
+      ),
       endsToday: items.filter(
-        (item) => item.status === "PUBLISHED" && today(item.endAt),
+        (item) =>
+          item.status === "PUBLISHED" &&
+          item.endAt !== null &&
+          today(item.endAt),
       ),
       decisions: decisions.data,
       decidedToday: decisions.data.filter((d) => today(d.occurredAt)).length,

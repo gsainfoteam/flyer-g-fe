@@ -28,6 +28,8 @@ export function isWithinPeriod(
   submission: SchedulableSubmission,
   serverNow: Date,
 ): boolean {
+  // 기간이 아직 없는 신청(승인 전 제보)은 기간 안이 아니다.
+  if (!submission.startAt || !submission.endAt) return false;
   const now = serverNow.getTime();
   return now >= submission.startAt.getTime() && now < submission.endAt.getTime();
 }
@@ -41,6 +43,8 @@ export function resolveEffectiveStatus(
   serverNow: Date,
 ): SubmissionStatus {
   if (!isApprovedStatus(submission.status)) return submission.status;
+  // 승인 건은 서버가 기간을 정해 둔다. 없다면 판정할 수 없으니 저장된 상태를 따른다.
+  if (!submission.startAt || !submission.endAt) return submission.status;
 
   const now = serverNow.getTime();
   if (now < submission.startAt.getTime()) return "SCHEDULED";
