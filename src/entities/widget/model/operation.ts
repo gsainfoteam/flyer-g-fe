@@ -91,7 +91,7 @@ export const TIME_SLOTS: readonly TimeSlotRule[] = [
     widget: "SHUFFLEBOARD",
     dates: { from: "2026-11-05", to: "2026-11-07" },
     time: { from: "20:00", to: "22:00" },
-    label: "셔플보드 이벤트",
+    label: "컬링 이벤트",
     survey: { url: SURVEY_URL, label: "이벤트 설문" },
   },
 ];

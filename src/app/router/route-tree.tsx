@@ -137,7 +137,7 @@ export const routeTree = [
       {
         path: paths.shuffleboard,
         element: shuffleboardPage,
-        handle: title("셔플보드"),
+        handle: title("컬링"),
       },
     ],
   },
@@ -156,7 +156,7 @@ export const routeTree = [
       {
         path: paths.playShuffleboard,
         element: shuffleboardPlayPage,
-        handle: title("셔플보드"),
+        handle: title("컬링"),
       },
     ],
   },

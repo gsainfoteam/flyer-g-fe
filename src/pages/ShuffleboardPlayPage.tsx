@@ -63,7 +63,7 @@ export function ShuffleboardPlayPage() {
         title={player.link === "waiting-host" ? "TV가 아직 게임을 열지 않았어요" : "TV에 연결하는 중이에요"}
         description={
           player.link === "waiting-host"
-            ? "TV에 셔플보드 화면이 켜지면 바로 이어져요. 이 화면을 열어 두세요."
+            ? "TV에 컬링 화면이 켜지면 바로 이어져요. 이 화면을 열어 두세요."
             : "인터넷 연결을 확인해 주세요. 계속 안 되면 TV 화면의 QR을 다시 찍어 보세요."
         }
       />
@@ -98,7 +98,7 @@ export function ShuffleboardPlayPage() {
       <div className="flex flex-1 flex-col gap-6 pt-4">
         <div>
           <h1 className="text-title text-ink">
-            셔플보드
+            1:1 컬링
           </h1>
           <p className="mt-2 text-body text-ink-muted">
             <span className={cn("font-bold", SEAT_TEXT[nextSeat])}>{nextSeat}팀</span>으로 참가해요.

@@ -28,11 +28,15 @@ function statusOf(state: MatchState, seconds: number | null): { title: string; d
     case "WAITING": {
       const seated = SEATS.filter((seat) => state.seats[seat]);
       const empty = SEATS.find((seat) => !state.seats[seat]);
+      // 지나가며 보는 화면이라 무슨 게임인지부터 알린다. 셔플보드보다 익숙한 컬링으로 부른다.
       return seated.length === 0
-        ? { title: "두 명이 모이면 시작해요", detail: "원하는 팀의 QR을 찍으면 바로 참가해요" }
+        ? {
+            title: "1:1 컬링 대결",
+            detail: "원반을 밀어 끝 칸에 가까울수록 높은 점수 · 팀 QR을 찍으면 바로 참가",
+          }
         : {
-            title: "한 명 더 오면 시작해요",
-            detail: `${seated[0]}팀이 기다리고 있어요. ${empty}팀 QR을 찍어 주세요`,
+            title: "상대를 기다리는 중",
+            detail: `한 명만 더 오면 시작해요 · ${empty}팀 QR을 찍어 주세요`,
           };
     }
     case "READY":

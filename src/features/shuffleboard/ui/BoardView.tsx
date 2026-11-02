@@ -140,7 +140,7 @@ export function BoardView({
   return (
     <svg
       role="img"
-      aria-label="셔플보드 보드"
+      aria-label="컬링 보드"
       viewBox={
         horizontal
           ? `${-pad} ${-pad} ${span + pad * 2} ${BOARD.width + pad * 2}`

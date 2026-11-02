@@ -49,7 +49,7 @@ export function ShuffleboardTvPage() {
           <header className="flex h-14 shrink-0 items-center gap-6">
             <Logo size="lg" />
             <span className="text-[30px] font-extrabold tracking-tight text-ink-muted">
-              셔플보드
+              컬링
             </span>
             <span className="ml-auto text-[26px] text-ink-subtle tabular-nums">
               {state.round}번째 경기

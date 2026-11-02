@@ -26,7 +26,7 @@ export function ShuffleboardPreview({
       survey={null}
       header={
         <StageHeader deviceLabel={deviceLabel} serverTime={serverTime} clockTicking>
-          <span className="text-[26px] font-extrabold text-ink-muted">셔플보드</span>
+          <span className="text-[26px] font-extrabold text-ink-muted">컬링</span>
         </StageHeader>
       }
     />
