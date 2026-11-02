@@ -23,7 +23,11 @@ import { SEAT_DOT, SEAT_TEXT } from "./seat-style";
  * 모집 중에는 QR이 주인공이다. 1920x1080 기준 px이고, 축소는 감싸는 쪽이 한다.
  */
 
-function statusOf(state: MatchState, seconds: number | null): { title: string; detail: string } {
+function statusOf(
+  state: MatchState,
+  seconds: number | null,
+  hasSurvey: boolean,
+): { title: string; detail: string } {
   switch (state.phase) {
     case "WAITING": {
       const seated = SEATS.filter((seat) => state.seats[seat]);
@@ -50,7 +54,10 @@ function statusOf(state: MatchState, seconds: number | null): { title: string; d
     case "FINISHED":
       return {
         title: state.winner === "DRAW" ? "무승부" : `${state.winner}팀 승리`,
-        detail: "오른쪽 위 QR로 전단지 설문에 참여해 주세요",
+        // 설문 QR은 행사 시간대에만 붙는다. 없을 때 QR을 안내하지 않는다.
+        detail: hasSurvey
+          ? "오른쪽 위 QR로 전단지 설문에 참여해 주세요"
+          : `${seconds ?? 0}초 뒤 다음 참가자를 모집해요`,
       };
   }
 }
@@ -80,7 +87,7 @@ export function ShuffleboardStage({
   header,
 }: ShuffleboardStageProps) {
   const seconds = secondsLeft(state, now);
-  const status = statusOf(state, seconds);
+  const status = statusOf(state, seconds, survey !== null);
   const inMatch = state.phase === "PLAYING" || state.phase === "FINISHED";
 
   return (
