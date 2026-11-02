@@ -39,6 +39,8 @@ import type {
   SignageSubmissionExpanded,
   SubmissionListParams,
   SubmissionSummary,
+  RecentStory,
+  StoryAuthor,
 } from "@/entities/submission/model/types";
 
 /**
@@ -133,6 +135,21 @@ export interface SubmissionRepository {
     input: SubmissionVersionInput,
     options?: MutationOptions,
   ): Promise<SignageSubmissionExpanded>;
+
+  /**
+   * 제보 작성자 열람. SUPER_ADMIN만 부를 수 있고, 부를 때마다 서버가 감사 로그를
+   * 남긴다. 제보가 아니면 409다. (배포 ④)
+   */
+  revealAuthor(id: string, signal?: AbortSignal): Promise<StoryAuthor>;
+
+  /**
+   * 지금 게시 중인 제보. 최근 승인 순이다. 로그인한 누구나 부를 수 있다.
+   * `limit`은 1~10. (배포 ④, `GET /signage/stories/recent`)
+   */
+  listRecentStories(
+    params: { limit?: number },
+    signal?: AbortSignal,
+  ): Promise<RecentStory[]>;
 }
 
 export interface ApproveInput {

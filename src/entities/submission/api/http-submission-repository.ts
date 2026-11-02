@@ -51,6 +51,8 @@ import type {
  * | update | `PATCH /signage/submissions/{id}` |
  * | submit | `POST /signage/submissions/{id}/submit` (Idempotency-Key) |
  * | cancel | `POST /signage/submissions/{id}/cancel` (Idempotency-Key) |
+ * | revealAuthor | `POST /signage/submissions/{id}/reveal-author` (SUPER_ADMIN) |
+ * | listRecentStories | `GET /signage/stories/recent?limit=` |
  *
  * 응답은 화면이 쓰는 필드를 검증해 도메인 모델로 옮긴다. 승인 대기 목록(8.5)도 같은
  * 신청 객체를 주므로 파싱 함수를 함께 쓴다.
@@ -462,6 +464,46 @@ export function createHttpSubmissionRepository(
           signal: options?.signal,
         }),
       );
+    },
+
+    async revealAuthor(id, signal) {
+      const body = readObject(
+        await client.request({
+          method: "POST",
+          path: `${submissionPath(id)}/reveal-author`,
+          signal,
+        }),
+        "작성자",
+      );
+      return {
+        requesterId: readString(body, "requesterId", "작성자.requesterId"),
+        requesterName: readString(body, "requesterName", "작성자.requesterName"),
+        requesterEmail: readString(
+          body,
+          "requesterEmail",
+          "작성자.requesterEmail",
+        ),
+      };
+    },
+
+    async listRecentStories({ limit }, signal) {
+      const body = readObject(
+        await client.request({
+          path: "/signage/stories/recent",
+          query: { limit },
+          signal,
+        }),
+      );
+      return readArray(body.items, "items").map((item, index) => {
+        const path = `items[${index}]`;
+        const story = readObject(item, path);
+        return {
+          storyNumber: readNumber(story, "storyNumber", `${path}.storyNumber`),
+          tag: readEnum(story, "tag", STORY_TAGS, `${path}.tag`),
+          body: readString(story, "body", `${path}.body`),
+          startAt: readIsoDate(story, "startAt", `${path}.startAt`),
+        };
+      });
     },
   };
 }

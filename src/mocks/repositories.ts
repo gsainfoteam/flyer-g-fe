@@ -879,6 +879,50 @@ export function createMockRepositories(
       store.rememberIdempotency("cancel", mutationOptions?.idempotencyKey, id);
       return toSignageSubmissionExpanded(canceled);
     },
+
+    async revealAuthor(id, signal) {
+      await settle(signal);
+      requireSuperAdmin();
+      const found = store.find(id);
+      if (found.type !== "STORY") {
+        throw conflict("소식 제보만 작성자를 열람할 수 있습니다.");
+      }
+      const author = Object.values(MOCK_USERS).find(
+        (user) => user.id === found.requesterId,
+      );
+      return {
+        requesterId: found.requesterId ?? "",
+        requesterName: found.requesterName ?? author?.displayName ?? "",
+        requesterEmail: `${found.requesterId ?? "unknown"}@gist.ac.kr`,
+      };
+    },
+
+    async listRecentStories({ limit = 5 }, signal) {
+      await settle(signal);
+      actor();
+      if (!Number.isInteger(limit) || limit < 1 || limit > 10) {
+        throw invalid("limit은 1~10이어야 합니다.", {
+          limit: "limit은 1~10이어야 합니다.",
+        });
+      }
+      return store
+        .all()
+        .filter(
+          (item) =>
+            item.type === "STORY" &&
+            item.story?.storyNumber != null &&
+            item.startAt !== null &&
+            effectiveOf(item) === "PUBLISHED",
+        )
+        .sort((a, b) => b.startAt!.localeCompare(a.startAt!))
+        .slice(0, limit)
+        .map((item) => ({
+          storyNumber: item.story!.storyNumber!,
+          tag: item.story!.tag,
+          body: item.story!.body,
+          startAt: parseIsoUtc(item.startAt!),
+        }));
+    },
   };
 
   /**

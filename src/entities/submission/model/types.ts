@@ -71,6 +71,25 @@ export const STORY_TAGS = [
 ] as const;
 export type StoryTag = (typeof STORY_TAGS)[number];
 
+/**
+ * 제보 작성자. 운영자만 열람한다(`reveal-author`). 열람할 때마다 서버가 감사
+ * 로그를 남긴다. TV·편성·다른 화면 어디에도 싣지 않는다.
+ */
+export interface StoryAuthor {
+  requesterId: string;
+  requesterName: string;
+  requesterEmail: string;
+}
+
+/** 지금 게시 중인 제보 한 건. 공개 목록이라 작성자와 신청 id는 없다. */
+export interface RecentStory {
+  storyNumber: number;
+  tag: StoryTag;
+  body: string;
+  /** 승인되어 걸린 시각 */
+  startAt: Date;
+}
+
 /** 소식 제보 내용. 번호는 승인 때 정해진다(승인 전·반려는 null). */
 export interface Story {
   tag: StoryTag;
