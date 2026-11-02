@@ -102,6 +102,18 @@ const shuffleboardPlayPage = lazyPage(() =>
     default: m.ShuffleboardPlayPage,
   })),
 );
+const flyerDodgePage = lazyPage(
+  () =>
+    import("@/pages/FlyerDodgeTvPage").then((m) => ({
+      default: m.FlyerDodgeTvPage,
+    })),
+  null,
+);
+const flyerDodgePlayPage = lazyPage(() =>
+  import("@/pages/FlyerDodgePlayPage").then((m) => ({
+    default: m.FlyerDodgePlayPage,
+  })),
+);
 const quizPlayPage = lazyPage(() =>
   import("@/pages/QuizPlayPage").then((m) => ({ default: m.QuizPlayPage })),
 );
@@ -139,6 +151,11 @@ export const routeTree = [
         element: shuffleboardPage,
         handle: title("컬링"),
       },
+      {
+        path: paths.flyerDodge,
+        element: flyerDodgePage,
+        handle: title("전단지 피하기"),
+      },
     ],
   },
 
@@ -157,6 +174,11 @@ export const routeTree = [
         path: paths.playShuffleboard,
         element: shuffleboardPlayPage,
         handle: title("컬링"),
+      },
+      {
+        path: paths.playFlyerDodge,
+        element: flyerDodgePlayPage,
+        handle: title("전단지 피하기"),
       },
     ],
   },
