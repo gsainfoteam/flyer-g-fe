@@ -78,6 +78,8 @@ interface DecisionActionsProps {
   }) => void;
   /** 버튼 옆에 단축키를 보인다. */
   shortcuts?: boolean;
+  /** 처음부터 반려 대화상자를 연다. 제보 목록의 "반려"가 이 건을 열며 쓴다. */
+  initialReject?: boolean;
   ref?: Ref<DecisionActionsHandle>;
 }
 
@@ -90,9 +92,12 @@ export function DecisionActions({
   onApprove,
   onReject,
   shortcuts = false,
+  initialReject = false,
   ref,
 }: DecisionActionsProps) {
-  const [open, setOpen] = useState<OpenDialog>(null);
+  const [open, setOpen] = useState<OpenDialog>(() =>
+    initialReject && canReviewerDecide(status) ? "reject" : null,
+  );
   const [reasonCode, setReasonCode] = useState<RejectionReasonCode | "">("");
   const [comment, setComment] = useState("");
   const [suspendReason, setSuspendReason] = useState("");

@@ -368,3 +368,65 @@ describe("고른 건", () => {
     expect(video).toHaveAttribute("controls");
   });
 });
+
+describe("소식 제보 심사", () => {
+  async function withStory(body = "세탁실 건조기가 고쳐졌어요. 고맙습니다!") {
+    const repositories = reviewRepositories();
+    const story = await repositories.submissions.createContent({
+      type: "STORY",
+      story: { tag: "PRAISE", body },
+    });
+    return { repositories, story };
+  }
+
+  it("제보 탭은 목록에서 본문을 보고 바로 승인한다", async () => {
+    const user = setupUser();
+    const { repositories, story } = await withStory();
+    renderRoute("/review?type=STORY", { role: "REVIEWER", repositories });
+
+    const queue = within(await screen.findByRole("region", { name: "대기열" }));
+    expect(
+      await queue.findByText("세탁실 건조기가 고쳐졌어요. 고맙습니다!"),
+    ).toBeInTheDocument();
+    expect(queue.getByText("제보 · 작성자 가림")).toBeInTheDocument();
+
+    await user.click(queue.getByRole("button", { name: "승인" }));
+    await passUndoWindow();
+
+    await waitFor(async () =>
+      expect(await statusOf(repositories, story.id)).toBe("PUBLISHED"),
+    );
+  });
+
+  it("작성자는 운영자만 열람하고, 하우스 관리자에게는 버튼이 없다", async () => {
+    const user = setupUser();
+    const { repositories, story } = await withStory();
+    const reveal = vi.spyOn(repositories.submissions, "revealAuthor");
+
+    const { unmount } = renderRoute(`/review/${story.id}`, {
+      role: "REVIEWER",
+      repositories,
+    });
+    expect(await screen.findByText(/작성자 가림/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "보기" })).toBeNull();
+    unmount();
+
+    renderRoute(`/review/${story.id}`, { role: "SUPER_ADMIN", repositories });
+    await user.click(await screen.findByRole("button", { name: "보기" }));
+    expect(
+      await screen.findByText("정하윤 (user-submitter@gist.ac.kr)"),
+    ).toBeInTheDocument();
+    expect(reveal).toHaveBeenCalledTimes(1);
+  });
+
+  it("본문에 연락처가 있으면 짚어 준다", async () => {
+    const { repositories, story } = await withStory(
+      "우산 주우신 분 010-1234-5678로 연락 주세요.",
+    );
+    renderRoute(`/review/${story.id}`, { role: "REVIEWER", repositories });
+
+    expect(
+      await screen.findByText("전화번호나 메일 주소가 들어 있어요"),
+    ).toBeInTheDocument();
+  });
+});

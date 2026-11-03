@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode, Ref } from "react";
 import { ExternalLink } from "lucide-react";
 import { PosterArtwork } from "@/entities/poster/ui/PosterArtwork";
@@ -7,6 +7,7 @@ import {
   EVENT_BANNER_OCCASION_LABELS,
   KIND_INFO,
   STORY_TAG_LABELS,
+  formatPeriod,
   getStatusSentence,
   toSubmissionView,
 } from "@/entities/submission";
@@ -17,6 +18,9 @@ import type {
   SubmissionView,
 } from "@/entities/submission/model/types";
 import { useTargetGroupLabel } from "@/entities/device/api/queries";
+import { SubmissionScene } from "@/entities/scene";
+import { useSessionUser } from "@/features/auth/model/auth-context";
+import { hasAnyRole } from "@/features/auth/model/types";
 import { DisplayPreview } from "@/features/display-preview";
 import { DecisionActions } from "@/features/reviews/ui/DecisionActions";
 import type {
@@ -27,6 +31,7 @@ import { ReviewWarnings } from "@/features/reviews/ui/ReviewWarnings";
 import type { RejectionReasonCode } from "@/entities/review";
 import {
   useReviewHistory,
+  useStoryAuthor,
   useSubmissionDetail,
   useSubmissionSummary,
   useSubmissionViews,
@@ -57,6 +62,8 @@ interface ReviewPanelProps {
   ) => void;
   /** 중단처럼 바로 보내는 결정이 끝난 뒤 */
   onDecided?: (kind: ReviewDecisionKind) => void;
+  /** 열자마자 반려 대화상자를 띄운다. 제보 목록의 "반려"로 들어올 때 */
+  openReject?: boolean;
   actionsRef?: Ref<DecisionActionsHandle>;
 }
 
@@ -67,7 +74,10 @@ export function ReviewPanel({
   onReject,
   onDecided,
   actionsRef,
+  openReject = false,
 }: ReviewPanelProps) {
+  // 제보 작성자는 운영자만 열람한다(감사 로그). 하우스 관리자에게는 버튼도 없다.
+  const canRevealAuthor = hasAnyRole(useSessionUser(), ["SUPER_ADMIN"]);
   const detail = useSubmissionDetail(submissionId);
   const history = useReviewHistory(submissionId);
   const summary = useSubmissionSummary("all");
@@ -115,9 +125,14 @@ export function ReviewPanel({
                 </p>
                 <h2 className="mt-0.5 text-heading text-ink">{view.title}</h2>
                 <p className="mt-1.5 text-label text-ink-muted">
-                  {view.requesterName ?? "작성자 가림"} 신청 ·{" "}
-                  {getStatusSentence({ status: view.status })} · 검토 버전 v
-                  {detail.data.version}
+                  {view.requesterName ?? (
+                    <AuthorLabel
+                      submissionId={view.id}
+                      canReveal={canRevealAuthor && view.type === "STORY"}
+                    />
+                  )}{" "}
+                  신청 · {getStatusSentence({ status: view.status })} · 검토
+                  버전 v{detail.data.version}
                 </p>
               </div>
               <StatusBadge status={view.status} className="mt-1.5" />
@@ -130,6 +145,7 @@ export function ReviewPanel({
                 submission={detail.data}
                 status={view.status}
                 shortcuts
+                initialReject={openReject}
                 onApprove={onApprove ? () => onApprove(detail.data) : undefined}
                 onReject={
                   onReject
@@ -145,11 +161,15 @@ export function ReviewPanel({
 
           <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
             <Panel title="TV 미리보기">
-              <DisplayPreview
-                poster={fromSubmissionView(view)}
-                companions={companions}
-                serverTime={serverNow}
-              />
+              {view.type === "POSTER" ? (
+                <DisplayPreview
+                  poster={fromSubmissionView(view)}
+                  companions={companions}
+                  serverTime={serverNow}
+                />
+              ) : (
+                <SubmissionScene view={view} />
+              )}
             </Panel>
             <div className="grid min-w-0 items-start gap-5 md:grid-cols-2 xl:grid-cols-1">
               <OriginalPanel view={view} />
@@ -165,7 +185,7 @@ export function ReviewPanel({
                           {formatSeoulDateTime(view.endAt)}
                         </>
                       ) : (
-                        "승인 후 정해짐"
+                        formatPeriod(view)
                       )}
                     </dd>
                   </div>
@@ -353,6 +373,50 @@ function StoryFields({ story }: { story: Story }) {
           {story.body}
         </dd>
       </div>
+    </>
+  );
+}
+
+/** 가린 작성자. 운영자는 "보기"를 눌러 이름과 메일을 본다. 누를 때마다 기록이 남는다. */
+function AuthorLabel({
+  submissionId,
+  canReveal,
+}: {
+  submissionId: string;
+  canReveal: boolean;
+}) {
+  const [requested, setRequested] = useState(false);
+  const author = useStoryAuthor(submissionId, requested);
+
+  if (author.data) {
+    return (
+      <span className="font-semibold text-ink">
+        {author.data.requesterName} ({author.data.requesterEmail})
+      </span>
+    );
+  }
+  return (
+    <>
+      작성자 가림
+      {canReveal && (
+        <>
+          {" · "}
+          <Button
+            variant="link"
+            size="xs"
+            className="h-auto p-0 align-baseline"
+            disabled={author.isFetching}
+            onClick={() =>
+              requested ? void author.refetch() : setRequested(true)
+            }
+          >
+            {author.isError ? "다시 보기" : "보기"}
+          </Button>
+          {author.isError && (
+            <span className="text-danger-strong"> · 불러오지 못함</span>
+          )}
+        </>
+      )}
     </>
   );
 }

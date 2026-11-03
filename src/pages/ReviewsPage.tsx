@@ -1,6 +1,12 @@
 import { useEffect, useRef } from "react";
 import { ArrowLeft } from "lucide-react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router";
 import { to } from "@/shared/config/routes";
 import { getRejectionReasonLabel } from "@/entities/review";
 import { KIND_INFO, SUBMISSION_KINDS } from "@/entities/submission/model/kind";
@@ -59,6 +65,13 @@ export function ReviewsPage() {
   const pending = useInfinitePendingReviews(kind ? [kind] : []);
   const decisions = useDeferredDecisions();
   const actionsRef = useRef<DecisionActionsHandle>(null);
+  /**
+   * 제보 목록의 "반려"로 연 건. 그 건의 칸이 열리면 반려 대화상자를 바로 띄운다.
+   * 이동 상태(state)에 실어, 다른 건으로 옮기면 저절로 사라진다.
+   */
+  const location = useLocation();
+  const rejectingId =
+    (location.state as { reject?: string } | null)?.reject ?? null;
 
   const serverTime = pending.data?.serverTime ?? null;
   const queue = (pending.data?.items ?? []).filter(
@@ -131,6 +144,30 @@ export function ReviewsPage() {
     void navigate(`${to.review()}${query ? `?${query}` : ""}`, {
       replace: true,
     });
+  };
+
+  const approve = (submission: {
+    id: string;
+    version: number;
+    title: string;
+  }) => {
+    decisions.schedule(
+      {
+        kind: "approve",
+        submissionId: submission.id,
+        revision: submission.version,
+      },
+      `승인 · ${submission.title}`,
+    );
+    if (submission.id === selectedId) select(nextAfter(submission.id));
+  };
+
+  const askReject = (id: string) => {
+    if (id === selectedId) {
+      actionsRef.current?.openReject();
+      return;
+    }
+    void navigate(hrefOf(id), { replace: true, state: { reject: id } });
   };
 
   const total = summary.data?.pendingReview ?? null;
@@ -238,6 +275,15 @@ export function ReviewsPage() {
                       selected={item.id === selectedId}
                       // 주소에 id가 없으면 넓은 화면만 맨 앞 건을 오른쪽에 띄운다.
                       implicit={!submissionId}
+                      // 제보는 본문이 짧아 목록에서 바로 처리한다. 일괄 처리는 두지 않는다.
+                      inline={
+                        kind === "STORY" && item.type === "STORY"
+                          ? {
+                              onApprove: () => approve(item),
+                              onReject: () => askReject(item.id),
+                            }
+                          : undefined
+                      }
                     />
                   ))}
                 </ul>
@@ -272,6 +318,7 @@ export function ReviewsPage() {
                 <ReviewPanel
                   submissionId={selectedId}
                   actionsRef={actionsRef}
+                  openReject={rejectingId === selectedId}
                   header={
                     <Button
                       variant="ghost"
@@ -285,17 +332,7 @@ export function ReviewsPage() {
                       </Link>
                     </Button>
                   }
-                  onApprove={(submission) => {
-                    decisions.schedule(
-                      {
-                        kind: "approve",
-                        submissionId: submission.id,
-                        revision: submission.version,
-                      },
-                      `승인 · ${submission.title}`,
-                    );
-                    select(nextAfter(submission.id));
-                  }}
+                  onApprove={approve}
                   onReject={(submission, values) => {
                     decisions.schedule(
                       {
@@ -330,12 +367,15 @@ function QueueRow({
   href,
   selected,
   implicit,
+  inline,
 }: {
   item: SubmissionView;
   now: Date;
   href: string;
   selected: boolean;
   implicit: boolean;
+  /** 제보 탭에서 행마다 바로 승인·반려 */
+  inline?: { onApprove: () => void; onReject: () => void };
 }) {
   const since = item.submittedAt ?? item.createdAt;
   const old = now.getTime() - since.getTime() > LONG_WAIT_MS;
@@ -355,9 +395,12 @@ function QueueRow({
           <p className="truncate text-caption text-ink-subtle">
             {KIND_INFO[item.type].short} · {item.requesterName ?? "작성자 가림"}
           </p>
-          <p className="truncate text-label font-semibold text-ink">
-            {item.title}
-          </p>
+          {/* 제보 제목은 본문 앞부분이라, 본문을 펼쳐 보일 때는 뺀다. */}
+          {!inline && (
+            <p className="truncate text-label font-semibold text-ink">
+              {item.title}
+            </p>
+          )}
         </div>
         <span
           className={cn(
@@ -368,6 +411,21 @@ function QueueRow({
           {formatElapsed(since, now)}
         </span>
       </Link>
+      {inline && item.story && (
+        <div className="px-4 pb-3 pl-15">
+          <p className="text-label whitespace-pre-line text-ink">
+            {item.story.body}
+          </p>
+          <div className="mt-2 flex gap-2">
+            <Button size="xs" onClick={inline.onApprove}>
+              승인
+            </Button>
+            <Button size="xs" variant="secondary" onClick={inline.onReject}>
+              반려
+            </Button>
+          </div>
+        </div>
+      )}
     </li>
   );
 }

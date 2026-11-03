@@ -1178,8 +1178,17 @@ export function createMockRepositories(
     async listHistory(submissionId, signal) {
       await settle(signal);
       const submission = findVisible(submissionId);
+      // 제보는 작성자가 한 일의 행위자를 작성자 본인 말고는 가린다(서버 감사 로그와 같다).
+      const hideAuthor =
+        submission.type === "STORY" &&
+        present(submission).requesterId === null;
       return [...store.eventsOf(submissionId), ...postingEventsOf(submission)]
         .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt))
+        .map((event) =>
+          hideAuthor && event.actorId === submission.requesterId
+            ? { ...event, actorId: "", actorName: "작성자 가림" }
+            : event,
+        )
         .map((event): SubmissionEvent => toSubmissionEvent(event));
     },
 
