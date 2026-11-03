@@ -31,6 +31,7 @@ import {
   eventBannerTitle,
   storyTitle,
 } from "@/entities/submission/model/content-rules";
+import type { EventBannerValues } from "@/entities/submission/model/content-rules";
 import type {
   Page,
   SignageSubmissionExpanded,
@@ -712,6 +713,41 @@ export function createMockRepositories(
           seoulDayDiff(parseIsoUtc(item.createdAt), now) === 0,
       ).length;
 
+  /** 이벤트 배너 입력 → 저장 모양. 사진·배너 이미지는 방금 올린 mock asset의 주소를 쓴다. */
+  const bannerOf = (
+    banner: EventBannerValues,
+  ): NonNullable<SignageSubmissionExpandedDto["eventBanner"]> => {
+    const isTemplate = banner.mode === "TEMPLATE";
+    const mediaId = isTemplate ? banner.photoAssetId : banner.assetId;
+    const media = mediaId ? getMockAsset(mediaId) : null;
+    return {
+      mode: banner.mode,
+      occasion: banner.occasion,
+      recipient: banner.recipient.trim(),
+      message: optionalText(banner.message),
+      sender: optionalText(banner.sender),
+      photoAssetId: isTemplate ? banner.photoAssetId : null,
+      photoUrl: isTemplate && media ? media.url : null,
+      photoConsent: isTemplate && mediaId !== null && banner.photoConsent,
+      assetId: isTemplate ? null : banner.assetId,
+      assetUrl: !isTemplate && media ? media.url : null,
+    };
+  };
+
+  /** 저장된 배너를 입력 모양으로. 고칠 때 바꾸지 않은 사진 주소를 지키는 데 쓴다. */
+  const bannerValuesOf = (
+    banner: NonNullable<SignageSubmissionExpandedDto["eventBanner"]>,
+  ): EventBannerValues => ({
+    mode: banner.mode,
+    occasion: banner.occasion,
+    recipient: banner.recipient,
+    message: banner.message,
+    sender: banner.sender,
+    photoAssetId: banner.photoAssetId,
+    photoConsent: banner.photoConsent,
+    assetId: banner.assetId,
+  });
+
   const runCreateContent = async (
     input: CreateEventBannerInput | CreateStoryInput,
     mutationOptions?: MutationOptions,
@@ -750,7 +786,6 @@ export function createMockRepositories(
         ? banner.photoAssetId
         : banner.assetId
       : null;
-    const media = mediaId ? getMockAsset(mediaId) : null;
     const created: SignageSubmissionExpandedDto = {
       id,
       ziggleNoticeId: null,
@@ -788,20 +823,7 @@ export function createMockRepositories(
       subtitle: null,
       location: null,
       description: null,
-      eventBanner: banner && {
-        mode: banner.mode,
-        occasion: banner.occasion,
-        recipient: banner.recipient.trim(),
-        message: optionalText(banner.message),
-        sender: optionalText(banner.sender),
-        photoAssetId: banner.mode === "TEMPLATE" ? banner.photoAssetId : null,
-        photoUrl:
-          banner.mode === "TEMPLATE" && media ? media.url : null,
-        photoConsent:
-          banner.mode === "TEMPLATE" && mediaId !== null && banner.photoConsent,
-        assetId: banner.mode === "IMAGE" ? banner.assetId : null,
-        assetUrl: banner.mode === "IMAGE" && media ? media.url : null,
-      },
+      eventBanner: banner && bannerOf(banner),
       story:
         input.type === "STORY"
           ? {
@@ -940,6 +962,28 @@ export function createMockRepositories(
         setIfChanged("detailUrl", detail?.url ?? null);
         setIfChanged("ziggleNoticeId", detail?.noticeId ?? null);
       }
+      const isBanner = current.type === "EVENT_BANNER" && current.eventBanner;
+      if (isBanner && input.eventBanner) {
+        const next = bannerOf(input.eventBanner);
+        // 바꾸지 않은 사진·이미지는 새로 올린 것이 아니라 mock 주소가 없다. 있던 것을 둔다.
+        if (next.photoAssetId === current.eventBanner!.photoAssetId) {
+          next.photoUrl = current.eventBanner!.photoUrl;
+        }
+        if (next.assetId === current.eventBanner!.assetId) {
+          next.assetUrl = current.eventBanner!.assetUrl;
+        }
+        if (JSON.stringify(next) !== JSON.stringify(current.eventBanner)) {
+          changes.eventBanner = next;
+          setIfChanged(
+            "title",
+            eventBannerTitle(next.occasion, next.recipient),
+          );
+          setIfChanged(
+            "assetId",
+            next.mode === "TEMPLATE" ? next.photoAssetId : next.assetId,
+          );
+        }
+      }
       const groupsChanged =
         input.targetGroupIds !== undefined &&
         (input.targetGroupIds.length !== current.targetGroupIds.length ||
@@ -957,8 +1001,18 @@ export function createMockRepositories(
       const reapproval = needsReapproval(status);
       const nextStart = changes.startAt ?? current.startAt;
       const nextEnd = changes.endAt ?? current.endAt;
-      // 기간이 없는 종류(제보)는 기간 규칙을 보지 않는다.
-      if (
+      // 기간이 없는 종류(제보)는 기간 규칙을 보지 않는다. 배너는 배너 규칙(서울 자정·최대 일수)이다.
+      if (isBanner && nextStart && nextEnd) {
+        Object.assign(
+          errors,
+          checkEventBanner(
+            input.eventBanner ?? bannerValuesOf(current.eventBanner!),
+            { startAt: parseIsoUtc(nextStart), endAt: parseIsoUtc(nextEnd) },
+            now,
+            config,
+          ),
+        );
+      } else if (
         (changes.startAt || changes.endAt || reapproval) &&
         nextStart &&
         nextEnd

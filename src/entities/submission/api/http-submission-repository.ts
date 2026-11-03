@@ -366,7 +366,11 @@ function toCreateBody(
   };
 }
 
-/** 수정 본문. 보내지 않은 필드(undefined)는 JSON에서 빠져 서버가 그대로 둔다. */
+/**
+ * 수정 본문. 보내지 않은 필드(undefined)는 JSON에서 빠져 서버가 그대로 둔다.
+ * `eventBanner`는 생성된 계약 타입에 아직 없다(배포 ③ 전 문서). `bun run api:sync`
+ * 뒤에는 캐스트 없이 맞는다.
+ */
 function toUpdateBody(
   input: UpdateSubmissionInput,
 ): ApiRequestBody<"UpdateSubmissionDto"> {
@@ -375,7 +379,7 @@ function toUpdateBody(
     ...rest,
     startAt: startAt && toIsoUtc(startAt),
     endAt: endAt && toIsoUtc(endAt),
-  };
+  } as ApiRequestBody<"UpdateSubmissionDto">;
 }
 
 /**

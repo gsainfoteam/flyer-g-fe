@@ -1166,6 +1166,44 @@ describe("이벤트 배너·소식 제보 만들기 (배포 ③④)", () => {
     ).toMatchObject({ status: 409, code: "NOT_RESUBMITTABLE" });
   });
 
+  it("반려된 이벤트 배너는 내용을 고쳐 다시 낼 수 있고, 제목도 따라 바뀐다", async () => {
+    const { repos, signInAs } = setup();
+    const created = await repos.submissions.createContent(eventInput());
+    signInAs(MOCK_USERS.REVIEWER);
+    const rejected = await repos.reviews.reject({
+      submissionId: created.id,
+      revision: created.version,
+      reasonCode: "INAPPROPRIATE",
+      comment: "문구를 다시 써 주세요.",
+    });
+    signInAs(MOCK_USERS.SUBMITTER);
+
+    const updated = await repos.submissions.update(created.id, {
+      version: rejected.version,
+      eventBanner: { ...banner, occasion: "AWARD", message: "수상 축하해!" },
+    });
+    expect(updated).toMatchObject({
+      status: "REJECTED",
+      title: "수상 · 지민에게",
+      eventBanner: { occasion: "AWARD", message: "수상 축하해!" },
+    });
+    await expect(
+      repos.submissions.submit(created.id, { version: updated.version }),
+    ).resolves.toMatchObject({ status: "PENDING_REVIEW" });
+  });
+
+  it("배너를 고칠 때도 서울 자정·최대 일수 규칙을 본다", async () => {
+    const { repos } = setup();
+    const created = await repos.submissions.createContent(eventInput());
+    const error = await errorOf(
+      repos.submissions.update(created.id, {
+        version: created.version,
+        endAt: new Date(TOMORROW.getTime() + 5 * DAY_MS),
+      }),
+    );
+    expect(error?.fields).toHaveProperty("endAt");
+  });
+
   it("종류별 하루 한도를 넘으면 429와 한도를 준다", async () => {
     const { repos } = setup();
     for (let index = 0; index < 5; index++) {

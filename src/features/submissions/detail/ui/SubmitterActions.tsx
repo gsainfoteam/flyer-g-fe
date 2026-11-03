@@ -27,8 +27,8 @@ import { useCancelSubmission } from "../model/use-cancel-submission";
  * 무엇을 보여줄지는 `canSubmitterEdit`, `canSubmitterCancel`이 정한다. 버튼 노출은
  * 화면 편의일 뿐이고 최종 판단은 서버가 한다.
  *
- * 고치는 화면은 아직 포스터만 있다. 이벤트 배너·제보는 취소만 하고, 반려된 제보는
- * 고쳐 낼 수 없어(`NOT_RESUBMITTABLE`) "새로 쓰기"로 보낸다.
+ * 포스터와 이벤트 배너는 고쳐서 다시 낸다. 제보는 고칠 화면이 없고, 반려되면 고쳐 낼
+ * 수도 없어(`NOT_RESUBMITTABLE`) "새로 쓰기"로 보낸다.
  */
 interface SubmitterActionsProps {
   submission: SubmissionView;
@@ -44,22 +44,23 @@ export function SubmitterActions({
   const cancel = useCancelSubmission(submission.id);
 
   const canCancel = canSubmitterCancel(submission.status);
-  const isPoster = submission.type === "POSTER";
-  const editLabel = isPoster ? editLabelOf(submission.status) : null;
+  const editHref =
+    submission.type === "POSTER"
+      ? to.editPoster(submission.id)
+      : submission.type === "EVENT_BANNER"
+        ? to.editEvent(submission.id)
+        : null;
+  const editLabel = editHref ? editLabelOf(submission.status) : null;
   const returned =
     submission.status === "REJECTED" || submission.status === "SUSPENDED";
   const rewrite =
-    returned && submission.type === "STORY"
-      ? to.newStory()
-      : returned && submission.type === "EVENT_BANNER"
-        ? to.newEvent()
-        : null;
+    returned && submission.type === "STORY" ? to.newStory() : null;
 
   return (
     <div className="flex flex-wrap items-center gap-2.5">
-      {editLabel && (
+      {editLabel && editHref && (
         <Button size="sm" asChild>
-          <Link to={to.editPoster(submission.id)}>{editLabel}</Link>
+          <Link to={editHref}>{editLabel}</Link>
         </Button>
       )}
 
@@ -96,7 +97,7 @@ export function SubmitterActions({
         </p>
       )}
 
-      {submission.status === "SUSPENDED" && isPoster && (
+      {submission.status === "SUSPENDED" && submission.type !== "STORY" && (
         <p className="text-caption text-ink-muted">
           사유는 처리 이력에서 확인할 수 있어요. 고쳐서 다시 신청하면 다시
           검토를 받아요.

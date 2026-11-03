@@ -118,6 +118,8 @@ export interface CreateStoryInput {
 export interface UpdateSubmissionInput extends Partial<CreateSubmissionInput> {
   /** 화면이 본 버전. 서버는 이 값으로 동시 수정 충돌을 판정한다. */
   version: number;
+  /** 이벤트 배너만. 바꿀 때는 내용 전체를 보낸다(배포 ③). */
+  eventBanner?: CreateEventBannerInput["eventBanner"];
 }
 
 /** 버전만 싣는 상태 변경(재검토 요청, 취소). 최신이 아니면 서버가 409를 준다. */

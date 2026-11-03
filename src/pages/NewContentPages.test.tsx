@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { createMockRepositories } from "@/mocks/repositories";
 import { createFixedClock } from "@/shared/lib/clock";
+import { MOCK_USERS } from "@/mocks/users";
+import { fromSeoulInput, toSeoulDateInputValue } from "@/shared/lib/datetime";
 import { TEST_NOW, renderRoute } from "@/test/render-route";
 
 /** 이벤트 배너·소식 제보 쓰기 (기획 2-1, 배포 ③④) */
@@ -106,5 +108,72 @@ describe("이벤트 배너 만들기", () => {
 
     expect(screen.getByText("배너 이미지를 올려주세요.")).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: /문구/ })).toBeNull();
+  });
+});
+
+describe("이벤트 배너 고치기", () => {
+  it("반려된 배너는 있던 내용으로 열고, 고쳐 내면 다시 검토를 받는다", async () => {
+    const user = userEvent.setup();
+    const tomorrow = fromSeoulInput(
+      toSeoulDateInputValue(new Date(Date.now() + 24 * 60 * 60 * 1000)),
+    );
+    let session = MOCK_USERS.SUBMITTER;
+    const repos = createMockRepositories({
+      clock: createFixedClock(TEST_NOW),
+      session: () => session,
+    });
+    const created = await repos.submissions.createContent({
+      type: "EVENT_BANNER",
+      eventBanner: {
+        mode: "TEMPLATE",
+        occasion: "BIRTHDAY",
+        recipient: "지민",
+        message: "생일 축하해!",
+        sender: null,
+        photoAssetId: null,
+        photoConsent: false,
+        assetId: null,
+      },
+      // 폼은 브라우저 시각으로 기간을 본다. 오늘보다 뒤의 서울 자정으로 둔다.
+      startAt: tomorrow,
+      endAt: new Date(tomorrow.getTime() + 24 * 60 * 60 * 1000),
+      targetGroupIds: [],
+    });
+    session = MOCK_USERS.REVIEWER;
+    await repos.reviews.reject({
+      submissionId: created.id,
+      revision: created.version,
+      reasonCode: "INAPPROPRIATE",
+      comment: "문구를 다시 써 주세요.",
+    });
+    session = MOCK_USERS.SUBMITTER;
+
+    const { router } = renderRoute(`/mine/${created.id}`, {
+      role: "SUBMITTER",
+      repositories: repos,
+    });
+    const fix = await screen.findByRole("link", { name: "고쳐서 다시 내기" });
+    expect(fix).toHaveAttribute(
+      "href",
+      `/new/event?submissionId=${created.id}`,
+    );
+    await user.click(fix);
+
+    const message = await screen.findByRole("textbox", { name: /문구/ });
+    expect(message).toHaveValue("생일 축하해!");
+    expect(screen.getByRole("textbox", { name: /받는 사람/ })).toHaveValue(
+      "지민",
+    );
+    await user.clear(message);
+    await user.type(message, "스물한 살 생일 축하해!");
+    await user.click(screen.getByRole("button", { name: "고쳐서 다시 내기" }));
+
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(`/mine/${created.id}`),
+    );
+    await expect(repos.submissions.getById(created.id)).resolves.toMatchObject({
+      status: "PENDING_REVIEW",
+      eventBanner: { message: "스물한 살 생일 축하해!" },
+    });
   });
 });

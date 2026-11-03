@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { EventScene, SceneFrame } from "@/entities/scene";
 import { useSignageConfig } from "@/entities/submission/api/queries";
@@ -18,13 +18,25 @@ import type {
   EventBannerOccasion,
 } from "@/entities/submission/model/types";
 import { PosterDropzone, usePosterUpload } from "@/features/media-upload";
-import { useCreateContent } from "@/features/submissions/create/model/use-create-content";
-import { ChoicePills, FormField, PillField } from "@/shared/components";
+import { useSubmissionDetail } from "@/features/submissions/api/queries";
+import {
+  useCreateContent,
+  useUpdateEventBanner,
+} from "@/features/submissions/create/model/use-create-content";
+import type { SignageSubmissionExpanded } from "@/entities/submission";
+import {
+  ChoicePills,
+  FormField,
+  PageState,
+  PillField,
+} from "@/shared/components";
 import { toUserMessage } from "@/shared/api/error";
+import type { ApiError } from "@/shared/api/error";
 import { to } from "@/shared/config/routes";
 import {
   formatSeoulDayRange,
   fromSeoulInput,
+  seoulDayCount,
   toSeoulDateInputValue,
 } from "@/shared/lib/datetime";
 import { cn } from "@/shared/lib/utils";
@@ -60,10 +72,65 @@ const MODES: { value: EventBannerMode; label: string }[] = [
   { value: "IMAGE", label: "이미지 올리기" },
 ];
 
+const EDIT_PARAM = "submissionId";
+
 export function NewEventPage() {
+  const [searchParams] = useSearchParams();
+  const editingId = searchParams.get(EDIT_PARAM);
+  const editing = useSubmissionDetail(editingId);
+
+  if (!editingId) return <EventBannerForm editing={null} />;
+  return (
+    <PageState
+      isLoading={editing.isPending}
+      error={editing.error}
+      onRetry={() => void editing.refetch()}
+      loadingRows={5}
+    >
+      {editing.data && (
+        <EventBannerForm key={editing.data.id} editing={editing.data} />
+      )}
+    </PageState>
+  );
+}
+
+/** 저장된 배너를 폼 값으로. 고치기는 있던 사진·이미지를 그대로 쓰다가 바꾸면 새것을 쓴다. */
+function initialOf(editing: SignageSubmissionExpanded | null) {
+  const banner = editing?.eventBanner ?? null;
+  const start = editing?.startAt ?? null;
+  const end = editing?.endAt ?? null;
+  return {
+    mode: banner?.mode ?? ("TEMPLATE" as EventBannerMode),
+    occasion: banner?.occasion ?? null,
+    recipient: banner?.recipient ?? "",
+    sender: banner?.sender ?? "",
+    message: banner?.message ?? "",
+    photoConsent: banner?.photoConsent ?? false,
+    startDate: toSeoulDateInputValue(start ?? new Date()),
+    days: start && end ? seoulDayCount(start, end) : 1,
+    photo:
+      banner?.photoAssetId && banner.photoUrl
+        ? { id: banner.photoAssetId, url: banner.photoUrl }
+        : null,
+    image:
+      banner?.assetId && banner.assetUrl
+        ? { id: banner.assetId, url: banner.assetUrl }
+        : null,
+  };
+}
+
+function EventBannerForm({
+  editing,
+}: {
+  editing: SignageSubmissionExpanded | null;
+}) {
   const navigate = useNavigate();
   const config = useSignageConfig();
   const create = useCreateContent();
+  const update = useUpdateEventBanner();
+  const [initial] = useState(() => initialOf(editing));
+  const returned =
+    editing?.status === "REJECTED" || editing?.status === "SUSPENDED";
   const uploadLimits = useMemo(
     () => (config.data ? { maxSizeBytes: config.data.maxUploadBytes } : null),
     [config.data],
@@ -72,16 +139,19 @@ export function NewEventPage() {
   const photo = usePosterUpload({ limits: uploadLimits });
   const image = usePosterUpload({ limits: uploadLimits });
 
-  const [mode, setMode] = useState<EventBannerMode>("TEMPLATE");
-  const [occasion, setOccasion] = useState<EventBannerOccasion | null>(null);
-  const [recipient, setRecipient] = useState("");
-  const [sender, setSender] = useState("");
-  const [message, setMessage] = useState("");
-  const [photoConsent, setPhotoConsent] = useState(false);
-  const [startDate, setStartDate] = useState(() =>
-    toSeoulDateInputValue(new Date()),
+  const [mode, setMode] = useState<EventBannerMode>(initial.mode);
+  const [occasion, setOccasion] = useState<EventBannerOccasion | null>(
+    initial.occasion,
   );
-  const [days, setDays] = useState(1);
+  const [recipient, setRecipient] = useState(initial.recipient);
+  const [sender, setSender] = useState(initial.sender);
+  const [message, setMessage] = useState(initial.message);
+  const [photoConsent, setPhotoConsent] = useState(initial.photoConsent);
+  const [startDate, setStartDate] = useState(initial.startDate);
+  const [days, setDays] = useState(initial.days);
+  /** 고치기에서 아직 바꾸지 않은 사진·배너 이미지 */
+  const [keptPhoto, setKeptPhoto] = useState(initial.photo);
+  const [keptImage, setKeptImage] = useState(initial.image);
   const [showErrors, setShowErrors] = useState(false);
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
@@ -96,10 +166,17 @@ export function NewEventPage() {
     recipient,
     message: message.trim() || null,
     sender: sender.trim() || null,
-    photoAssetId: isTemplate ? (photo.state.asset?.assetId ?? null) : null,
+    photoAssetId: isTemplate
+      ? (photo.state.asset?.assetId ?? keptPhoto?.id ?? null)
+      : null,
     photoConsent: isTemplate && photoConsent,
-    assetId: isTemplate ? null : (image.state.asset?.assetId ?? null),
+    assetId: isTemplate
+      ? null
+      : (image.state.asset?.assetId ?? keptImage?.id ?? null),
   };
+  const photoUrl = photo.state.previewUrl ?? keptPhoto?.url ?? null;
+  const imageUrl = image.state.previewUrl ?? keptImage?.url ?? null;
+  const busy = create.isPending || update.isPending;
   const errors: Record<string, string> = {
     ...checkEventBanner(banner, { startAt, endAt }, new Date(), {
       eventBannerMaxDays: maxDays,
@@ -116,16 +193,51 @@ export function NewEventPage() {
   const edit = () => {
     setServerErrors({});
     create.markInputChanged();
+    update.markInputChanged();
+  };
+
+  const onError = (error: ApiError) => {
+    if (error.kind === "canceled") return;
+    if (error.fields) setServerErrors(error.fields);
+    toast.error(
+      editing
+        ? "이벤트 배너를 고치지 못했어요"
+        : "이벤트 배너를 보내지 못했어요",
+      { description: toUserMessage(error) },
+    );
   };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setShowErrors(true);
     if (Object.keys(errors).length > 0 || uploading) return;
+    const content = { ...banner, recipient: recipient.trim() };
+    if (editing) {
+      update.mutate(
+        {
+          submissionId: editing.id,
+          version: editing.version,
+          eventBanner: content,
+          startAt,
+          endAt,
+        },
+        {
+          onSuccess: (updated) => {
+            toast.success(
+              returned ? "고쳐서 다시 냈어요" : "고친 내용을 저장했어요",
+              { description: "승인되면 정한 날짜에 TV에 나가요." },
+            );
+            void navigate(to.submissionDetail(updated.id), { replace: true });
+          },
+          onError,
+        },
+      );
+      return;
+    }
     create.mutate(
       {
         type: "EVENT_BANNER",
-        eventBanner: { ...banner, recipient: recipient.trim() },
+        eventBanner: content,
         startAt,
         endAt,
         targetGroupIds: [],
@@ -137,13 +249,7 @@ export function NewEventPage() {
           });
           void navigate(to.submissionDetail(created.id), { replace: true });
         },
-        onError: (error) => {
-          if (error.kind === "canceled") return;
-          if (error.fields) setServerErrors(error.fields);
-          toast.error("이벤트 배너를 보내지 못했어요", {
-            description: toUserMessage(error),
-          });
-        },
+        onError,
       },
     );
   };
@@ -154,12 +260,14 @@ export function NewEventPage() {
     <>
       <div>
         <Link
-          to={to.home()}
+          to={editing ? to.submissionDetail(editing.id) : to.home()}
           className="text-caption text-ink-muted hover:underline"
         >
-          올리기
+          {editing ? "컨텐츠 상세" : "올리기"}
         </Link>
-        <h1 className="mt-1 text-display text-ink">이벤트 배너</h1>
+        <h1 className="mt-1 text-display text-ink">
+          {editing ? "이벤트 배너 고치기" : "이벤트 배너"}
+        </h1>
         <p className="mt-1.5 text-label text-ink-muted">
           생일·합격·수상 같은 소식을 TV에 띄워요. 하루 단위, 최대 {maxDays}일.
         </p>
@@ -320,6 +428,17 @@ export function NewEventPage() {
               <p className="text-sm leading-none font-medium">
                 사진 (선택 · 1장)
               </p>
+              {keptPhoto && photo.state.status === "idle" && (
+                <KeptMedia
+                  url={keptPhoto.url}
+                  label="지금 사진"
+                  onClear={() => {
+                    edit();
+                    setPhotoConsent(false);
+                    setKeptPhoto(null);
+                  }}
+                />
+              )}
               <PosterDropzone
                 state={photo.state}
                 limits={uploadLimits}
@@ -334,7 +453,7 @@ export function NewEventPage() {
                   photo.clear();
                 }}
               />
-              {photo.state.status !== "idle" && (
+              {(photo.state.status !== "idle" || keptPhoto) && (
                 <label className="flex items-start gap-2 text-label text-ink">
                   <input
                     type="checkbox"
@@ -362,6 +481,16 @@ export function NewEventPage() {
                   *
                 </span>
               </p>
+              {keptImage && image.state.status === "idle" && (
+                <KeptMedia
+                  url={keptImage.url}
+                  label="지금 배너 이미지"
+                  onClear={() => {
+                    edit();
+                    setKeptImage(null);
+                  }}
+                />
+              )}
               <PosterDropzone
                 state={image.state}
                 limits={uploadLimits}
@@ -383,10 +512,10 @@ export function NewEventPage() {
             <Button
               type="submit"
               className="ml-auto"
-              disabled={create.isPending || uploading}
+              disabled={busy || uploading}
             >
-              {create.isPending && <Spinner aria-hidden="true" />}
-              심사 요청
+              {busy && <Spinner aria-hidden="true" />}
+              {!editing ? "심사 요청" : returned ? "고쳐서 다시 내기" : "저장"}
             </Button>
           </div>
         </form>
@@ -404,8 +533,8 @@ export function NewEventPage() {
                 recipient,
                 message,
                 sender,
-                photoUrl: isTemplate ? photo.state.previewUrl : null,
-                imageUrl: isTemplate ? null : image.state.previewUrl,
+                photoUrl: isTemplate ? photoUrl : null,
+                imageUrl: isTemplate ? null : imageUrl,
               }}
             />
           </SceneFrame>
@@ -415,5 +544,26 @@ export function NewEventPage() {
         </section>
       </div>
     </>
+  );
+}
+
+/** 고치기에서 아직 바꾸지 않은 사진. 새로 올리면 그것으로 바뀐다. */
+function KeptMedia({
+  url,
+  label,
+  onClear,
+}: {
+  url: string;
+  label: string;
+  onClear: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-control bg-surface-muted p-2">
+      <img src={url} alt="" className="size-14 rounded-md object-cover" />
+      <span className="flex-1 text-caption text-ink-muted">{label}</span>
+      <Button type="button" variant="ghost" size="sm" onClick={onClear}>
+        지우기
+      </Button>
+    </div>
   );
 }

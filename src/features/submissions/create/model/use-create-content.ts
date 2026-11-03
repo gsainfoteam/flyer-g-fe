@@ -62,3 +62,72 @@ export function useCreateContent() {
     },
   };
 }
+
+/**
+ * 이벤트 배너 고치기 (배포 ③). 내용 전체와 기간을 저장하고, 반려·중단된 건이면 이어서
+ * 다시 검토를 요청한다. 대기 중이면 대기 그대로, 예약 건이면 서버가 재승인 대기로 돌린다.
+ *
+ * 저장은 됐는데 재검토 요청만 실패하면, 다시 누를 때 저장을 건너뛰고 서버가 마지막에
+ * 돌려준 version으로 요청만 한다(`use-create-submission.ts`와 같은 규칙).
+ */
+export interface UpdateEventBannerValues {
+  submissionId: string;
+  version: number;
+  eventBanner: CreateEventBannerInput["eventBanner"];
+  startAt: Date;
+  endAt: Date;
+}
+
+export function useUpdateEventBanner() {
+  const { submissions } = useRepositories();
+  const queryClient = useQueryClient();
+  const savedRef = useRef<SignageSubmissionExpanded | null>(null);
+  const submitKeyRef = useRef<string | null>(null);
+
+  const mutation = useMutation<
+    SignageSubmissionExpanded,
+    ApiError,
+    UpdateEventBannerValues
+  >({
+    mutationFn: async ({ submissionId, version, ...fields }) => {
+      try {
+        const saved = (savedRef.current ??= await submissions.update(
+          submissionId,
+          { ...fields, version },
+        ));
+        if (saved.status !== "REJECTED" && saved.status !== "SUSPENDED") {
+          return saved;
+        }
+        const key = (submitKeyRef.current ??= createIdempotencyKey());
+        return await submissions.submit(
+          submissionId,
+          { version: saved.version },
+          { idempotencyKey: key },
+        );
+      } catch (cause) {
+        throw normalizeApiError(cause);
+      }
+    },
+    onSuccess: (updated) => {
+      savedRef.current = null;
+      submitKeyRef.current = null;
+      queryClient.setQueryData(
+        queryKeys.submissions.detail(updated.id),
+        updated,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.submissions.all(),
+      });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.reviews.all() });
+    },
+  });
+
+  return {
+    ...mutation,
+    /** 입력이 바뀌었다. 다음 제출은 저장부터 다시 한다. */
+    markInputChanged: () => {
+      savedRef.current = null;
+      submitKeyRef.current = null;
+    },
+  };
+}

@@ -56,6 +56,9 @@ export const to = {
   home: () => "/",
   newPoster: () => "/new/poster",
   newEvent: () => "/new/event",
+  /** 이벤트 배너를 고치거나 반려된 것을 고쳐 다시 내는 화면 */
+  editEvent: (submissionId: string) =>
+    `/new/event?submissionId=${encodeURIComponent(submissionId)}`,
   newStory: () => "/new/story",
   /** 반려·초안을 고쳐서 다시 내는 포스터 화면 */
   editPoster: (submissionId: string) =>
