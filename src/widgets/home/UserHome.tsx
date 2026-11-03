@@ -30,6 +30,7 @@ import { IconTile, PageState } from "@/shared/components";
 import { to } from "@/shared/config/routes";
 import { cn } from "@/shared/lib/utils";
 import { ActivityFeed } from "./ActivityFeed";
+import { RecentStories } from "./RecentStories";
 import { UploadChoicesCompact, UploadChoicesLarge } from "./UploadChoices";
 
 /**
@@ -37,7 +38,8 @@ import { UploadChoicesCompact, UploadChoicesLarge } from "./UploadChoices";
  *
  * - 처음(올린 것 0건): "무엇을 TV에 띄워 볼까요?" 세 종류를 크게, 진행 순서 4단계.
  *   빈 "내 컨텐츠" 칸은 그리지 않는다.
- * - 다시 온 사람: 올리기 세 종류를 작게, 내 컨텐츠 진행 상황, 옆 칸에 최근 소식.
+ * - 다시 온 사람: 올리기 세 종류를 작게, 내 컨텐츠 진행 상황, 옆 칸에 최근 소식과
+ *   지금 TV의 제보.
  */
 const ACTIVE: readonly SubmissionStatus[] = [
   "REJECTED",
@@ -236,6 +238,7 @@ function Returning({
 
         <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-5">
           <ActivityFeed submissions={[...active, ...past]} now={now} />
+          <RecentStories />
         </aside>
       </div>
     </>

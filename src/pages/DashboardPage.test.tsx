@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMemoryHeartbeatLog } from "@/mocks/heartbeats";
 import { createMockRepositories } from "@/mocks/repositories";
+import { MOCK_USERS } from "@/mocks/users";
 import { ApiError } from "@/shared/api/error";
 import { createFixedClock } from "@/shared/lib/clock";
 import { TEST_NOW, renderRoute } from "@/test/render-route";
@@ -183,3 +184,70 @@ describe("운영자 홈", () => {
     ).toHaveAttribute("href", "/review");
   });
 });
+
+describe("제보 (배포 ④)", () => {
+  async function repositoriesWithStory() {
+    // 작성자 본인에게만 신청자가 보인다. 화면의 사용자(정하윤)로 보고, 심사할 때만 바꾼다.
+    let user = MOCK_USERS.SUBMITTER;
+    const repositories = createMockRepositories({
+      clock: createFixedClock(TEST_NOW),
+      heartbeats: createMemoryHeartbeatLog(),
+      session: () => user,
+    });
+    const story = await repositories.submissions.createContent({
+      type: "STORY",
+      story: { tag: "LOST_FOUND", body: "A동 로비에서 파란 우산을 주웠어요." },
+    });
+    const asReviewer = async <T,>(run: () => Promise<T>) => {
+      user = MOCK_USERS.REVIEWER;
+      try {
+        return await run();
+      } finally {
+        user = MOCK_USERS.SUBMITTER;
+      }
+    };
+    return { repositories, story, asReviewer };
+  }
+
+  it("사용자 홈은 지금 TV에 걸린 제보를 보여 주고, 없으면 칸을 그리지 않는다", async () => {
+    const { repositories, story, asReviewer } = await repositoriesWithStory();
+    const { unmount } = renderRoute("/", { role: "SUBMITTER", repositories });
+    await screen.findByRole("heading", { name: "무엇을 올릴까요?" });
+    expect(screen.queryByRole("heading", { name: "지금 TV의 제보" })).toBeNull();
+    unmount();
+
+    await asReviewer(() =>
+      repositories.reviews.approve({
+        submissionId: story.id,
+        revision: story.version,
+      }),
+    );
+    renderRoute("/", { role: "SUBMITTER", repositories });
+    const section = (
+      await screen.findByRole("heading", { name: "지금 TV의 제보" })
+    ).closest("section")!;
+    expect(
+      within(section).getByText("A동 로비에서 파란 우산을 주웠어요."),
+    ).toBeInTheDocument();
+    expect(within(section).getByText("분실물")).toBeInTheDocument();
+  });
+
+  it("반려된 제보는 고치지 않고 새로 쓰러 간다", async () => {
+    const { repositories, story, asReviewer } = await repositoriesWithStory();
+    await asReviewer(() =>
+      repositories.reviews.reject({
+        submissionId: story.id,
+        revision: story.version,
+        reasonCode: "PERSONAL_INFO",
+        comment: "누가 잃어버렸는지 알 수 있어요.",
+      }),
+    );
+    renderRoute(`/mine/${story.id}`, { role: "SUBMITTER", repositories });
+
+    expect(
+      await screen.findByRole("link", { name: "새로 쓰기" }),
+    ).toHaveAttribute("href", "/new/story");
+    expect(screen.queryByRole("link", { name: /고쳐서 다시 내기/ })).toBeNull();
+  });
+});
+
