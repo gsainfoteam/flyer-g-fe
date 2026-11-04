@@ -1,0 +1,119 @@
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { MatchClientMessage, MatchHostMessage } from "@/entities/game/model/shuffleboard";
+import type { GameChannel } from "@/shared/lib/game-channel";
+import { initialMatch } from "@/entities/game/model/shuffleboard";
+import { RESTORE_WITHIN_MS, restoreMatch, useShuffleboardHost } from "./use-shuffleboard-host";
+
+function fakeChannel() {
+  let listener: ((message: MatchClientMessage, from?: string) => void) | null = null;
+  const sent: MatchHostMessage[] = [];
+  const channel: GameChannel<MatchClientMessage, MatchHostMessage> = {
+    send: (message) => sent.push(message),
+    subscribe: (next) => {
+      listener = next;
+      return () => {
+        listener = null;
+      };
+    },
+    close: () => {},
+  };
+  const from = (connection: string, message: unknown) =>
+    act(() => listener?.(message as MatchClientMessage, connection));
+  return { channel, sent, from };
+}
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1_000_000);
+  sessionStorage.clear();
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("useShuffleboardHost", () => {
+  it("상태에 TV 시각을 실어 보낸다", () => {
+    const { channel, sent } = fakeChannel();
+    renderHook(() => useShuffleboardHost("room", { channel }));
+    act(() => vi.advanceTimersByTime(250));
+    const state = sent.find((message) => message.kind === "state");
+    expect(state && "now" in state ? state.now : null).toBe(Date.now() - 50);
+  });
+
+  it("고정이 풀려 상한이 생겨도 방을 다시 열지 않고, 하던 경기는 이어 간다", () => {
+    const { channel, from } = fakeChannel();
+    const subscribe = vi.spyOn(channel, "subscribe");
+    const { result, rerender } = renderHook(
+      (limits: { sessionLimitMs?: number }) => useShuffleboardHost("room", { channel, ...limits }),
+      { initialProps: {} },
+    );
+    from("c1", { kind: "join", playerId: "p1", seat: "A" });
+    from("c2", { kind: "join", playerId: "p2", seat: "B" });
+    act(() => vi.advanceTimersByTime(3_400));
+    expect(result.current.state.phase).toBe("PLAYING");
+
+    // 시간대가 끝났다. 세션은 상한을 넘었지만 경기 중이라 끊지 않는다.
+    rerender({ sessionLimitMs: 1_000 });
+    expect(subscribe).toHaveBeenCalledTimes(1);
+    act(() => vi.advanceTimersByTime(2_000));
+    expect(result.current.state.phase).toBe("PLAYING");
+    expect(result.current.state.seats.A?.playerId).toBe("p1");
+  });
+
+  it("세션 상한이 지나도 결과 화면은 끝까지 보여 준다", () => {
+    const { channel, from } = fakeChannel();
+    const { result, rerender } = renderHook(
+      (limits: { sessionLimitMs?: number }) => useShuffleboardHost("room", { channel, ...limits }),
+      { initialProps: {} },
+    );
+    from("c1", { kind: "join", playerId: "p1", seat: "A" });
+    from("c2", { kind: "join", playerId: "p2", seat: "B" });
+    act(() => vi.advanceTimersByTime(3_400));
+    expect(result.current.state.phase).toBe("PLAYING");
+    rerender({ sessionLimitMs: 1_000 });
+    // 아무도 던지지 않으면 턴마다 시간이 다 돼 넘어가고 결국 경기가 끝난다.
+    for (let second = 0; second < 200 && result.current.state.phase === "PLAYING"; second++) {
+      act(() => vi.advanceTimersByTime(1_000));
+    }
+    expect(result.current.state.phase).toBe("FINISHED");
+    act(() => vi.advanceTimersByTime(5_000));
+    expect(result.current.state.phase).toBe("FINISHED");
+  });
+
+  it("새로고침 직후(30초 안)의 경기만 되살리고, 오래된 경기는 새로 시작한다", () => {
+    const saved = (savedAt: number) =>
+      JSON.stringify({ state: { ...initialMatch(3, "old"), phase: "PLAYING", turn: 7 }, savedAt });
+    expect(restoreMatch(saved(1_000), 1_000 + RESTORE_WITHIN_MS)?.matchId).toBe("old");
+    expect(restoreMatch(saved(1_000), 1_000 + RESTORE_WITHIN_MS + 1)).toBeNull();
+    // 예전 형식(시각 없음)은 언제 저장했는지 몰라 되살리지 않는다.
+    expect(restoreMatch(JSON.stringify(initialMatch(1, "legacy")), 0)).toBeNull();
+    expect(restoreMatch("{", 0)).toBeNull();
+    // 기기 시계가 뒤로 가 저장 시각이 미래면 믿지 않는다.
+    expect(restoreMatch(saved(10_000), 9_000)).toBeNull();
+
+    sessionStorage.setItem("flyerg:shuffleboard-host:room", saved(Date.now() - 60_000));
+    const { channel } = fakeChannel();
+    const { result } = renderHook(() => useShuffleboardHost("room", { channel }));
+    expect(result.current.state).toMatchObject({ phase: "WAITING", round: 1 });
+  });
+
+  it("사람이 있는 동안에는 바뀐 것이 없어도 저장 시각을 새로 한다", () => {
+    const { channel, from } = fakeChannel();
+    const { unmount } = renderHook(() => useShuffleboardHost("room", { channel }));
+    from("c1", { kind: "join", playerId: "p1", seat: "A" });
+    act(() => vi.advanceTimersByTime(400));
+    const read = () =>
+      (JSON.parse(sessionStorage.getItem("flyerg:shuffleboard-host:room")!) as { savedAt: number }).savedAt;
+    const first = read();
+    // 한 명이 상대를 기다리는 동안(상태 변화 없음) 40초가 지나도 새로고침하면 되살릴 수 있다.
+    act(() => vi.advanceTimersByTime(40_000));
+    expect(Date.now() - read()).toBeLessThan(RESTORE_WITHIN_MS);
+    expect(read()).toBeGreaterThan(first);
+    // 화면을 떠나면 더 저장하지 않는다.
+    unmount();
+    const last = read();
+    act(() => vi.advanceTimersByTime(40_000));
+    expect(read()).toBe(last);
+  });
+});

@@ -137,6 +137,22 @@
   /* TV 스테이지 바탕. 화면 밖 letterbox와 포스터 앰비언트의 기준색이다. */
   --color-stage: #101012;
 
+  /* --- 셔플보드 보드 -----------------------------------------------------
+     게임 보드 그림 전용. TV(어두운 화면)와 폰(밝은 화면)에서 같은 보드로 보이도록
+     .tv-surface가 바꾸지 않는다.
+     점수가 없는 구간은 차분한 회색으로 두고, 점수 칸만 채도 낮은 파랑으로 칠해
+     10점 쪽으로 갈수록 조금씩 진해진다. 끝의 10점 칸은 초록(GamePigeon 참고).
+     원반(팀 색)이 가장 눈에 띄도록 판은 모두 한 톤 낮춘다. */
+  --color-board-rail: #161e32;
+  --color-board-field: #262f45;
+  --color-board-zone-2: #2a3f6e;
+  --color-board-zone-3: #2f4884;
+  --color-board-zone-7: #33529a;
+  --color-board-hot: #398b55;
+  --color-board-line: #ffffff;
+  /* 숫자·파울 선·발사 자리처럼 판 위에 쓰는 글자와 표시 */
+  --color-board-label: #ffffff;
+
   /* --- 컨텐츠 종류 색 ---------------------------------------------------
      신청 종류(포스터·이벤트 배너·소식 제보)를 아이콘·칩·구성 막대에서 가른다.
      항상 종류 이름과 함께 쓴다. `-bright`는 어두운 강조 카드 위에서 쓰는 밝은 값이다. */
@@ -191,6 +207,27 @@
 
   /* 로그인 배경의 전단 기둥이 천천히 흐른다. 목록을 두 번 이어 붙여 두고 절반만큼
      올리면 처음과 같은 모습이 되어 끊김 없이 반복된다. 속도는 기둥마다 다르게 준다. */
+  /* 셔플보드 폰 튜토리얼: 첫 차례에 "아래로 당겨요" 손가락이 원반에서 아래로 내려간다. */
+  --animate-pull-hint: pull-hint 1.8s var(--ease-standard) infinite;
+  @keyframes pull-hint {
+    0%,
+    15% {
+      transform: translateY(0);
+      opacity: 0;
+    }
+    30% {
+      opacity: 1;
+    }
+    75% {
+      transform: translateY(110px);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(110px);
+      opacity: 0;
+    }
+  }
+
   --animate-flyer-drift: flyer-drift 80s linear infinite;
   @keyframes flyer-drift {
     from {

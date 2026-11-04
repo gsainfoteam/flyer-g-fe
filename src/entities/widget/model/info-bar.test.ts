@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CafeteriaMeal } from "./data-content";
-import { ddayChip, mealChip } from "./info-bar";
+import { ddayChip, mealChip, shortPlace } from "./info-bar";
 import { createWidgetPicker, inShowWindow } from "./policy";
 import type { WidgetSlot } from "./types";
 
@@ -19,20 +19,39 @@ const TODAY = [
 ];
 
 describe("mealChip", () => {
-  it("다음 끼니, 운영 중이면 끝나는 시각, 오늘이 끝나면 내일 첫 끼니", () => {
-    expect(mealChip(TODAY, [], seoul(7, 0))).toBe("아침 08:00–09:00");
-    expect(mealChip(TODAY, [], seoul(8, 10))).toBe("아침 운영 중 · 09:00까지");
-    expect(mealChip(TODAY, [], seoul(9, 0))).toBe("점심 11:30–13:30");
-    expect(mealChip(TODAY, [], seoul(12, 0))).toBe("점심 운영 중 · 13:30까지");
-    expect(mealChip(TODAY, [], seoul(18, 59))).toBe("저녁 운영 중 · 19:00까지");
-    expect(mealChip(TODAY, TODAY, seoul(21, 40))).toBe("내일 아침 08:00");
-    expect(mealChip(TODAY, [], seoul(21, 40))).toBeNull();
+  const second = (meals: readonly CafeteriaMeal[]) => ({ place: "제2학생식당", meals });
+  const none = { place: null, meals: [] };
+
+  it("식당 이름을 붙여 다음 끼니, 지금 먹을 수 있으면 끝나는 시각, 오늘이 끝나면 내일 첫 끼니", () => {
+    expect(mealChip(second(TODAY), none, seoul(7, 0))).toBe("2학 아침 08:00–09:00");
+    expect(mealChip(second(TODAY), none, seoul(8, 10))).toBe("지금 2학 아침 · 09:00까지");
+    expect(mealChip(second(TODAY), none, seoul(9, 0))).toBe("2학 점심 11:30–13:30");
+    expect(mealChip(second(TODAY), none, seoul(12, 0))).toBe("지금 2학 점심 · 13:30까지");
+    expect(mealChip(second(TODAY), none, seoul(18, 59))).toBe("지금 2학 저녁 · 19:00까지");
+    expect(mealChip(second(TODAY), { place: "제1학생식당", meals: TODAY }, seoul(21, 40))).toBe(
+      "내일 1학 아침 08:00",
+    );
+    expect(mealChip(second(TODAY), none, seoul(21, 40))).toBeNull();
+  });
+
+  it("식당 이름을 모르면 끼니만 쓴다", () => {
+    expect(mealChip({ place: null, meals: TODAY }, none, seoul(12, 0))).toBe("지금 점심 · 13:30까지");
   });
 
   it("쉬는 끼니(메뉴 없음)와 시간 모르는 끼니는 건너뛴다", () => {
-    const lunchOnly = [meal("LUNCH", "11:30~13:30")];
-    expect(mealChip(lunchOnly, [], seoul(7, 0))).toBe("점심 11:30–13:30");
-    expect(mealChip([{ type: "LUNCH", hours: null, menus: ["밥"] }], [], seoul(7, 0))).toBeNull();
+    expect(mealChip(second([meal("LUNCH", "11:30~13:30")]), none, seoul(7, 0))).toBe(
+      "2학 점심 11:30–13:30",
+    );
+    expect(mealChip(second([{ type: "LUNCH", hours: null, menus: ["밥"] }]), none, seoul(7, 0))).toBeNull();
+  });
+});
+
+describe("shortPlace", () => {
+  it("학생식당은 1학·2학으로, 다른 이름은 그대로", () => {
+    expect(shortPlace("제1학생식당")).toBe("1학");
+    expect(shortPlace("제 2 학생식당")).toBe("2학");
+    expect(shortPlace("교수회관")).toBe("교수회관");
+    expect(shortPlace("  ")).toBeNull();
   });
 });
 

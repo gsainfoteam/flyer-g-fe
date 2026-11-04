@@ -6,6 +6,7 @@ import type { WidgetContent, ZodiacFortune } from "@/entities/widget/model/conte
 import type {
   AirGrade,
   CafeteriaContent,
+  CafeteriaMeal,
   MealType,
   RestaurantContent,
   Sky,
@@ -160,7 +161,9 @@ function WidgetBody({ content }: { content: WidgetContent }): ReactNode {
     case "QUIZ":
       return <QuizBody content={content} />;
     case "CLICK_BATTLE":
-      // 게임 방을 여는 화면이라 플레이어가 따로 그린다(BattleWidget).
+    case "SHUFFLEBOARD":
+    case "FLYER_DODGE":
+      // 게임 방을 여는 화면이라 플레이어가 따로 그린다(GameFrame).
       return null;
     case "SURVEY":
       return <SurveyBody content={content} />;
@@ -214,6 +217,67 @@ const MEAL_LABEL: Record<MealType, string> = {
 /** 끼니마다 보여 줄 메뉴 수. 넘치면 "외 N가지"로 줄인다. 카드 높이에 맞춘 값이다. */
 const MAX_MENUS = 7;
 
+/** 메뉴 목록. `limit`을 넘으면 "외 N가지"로 줄인다. */
+function MenuList({
+  menus,
+  limit,
+  isCurrent,
+}: {
+  menus: readonly string[];
+  limit: number;
+  isCurrent: boolean;
+}) {
+  return (
+    <ul
+      className={cn(
+        "flex flex-col gap-2 text-[34px] leading-tight",
+        isCurrent ? "font-bold text-ink" : "text-ink-muted",
+      )}
+    >
+      {menus.slice(0, limit).map((menu) => (
+        <li key={menu} className="truncate">
+          {menu}
+        </li>
+      ))}
+      {menus.length > limit && (
+        <li className="text-ink-subtle">외 {menus.length - limit}가지</li>
+      )}
+    </ul>
+  );
+}
+
+/**
+ * 일품·한식처럼 코너가 나뉜 끼니. 코너를 나란히 두 열로 둔다. 이 끼니 칸은 두 배로
+ * 넓혀(CafeteriaBody) 열마다 다른 끼니 칸만큼의 폭을 가진다. 그래서 줄이지 않고 다 보인다.
+ */
+function CornerMenus({
+  corners,
+  isCurrent,
+}: {
+  corners: NonNullable<CafeteriaMeal["corners"]>;
+  isCurrent: boolean;
+}) {
+  return (
+    <div
+      className="grid min-h-0 flex-1 gap-8"
+      style={{ gridTemplateColumns: `repeat(${corners.length}, minmax(0, 1fr))` }}
+    >
+      {corners.map((corner, index) => (
+        <div
+          key={corner.name}
+          className={cn("flex min-w-0 flex-col gap-1", index > 0 && "border-l-2 border-line pl-8")}
+        >
+          <p className={cn("text-[28px] font-extrabold", isCurrent ? "text-accent" : "text-ink-subtle")}>
+            {corner.name}
+          </p>
+          <MenuList menus={corner.menus} limit={MAX_MENUS} isCurrent={isCurrent} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** 학식 위젯 본문. 끼니마다 한 칸, 코너가 나뉜 끼니는 두 배 폭 칸이다. */
 function CafeteriaBody({ content }: { content: CafeteriaContent }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-10">
@@ -221,7 +285,15 @@ function CafeteriaBody({ content }: { content: CafeteriaContent }) {
         <Eyebrow>오늘의 학식</Eyebrow>
         <p className="text-[34px] font-bold text-ink-muted">{content.place}</p>
       </div>
-      <ul className="grid min-h-0 flex-1 auto-cols-fr grid-flow-col gap-8">
+      <ul
+        className="grid min-h-0 flex-1 gap-8"
+        // 코너가 나뉜 끼니(점심 일품·한식)는 두 배 폭으로 두 열을 담는다.
+        style={{
+          gridTemplateColumns: content.meals
+            .map((meal) => `minmax(0, ${meal.corners ? 2 : 1}fr)`)
+            .join(" "),
+        }}
+      >
         {content.meals.map((meal) => {
           const isCurrent = meal.type === content.current;
           return (
@@ -254,21 +326,11 @@ function CafeteriaBody({ content }: { content: CafeteriaContent }) {
                   </p>
                 )}
               </div>
-              <ul
-                className={cn(
-                  "flex flex-col gap-2 text-[34px] leading-tight",
-                  isCurrent ? "font-bold text-ink" : "text-ink-muted",
-                )}
-              >
-                {meal.menus.slice(0, MAX_MENUS).map((menu) => (
-                  <li key={menu} className="truncate">
-                    {menu}
-                  </li>
-                ))}
-                {meal.menus.length > MAX_MENUS && (
-                  <li className="text-ink-subtle">외 {meal.menus.length - MAX_MENUS}가지</li>
-                )}
-              </ul>
+              {meal.corners ? (
+                <CornerMenus corners={meal.corners} isCurrent={isCurrent} />
+              ) : (
+                <MenuList menus={meal.menus} limit={MAX_MENUS} isCurrent={isCurrent} />
+              )}
             </li>
           );
         })}

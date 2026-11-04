@@ -21,7 +21,29 @@ export const WIDGET_DURATIONS: Partial<Record<WidgetType, number>> = {
   QUIZ: 15,
   CLICK_BATTLE: 20,
   SURVEY: 15,
+  SHUFFLEBOARD: 20,
+  FLYER_DODGE: 20,
 };
+
+/**
+ * 위젯 공개일(서울 날짜). 이 날짜 전에는 평소 순환에서 뺀다. 0시가 되면 배포 없이 들어온다.
+ * `null`이면 아직 공개하지 않는다(준비 중). 없는 종류는 늘 공개다.
+ * 시간대 고정은 공개일과 상관없이 고를 수 있다(미리 시험해 보거나 행사에 먼저 쓸 때).
+ */
+export const WIDGET_RELEASES: Partial<Record<WidgetType, string | null>> = {
+  // 평소 순환에는 아직 클릭 배틀만 둔다. 11/5–11/7 이벤트 시간에는 시간대 고정으로 띄운다.
+  // 순환에 넣을 때 날짜를 적는다.
+  SHUFFLEBOARD: null,
+  // 시험 중. 공개할 때 날짜를 적는다.
+  FLYER_DODGE: null,
+};
+
+/** 오늘(서울 날짜 "YYYY-MM-DD") 평소 순환에 넣어도 되는 위젯인가 */
+export function isWidgetReleased(type: WidgetType, today: string): boolean {
+  const release = WIDGET_RELEASES[type];
+  if (release === undefined) return true;
+  return release !== null && release <= today;
+}
 
 /**
  * 설문 위젯 내용. 설문 링크는 화면(이 파일)이 정하므로, 서버·mock이 주는 설문 위젯에
@@ -32,6 +54,23 @@ export const SURVEY_PARAMS = {
   title: "전단지 피드백 설문에 참여해 주세요",
   description: "응답자 중 추첨으로 경품을 드려요 · 11/8까지",
 } as const;
+
+/**
+ * 설문 경품 안내. 이벤트 시간대 게임 화면의 설문 QR 칸과 폰 결과 화면에 쓴다. 경품이 아직
+ * 정해지지 않아 공지 문구("추첨을 통해 소정의 상품")를 그대로 쓴다. `until`(서울 날짜)이
+ * 지나면 저절로 내린다.
+ */
+export const SURVEY_PRIZE = {
+  headline: "추첨으로 소정의 상품",
+  note: "11/8까지 응모",
+  until: "2026-11-08",
+} as const;
+
+/** 오늘(서울 날짜 "YYYY-MM-DD") 보일 경품 안내. 마감이 지났으면 null */
+export const surveyPrizeOn = (today: string) =>
+  today <= SURVEY_PRIZE.until
+    ? { headline: SURVEY_PRIZE.headline, note: SURVEY_PRIZE.note }
+    : null;
 
 /**
  * 포스터가 많아도 평소 순환에 늘 넣는 위젯(위젯 비율 상한은 지킨다). 서버 설정이 없을 때만.
@@ -60,22 +99,25 @@ export interface TimeSlotRule {
   survey?: { url: string; label: string };
 }
 
+/**
+ * 기본 규칙. 관리 화면에서 한 번이라도 저장했으면 TV는 저장된 규칙(KV)을 쓰고 이 값은
+ * 쓰지 않는다. 11월 이벤트(20:00–22:00)는 11/4까지 클릭 배틀, 11/5부터 셔플보드다.
+ */
 export const TIME_SLOTS: readonly TimeSlotRule[] = [
-  // 실제 TV 시험용. 11/2 01:50–02:05에만 적용되고 지나면 저절로 끝난다(지워도 됨).
-  {
-    id: "2026-11-02-tv-test",
-    widget: "CLICK_BATTLE",
-    dates: { from: "2026-11-02", to: "2026-11-02" },
-    time: { from: "01:50", to: "02:05" },
-    label: "클릭 배틀 시험",
-    survey: { url: SURVEY_URL, label: "이벤트 설문" },
-  },
   {
     id: "2026-11-event-click-battle",
     widget: "CLICK_BATTLE",
-    dates: { from: "2026-11-02", to: "2026-11-07" },
+    dates: { from: "2026-11-02", to: "2026-11-04" },
     time: { from: "20:00", to: "22:00" },
     label: "클릭 배틀 이벤트",
+    survey: { url: SURVEY_URL, label: "이벤트 설문" },
+  },
+  {
+    id: "2026-11-event-shuffleboard",
+    widget: "SHUFFLEBOARD",
+    dates: { from: "2026-11-05", to: "2026-11-07" },
+    time: { from: "20:00", to: "22:00" },
+    label: "컬링 이벤트",
     survey: { url: SURVEY_URL, label: "이벤트 설문" },
   },
 ];

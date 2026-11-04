@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useLocation, useParams } from "react-router";
 import { ScaledStage } from "@/entities/poster/ui/ScaledStage";
-import { gameSocketBase } from "@/features/click-battle/api/game-socket";
+import { gameSocketBase } from "@/shared/lib/game-socket";
 import { useBattleHost } from "@/features/click-battle/model/use-battle-host";
 import { ClickBattleBoard, LinkBadge } from "@/features/click-battle/ui/ClickBattleBoard";
 import {

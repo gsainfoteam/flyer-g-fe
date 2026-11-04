@@ -24,6 +24,10 @@ export const paths = {
   /** TV 게임 화면. 플레이어처럼 세션 없이 연다. */
   /** `:roomId`는 기기 id다. 서버 중계로 방을 열려면 그 기기의 토큰이 있어야 한다. */
   clickBattle: "/games/click-battle/:roomId",
+  playShuffleboard: "/play/shuffleboard/:roomId",
+  shuffleboard: "/games/shuffleboard/:roomId",
+  playFlyerDodge: "/play/flyer-dodge/:roomId",
+  flyerDodge: "/games/flyer-dodge/:roomId",
   login: "/login",
   /** 로그인 제공자에서 돌아오는 곳. `VITE_AUTH_REDIRECT_URI`의 경로와 같아야 한다. */
   authCallback: "/auth/callback",
@@ -80,6 +84,14 @@ export const to = {
   playClickBattle: (roomId: string, team: "A" | "B") =>
     `/play/click-battle/${encodeURIComponent(roomId)}?team=${team}`,
   clickBattle: (roomId: string) => `/games/click-battle/${encodeURIComponent(roomId)}`,
+  /** 셔플보드 폰 참가. TV의 팀별 QR이 팀을 정한다. 없으면 빈 자리에 앉는다. */
+  playShuffleboard: (roomId: string, seat?: "A" | "B") =>
+    `/play/shuffleboard/${encodeURIComponent(roomId)}${seat ? `?team=${seat}` : ""}`,
+  shuffleboard: (roomId: string) => `/games/shuffleboard/${encodeURIComponent(roomId)}`,
+  /** 전단지 피하기 폰 참가. `t`는 이번 판 QR의 표다. */
+  playFlyerDodge: (roomId: string, ticket: string) =>
+    `/play/flyer-dodge/${encodeURIComponent(roomId)}?t=${encodeURIComponent(ticket)}`,
+  flyerDodge: (roomId: string) => `/games/flyer-dodge/${encodeURIComponent(roomId)}`,
   login: (returnTo?: string) =>
     returnTo && returnTo !== "/"
       ? `/login?returnTo=${encodeURIComponent(returnTo)}`

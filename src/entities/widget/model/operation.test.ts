@@ -1,7 +1,24 @@
 import { describe, expect, it } from "vitest";
 import { buildWidgetContent } from "./content";
 import { operationWidgets, standaloneWidgets } from "./feed";
-import { WIDGET_DURATIONS } from "./operation";
+import { WIDGET_DURATIONS, isWidgetReleased, surveyPrizeOn } from "./operation";
+
+describe("위젯 공개일", () => {
+  it("준비 중(null)인 컬링은 평소 순환에 넣지 않고, 공개일이 없는 위젯은 늘 들어간다", () => {
+    expect(isWidgetReleased("SHUFFLEBOARD", "2026-11-05")).toBe(false);
+    expect(isWidgetReleased("SHUFFLEBOARD", "2099-01-01")).toBe(false);
+    expect(isWidgetReleased("CLICK_BATTLE", "2026-11-01")).toBe(true);
+    // 준비 중(null)은 언제든 순환에 넣지 않는다.
+    expect(isWidgetReleased("FLYER_DODGE", "2099-01-01")).toBe(false);
+  });
+});
+
+describe("설문 경품 안내", () => {
+  it("응모 마감(11/8)까지만 보이고 그 뒤에는 내린다", () => {
+    expect(surveyPrizeOn("2026-11-08")).toEqual({ headline: "추첨으로 소정의 상품", note: "11/8까지 응모" });
+    expect(surveyPrizeOn("2026-11-09")).toBeNull();
+  });
+});
 
 describe("운영 설정 위젯", () => {
   it("기본 위젯은 운영 설정의 시간을 쓴다", () => {
