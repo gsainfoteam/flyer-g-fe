@@ -28,6 +28,7 @@ import { to } from "@/shared/config/routes";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Spinner } from "@/shared/ui/spinner";
+import { UploadChoicesDialog } from "@/widgets/home/UploadChoicesDialog";
 
 /**
  * 내 컨텐츠 (기획 4-1).
@@ -97,12 +98,9 @@ export function MinePage() {
               : "불러오는 중"}
           </p>
         </div>
-        {/* 종류 고르기는 사용자 첫 화면에만 있다(관리자 첫 화면에는 없음). 지금 열린 종류는
-            포스터뿐이라 바로 포스터 올리기로 보낸다. 이벤트 배너·소식이 열리면(9.2) 고르는
-            화면으로 바꾼다. */}
-        <Button asChild>
-          <Link to={to.newPoster()}>새로 올리기</Link>
-        </Button>
+        <UploadChoicesDialog>
+          <Button>새로 올리기</Button>
+        </UploadChoicesDialog>
       </div>
 
       <div
@@ -157,11 +155,11 @@ export function MinePage() {
                     ? "지난 콘텐츠 없음"
                     : "등록한 콘텐츠 없음"
                 }
-                description="홈에서 콘텐츠 종류를 선택해 등록하세요."
+                description="올릴 콘텐츠 종류를 선택해 등록하세요."
                 action={
-                  <Button variant="secondary" size="sm" asChild>
-                    <Link to={to.home()}>올리러 가기</Link>
-                  </Button>
+                  <UploadChoicesDialog>
+                    <Button variant="secondary" size="sm">올리러 가기</Button>
+                  </UploadChoicesDialog>
                 }
               />
             ) : (
