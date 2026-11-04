@@ -46,6 +46,8 @@ export type WidgetContent =
     }
   /** 실시간 게임. 화면은 플레이어가 게임 방을 열어 그린다. */
   | { type: "CLICK_BATTLE" }
+  | { type: "SHUFFLEBOARD" }
+  | { type: "FLYER_DODGE" }
   /** 설문 링크 QR. 링크가 없으면 빠진다. */
   | { type: "SURVEY"; url: string; title: string; description: string | null };
 
@@ -311,6 +313,10 @@ export function buildWidgetContent(
       return buildWeatherContent(slot.params, now);
     case "CLICK_BATTLE":
       return { type: "CLICK_BATTLE" };
+    case "SHUFFLEBOARD":
+      return { type: "SHUFFLEBOARD" };
+    case "FLYER_DODGE":
+      return { type: "FLYER_DODGE" };
     case "SURVEY": {
       const url = readWebUrl(slot.params.url);
       if (!url) return null;

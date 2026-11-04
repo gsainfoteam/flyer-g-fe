@@ -7,6 +7,8 @@ import {
 import type { BattleState, Team } from "@/entities/game/model/click-battle";
 import type { GameLinkStatus } from "@/shared/lib/ws-game-channel";
 import { QRCodeBox } from "@/shared/components/QRCodeBox";
+import { SurveyCorner } from "@/shared/components/SurveyCorner";
+import type { EventSurvey } from "@/shared/components/SurveyCorner";
 import { to } from "@/shared/config/routes";
 import { cn } from "@/shared/lib/utils";
 
@@ -65,7 +67,7 @@ interface ClickBattleBoardProps {
    * 행사 시간대 화면에만 붙이는 설문 QR. 두 팀 칸 아래 전체 폭 띠에 둔다. 팀 참가 QR과
    * 자리·크기가 달라 헷갈리지 않고, 양 팀 칸의 대칭도 깨지 않는다.
    */
-  survey?: { url: string; label: string } | null;
+  survey?: EventSurvey | null;
 }
 
 export function ClickBattleBoard({
@@ -106,7 +108,12 @@ export function ClickBattleBoard({
             : status.detail}
         </p>
         {survey && (
-          <SurveyCorner survey={survey} finished={state.phase === "RESULT"} />
+          <SurveyCorner
+            survey={survey}
+            finished={state.phase === "RESULT"}
+            qrSize="band"
+            className="ml-auto"
+          />
         )}
       </div>
 
@@ -144,38 +151,6 @@ export function ClickBattleBoard({
 const RULES_TEXT = `팀당 최대 ${BATTLE_RULES.maxPlayersPerTeam}명 · 한 폰에 한 명 · ${
   BATTLE_RULES.matchMs / 1000
 }초 동안 더 많이 누른 팀이 이겨요 · 로그인 없이 이름만 적고 참가해요`;
-
-/**
- * 설문 QR. 상태 줄 오른쪽 끝(화면 우상단)에 둔다. 두 팀 칸 밖이라 팀 참가 QR과 헷갈리지
- * 않고 양 팀 칸의 대칭도 그대로다. 판이 끝난 직후가 폰을 들고 있어 응답하기 좋은 때라,
- * 결과 화면에서는 테두리로 강조하고 문구를 바꾼다.
- */
-function SurveyCorner({
-  survey,
-  finished,
-}: {
-  survey: { url: string; label: string };
-  finished: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "ml-auto flex shrink-0 items-center gap-6 rounded-tv-card bg-surface py-4 pr-8 pl-4",
-        finished && "ring-6 ring-accent",
-      )}
-    >
-      <QRCodeBox value={survey.url} size="band" />
-      <div className="flex flex-col gap-2">
-        <p className="text-[34px] leading-tight font-extrabold text-ink">
-          {finished ? "판이 끝났어요!" : survey.label}
-        </p>
-        <p className="text-[26px] text-ink-muted">
-          {finished ? `${survey.label}에 참여해 주세요` : "QR로 참여해 주세요"}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 const LINK_LABEL: Record<GameLinkStatus, { text: string; dot: string }> = {
   connecting: { text: "서버 연결 중", dot: "bg-warning" },

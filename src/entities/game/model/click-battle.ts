@@ -19,8 +19,17 @@ export const BATTLE_RULES = {
   startCountdownMs: 10_000,
   matchMs: 30_000,
   resultMs: 10_000,
-  /** 사람이 낼 수 있는 연타 속도의 넉넉한 상한. 넘는 수는 버린다. */
-  maxTapsPerSecond: 15,
+  /**
+   * 사람이 낼 수 있는 연타 속도의 넉넉한 상한. 넘는 수는 버린다. 두 손가락으로 번갈아
+   * 누르면 초당 15번을 넘기도 해서 20으로 둔다.
+   */
+  maxTapsPerSecond: 20,
+  /**
+   * 경기가 끝난 뒤에도 이만큼은 연타를 받는다. 폰은 연타를 150ms씩 모아 보내고 네트워크를
+   * 거치므로, 끝나기 직전에 누른 수가 결과 화면으로 바뀐 뒤에 도착한다. 폰은 끝 시각이
+   * 지나면 더 세지 않으니 이 동안 오는 수는 경기 중에 누른 것이다.
+   */
+  tapGraceMs: 700,
   nameMaxLength: 10,
 } as const;
 
@@ -57,7 +66,8 @@ export type JoinRejection = "FULL" | "CLOSED";
 
 /** TV → 폰 */
 export type BattleHostMessage =
-  | { kind: "state"; state: BattleState }
+  /** `now`: 보낼 때 TV의 시각(ms). 폰은 이것으로 TV 시계와의 차이를 잰다. */
+  | { kind: "state"; state: BattleState; now?: number }
   | { kind: "rejected"; playerId: string; reason: JoinRejection };
 
 export function initialBattle(round = 1): BattleState {
@@ -160,7 +170,17 @@ export function applyClientMessage(
     }
 
     case "taps": {
-      if (state.phase !== "PLAYING") return { state };
+      if (state.phaseEndsAt === null) return { state };
+      // 경기 중, 또는 끝난 직후 잠깐(늦게 도착한 마지막 묶음)만 받는다.
+      const matchEndsAt =
+        state.phase === "PLAYING"
+          ? state.phaseEndsAt
+          : state.phase === "RESULT"
+            ? state.phaseEndsAt - BATTLE_RULES.resultMs
+            : null;
+      if (matchEndsAt === null || now > matchEndsAt + BATTLE_RULES.tapGraceMs) {
+        return { state };
+      }
       const player = state.players.find((item) => item.id === message.playerId);
       if (!player || !Number.isFinite(message.count) || message.count <= 0) {
         return { state };
@@ -168,12 +188,12 @@ export function applyClientMessage(
       // 경기 시작부터 지금까지 낼 수 있는 연타 수(초당 상한)에 1초 몫의 여유를 더해 누적으로
       // 잰다. 폰은 연타를 150ms씩 묶어 보내고 네트워크에서 묶음이 몰려 오기도 해서, 묶음마다
       // 따로 내림해 자르면 정상 속도의 연타도 매번 조금씩 버려진다.
-      const startedAt = (state.phaseEndsAt ?? now) - BATTLE_RULES.matchMs;
-      const cap = Math.ceil(
-        ((now - startedAt) / 1000 + 1) * BATTLE_RULES.maxTapsPerSecond,
-      );
+      const startedAt = matchEndsAt - BATTLE_RULES.matchMs;
+      const elapsed = Math.min(now, matchEndsAt) - startedAt;
+      const cap = Math.ceil((elapsed / 1000 + 1) * BATTLE_RULES.maxTapsPerSecond);
       const accepted = Math.min(Math.floor(message.count), Math.max(0, cap - player.taps));
       if (accepted === 0) return { state };
+      const scores = { ...state.scores, [player.team]: state.scores[player.team] + accepted };
       return {
         state: {
           ...state,
@@ -182,11 +202,17 @@ export function applyClientMessage(
               ? { ...item, taps: item.taps + accepted, lastTapAt: now }
               : item,
           ),
-          scores: { ...state.scores, [player.team]: state.scores[player.team] + accepted },
+          scores,
+          // 결과가 난 뒤 도착한 수면 승패를 다시 정한다.
+          winner: state.phase === "RESULT" ? winnerOf(scores) : state.winner,
         },
       };
     }
   }
+}
+
+function winnerOf({ A, B }: Record<Team, number>): Team | "DRAW" {
+  return A === B ? "DRAW" : A > B ? "A" : "B";
 }
 
 /** 시간이 지나 단계가 바뀌었으면 다음 상태를, 아니면 같은 객체를 돌려준다. */
@@ -201,15 +227,13 @@ export function advanceBattle(state: BattleState, now: number): BattleState {
         phase: "PLAYING",
         phaseEndsAt: state.phaseEndsAt + BATTLE_RULES.matchMs,
       };
-    case "PLAYING": {
-      const { A, B } = state.scores;
+    case "PLAYING":
       return {
         ...state,
         phase: "RESULT",
         phaseEndsAt: state.phaseEndsAt + BATTLE_RULES.resultMs,
-        winner: A === B ? "DRAW" : A > B ? "A" : "B",
+        winner: winnerOf(state.scores),
       };
-    }
     case "RESULT":
       return initialBattle(state.round + 1);
   }
