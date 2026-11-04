@@ -34,12 +34,12 @@ export function ShuffleboardStageFor({
       }
       closedLabel={
         !joinable
-          ? "두 명이 모였어요\n곧 시작해요"
+          ? "참가자 모집 완료\n잠시 후 시작"
           : link === "unauthorized"
-            ? "이 TV는 게임을 열 수 없어요\n기기 설정 링크로 다시 열어 주세요"
+            ? "게임을 시작할 수 없습니다\n기기 설정 링크로 다시 연결하세요"
             : link === "replaced"
-              ? "다른 화면에서\n이 TV의 게임을 열었어요"
-              : "연결 준비 중이에요"
+              ? "다른 화면에서\n이 TV의 게임이 실행 중입니다"
+              : "연결 준비 중"
       }
     />
   );

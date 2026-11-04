@@ -21,7 +21,7 @@ describe("기기 관리", () => {
     renderRoute("/tv", { role: "REVIEWER" });
     expect(
       await screen.findByRole("heading", {
-        name: "이 화면을 볼 권한이 없어요",
+        name: "접근 권한 없음",
       }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "TV" })).toBeNull();
@@ -55,7 +55,7 @@ describe("기기 관리", () => {
     // 이름 없이 누르면 닫지 않고 알려 준다.
     await user.click(within(form).getByRole("button", { name: "등록" }));
     expect(
-      await within(form).findByText("기기 이름을 입력해 주세요."),
+      await within(form).findByText("기기 이름을 입력하세요."),
     ).toBeInTheDocument();
 
     await user.type(
@@ -68,7 +68,7 @@ describe("기기 관리", () => {
     await user.click(within(form).getByRole("button", { name: "등록" }));
 
     const setup = await screen.findByRole("dialog", {
-      name: "C동 로비 기기를 등록했어요",
+      name: "C동 로비 기기 등록 완료",
     });
     const link = within(setup).getByRole("textbox", { name: "TV 설정 링크" });
     expect((link as HTMLInputElement).value).toMatch(
@@ -93,13 +93,13 @@ describe("기기 관리", () => {
     );
     const confirm = await screen.findByRole("dialog");
     expect(
-      within(confirm).getByText(/지금 연결된 TV는 바로 끊겨요/),
+      within(confirm).getByText(/현재 TV 연결이 즉시 해제됩니다/),
     ).toBeInTheDocument();
     await user.click(within(confirm).getByRole("button", { name: "재발급" }));
 
     expect(
       await screen.findByRole("dialog", {
-        name: "A동 로비 토큰을 재발급했어요",
+        name: "A동 로비 토큰 재발급 완료",
       }),
     ).toBeInTheDocument();
   });
@@ -137,7 +137,7 @@ describe("기기 관리", () => {
     );
     await user.click(within(form).getByRole("button", { name: "등록" }));
     expect(
-      await within(form).findByText("위치 그룹을 하나 이상 골라 주세요."),
+      await within(form).findByText("위치 그룹을 하나 이상 선택하세요."),
     ).toBeInTheDocument();
   });
 
@@ -173,7 +173,7 @@ describe("기기 관리", () => {
     });
     expect(gone).toBeChecked();
     expect(
-      within(form).getByText(/표시된 그룹의 선택을 풀어 주세요/),
+      within(form).getByText(/해당 그룹의 선택을 해제하세요/),
     ).toBeInTheDocument();
 
     await user.click(gone);
@@ -185,7 +185,7 @@ describe("기기 관리", () => {
     );
     await user.click(within(form).getByRole("button", { name: "등록" }));
     expect(
-      await screen.findByRole("dialog", { name: "C동 로비 기기를 등록했어요" }),
+      await screen.findByRole("dialog", { name: "C동 로비 기기 등록 완료" }),
     ).toBeInTheDocument();
   });
 });

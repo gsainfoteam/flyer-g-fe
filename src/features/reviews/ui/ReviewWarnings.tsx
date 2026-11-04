@@ -40,9 +40,9 @@ export function ReviewWarnings({ submission, serverNow }: ReviewWarningsProps) {
   if (isPoster && submission.detailUrl === null) {
     warnings.push({
       key: "link-missing",
-      title: "상세 링크가 없어 QR 없이 게시돼요",
+      title: "상세 링크 없음 · QR 없이 게시",
       detail:
-        "학생이 자세한 내용을 볼 곳이 포스터뿐이에요. 포스터에 필요한 정보가 다 있는지 확인하세요.",
+        "상세 정보는 포스터에서만 확인할 수 있습니다. 필요한 정보가 모두 포함되어 있는지 확인하세요.",
     });
   } else if (
     isPoster &&
@@ -51,7 +51,7 @@ export function ReviewWarnings({ submission, serverNow }: ReviewWarningsProps) {
   ) {
     warnings.push({
       key: "link",
-      title: "상세 링크가 공식 Ziggle 주소가 아니에요",
+      title: "공식 Ziggle 주소가 아닌 상세 링크",
       detail: `QR이 ${submission.detailUrl} 로 연결됩니다. 승인 전에 반드시 확인하세요.`,
     });
   }
@@ -60,13 +60,13 @@ export function ReviewWarnings({ submission, serverNow }: ReviewWarningsProps) {
   if (submission.endAt && submission.endAt.getTime() <= now) {
     warnings.push({
       key: "period-ended",
-      title: "게시 기간이 이미 지났어요",
-      detail: "승인해도 TV에 걸리지 않아요. 기간 문제로 반려를 검토하세요.",
+      title: "게시 기간 경과",
+      detail: "승인해도 TV에 게시되지 않습니다. 기간 문제로 반려를 검토하세요.",
     });
   } else if (submission.startAt && submission.startAt.getTime() <= now) {
     warnings.push({
       key: "period-live",
-      title: "시작 시각이 이미 지났어요",
+      title: "게시 시작 시각 경과",
       detail: "승인하는 즉시 게시가 시작됩니다.",
     });
   }
@@ -78,15 +78,15 @@ export function ReviewWarnings({ submission, serverNow }: ReviewWarningsProps) {
   if (isPoster && !submission.posterUrl) {
     warnings.push({
       key: "poster-missing",
-      title: "포스터 이미지가 없어요",
+      title: "포스터 이미지 없음",
       detail: "이미지 없이 승인하면 TV에 빈 칸이 나갑니다.",
     });
   } else if (isPoster && size && isLowResolution(size)) {
     warnings.push({
       key: "poster-small",
-      title: `포스터 해상도가 낮아요 (${size.width}×${size.height})`,
+      title: `낮은 포스터 해상도 (${size.width}×${size.height})`,
       detail:
-        "TV에서 늘려 그려 흐리게 보일 수 있어요. 글자가 읽히는지 확인하고, 어려우면 저해상도로 반려하세요.",
+        "TV에서 확대되어 흐리게 보일 수 있습니다. 글자가 읽히는지 확인하고, 어려우면 저해상도로 반려하세요.",
     });
   }
 
@@ -101,16 +101,16 @@ export function ReviewWarnings({ submission, serverNow }: ReviewWarningsProps) {
   if (writing.some(hasContactInfo)) {
     warnings.push({
       key: "contact",
-      title: "전화번호나 메일 주소가 들어 있어요",
+      title: "연락처 포함",
       detail:
-        "TV에 연락처가 그대로 나가요. 본인이 밝힌 것인지 확인하고, 아니면 개인정보 노출로 반려하세요.",
+        "TV에 연락처가 그대로 표시됩니다. 본인이 밝힌 것인지 확인하고, 아니면 개인정보 노출로 반려하세요.",
     });
   }
   if (banner?.photoUrl && !banner.photoConsent) {
     warnings.push({
       key: "photo-consent",
-      title: "사진 속 사람의 동의가 확인되지 않았어요",
-      detail: "동의 없이 사진을 TV에 띄울 수 없어요. 반려하세요.",
+      title: "사진 속 인물의 게시 동의 미확인",
+      detail: "동의 없이 사진을 TV에 게시할 수 없습니다. 반려하세요.",
     });
   }
 

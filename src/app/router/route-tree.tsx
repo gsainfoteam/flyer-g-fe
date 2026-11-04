@@ -241,12 +241,12 @@ export const routeTree = [
               {
                 path: paths.mine,
                 element: minePage,
-                handle: title("내 컨텐츠"),
+                handle: title("내 콘텐츠"),
               },
               {
                 path: paths.mineDetail,
                 element: submissionDetailPage,
-                handle: title("컨텐츠 상세"),
+                handle: title("콘텐츠 상세"),
               },
               // 심사와 전체 컨텐츠는 하우스 관리자와 운영자만 볼 수 있다.
               {
@@ -266,7 +266,7 @@ export const routeTree = [
                   {
                     path: paths.contents,
                     element: contentsPage,
-                    handle: title("전체 컨텐츠"),
+                    handle: title("전체 콘텐츠"),
                   },
                 ],
               },

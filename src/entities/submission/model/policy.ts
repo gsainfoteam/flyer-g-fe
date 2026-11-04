@@ -58,13 +58,13 @@ export function checkSchedule(
 ): ScheduleErrors {
   const errors: ScheduleErrors = {};
   if (endAt.getTime() <= startAt.getTime()) {
-    errors.endAt = "종료 시각은 시작 시각보다 뒤여야 해요.";
+    errors.endAt = "종료 시각은 시작 시각 이후로 설정하세요.";
   } else if (endAt.getTime() <= now.getTime()) {
-    errors.endAt = "종료 시각은 현재보다 뒤여야 해요.";
+    errors.endAt = "종료 시각은 현재 시각 이후로 설정하세요.";
   } else if (
     endAt.getTime() > addSeoulMonths(startAt, config.maxPublishMonths).getTime()
   ) {
-    errors.endAt = `게시 기간은 최대 ${config.maxPublishMonths}개월이에요.`;
+    errors.endAt = `게시 기간은 최대 ${config.maxPublishMonths}개월입니다.`;
   }
   return errors;
 }

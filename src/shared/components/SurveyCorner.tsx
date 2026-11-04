@@ -48,7 +48,7 @@ export function SurveyCorner({
         <div className="flex flex-col gap-1">
           <p className="flex items-center gap-2 text-[26px] text-ink-muted">
             <Gift aria-hidden="true" className="size-7 text-warning" />
-            {finished ? `판이 끝났어요! ${survey.label} 참여하면` : `${survey.label} 참여하면`}
+            {finished ? `경기 종료! ${survey.label} 참여하면` : `${survey.label} 참여하면`}
           </p>
           <p className="text-[44px] leading-tight font-extrabold text-warning">{prize.headline}</p>
           <p className="text-[30px] font-bold text-ink">{prize.note}</p>
@@ -56,10 +56,10 @@ export function SurveyCorner({
       ) : (
         <div>
           <p className="text-[30px] leading-tight font-extrabold text-ink">
-            {finished ? "판이 끝났어요!" : survey.label}
+            {finished ? "경기 종료!" : survey.label}
           </p>
           <p className="mt-2 text-[24px] leading-snug text-ink-muted">
-            {finished ? `${survey.label}에 참여해 주세요` : "QR을 찍고 의견을 들려주세요"}
+            {finished ? `${survey.label} 참여` : "QR로 설문 참여"}
           </p>
         </div>
       )}

@@ -66,7 +66,7 @@ describe("신청 취소", () => {
     await screen.findByRole("heading", { name: "진행" });
     expect(screen.queryByRole("button", { name: "신청 취소" })).toBeNull();
     expect(screen.queryByRole("link", { name: /다시 신청/ })).toBeNull();
-    expect(screen.getByText(/게시 중단을 요청해 주세요/)).toBeInTheDocument();
+    expect(screen.getByText(/게시 중단을 요청하세요/)).toBeInTheDocument();
   });
 
   it("반려된 신청에서 수정 재신청 링크가 스튜디오 수정 모드로 간다", async () => {

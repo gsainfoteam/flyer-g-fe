@@ -224,7 +224,7 @@ function processingTimedOut(): ApiError {
   return new ApiError({
     kind: "timeout",
     code: "UPLOAD_FAILED",
-    message: "영상 변환이 오래 걸리고 있어요. 잠시 뒤 다시 시도해 주세요.",
+    message: "영상 변환이 지연되고 있습니다. 잠시 뒤 다시 시도하세요.",
   });
 }
 

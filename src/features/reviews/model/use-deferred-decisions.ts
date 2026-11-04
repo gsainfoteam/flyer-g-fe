@@ -46,13 +46,13 @@ export function useDeferredDecisions() {
       const action = decision.kind === "approve" ? "승인" : "반려";
       send(decision)
         .catch((error: unknown) => {
-          toast.error(`${action}하지 못했어요`, {
+          toast.error(`${action}하지 못했습니다`, {
             description:
               isApiError(error) && error.code === "CONFLICT"
-                ? "다른 관리자가 먼저 처리했거나 그사이 내용이 바뀌었어요."
+                ? "다른 관리자가 먼저 처리했거나 내용이 변경되었습니다."
                 : isApiError(error)
                   ? toUserMessage(error)
-                  : "잠시 후 다시 시도해 주세요.",
+                  : "잠시 후 다시 시도하세요.",
           });
         })
         // 목록을 새로 받은 뒤에 숨김을 푼다. 성공한 건은 목록에서 이미 빠져 있다.
@@ -89,7 +89,7 @@ export function useDeferredDecisions() {
         action: {
           label: "되돌리기",
           onClick: () => {
-            if (undo(id)) toast("되돌렸어요", { id: `decision-${id}` });
+            if (undo(id)) toast("실행 취소 완료", { id: `decision-${id}` });
           },
         },
       });

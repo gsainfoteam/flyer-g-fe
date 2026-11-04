@@ -43,7 +43,7 @@ export function TopNav({ user, pendingCount = 0 }: TopNavProps) {
     { label: "홈", href: to.home() },
     // 관리자는 전체 컨텐츠에서 내 것도 찾는다. 메뉴는 할 일 순서로 짧게 둔다.
     {
-      label: "내 컨텐츠",
+      label: "내 콘텐츠",
       href: to.mine(),
       match: "/mine",
       hideFor: ["REVIEWER", "SUPER_ADMIN"],
@@ -56,7 +56,7 @@ export function TopNav({ user, pendingCount = 0 }: TopNavProps) {
       count: pendingCount,
     },
     {
-      label: "전체 컨텐츠",
+      label: "전체 콘텐츠",
       href: to.contents(),
       match: "/contents",
       allow: ["REVIEWER", "SUPER_ADMIN"],

@@ -568,7 +568,7 @@ function EmptyDisplay({
           지금 게시 중인 안내가 없습니다
         </h1>
         <p className="text-[32px] text-ink-muted">
-          게시 신청은 Ziggle 공지에서 할 수 있어요 · {ZIGGLE_HOST}
+          Ziggle 공지에서 게시 신청 가능 · {ZIGGLE_HOST}
         </p>
       </div>
     </div>
@@ -591,8 +591,8 @@ function DeviceSetupNotice({
       <Logo size="tv" />
       <h1 className="text-[64px] leading-tight font-extrabold text-ink">
         {error.code === "DEVICE_UNAUTHORIZED"
-          ? "이 TV의 연결이 끊겼어요"
-          : "이 TV는 아직 연결되지 않았어요"}
+          ? "TV 연결 해제"
+          : "TV 연결 필요"}
       </h1>
       <p className="max-w-[1200px] text-[32px] leading-normal text-ink-muted">
         {toUserMessage(error)}

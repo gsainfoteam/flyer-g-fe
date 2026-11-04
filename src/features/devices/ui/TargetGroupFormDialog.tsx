@@ -60,7 +60,7 @@ export function TargetGroupFormDialog({
       onOpenChange={onOpenChange}
       title={group ? `${group.name} 수정` : "위치 그룹 추가"}
       description={
-        group ? undefined : "만든 뒤 기기 수정에서 TV를 이 그룹에 넣어요."
+        group ? undefined : "그룹을 만든 뒤 기기 수정 화면에서 TV를 이 그룹에 연결하세요."
       }
       confirmLabel={group ? "저장" : "추가"}
       onConfirm={async () => {
@@ -69,7 +69,7 @@ export function TargetGroupFormDialog({
         const trimmed = name.trim();
         if (!group) {
           await create.mutateAsync({ name: trimmed });
-          toast.success(`${trimmed} 그룹을 추가했어요`);
+          toast.success(`${trimmed} 그룹 추가 완료`);
           return;
         }
         const input: UpdateTargetGroupInput = {
@@ -78,7 +78,7 @@ export function TargetGroupFormDialog({
         };
         if (Object.keys(input).length === 0) return;
         await update.mutateAsync({ id: group.id, input });
-        toast.success("그룹을 저장했어요");
+        toast.success("그룹 저장 완료");
       }}
       onError={(error) => {
         if (error instanceof IncompleteForm) return;
@@ -88,10 +88,10 @@ export function TargetGroupFormDialog({
           setServerError(fieldError);
           return;
         }
-        toast.error(group ? "저장하지 못했어요" : "추가하지 못했어요", {
+        toast.error(group ? "저장하지 못했습니다" : "추가하지 못했습니다", {
           description: isApiError(error)
             ? toUserMessage(error)
-            : "잠시 후 다시 시도해 주세요.",
+            : "잠시 후 다시 시도하세요.",
         });
       }}
     >
@@ -118,7 +118,7 @@ export function TargetGroupFormDialog({
         {group && (
           <FormField
             label="선택 목록"
-            description="숨기면 새 기기·신청에서 고를 수 없어요. 이미 연결된 TV와 게시물은 그대로예요."
+            description="숨긴 그룹은 새 기기·신청에서 선택할 수 없습니다. 기존 TV와 게시물의 연결은 유지됩니다."
           >
             {(control) => (
               <Select

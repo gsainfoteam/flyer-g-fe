@@ -85,42 +85,41 @@ export function SubmitterActions({
 
       {submission.status === "SCHEDULED" && (
         <p className="text-caption text-ink-muted">
-          고치면 다시 승인을 받아야 게시돼요.
+          수정 후 재승인 필요.
         </p>
       )}
 
       {submission.status === "PUBLISHED" && (
         <p className="text-caption text-ink-muted">
           {isReviewer
-            ? "게시 중에는 고칠 수 없어요. 내리려면 검토 화면에서 게시를 중단해 주세요."
-            : "게시 중에는 직접 내릴 수 없어요. 급하면 하우스 관리자에게 게시 중단을 요청해 주세요."}
+            ? "게시 중에는 수정할 수 없습니다. 내리려면 검토 화면에서 게시를 중단하세요."
+            : "게시 중에는 직접 중단할 수 없습니다. 급하면 하우스 관리자에게 게시 중단을 요청하세요."}
         </p>
       )}
 
       {submission.status === "SUSPENDED" && submission.type !== "STORY" && (
         <p className="text-caption text-ink-muted">
-          사유는 처리 이력에서 확인할 수 있어요. 고쳐서 다시 신청하면 다시
-          검토를 받아요.
+          사유는 처리 이력에서 확인할 수 있습니다. 수정 후 재신청하면 다시 검토를 받습니다.
         </p>
       )}
 
       <ConfirmActionDialog
         open={confirmingCancel}
         onOpenChange={setConfirmingCancel}
-        title="이 신청을 취소할까요?"
-        description="취소하면 검토와 게시가 진행되지 않아요. 되돌릴 수 없습니다."
+        title="이 신청을 취소하시겠습니까?"
+        description="취소하면 검토와 게시가 진행되지 않습니다. 되돌릴 수 없습니다."
         confirmLabel="신청 취소"
         cancelLabel="계속 두기"
         tone="destructive"
         onConfirm={async () => {
           await cancel.mutateAsync({ version: submission.version });
-          toast.success("신청을 취소했어요");
+          toast.success("신청 취소 완료");
         }}
         onError={(error) => {
-          toast.error("취소하지 못했어요", {
+          toast.error("취소하지 못했습니다", {
             description: isApiError(error)
               ? toUserMessage(error)
-              : "잠시 후 다시 시도해 주세요.",
+              : "잠시 후 다시 시도하세요.",
           });
         }}
       />

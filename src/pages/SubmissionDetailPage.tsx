@@ -81,7 +81,7 @@ export function SubmissionDetailPage() {
               to={to.mine()}
               className="text-caption text-ink-muted hover:text-ink hover:underline"
             >
-              내 컨텐츠
+              내 콘텐츠
             </Link>
             {/* 좁은 화면에서는 버튼을 제목 아래로 내려 제목이 쪼개지지 않게 한다. */}
             <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
@@ -130,7 +130,7 @@ export function SubmissionDetailPage() {
                 id="tv-preview"
                 className="mb-2.5 text-body font-extrabold text-ink"
               >
-                TV에서 이렇게 보여요
+                TV 미리보기
               </h2>
               {view.type === "POSTER" ? (
                 <DisplayPreview

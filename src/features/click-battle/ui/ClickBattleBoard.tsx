@@ -32,16 +32,16 @@ function statusOf(
     case "LOBBY":
       return {
         title: "참가자 모집 중",
-        detail: "양 팀에 한 명씩 모이면 시작해요",
+        detail: "양 팀에 한 명씩 참가하면 시작",
       };
     case "COUNTDOWN":
-      return { title: `${seconds}초 뒤 시작`, detail: "아직 들어올 수 있어요" };
+      return { title: `${seconds}초 뒤 시작`, detail: "참가 가능" };
     case "PLAYING":
       return { title: `${seconds}초`, detail: "지금 누르세요!" };
     case "RESULT":
       return {
         title: state.winner === "DRAW" ? "무승부!" : `${state.winner}팀 승리!`,
-        detail: `${seconds}초 뒤 다음 참가자를 모집해요`,
+        detail: `${seconds}초 후 다음 참가자 모집`,
       };
   }
 }
@@ -132,12 +132,12 @@ export function ClickBattleBoard({
             }
             closedLabel={
               !joinable
-                ? "경기 중에는\n입장이 마감돼요"
+                ? "경기 중에는\n참가할 수 없습니다"
                 : link === "unauthorized"
-                  ? "이 TV는 게임을 열 수 없어요\n기기 설정 링크로 다시 열어 주세요"
+                  ? "게임을 시작할 수 없습니다\n기기 설정 링크로 다시 연결하세요"
                   : link === "replaced"
-                    ? "다른 화면에서\n이 TV의 게임을 열었어요"
-                    : "연결 준비 중이에요"
+                    ? "다른 화면에서\n이 TV의 게임이 실행 중입니다"
+                    : "연결 준비 중"
             }
           />
         ))}
@@ -150,7 +150,7 @@ export function ClickBattleBoard({
 
 const RULES_TEXT = `팀당 최대 ${BATTLE_RULES.maxPlayersPerTeam}명 · 한 폰에 한 명 · ${
   BATTLE_RULES.matchMs / 1000
-}초 동안 더 많이 누른 팀이 이겨요 · 로그인 없이 이름만 적고 참가해요`;
+}초 동안 더 많이 누른 팀 승리 · 로그인 없이 이름 입력 후 참가`;
 
 const LINK_LABEL: Record<GameLinkStatus, { text: string; dot: string }> = {
   connecting: { text: "서버 연결 중", dot: "bg-warning" },
@@ -250,13 +250,13 @@ function TeamPanel({
           {state.scores[team].toLocaleString("ko-KR")}
         </p>
         <p className={cn("text-[28px] font-bold text-ink-subtle", compact ? "mt-1" : "mt-3")}>
-          번 눌렀어요
+          회 클릭
         </p>
 
         <p className={cn("shrink-0 truncate text-[28px] text-ink-muted", compact ? "mt-4" : "mt-8")}>
           {players.length > 0
             ? players.map((player) => player.name).join(" · ")
-            : "아직 아무도 없어요"}
+            : "참가자 없음"}
         </p>
       </div>
 
@@ -266,7 +266,7 @@ function TeamPanel({
             {/* QR과 같은 240px 자리. 관리 화면용 빈 QR 상자는 글자가 작아 TV에서 안 읽힌다. */}
             <div
               role="img"
-              aria-label="QR 자리. 실제 TV에서 QR이 나와요"
+              aria-label="QR 미리보기 · 실제 TV에서 QR 표시"
               className="grid size-[240px] place-items-center rounded-tv-poster border-2 border-dashed border-line-strong text-center text-[26px] leading-snug text-ink-subtle"
             >
               미리보기

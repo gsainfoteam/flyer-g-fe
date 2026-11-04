@@ -194,30 +194,30 @@ export function getStatusSentence({
 }: StatusSentenceInput): string {
   switch (status) {
     case "DRAFT":
-      return "아직 제출하지 않았어요";
+      return "제출 전";
     case "PENDING_REVIEW":
       return waitingLabel
-        ? `${waitingLabel}째 관리자 검토를 기다리고 있어요`
-        : "관리자 검토를 기다리고 있어요";
+        ? `${waitingLabel}째 · 검토 대기 중`
+        : "검토 대기 중";
     case "REJECTED":
-      return "관리자가 반려했어요 · 사유를 확인해 주세요";
+      return "반려 · 사유 확인 필요";
     case "APPROVED":
-      return "승인됐어요 · 편성을 계산하고 있어요";
+      return "승인 완료 · 편성 준비 중";
     case "SCHEDULED":
       return startsAtLabel
-        ? `${startsAtLabel}에 자동으로 걸려요`
-        : "시작 시각이 되면 자동으로 걸려요";
+        ? `${startsAtLabel}에 게시 시작 예정`
+        : "시작 시각에 자동 게시";
     case "PUBLISHED":
       return endsAtLabel
-        ? `TV에 나오고 있어요 · ~ ${endsAtLabel}`
-        : "TV에 나오고 있어요";
+        ? `TV 게시 중 · ~ ${endsAtLabel}`
+        : "TV 게시 중";
     case "ENDED":
-      return "게시 기간이 끝났어요";
+      return "게시 기간 종료";
     case "SUSPENDED":
-      return "관리자가 게시를 중단했어요";
+      return "관리자 요청으로 게시 중단";
     case "CANCELED":
-      return "신청을 취소했어요";
+      return "신청 취소 완료";
     case "ARCHIVED":
-      return "보관했어요";
+      return "보관 완료";
   }
 }

@@ -54,12 +54,12 @@ export function AuthCallbackPage() {
           {error ? (
             <ErrorState
               error={error}
-              title="로그인하지 못했어요"
+              title="로그인하지 못했습니다"
               onRetry={() => void navigate(to.login(), { replace: true })}
               retryLabel="다시 로그인"
             />
           ) : (
-            <LoadingState rows={2} label="로그인을 마무리하고 있어요." />
+            <LoadingState rows={2} label="로그인 처리 중" />
           )}
         </div>
       </div>

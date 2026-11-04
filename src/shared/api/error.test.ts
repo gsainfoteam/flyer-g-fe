@@ -139,11 +139,11 @@ describe("새 오류 code (배포 ③④)", () => {
       limit: 5,
     });
     expect(toUserMessage(limited({ type: "STORY", limit: 5 }))).toBe(
-      "이 종류는 하루에 5건까지 올릴 수 있어요. 내일 다시 올려 주세요.",
+      "이 종류는 하루에 5건까지 등록할 수 있습니다. 내일 다시 등록하세요.",
     );
     expect(dailyLimitOf(limited({ limit: "5" }))).toBeNull();
     expect(toUserMessage(limited(null))).toBe(
-      "오늘 올릴 수 있는 수를 다 썼어요. 내일 다시 올려 주세요.",
+      "오늘 등록 한도에 도달했습니다. 내일 다시 등록하세요.",
     );
   });
 
@@ -157,6 +157,6 @@ describe("새 오류 code (배포 ③④)", () => {
           status: 409,
         }),
       ),
-    ).toBe("반려되거나 중단된 제보는 고쳐서 다시 낼 수 없어요. 새로 써 주세요.");
+    ).toBe("반려되거나 중단된 제보는 수정·재신청할 수 없습니다. 새 제보로 작성하세요.");
   });
 });

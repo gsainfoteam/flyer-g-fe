@@ -30,7 +30,7 @@ describe("시간대 고정 폼", () => {
 
   it("빈 이름, 거꾸로 된 날짜, 같은 시각, 틀린 설문 링크를 카드별로 알린다", () => {
     const draft = newTimeSlotDraft("2026-11-03", "s1");
-    expect(validateTimeSlotDrafts([draft])).toEqual({ s1: ["이름을 적어 주세요"] });
+    expect(validateTimeSlotDrafts([draft])).toEqual({ s1: ["이름을 입력하세요"] });
     const errors = validateTimeSlotDrafts([
       {
         ...draft,
@@ -42,9 +42,9 @@ describe("시간대 고정 폼", () => {
       },
     ]);
     expect(errors.s1).toEqual([
-      "끝 날짜가 시작 날짜보다 빨라요",
-      "시작과 끝 시각이 같아요",
-      "설문 링크는 https 주소여야 해요",
+      "종료 날짜는 시작 날짜와 같거나 이후로 설정하세요",
+      "시작 시각과 종료 시각을 다르게 설정하세요",
+      "설문 링크는 https 주소를 입력하세요",
     ]);
   });
 

@@ -62,8 +62,8 @@ export function TargetGroupsSection({
         >
           {list.length === 0 ? (
             <EmptyState
-              title="위치 그룹이 없어요"
-              description="그룹이 없으면 모든 게시물이 모든 TV에 나가요."
+              title="등록된 위치 그룹 없음"
+              description="그룹이 없으면 모든 게시물이 모든 TV에 게시됩니다."
               className="px-5"
             />
           ) : (
@@ -99,27 +99,27 @@ export function TargetGroupsSection({
         onOpenChange={(open) => {
           if (!open) setDeleting(null);
         }}
-        title={`${deleting?.name ?? ""} 그룹을 삭제할까요?`}
-        description="TV나 신청이 한 번이라도 쓴 그룹은 지울 수 없어요. 그때는 수정에서 숨겨 주세요."
+        title={`${deleting?.name ?? ""} 그룹을 삭제하시겠습니까?`}
+        description="TV나 신청에서 사용한 이력이 있는 그룹은 삭제할 수 없습니다. 수정 화면에서 숨김 처리하세요."
         confirmLabel="삭제"
         tone="destructive"
         onConfirm={async () => {
           if (!deleting) return;
           await remove.mutateAsync(deleting.id);
-          toast.success(`${deleting.name} 그룹을 삭제했어요`);
+          toast.success(`${deleting.name} 그룹 삭제 완료`);
         }}
         onError={(cause) => {
           if (isApiError(cause) && cause.status === 409) {
             setDeleting(null);
-            toast.error("쓰고 있는 그룹이라 지울 수 없어요", {
-              description: "수정에서 숨기면 새 기기·신청에서 고를 수 없어요.",
+            toast.error("사용 이력이 있는 그룹은 삭제할 수 없습니다", {
+              description: "수정 화면에서 숨기면 새 기기·신청에서 선택할 수 없습니다.",
             });
             return;
           }
-          toast.error("삭제하지 못했어요", {
+          toast.error("삭제하지 못했습니다", {
             description: isApiError(cause)
               ? toUserMessage(cause)
-              : "잠시 후 다시 시도해 주세요.",
+              : "잠시 후 다시 시도하세요.",
           });
         }}
       />

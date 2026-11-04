@@ -115,7 +115,7 @@ export async function validateVideoFile(
     return {
       ok: false,
       code: "EMPTY_FILE",
-      message: "빈 파일입니다. 다른 영상을 선택해 주세요.",
+      message: "빈 파일입니다. 다른 영상을 선택하세요.",
     };
   }
   if (file.size > maxSizeBytes) {
@@ -123,14 +123,14 @@ export async function validateVideoFile(
     return {
       ok: false,
       code: "TOO_LARGE",
-      message: `영상은 ${limitMb}MB까지 올릴 수 있어요. 이 파일은 ${formatMegabytes(file.size)}입니다.`,
+      message: `영상은 ${limitMb}MB까지 업로드할 수 있습니다. 이 파일은 ${formatMegabytes(file.size)}입니다.`,
     };
   }
   if (!isAllowedVideoMimeType(file.type)) {
     return {
       ok: false,
       code: "UNSUPPORTED_TYPE",
-      message: "MP4, MOV, WebM 영상만 올릴 수 있어요.",
+      message: "MP4, MOV, WebM 영상만 업로드할 수 있습니다.",
     };
   }
 
@@ -142,7 +142,7 @@ export async function validateVideoFile(
       ok: false,
       code: "SIGNATURE_MISMATCH",
       message:
-        "파일 내용이 영상 형식과 맞지 않아요. 원본 영상을 다시 내보내 주세요.",
+        "파일 내용이 영상 형식과 일치하지 않습니다. 원본 영상을 다시 내보내세요.",
     };
   }
 
@@ -151,7 +151,7 @@ export async function validateVideoFile(
     return {
       ok: false,
       code: "TOO_LONG",
-      message: `영상은 ${maxDurationSeconds}초까지 올릴 수 있어요. 이 영상은 ${Math.ceil(metadata.durationMs / 1000)}초입니다.`,
+      message: `영상은 ${maxDurationSeconds}초까지 업로드할 수 있습니다. 이 영상은 ${Math.ceil(metadata.durationMs / 1000)}초입니다.`,
     };
   }
 

@@ -102,27 +102,27 @@ export function validateSubmissionForm(
 
   const title = values.title.trim();
   if (title.length === 0) {
-    errors.title = "제목을 입력해 주세요.";
+    errors.title = "제목을 입력하세요.";
   } else if (config && title.length > config.titleMaxLength) {
-    errors.title = `제목은 ${config.titleMaxLength}자까지 쓸 수 있어요. 지금 ${title.length}자입니다.`;
+    errors.title = `제목은 ${config.titleMaxLength}자까지 입력할 수 있습니다. 지금 ${title.length}자입니다.`;
   }
 
   if (values.categoryId.length === 0) {
-    errors.categoryId = "카테고리를 선택해 주세요.";
+    errors.categoryId = "카테고리를 선택하세요.";
   } else if (
     categories &&
     !categories.some((category) => category.id === values.categoryId)
   ) {
-    errors.categoryId = "선택할 수 없는 카테고리예요.";
+    errors.categoryId = "선택할 수 없는 카테고리입니다.";
   }
 
   const startAt = parseSeoul(values.startAt);
   const endAt = parseSeoul(values.endAt);
   if (startAt === null) {
-    errors.startAt = "게시 시작 시각을 입력해 주세요.";
+    errors.startAt = "게시 시작 시각을 입력하세요.";
   }
   if (endAt === null) {
-    errors.endAt = "게시 종료 시각을 입력해 주세요.";
+    errors.endAt = "게시 종료 시각을 입력하세요.";
   }
   if (
     startAt !== null &&
@@ -132,7 +132,7 @@ export function validateSubmissionForm(
     if (now !== null && config !== null) {
       Object.assign(errors, checkSchedule(startAt, endAt, now, config));
     } else if (endAt.getTime() <= startAt.getTime()) {
-      errors.endAt = "종료 시각은 시작 시각보다 뒤여야 해요.";
+      errors.endAt = "종료 시각은 시작 시각 이후로 설정하세요.";
     }
   }
 
@@ -142,7 +142,7 @@ export function validateSubmissionForm(
     config &&
     !isAllowedDetailUrl(detailUrl, config)
   ) {
-    errors.detailUrl = `${config.allowedDetailUrlHosts.join(", ")}의 https 주소만 쓸 수 있어요.`;
+    errors.detailUrl = `${config.allowedDetailUrlHosts.join(", ")}의 https 주소만 입력할 수 있습니다.`;
   }
 
   for (const field of Object.keys(
@@ -151,12 +151,12 @@ export function validateSubmissionForm(
     const length = values[field].trim().length;
     if (length > TEXT_LIMITS[field]) {
       errors[field] =
-        `${TEXT_LIMITS[field]}자까지 쓸 수 있어요. 지금 ${length}자입니다.`;
+        `${TEXT_LIMITS[field]}자까지 입력할 수 있습니다. 지금 ${length}자입니다.`;
     }
   }
 
   if (!values.assetId) {
-    errors.asset = "포스터 이미지를 올려 주세요.";
+    errors.asset = "포스터 이미지를 업로드하세요.";
   }
 
   return errors;
@@ -173,7 +173,7 @@ export function hasFieldErrors(errors: SubmissionFieldErrors): boolean {
 export function summarizeErrors(errors: SubmissionFieldErrors): string | null {
   const count = Object.keys(errors).length;
   if (count === 0) return null;
-  return `입력을 확인해 주세요. ${count}개 항목에 문제가 있어요.`;
+  return `입력을 확인하세요. ${count}개 항목을 수정해야 합니다.`;
 }
 
 /** 서버 422의 `fields` 키 → 폼 항목. 서버는 API 필드 이름으로 준다. */

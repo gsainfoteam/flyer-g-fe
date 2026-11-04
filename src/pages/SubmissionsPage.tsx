@@ -78,7 +78,7 @@ export function SubmissionsPage() {
     );
   };
 
-  const title = "전체 컨텐츠";
+  const title = "전체 콘텐츠";
 
   return (
     <>
@@ -95,7 +95,7 @@ export function SubmissionsPage() {
           </p>
         </div>
         <Button variant="secondary" asChild>
-          <Link to={to.mine()}>내 컨텐츠</Link>
+          <Link to={to.mine()}>내 콘텐츠</Link>
         </Button>
       </div>
 
@@ -125,10 +125,10 @@ export function SubmissionsPage() {
                 <EmptyState
                   title={
                     group.key === "all"
-                      ? "아직 들어온 컨텐츠가 없어요"
-                      : `${group.label} 상태의 컨텐츠가 없어요`
+                      ? "접수된 콘텐츠 없음"
+                      : `${group.label} 상태의 콘텐츠 없음`
                   }
-                  description="다른 탭을 눌러 보세요."
+                  description="다른 상태의 탭을 선택하세요."
                   className="px-3"
                 />
               ) : (

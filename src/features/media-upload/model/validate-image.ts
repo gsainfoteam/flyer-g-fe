@@ -130,21 +130,21 @@ export async function validateImageFile(
   const decode = options.decode ?? decodeImageWithBrowser;
 
   if (file.size === 0) {
-    return fail("EMPTY_FILE", "빈 파일입니다. 다른 이미지를 선택해 주세요.");
+    return fail("EMPTY_FILE", "빈 파일입니다. 다른 이미지를 선택하세요.");
   }
 
   if (file.size > maxSizeBytes) {
     const limitMb = Math.floor(maxSizeBytes / (1024 * 1024));
     return fail(
       "TOO_LARGE",
-      `${limitMb}MB까지 올릴 수 있어요. 이 파일은 ${formatMegabytes(file.size)}입니다.`,
+      `${limitMb}MB까지 업로드할 수 있습니다. 이 파일은 ${formatMegabytes(file.size)}입니다.`,
     );
   }
 
   if (!isAllowedImageMimeType(file.type)) {
     return fail(
       "UNSUPPORTED_TYPE",
-      "JPG, PNG, WebP 이미지만 올릴 수 있어요.",
+      "JPG, PNG, WebP 이미지만 업로드할 수 있습니다.",
     );
   }
 
@@ -155,7 +155,7 @@ export async function validateImageFile(
   if (detected === null || detected !== file.type) {
     return fail(
       "SIGNATURE_MISMATCH",
-      "파일 내용이 이미지 형식과 맞지 않아요. 원본 이미지를 다시 내보내 주세요.",
+      "파일 내용이 이미지 형식과 일치하지 않습니다. 원본 이미지를 다시 내보내세요.",
     );
   }
 
@@ -165,7 +165,7 @@ export async function validateImageFile(
   } catch {
     return fail(
       "DECODE_FAILED",
-      "이미지를 열 수 없어요. 파일이 손상되었을 수 있습니다.",
+      "이미지를 열 수 없습니다. 파일이 손상되었을 수 있습니다.",
     );
   }
 

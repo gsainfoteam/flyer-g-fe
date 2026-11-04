@@ -104,7 +104,7 @@ describe("심사 대기열", () => {
     renderRoute(`/review/${PENDING_ID}`, { role: "SUBMITTER" });
 
     expect(
-      await screen.findByText("이 화면을 볼 권한이 없어요"),
+      await screen.findByText("접근 권한 없음"),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /승인/ })).toBeNull();
   });
@@ -244,7 +244,7 @@ describe("고른 건", () => {
     await user.keyboard("a");
     await passUndoWindow();
 
-    expect(await screen.findByText("승인하지 못했어요")).toBeInTheDocument();
+    expect(await screen.findByText("승인하지 못했습니다")).toBeInTheDocument();
     expect(
       screen.getByText(/다른 관리자가 먼저 처리했거나/),
     ).toBeInTheDocument();
@@ -430,7 +430,7 @@ describe("소식 제보 심사", () => {
     renderRoute(`/review/${story.id}`, { role: "REVIEWER", repositories });
 
     expect(
-      await screen.findByText("전화번호나 메일 주소가 들어 있어요"),
+      await screen.findByText("연락처 포함"),
     ).toBeInTheDocument();
   });
 });

@@ -23,19 +23,19 @@ interface KindCopy {
 
 const COPY: Record<SubmissionKind, KindCopy> = {
   POSTER: {
-    description: "이미지를 올리고 기간과 QR 링크를 정해요",
+    description: "이미지 업로드 · 게시 기간·QR 링크 설정",
     examples: ["동아리 신입 모집", "공연·행사 안내"],
     rule: "기간 직접 정함",
     href: to.newPoster(),
   },
   EVENT_BANNER: {
-    description: "받는 사람과 문구만 쓰면 TV 화면이 만들어져요",
+    description: "받는 사람·문구 입력 후 TV 화면 생성",
     examples: ["친구 생일", "합격·수상 소식"],
     rule: "하루~3일",
     href: to.newEvent(),
   },
   STORY: {
-    description: "140자 안으로 쓰면 이름 없이 TV에 나가요",
+    description: "140자 이내 · TV에 작성자 이름 비공개",
     examples: ["고쳐진 시설", "분실물", "건의"],
     rule: "2일 게시 · 이름 비공개",
     href: to.newStory(),
@@ -134,7 +134,7 @@ function ChoiceCard({ kind, large = false }: { kind: SubmissionKind; large?: boo
             </span>
           ) : (
             <span className="ml-auto inline-flex h-7 items-center rounded-pill bg-surface-muted px-2.5 font-semibold text-ink-muted">
-              곧 열려요
+              준비 중
             </span>
           )}
         </div>

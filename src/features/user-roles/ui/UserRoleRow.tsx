@@ -15,7 +15,7 @@ import {
 } from "@/shared/ui/select";
 import { useChangeUserRole } from "../model/use-change-user-role";
 
-const SELF_HINT = "본인 역할은 다른 운영자가 바꿔야 해요";
+const SELF_HINT = "본인 역할은 다른 운영자만 변경 가능";
 
 /**
  * 표의 한 줄. 사용자 한 명과 역할 선택.
@@ -40,7 +40,7 @@ export function UserRoleRow({ user, isSelf, serverNow }: UserRoleRowProps) {
 
   const run = (target: Role) =>
     change.mutateAsync({ user, target }).then(() => {
-      toast.success(`${user.name}님을 ${getRoleLabel(target)}로 바꿨어요`);
+      toast.success(`${user.name}님을 ${getRoleLabel(target)}로 변경 완료`);
     });
 
   const handleSelect = (value: string) => {
@@ -113,8 +113,8 @@ export function UserRoleRow({ user, isSelf, serverNow }: UserRoleRowProps) {
         <ConfirmActionDialog
           open={confirming}
           onOpenChange={setConfirming}
-          title={`${user.name}님을 시스템 운영자로 바꿀까요?`}
-          description="시스템 운영자는 기기와 위치 그룹을 관리하고, 다른 사람의 역할도 바꿀 수 있어요."
+          title={`${user.name}님을 시스템 운영자로 변경하시겠습니까?`}
+          description="시스템 운영자는 기기·위치 그룹을 관리하고 다른 사용자의 역할을 변경할 수 있습니다."
           confirmLabel="시스템 운영자로 바꾸기"
           onConfirm={() => run("SUPER_ADMIN")}
           onError={(error) => {
@@ -137,12 +137,12 @@ export function UserRoleRow({ user, isSelf, serverNow }: UserRoleRowProps) {
  */
 function notifyFailure(error: ApiError) {
   if (error.status === 404) {
-    toast.error("사용자를 찾지 못했어요", {
-      description: "목록을 새로 불러왔어요.",
+    toast.error("사용자를 찾지 못했습니다", {
+      description: "목록을 새로 불러왔습니다.",
     });
     return;
   }
-  toast.error("역할을 바꾸지 못했어요", {
+  toast.error("역할을 변경하지 못했습니다", {
     description: toUserMessage(error),
   });
 }

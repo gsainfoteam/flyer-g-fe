@@ -64,11 +64,11 @@ export function ActivityFeed({
         최근 소식
       </h2>
       {pending ? (
-        <LoadingState rows={3} label="소식을 불러오고 있어요." />
+        <LoadingState rows={3} label="소식 불러오는 중" />
       ) : failed ? (
         <ErrorState
           error={failed.error}
-          title="소식을 불러오지 못했어요"
+          title="소식을 불러오지 못했습니다"
           onRetry={() =>
             histories.forEach((query) => {
               if (query.error) void query.refetch();
@@ -78,8 +78,8 @@ export function ActivityFeed({
         />
       ) : events.length === 0 ? (
         <EmptyState
-          title="아직 소식이 없어요"
-          description="올리면 심사 결과와 게시 시작·끝 소식이 여기에 쌓여요."
+          title="새 소식 없음"
+          description="콘텐츠를 등록하면 심사 결과와 게시 시작·종료 이력이 표시됩니다."
           className="py-1"
         />
       ) : (
@@ -88,7 +88,7 @@ export function ActivityFeed({
             <FeedItem
               key={event.id}
               event={event}
-              title={titles.get(event.submissionId) ?? "컨텐츠"}
+              title={titles.get(event.submissionId) ?? "콘텐츠"}
               now={now}
               last={index === events.length - 1}
             />

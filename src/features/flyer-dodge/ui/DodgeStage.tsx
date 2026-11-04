@@ -46,7 +46,7 @@ function statusOf(state: DodgeState, now: number, rank: number | null): { title:
     case "LOBBY":
       return {
         title: "전단지 피하기",
-        detail: `폰 버튼으로 로고를 움직여 떨어지는 전단지를 피해요 · ${DODGE_RULES.durationMs / 1_000}초, 하트 ${DODGE_RULES.lives}개`,
+        detail: `휴대폰 버튼으로 로고를 움직여 전단지를 피하세요 · ${DODGE_RULES.durationMs / 1_000}초, 하트 ${DODGE_RULES.lives}개`,
       };
     case "COUNTDOWN":
       return { title: `${seconds}초 뒤 시작`, detail: `${name} 님, 폰의 좌우 버튼을 준비하세요` };
@@ -159,13 +159,13 @@ function JoinPanel({ joinUrl, closedLabel }: { joinUrl: string | null; closedLab
       </div>
       <ol className="flex min-w-0 flex-col gap-6 text-[36px] leading-snug text-ink">
         <li>
-          <span className="font-extrabold text-accent">1</span> QR을 찍고 이름을 적어요
+          <span className="font-extrabold text-accent">1</span> QR 스캔 후 이름 입력
         </li>
         <li>
-          <span className="font-extrabold text-accent">2</span> 폰의 ◀ ▶ 버튼을 누르고 있으면 로고가 움직여요
+          <span className="font-extrabold text-accent">2</span> 휴대폰의 ◀ ▶ 버튼을 누르면 로고 이동
         </li>
         <li>
-          <span className="font-extrabold text-accent">3</span> 전단지는 피하고, 노란 ＋와 하트는 받아요
+          <span className="font-extrabold text-accent">3</span> 전단지는 피하고 노란 ＋와 하트는 획득
         </li>
       </ol>
     </section>
@@ -181,7 +181,7 @@ function ResultPanel({ state, rank }: { state: DodgeState; rank: number | null }
         {result?.score.toLocaleString("ko-KR")}
       </p>
       <p className="text-[34px] text-ink-muted">
-        {((result?.survivedMs ?? 0) / 1_000).toFixed(1)}초 버텼어요 ·{" "}
+        {((result?.survivedMs ?? 0) / 1_000).toFixed(1)}초 생존 ·{" "}
         {rank ? `이 TV ${rank}위` : `이 TV ${RANKING_SIZE}위 밖`}
       </p>
     </section>
@@ -199,7 +199,7 @@ function RankingPanel({
     <section aria-label="이 TV 순위" className="flex min-h-0 flex-col gap-5 rounded-tv-card bg-surface px-12 py-10">
       <h2 className="text-[34px] font-extrabold text-ink">이 TV 순위</h2>
       {ranking.length === 0 ? (
-        <p className="text-[30px] text-ink-subtle">아직 기록이 없어요. 첫 기록을 남겨 보세요!</p>
+        <p className="text-[30px] text-ink-subtle">등록된 기록 없음 · 첫 기록에 도전하세요!</p>
       ) : (
         <ol className="flex flex-col gap-3">
           {ranking.map((record, index) => (

@@ -46,7 +46,7 @@ describe("로그인 복귀 화면", () => {
     });
 
     expect(
-      await screen.findByRole("heading", { name: "로그인하지 못했어요" }),
+      await screen.findByRole("heading", { name: "로그인하지 못했습니다" }),
     ).toBeInTheDocument();
     expect(screen.getByText(/로그인 요청이 만료되었거나/)).toBeInTheDocument();
 

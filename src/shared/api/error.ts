@@ -139,52 +139,52 @@ export function isRetryableError(error: unknown): boolean {
 export function toUserMessage(error: ApiError): string {
   switch (error.code) {
     case "UNAUTHENTICATED":
-      return "로그인이 필요합니다. 다시 로그인해 주세요.";
+      return "로그인이 필요합니다. 다시 로그인하세요.";
     case "FORBIDDEN":
       return "이 작업을 수행할 권한이 없습니다.";
     case "NOT_FOUND":
       return "요청한 내용을 찾을 수 없습니다.";
     case "CONFLICT":
-      return "다른 사용자가 먼저 처리했습니다. 최신 상태를 다시 불러와 주세요.";
+      return "다른 사용자가 먼저 처리했습니다. 최신 상태를 다시 불러오세요.";
     case "ALREADY_SUBMITTED":
-      return "이 공지로 진행 중인 신청이 이미 있어요. 내 신청에서 확인해 주세요.";
+      return "이 공지로 진행 중인 신청이 있습니다. 내 콘텐츠에서 확인하세요.";
     case "PAYLOAD_TOO_LARGE":
       return "파일 용량이 허용 범위를 넘었습니다.";
     case "RATE_LIMITED":
-      return "요청이 많습니다. 잠시 후 다시 시도해 주세요.";
+      return "요청이 많습니다. 잠시 후 다시 시도하세요.";
     case "DAILY_LIMIT_EXCEEDED": {
       const limit = dailyLimitOf(error)?.limit;
       return limit !== undefined
-        ? `이 종류는 하루에 ${limit}건까지 올릴 수 있어요. 내일 다시 올려 주세요.`
-        : "오늘 올릴 수 있는 수를 다 썼어요. 내일 다시 올려 주세요.";
+        ? `이 종류는 하루에 ${limit}건까지 등록할 수 있습니다. 내일 다시 등록하세요.`
+        : "오늘 등록 한도에 도달했습니다. 내일 다시 등록하세요.";
     }
     case "NOT_RESUBMITTABLE":
-      return "반려되거나 중단된 제보는 고쳐서 다시 낼 수 없어요. 새로 써 주세요.";
+      return "반려되거나 중단된 제보는 수정·재신청할 수 없습니다. 새 제보로 작성하세요.";
     case "NETWORK_ERROR":
-      return "네트워크에 연결할 수 없습니다. 연결을 확인한 뒤 다시 시도해 주세요.";
+      return "네트워크에 연결할 수 없습니다. 연결을 확인한 뒤 다시 시도하세요.";
     case "TIMEOUT":
-      return "서버가 응답하지 않아요. 잠시 후 다시 시도해 주세요.";
+      return "서버가 응답하지 않습니다. 잠시 후 다시 시도하세요.";
     case "REQUEST_CANCELED":
       return "요청이 취소되었습니다.";
     case "AUTH_DENIED":
-      return "로그인을 취소했어요. 다시 로그인해 주세요.";
+      return "로그인이 취소되었습니다. 다시 로그인하세요.";
     case "AUTH_STATE_MISMATCH":
-      return "로그인 요청이 만료되었거나 다른 창에서 시작되었어요. 다시 로그인해 주세요.";
+      return "로그인 요청이 만료되었거나 다른 창에서 시작되었습니다. 다시 로그인하세요.";
     case "AUTH_REDIRECT_MISMATCH":
-      return "로그인 설정이 이 주소와 맞지 않아요. 관리자에게 문의해 주세요.";
+      return "로그인 설정이 현재 주소와 일치하지 않습니다. 관리자에게 문의하세요.";
     case "AUTH_FAILED":
-      return "로그인을 마치지 못했어요. 다시 로그인해 주세요.";
+      return "로그인을 완료하지 못했습니다. 다시 로그인하세요.";
     case "DEVICE_NOT_REGISTERED":
-      return "관리자에게 받은 설정 링크로 이 화면을 열어 주세요.";
+      return "관리자에게 받은 설정 링크로 이 화면을 여세요.";
     case "DEVICE_UNAUTHORIZED":
-      return "토큰이 재발급되었거나 사용하지 않는 기기예요. 관리자에게 새 설정 링크를 받아 주세요.";
+      return "토큰이 재발급되었거나 비활성화된 기기입니다. 관리자에게 새 설정 링크를 받으세요.";
     case "KV_NOT_BOUND":
-      return "TV 설정 저장소(Cloudflare KV)가 아직 연결되지 않았어요. 관리자에게 문의해 주세요.";
+      return "TV 설정 저장소가 연결되지 않았습니다. 관리자에게 문의하세요.";
     case "UPLOAD_FAILED":
-      return "포스터를 올리지 못했습니다. 다시 시도해 주세요.";
+      return "포스터를 올리지 못했습니다. 다시 시도하세요.";
     default:
       return error.status !== null && error.status >= 500
-        ? "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
+        ? "일시적인 오류가 발생했습니다. 잠시 후 다시 시도하세요."
         : "요청을 처리하지 못했습니다.";
   }
 }

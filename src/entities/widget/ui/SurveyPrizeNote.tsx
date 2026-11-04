@@ -15,7 +15,7 @@ export function SurveyPrizeNote() {
       <span>
         <b>{prize.headline}</b> · {prize.note}
         <br />
-        <span className="text-ink-muted">설문 끝에 이름·학번·전화번호를 적으면 응모돼요.</span>
+        <span className="text-ink-muted">설문 마지막에 이름·학번·전화번호를 입력하면 경품 추첨에 응모됩니다.</span>
       </span>
     </p>
   );

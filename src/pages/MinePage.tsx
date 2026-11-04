@@ -90,7 +90,7 @@ export function MinePage() {
     <>
       <div className="flex flex-wrap items-end gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-title text-ink">내 컨텐츠</h1>
+          <h1 className="text-title text-ink">내 콘텐츠</h1>
           <p className="mt-1 text-label text-ink-muted">
             {counts
               ? `진행 중 ${counts.active} · 지난 것 ${counts.past}`
@@ -154,10 +154,10 @@ export function MinePage() {
               <EmptyState
                 title={
                   view.key === "past"
-                    ? "아직 지난 컨텐츠가 없어요"
-                    : "아직 올린 컨텐츠가 없어요"
+                    ? "지난 콘텐츠 없음"
+                    : "등록한 콘텐츠 없음"
                 }
-                description="홈에서 포스터를 골라 첫 컨텐츠를 올려 보세요."
+                description="홈에서 콘텐츠 종류를 선택해 등록하세요."
                 action={
                   <Button variant="secondary" size="sm" asChild>
                     <Link to={to.home()}>올리러 가기</Link>
@@ -192,7 +192,7 @@ export function MinePage() {
             ))}
         </PageState>
         <p className="mt-3 text-caption text-ink-subtle">
-          TV 노출은 TV가 화면에 띄운 횟수(최근 1년)예요.
+          TV 노출은 최근 1년간 TV 화면에 표시된 횟수입니다.
         </p>
       </div>
     </>
@@ -213,7 +213,7 @@ function MineTable({ items, impressions, now }: RowsProps) {
         <thead>
           <tr className="text-left text-caption text-ink-subtle">
             <th scope="col" className="px-5 py-2.5 font-medium">
-              컨텐츠
+              콘텐츠
             </th>
             <th scope="col" className="w-48 px-2 py-2.5 font-medium">
               상태
