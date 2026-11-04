@@ -1,3 +1,4 @@
+import type { ContentScenes } from "@/entities/poster/model/frames";
 import type { PosterRenderModel } from "@/entities/poster";
 import type { LayoutType } from "@/entities/playlist/model/types";
 
@@ -24,4 +25,6 @@ export interface DisplayPlaylist {
   refreshAfterSeconds: number;
   layout: { type: LayoutType; rotationSeconds: number };
   posters: PosterRenderModel[];
+  /** 포스터 사이에 끼우는 이벤트 배너·제보. 기간이 지난 것은 이미 빠져 있다. */
+  content: ContentScenes;
 }

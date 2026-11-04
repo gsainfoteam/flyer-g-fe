@@ -183,3 +183,73 @@ describe("흐르는 띠", () => {
     expect(items.map((item) => item.poster.id)).toEqual(["a", "b"]);
   });
 });
+
+describe("이벤트·제보 장면", () => {
+  const period = {
+    startsAt: new Date("2026-06-01T00:00:00Z"),
+    endsAt: new Date("2026-06-30T00:00:00Z"),
+  };
+  const serverTime = new Date("2026-06-08T03:00:00Z");
+
+  it("이벤트 배너는 받는 사람과 문구, 올리기 QR을 그린다", () => {
+    render(
+      <DisplayStage
+        frame={{
+          kind: "event",
+          key: "event:e1",
+          banner: {
+            ...period,
+            submissionId: "e1",
+            revision: 1,
+            checksum: "sha256:e1",
+            mode: "TEMPLATE",
+            occasion: "BIRTHDAY",
+            recipient: "지민",
+            message: "오늘 하루는 네가 주인공",
+            sender: "3층 친구들",
+            photoUrl: null,
+            assetUrl: null,
+          },
+        }}
+        posters={[]}
+        deviceLabel="A동 로비"
+        serverTime={serverTime}
+      />,
+    );
+
+    expect(screen.getByText("지민, 생일 축하해")).toBeInTheDocument();
+    expect(screen.getByText("오늘 하루는 네가 주인공")).toBeInTheDocument();
+    expect(screen.getByText("나도 이벤트 올리기")).toBeInTheDocument();
+    expect(screen.getByText("A동 로비")).toBeInTheDocument();
+  });
+
+  it("제보는 말머리와 번호, 본문만 그린다", () => {
+    render(
+      <DisplayStage
+        frame={{
+          kind: "story",
+          key: "story:s1",
+          stories: [
+            {
+              ...period,
+              submissionId: "s1",
+              revision: 2,
+              checksum: "sha256:s1",
+              storyNumber: 128,
+              tag: "PRAISE",
+              body: "건조기가 고쳐졌어요",
+            },
+          ],
+        }}
+        posters={[]}
+        deviceLabel={null}
+        serverTime={serverTime}
+      />,
+    );
+
+    expect(screen.getByText("칭찬")).toBeInTheDocument();
+    expect(screen.getByText("#128")).toBeInTheDocument();
+    expect(screen.getByText("건조기가 고쳐졌어요")).toBeInTheDocument();
+    expect(screen.getByText("폰으로 제보하기")).toBeInTheDocument();
+  });
+});

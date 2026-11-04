@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { framesPerCycle } from "@/entities/playlist/model/rotation";
+import type {
+  PlaylistEventBanner,
+  PlaylistStory,
+} from "@/entities/playlist/model/types";
 import {
+  buildContentFrames,
   buildFrames,
+  exposedContent,
   exposedPosters,
+  mixContentFrames,
   imagesOf,
   playingVideoOf,
   posterFrameSeconds,
@@ -34,7 +41,9 @@ const describeFrame = (frame: DisplayFrame) =>
     ? "벽"
     : frame.kind === "spotlight"
       ? frame.poster.id
-      : `띠:${frame.focusIndex}`;
+      : frame.kind === "strip"
+        ? `띠:${frame.focusIndex}`
+        : frame.key;
 
 describe("buildFrames", () => {
   it("모아 보기는 벽 → 크게 세 건 → 벽 → 남은 건 순서다", () => {
@@ -126,5 +135,89 @@ describe("영상 포스터", () => {
     expect(strip.map((frame) => posterFrameSeconds(frame, items, 10))).toEqual([
       25, 10, 10,
     ]);
+  });
+});
+
+describe("이벤트·제보 장면", () => {
+  const scene = (id: string) => ({
+    submissionId: id,
+    revision: 1,
+    startsAt: new Date("2026-06-01T00:00:00Z"),
+    endsAt: new Date("2026-06-30T00:00:00Z"),
+    checksum: `sha256:${id}`,
+  });
+  const banner = (id: string): PlaylistEventBanner => ({
+    ...scene(id),
+    mode: "TEMPLATE",
+    occasion: "BIRTHDAY",
+    recipient: "지민",
+    message: "생일 축하해!",
+    sender: null,
+    photoUrl: null,
+    assetUrl: null,
+  });
+  const story = (id: string): PlaylistStory => ({
+    ...scene(id),
+    storyNumber: 128,
+    tag: "PRAISE",
+    body: "고맙습니다",
+  });
+  const keys = (frames: DisplayFrame[]) => frames.map(describeFrame);
+
+  it("이벤트는 한 장면에 한 건, 제보는 두 건씩 묶는다", () => {
+    const frames = buildContentFrames({
+      eventBanners: [banner("e1")],
+      stories: [story("s1"), story("s2"), story("s3")],
+    });
+    expect(keys(frames)).toEqual(["event:e1", "story:s1", "story:s3"]);
+    expect(exposedContent(frames[1]!).map((item) => item.id)).toEqual([
+      "s1",
+      "s2",
+    ]);
+  });
+
+  it("포스터 사이에 고르게 끼우고 모두 한 번씩 나온다", () => {
+    const frames = buildFrames(posters("a", "b", "c", "d"), "STRIP");
+    const content = buildContentFrames({
+      eventBanners: [banner("e1"), banner("e2")],
+      stories: [],
+    });
+    expect(keys(mixContentFrames(frames, content))).toEqual([
+      "띠:0",
+      "띠:1",
+      "event:e1",
+      "띠:2",
+      "띠:3",
+      "event:e2",
+    ]);
+  });
+
+  it("포스터가 없으면 장면만 돌고, 장면이 없으면 포스터 순환 그대로다", () => {
+    const content = buildContentFrames({
+      eventBanners: [banner("e1")],
+      stories: [],
+    });
+    expect(keys(mixContentFrames([], content))).toEqual(["event:e1"]);
+    const frames = buildFrames(posters("a", "b"), "STRIP");
+    expect(mixContentFrames(frames, [])).toBe(frames);
+  });
+
+  it("글을 읽을 시간만큼 머문다. 전환 간격이 더 길면 그만큼 머문다", () => {
+    const [event, stories] = buildContentFrames({
+      eventBanners: [banner("e1")],
+      stories: [story("s1")],
+    });
+    expect(posterFrameSeconds(event!, [], 5)).toBe(10);
+    expect(posterFrameSeconds(stories!, [], 5)).toBe(15);
+    expect(posterFrameSeconds(stories!, [], 20)).toBe(20);
+  });
+
+  it("다음 장면의 배너 이미지를 미리 받는다", () => {
+    const withImage = { ...banner("e1"), assetUrl: "/banner.webp" };
+    const [frame] = buildContentFrames({
+      eventBanners: [withImage],
+      stories: [],
+    });
+    expect(imagesOf(frame, [])).toEqual(["/banner.webp"]);
   });
 });

@@ -1,8 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LayoutType } from "@/entities/playlist/model/types";
 import type { PosterRenderModel } from "@/entities/poster";
-import { buildFrames, posterFrameSeconds } from "@/entities/poster/model/frames";
-import type { DisplayFrame } from "@/entities/poster/model/frames";
+import {
+  buildContentFrames,
+  buildFrames,
+  mixContentFrames,
+  posterFrameSeconds,
+} from "@/entities/poster/model/frames";
+import type {
+  ContentScenes,
+  DisplayFrame,
+} from "@/entities/poster/model/frames";
 import type { WidgetPick } from "@/entities/widget/model/policy";
 import { placeWidgetSlots } from "@/entities/widget/model/schedule";
 import type { FrameTemplate, PlayerFrame } from "@/entities/widget/model/schedule";
@@ -22,6 +30,8 @@ import type { FrameTemplate, PlayerFrame } from "@/entities/widget/model/schedul
  */
 export interface UseRotationOptions {
   posters: PosterRenderModel[];
+  /** 포스터 사이에 끼울 이벤트 배너·제보 장면 */
+  content?: ContentScenes;
   layout: LayoutType;
   rotationSeconds: number;
   /** 포스터 화면 몇 장마다 위젯 자리를 둘까. 0이면 위젯 없음 */
@@ -45,8 +55,11 @@ interface Position {
   pick: WidgetPick | null;
 }
 
+const NO_CONTENT: ContentScenes = { eventBanners: [], stories: [] };
+
 export function useRotation({
   posters,
+  content = NO_CONTENT,
   layout,
   rotationSeconds,
   widgetInterval = 0,
@@ -67,9 +80,19 @@ export function useRotation({
       (item) =>
         `${item.id}@${item.revision ?? ""}:${item.width}x${item.height}:${item.posterUrl}:${item.durationMs ?? ""}`,
     )
+    .join("|")}::${[...content.eventBanners, ...content.stories]
+    .map((item) => `${item.submissionId}@${item.checksum}`)
     .join("|")}`;
   const frames = useMemo<FrameTemplate[]>(
-    () => placeWidgetSlots(buildFrames(posters, layout), interval, minSlots),
+    () =>
+      placeWidgetSlots(
+        mixContentFrames(
+          buildFrames(posters, layout),
+          buildContentFrames(content),
+        ),
+        interval,
+        minSlots,
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- posters는 signature로 대표된다
     [signature],
   );

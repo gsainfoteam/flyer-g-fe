@@ -1398,14 +1398,21 @@ export function createMockRepositories(
         .map(toSignageSubmissionExpanded)
         .filter(
           (item) =>
-            // 편성 v1은 포스터만 싣는다(이벤트 배너·제보는 편성 v2부터).
-            item.type === "POSTER" &&
             resolveEffectiveStatus(item, now) === "PUBLISHED" &&
-            Boolean(item.posterUrl) &&
+            (item.type !== "POSTER" || Boolean(item.posterUrl)) &&
             (!device ||
               item.targetGroupIds.length === 0 ||
               item.targetGroupIds.some((id) => device.groupIds.includes(id))),
         );
+      const posters = playable.filter((item) => item.type === "POSTER");
+      // 게시 중이면 기간이 있다. 체크섬은 내용으로 정해져 고치면 새 값이 된다.
+      const scene = (item: (typeof playable)[number]) => ({
+        submissionId: item.id,
+        revision: item.version,
+        startsAt: toIsoUtc(item.startAt!),
+        endsAt: toIsoUtc(item.endAt!),
+        checksum: `mock-${item.id}@${item.version}`,
+      });
 
       return toPlaylist({
         serverTime: toIsoUtc(now),
@@ -1417,7 +1424,26 @@ export function createMockRepositories(
           type: DEFAULT_LAYOUT_TYPE,
           rotationSeconds: 10,
         },
-        items: playable.map((item) => ({
+        eventBanners: playable.flatMap((item) => {
+          const banner = item.eventBanner;
+          if (!banner) return [];
+          return [
+            {
+              ...scene(item),
+              mode: banner.mode,
+              occasion: banner.occasion,
+              recipient: banner.recipient,
+              message: banner.message,
+              sender: banner.sender,
+              photoUrl: banner.photoUrl,
+              assetUrl: banner.assetUrl,
+            },
+          ];
+        }),
+        stories: playable.flatMap((item) =>
+          item.story ? [{ ...scene(item), ...item.story }] : [],
+        ),
+        items: posters.map((item) => ({
           submissionId: item.id,
           revision: item.version,
           title: item.title,

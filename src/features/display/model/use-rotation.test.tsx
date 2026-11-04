@@ -30,7 +30,8 @@ function focusOf(frame: PlayerFrame | undefined, items: PosterRenderModel[]) {
   if (frame.kind === "widget") return `widget:${frame.slot.id}`;
   if (frame.kind === "wall") return "wall";
   if (frame.kind === "spotlight") return frame.poster.id;
-  return items[frame.focusIndex]!.id;
+  if (frame.kind === "strip") return items[frame.focusIndex]!.id;
+  return frame.key;
 }
 
 beforeEach(() => {
@@ -96,6 +97,41 @@ describe("useRotation", () => {
     act(() => vi.advanceTimersByTime(1_000));
     expect(focusOf(result.current.currentFrame, items)).toBe("a");
     expect(result.current.frameSeconds).toBe(10);
+  });
+
+  it("이벤트·제보 장면을 포스터 사이에 끼우고, 글 읽을 시간만큼 머문다", () => {
+    const items = posters("a", "b");
+    const content = {
+      eventBanners: [],
+      stories: [
+        {
+          submissionId: "s1",
+          revision: 1,
+          startsAt: new Date("2026-06-01T00:00:00Z"),
+          endsAt: new Date("2026-06-30T00:00:00Z"),
+          checksum: "sha256:s1",
+          storyNumber: 128,
+          tag: "PRAISE" as const,
+          body: "고맙습니다",
+        },
+      ],
+    };
+    const { result } = renderHook(() =>
+      useRotation({
+        posters: items,
+        content,
+        layout: "STRIP",
+        rotationSeconds: 10,
+      }),
+    );
+
+    act(() => vi.advanceTimersByTime(20_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("story:s1");
+    expect(result.current.frameSeconds).toBe(15);
+    act(() => vi.advanceTimersByTime(14_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("story:s1");
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("a");
   });
 
   it("고를 위젯이 없으면 그 자리는 건너뛴다", () => {
