@@ -615,9 +615,9 @@ export function createMockRepositories(
       posterThumbUrl: posterUrl,
       posterWidth: asset?.width ?? 0,
       posterHeight: asset?.height ?? 0,
-      posterKind: "IMAGE",
-      posterDurationMs: null,
-      posterVideoUrl: null,
+      posterKind: asset?.kind ?? "IMAGE",
+      posterDurationMs: asset?.durationMs ?? null,
+      posterVideoUrl: asset?.videoUrl ?? null,
       subtitle: optionalText(input.subtitle),
       location: optionalText(input.location),
       description: optionalText(input.description),
@@ -801,6 +801,9 @@ export function createMockRepositories(
           changes.posterThumbUrl = asset.url;
           changes.posterWidth = asset.width;
           changes.posterHeight = asset.height;
+          changes.posterKind = asset.kind;
+          changes.posterDurationMs = asset.durationMs;
+          changes.posterVideoUrl = asset.videoUrl;
         }
       }
       if (changes.categoryId) {
@@ -1159,10 +1162,13 @@ export function createMockRepositories(
           endsAt: toIsoUtc(item.endAt!),
           priority: item.priority,
           checksum: `mock-${item.id}`,
-          kind: "IMAGE",
+          kind: item.posterKind ?? "IMAGE",
           width: item.posterWidth ?? 0,
           height: item.posterHeight ?? 0,
-          durationMs: null,
+          durationMs: item.posterDurationMs,
+          video: item.posterVideoUrl
+            ? { url: item.posterVideoUrl, hasAudio: false }
+            : null,
           subtitle: item.subtitle,
           location: item.location,
           organizerName: item.organizerName,

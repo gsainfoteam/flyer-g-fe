@@ -68,13 +68,13 @@ describe("접근성 자동 검사", () => {
     await expectNoViolations(container);
   });
 
-  it("승인 대기 목록", async () => {
+  it("심사 대기열", async () => {
     const { container } = renderRoute("/review", { role: "REVIEWER" });
-    await screen.findByText(/승인 대기 \d+건/);
+    await screen.findByText(/대기 \d+건/);
     await expectNoViolations(container);
   });
 
-  it("검토 상세", async () => {
+  it("심사 · 고른 건", async () => {
     const { container } = renderRoute("/review/notice-003", {
       role: "REVIEWER",
     });

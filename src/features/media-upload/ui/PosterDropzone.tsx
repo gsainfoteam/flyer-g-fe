@@ -1,6 +1,11 @@
 import { useRef, useState } from "react";
 import { AlertTriangle, RotateCcw, UploadCloud, X } from "lucide-react";
-import { ALLOWED_IMAGE_MIME_TYPES, MEDIA_CONSTRAINTS } from "@/entities/media";
+import {
+  ALLOWED_IMAGE_MIME_TYPES,
+  ALLOWED_VIDEO_MIME_TYPES,
+  MEDIA_CONSTRAINTS,
+  VIDEO_CONSTRAINTS,
+} from "@/entities/media";
 import { Alert, AlertDescription } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
 import { Spinner } from "@/shared/ui/spinner";
@@ -18,6 +23,8 @@ import type {
  *
  * 실패해도 파일을 놓지 않는다. 사용자는 같은 파일을 다시 찾아 고르지 않고 재시도만
  * 하면 된다.
+ *
+ * 영상은 운영 설정이 받을 때만 고를 수 있다(배포 ①).
  */
 interface PosterDropzoneProps {
   state: PosterUploadState;
@@ -30,8 +37,6 @@ interface PosterDropzoneProps {
   limits?: UploadLimits | null;
 }
 
-const ACCEPT = ALLOWED_IMAGE_MIME_TYPES.join(",");
-
 export function PosterDropzone({
   state,
   onSelectFile,
@@ -43,6 +48,18 @@ export function PosterDropzone({
   const maxMb = Math.floor(
     (limits?.maxSizeBytes ?? MEDIA_CONSTRAINTS.maxSizeBytes) / (1024 * 1024),
   );
+  const acceptsVideo = Boolean(limits?.acceptsVideo);
+  const maxVideoMb = Math.floor(
+    (limits?.maxVideoSizeBytes ?? VIDEO_CONSTRAINTS.maxSizeBytes) /
+      (1024 * 1024),
+  );
+  const maxVideoSeconds =
+    limits?.maxVideoDurationSeconds ?? VIDEO_CONSTRAINTS.maxDurationSeconds;
+  const accept = [
+    ...ALLOWED_IMAGE_MIME_TYPES,
+    ...(acceptsVideo ? ALLOWED_VIDEO_MIME_TYPES : []),
+  ].join(",");
+  const isVideo = state.mediaKind === "VIDEO";
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
@@ -99,7 +116,7 @@ export function PosterDropzone({
           <input
             ref={inputRef}
             type="file"
-            accept={ACCEPT}
+            accept={accept}
             className="sr-only"
             disabled={busy}
             aria-invalid={showsError || undefined}
@@ -119,13 +136,22 @@ export function PosterDropzone({
           <p className="mt-3 text-label text-ink">
             {busy
               ? state.status === "validating"
-                ? "이미지를 확인하는 중"
-                : "올리는 중"
-              : "이미지를 끌어다 놓거나 선택하세요"}
+                ? "파일 확인 중"
+                : state.processing
+                  ? "영상 변환 중"
+                  : "올리는 중"
+              : acceptsVideo
+                ? "이미지나 영상을 끌어다 놓거나 선택하세요"
+                : "이미지를 끌어다 놓거나 선택하세요"}
           </p>
           <p className="mt-1 text-caption text-ink-muted">
             JPG, PNG, WebP · 최대 {maxMb}MB
           </p>
+          {acceptsVideo && (
+            <p className="text-caption text-ink-muted">
+              MP4, MOV, WebM · 최대 {maxVideoMb}MB · {maxVideoSeconds}초
+            </p>
+          )}
           {!busy && (
             <span className="mt-3 rounded-control bg-ink px-3 py-1.5 text-caption text-surface">
               파일 선택
@@ -174,18 +200,35 @@ export function PosterDropzone({
       {state.previewUrl && (
         <div className="overflow-hidden rounded-control ring-1 ring-line">
           <div className="aspect-3/4 w-full bg-surface-muted">
-            <img
-              src={state.previewUrl}
-              alt="선택한 포스터 미리보기"
-              className="h-full w-full object-contain"
-            />
+            {isVideo ? (
+              <video
+                src={state.previewUrl}
+                aria-label="선택한 영상 미리보기"
+                controls
+                muted
+                playsInline
+                preload="metadata"
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <img
+                src={state.previewUrl}
+                alt="선택한 포스터 미리보기"
+                className="h-full w-full object-contain"
+              />
+            )}
           </div>
           <div className="flex items-center justify-between gap-2 bg-surface px-2.5 py-2">
             <span className="truncate text-caption text-ink-muted">
-              {state.dimensions
-                ? `${state.dimensions.width}×${state.dimensions.height}`
-                : ""}
-              {state.status === "uploaded" ? " · 업로드 완료" : ""}
+              {[
+                state.dimensions &&
+                  `${state.dimensions.width}×${state.dimensions.height}`,
+                state.durationMs !== null &&
+                  `${Math.ceil(state.durationMs / 1000)}초`,
+                state.status === "uploaded" && "업로드 완료",
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </span>
             <Button variant="ghost" size="sm" onClick={onClear}>
               <X aria-hidden="true" />

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useImperativeHandle, useState } from "react";
+import type { KeyboardEvent, Ref } from "react";
 import { toast } from "sonner";
 import {
   getRejectionReasonLabel,
@@ -15,7 +16,7 @@ import type {
   SubmissionStatus,
 } from "@/entities/submission";
 import { useTargetGroupLabel } from "@/entities/device/api/queries";
-import { ConfirmActionDialog, FormField } from "@/shared/components";
+import { ConfirmActionDialog, FormField, Kbd } from "@/shared/components";
 import { isApiError, toUserMessage } from "@/shared/api/error";
 import { formatSeoulDateTime } from "@/shared/lib/datetime";
 import { Button } from "@/shared/ui/button";
@@ -46,6 +47,10 @@ import {
  *
  * 409 충돌은 "다른 관리자가 이미 처리했다"는 뜻이다. 다이얼로그를 닫고 알린 뒤
  * 화면을 최신 상태로 바꾼다. 같은 버튼을 계속 눌러 봐야 같은 409가 날 뿐이다.
+ *
+ * 심사 한 화면은 `onApprove`·`onReject`를 넘겨 결정을 직접 보내지 않고 늦게 보낸다
+ * (되돌리기). 그때 승인은 확인 없이 바로 넘어가고, 단축키(`ref`)로도 연다. 반려
+ * 사유는 숫자 키로 고른다.
  */
 export const REJECT_COMMENT_MAX_LENGTH = 500;
 /** "기타"는 분류가 아무 정보도 주지 않으니 사유가 그만큼 구체적이어야 한다. */
@@ -53,12 +58,27 @@ export const REJECT_OTHER_MIN_LENGTH = 10;
 
 export type ReviewDecisionKind = "approve" | "reject" | "suspend";
 
+export interface DecisionActionsHandle {
+  approve: () => void;
+  openReject: () => void;
+}
+
 interface DecisionActionsProps {
   submission: SignageSubmissionExpanded;
   /** 서버 시각 기준 실제 상태 */
   status: SubmissionStatus;
   /** 결정이 서버에 반영된 뒤. 다음 건으로 넘어가는 데 쓴다. */
   onDecided?: (kind: ReviewDecisionKind) => void;
+  /** 있으면 승인을 확인 없이 이것으로 넘긴다. 호출부가 늦게 보낸다. */
+  onApprove?: () => void;
+  /** 있으면 반려를 직접 보내지 않고 이것으로 넘긴다. */
+  onReject?: (values: {
+    reasonCode: RejectionReasonCode;
+    comment: string;
+  }) => void;
+  /** 버튼 옆에 단축키를 보인다. */
+  shortcuts?: boolean;
+  ref?: Ref<DecisionActionsHandle>;
 }
 
 type OpenDialog = ReviewDecisionKind | null;
@@ -67,6 +87,10 @@ export function DecisionActions({
   submission,
   status,
   onDecided,
+  onApprove,
+  onReject,
+  shortcuts = false,
+  ref,
 }: DecisionActionsProps) {
   const [open, setOpen] = useState<OpenDialog>(null);
   const [reasonCode, setReasonCode] = useState<RejectionReasonCode | "">("");
@@ -89,9 +113,34 @@ export function DecisionActions({
       trimmedComment.length >= REJECT_OTHER_MIN_LENGTH);
 
   const openDialog = (kind: ReviewDecisionKind) => {
+    if (kind === "approve" && onApprove) {
+      onApprove();
+      return;
+    }
     // 새 결정이다. 앞선 시도의 idempotency key를 쓰지 않는다.
     ({ approve, reject, suspend })[kind].startAttempt();
     setOpen(kind);
+  };
+
+  useImperativeHandle(ref, () => ({
+    approve: () => {
+      if (canDecide) openDialog("approve");
+    },
+    openReject: () => {
+      if (canDecide) openDialog("reject");
+    },
+  }));
+
+  const reasons = rejectionReasonsFor(submission.type);
+  // 사유 칸에 쓰는 중이 아니면 숫자 키로 반려 분류를 고른다.
+  const pickReasonByNumber = (event: KeyboardEvent) => {
+    if (event.target instanceof HTMLTextAreaElement) return;
+    const index = Number(event.key) - 1;
+    const code = Number.isInteger(index) ? reasons[index] : undefined;
+    if (code) {
+      event.preventDefault();
+      setReasonCode(code);
+    }
   };
 
   const handleError = (action: string) => (error: unknown) => {
@@ -113,15 +162,30 @@ export function DecisionActions({
     <div className="flex flex-wrap items-center gap-2.5">
       {canDecide && (
         <>
-          <Button size="sm" onClick={() => openDialog("approve")}>
+          <Button
+            size="sm"
+            aria-keyshortcuts={shortcuts ? "A" : undefined}
+            onClick={() => openDialog("approve")}
+          >
             승인
+            {shortcuts && (
+              <Kbd aria-hidden className="h-5 min-w-5 text-ink">
+                A
+              </Kbd>
+            )}
           </Button>
           <Button
             variant="secondary"
             size="sm"
+            aria-keyshortcuts={shortcuts ? "R" : undefined}
             onClick={() => openDialog("reject")}
           >
             반려
+            {shortcuts && (
+              <Kbd aria-hidden className="h-5 min-w-5">
+                R
+              </Kbd>
+            )}
           </Button>
         </>
       )}
@@ -188,6 +252,15 @@ export function DecisionActions({
         tone="destructive"
         confirmDisabled={!rejectReady}
         onConfirm={async () => {
+          if (onReject) {
+            onReject({
+              reasonCode: reasonCode as RejectionReasonCode,
+              comment,
+            });
+            setReasonCode("");
+            setComment("");
+            return;
+          }
           await reject.mutateAsync({
             revision: submission.version,
             reasonCode: reasonCode as RejectionReasonCode,
@@ -200,8 +273,21 @@ export function DecisionActions({
         }}
         onError={handleError("반려")}
       >
-        <div className="space-y-4">
-          <FormField label="반려 분류" required>
+        <div className="space-y-4" onKeyDown={pickReasonByNumber}>
+          <FormField
+            label="반려 분류"
+            required
+            description={
+              shortcuts
+                ? `숫자 키 ${reasons
+                    .map(
+                      (code, index) =>
+                        `${index + 1} ${getRejectionReasonLabel(code)}`,
+                    )
+                    .join(" · ")}`
+                : undefined
+            }
+          >
             {(control) => (
               <Select
                 value={reasonCode}
@@ -213,7 +299,7 @@ export function DecisionActions({
                   <SelectValue placeholder="선택하세요" />
                 </SelectTrigger>
                 <SelectContent>
-                  {rejectionReasonsFor(submission.type).map((code) => (
+                  {reasons.map((code) => (
                     <SelectItem key={code} value={code}>
                       {getRejectionReasonLabel(code)}
                     </SelectItem>

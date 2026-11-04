@@ -99,7 +99,7 @@ describe("게시 신청 스튜디오", () => {
     }
     // 기간 규칙은 서버 설정에서 받아 안내한다.
     expect(
-      await screen.findByText(/24시간 이후부터, 기간은 최대 3개월/),
+      await screen.findByText(/기간은 최대 3개월이에요/),
     ).toBeInTheDocument();
   });
 
@@ -303,6 +303,9 @@ describe("게시 신청 스튜디오", () => {
           height: 1600,
           mimeType: "image/jpeg",
           sizeBytes: 4096,
+          kind: "IMAGE",
+          videoUrl: null,
+          durationMs: null,
         };
       },
     };

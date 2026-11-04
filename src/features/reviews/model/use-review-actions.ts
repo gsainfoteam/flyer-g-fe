@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRepositories } from "@/shared/api/repositories-context";
 import type {
@@ -9,7 +10,10 @@ import { normalizeApiError } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
 import { queryKeys } from "@/shared/api/query-keys";
 import { runWithConflictRecovery } from "@/shared/api/recover-conflict";
-import { useIdempotencyKey } from "@/shared/lib/idempotency";
+import {
+  createIdempotencyKey,
+  useIdempotencyKey,
+} from "@/shared/lib/idempotency";
 
 /**
  * 검토 결정 (명세 FR-REV-03 ~ FR-REV-05).
@@ -127,5 +131,78 @@ export function useSuspendSubmission(submissionId: string) {
         { submissionId, reason: reason.trim() },
         { idempotencyKey: key },
       ),
+  );
+}
+
+/** 심사 화면이 늦게 보내는 결정. 화면을 떠난 뒤에도 그대로 보낼 수 있게 값만 든다. */
+export type QueuedDecision =
+  | { kind: "approve"; submissionId: string; revision: number }
+  | ({ kind: "reject"; submissionId: string } & RejectValues);
+
+const EXPECTED_STATUS: Record<
+  QueuedDecision["kind"],
+  readonly SubmissionStatus[]
+> = {
+  approve: ["APPROVED", "SCHEDULED", "PUBLISHED"],
+  reject: ["REJECTED"],
+};
+
+/**
+ * 결정 하나를 보낸다. 심사 한 화면은 결정을 몇 초 늦게 보내므로(되돌리기), 보낼
+ * 때 이미 다른 건을 보고 있다. 그래서 신청 id를 hook이 아니라 결정에 싣는다.
+ * 재시도·409 확인 규칙은 위 `useDecision`과 같다.
+ */
+export function useSendDecision() {
+  const { reviews, submissions } = useRepositories();
+  const queryClient = useQueryClient();
+
+  return useCallback(
+    async (decision: QueuedDecision): Promise<SignageSubmissionExpanded> => {
+      const key = createIdempotencyKey();
+      let unknownOutcome = false;
+      const { submissionId } = decision;
+      const run = () =>
+        decision.kind === "approve"
+          ? reviews.approve(
+              { submissionId, revision: decision.revision },
+              { idempotencyKey: key },
+            )
+          : reviews.reject(
+              {
+                submissionId,
+                revision: decision.revision,
+                reasonCode: decision.reasonCode,
+                comment: decision.comment.trim(),
+              },
+              { idempotencyKey: key },
+            );
+      try {
+        const updated = await runWithConflictRecovery(run, {
+          hadUnknownOutcome: () => unknownOutcome,
+          markOutcomeUnknown: () => {
+            unknownOutcome = true;
+          },
+          reload: () => submissions.getById(submissionId),
+          succeeded: (latest) =>
+            EXPECTED_STATUS[decision.kind].includes(latest.status),
+        });
+        queryClient.setQueryData(
+          queryKeys.submissions.detail(submissionId),
+          updated,
+        );
+        return updated;
+      } catch (cause) {
+        throw normalizeApiError(cause);
+      } finally {
+        // 성공이면 대기열에서 빠지고, 409면 화면이 본 것이 낡았다. 둘 다 새로 받는다.
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.reviews.all(),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.submissions.all(),
+        });
+      }
+    },
+    [queryClient, reviews, submissions],
   );
 }

@@ -59,11 +59,3 @@ function spreadSlots(frames: DisplayFrame[], count: number): FrameTemplate[] {
   });
   return result;
 }
-
-/** 이 화면이 머무는 시간(초). 위젯은 자기 시간, 포스터는 기기 전환 간격이다. */
-export function frameDurationSeconds(
-  frame: PlayerFrame,
-  rotationSeconds: number,
-): number {
-  return frame.kind === "widget" ? frame.slot.durationSeconds : rotationSeconds;
-}

@@ -28,7 +28,7 @@ export function readLayoutType(value: string): LayoutType | null {
 
 export const DEFAULT_LAYOUT_TYPE: LayoutType = "WALL";
 
-/** 콘텐츠 종류. 지금은 이미지만 있고 영상은 백엔드가 열면 생긴다. */
+/** 콘텐츠 종류. 영상이면 `video`를 재생하고 `assetUrl`은 대표 프레임이다. */
 export const CONTENT_KINDS = ["IMAGE", "VIDEO"] as const;
 export type ContentKind = (typeof CONTENT_KINDS)[number];
 
@@ -67,11 +67,20 @@ export interface PlaylistItemDto {
   height?: number;
   /** 영상 길이(ms). 이미지는 null */
   durationMs?: number | null;
+  /** 영상 포스터의 재생 파일(배포 ①). 이미지는 null */
+  video?: PlaylistVideo | null;
 
   /** 신청자가 입력한 부제·장소·주최. 크게 보기와 흐르는 띠가 그린다. 없으면 null */
   subtitle?: string | null;
   location?: string | null;
   organizerName?: string | null;
+}
+
+export interface PlaylistVideo {
+  /** TV 재생용 mp4. 받는 중이거나 재생에 실패하면 `assetUrl`(대표 프레임)을 띄운다. */
+  url: string;
+  /** 자동 재생은 음소거라 지금은 소리를 내지 않는다. */
+  hasAudio: boolean;
 }
 
 export interface PlaylistDto {
@@ -90,7 +99,7 @@ export interface PlaylistDto {
 
 export interface PlaylistItem extends Omit<
   PlaylistItemDto,
-  "startsAt" | "endsAt" | "kind" | "width" | "height" | "durationMs"
+  "startsAt" | "endsAt" | "kind" | "width" | "height" | "durationMs" | "video"
 > {
   startsAt: Date;
   endsAt: Date;
@@ -99,6 +108,7 @@ export interface PlaylistItem extends Omit<
   width: number;
   height: number;
   durationMs: number | null;
+  video: PlaylistVideo | null;
 }
 
 export interface Playlist {

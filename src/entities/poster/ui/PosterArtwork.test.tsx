@@ -52,4 +52,27 @@ describe("PosterArtwork", () => {
     expect(image.tagName).toBe("IMG");
     expect(image).toHaveAttribute("src", "/b.png");
   });
+
+  it("재생할 때만 영상을 틀고, 영상을 재생하지 못하면 대표 프레임을 그린다", () => {
+    const video = {
+      ...poster("v", "/v-frame.webp"),
+      videoUrl: "/v.mp4",
+      durationMs: 15_000,
+    };
+    const { rerender } = render(<PosterArtwork poster={video} />);
+    expect(
+      screen.getByRole("img", { name: "포스터 v 포스터" }),
+    ).toHaveAttribute("src", "/v-frame.webp");
+
+    rerender(<PosterArtwork poster={video} play />);
+    const player = document.querySelector("video");
+    expect(player).toHaveAttribute("src", "/v.mp4");
+    expect(player).toHaveProperty("muted", true);
+
+    fireEvent.error(player!);
+    expect(document.querySelector("video")).toBeNull();
+    expect(
+      screen.getByRole("img", { name: "포스터 v 포스터" }),
+    ).toHaveAttribute("src", "/v-frame.webp");
+  });
 });

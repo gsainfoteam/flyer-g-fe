@@ -94,6 +94,36 @@ export function exposedPosters(
   }
 }
 
+/**
+ * 이 화면에서 재생하는 영상 포스터. 크게 보기와 띠 가운데 칸만 재생한다. 벽과 띠
+ * 양옆은 대표 프레임을 그린다. 저사양 TV가 영상 여러 개를 함께 풀지 않게 한다.
+ */
+export function playingVideoOf(
+  frame: DisplayFrame,
+  posters: PosterRenderModel[],
+): PosterRenderModel | null {
+  const poster =
+    frame.kind === "spotlight"
+      ? frame.poster
+      : frame.kind === "strip"
+        ? posters[frame.focusIndex]
+        : undefined;
+  return poster?.videoUrl ? poster : null;
+}
+
+/**
+ * 포스터 화면이 머무는 시간(초). 영상은 끝까지 한 번 보여 주고, 전환 간격보다 짧으면
+ * 그 시간이 찰 때까지 반복한다. 길이 상한은 서버가 지킨다(`maxVideoDurationSeconds`).
+ */
+export function posterFrameSeconds(
+  frame: DisplayFrame,
+  posters: PosterRenderModel[],
+  rotationSeconds: number,
+): number {
+  const durationMs = playingVideoOf(frame, posters)?.durationMs ?? 0;
+  return Math.max(rotationSeconds, Math.ceil(durationMs / 1000));
+}
+
 /** 다음 화면에서 처음 그려질 이미지. 전환 순간에 빈 칸이 보이지 않게 미리 받는다. */
 export function imagesOf(
   frame: DisplayFrame | undefined,

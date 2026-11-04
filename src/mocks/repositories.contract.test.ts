@@ -192,8 +192,8 @@ describe("신청 생성 (생성과 제출이 한 번)", () => {
     const error = await errorOf(
       repos.submissions.create(
         createInput({
-          // 24시간이 안 남았고, 3개월을 넘기고, 허용하지 않는 주소다.
-          startAt: new Date(NOW.getTime() + 23 * HOUR_MS),
+          // 시작은 이미 지났어도 되지만(배포 ②), 3개월을 넘기고 허용하지 않는 주소다.
+          startAt: new Date(NOW.getTime() - HOUR_MS),
           endAt: new Date(NOW.getTime() + 120 * DAY_MS),
           detailUrl: "https://evil.example.com/notice/1",
         }),
@@ -203,7 +203,6 @@ describe("신청 생성 (생성과 제출이 한 번)", () => {
     expect(Object.keys(error?.fields ?? {}).sort()).toEqual([
       "detailUrl",
       "endAt",
-      "startAt",
     ]);
   });
 
@@ -292,9 +291,9 @@ describe("수정·재검토·취소", () => {
     const { repos } = setup(MOCK_USERS.SUBMITTER);
     const rejected = await repos.submissions.getById("notice-901");
 
-    // fixture의 시작은 3일 뒤라 통과하지만, 이틀 반을 지나면 24시간이 안 남는다.
+    // 지금은 통과하지만, 종료 시각이 지나면 다시 낼 수 없다.
     const { repos: later, advance } = setup(MOCK_USERS.SUBMITTER);
-    advance(2.5 * DAY_MS);
+    advance((rejected.endAt?.getTime() ?? 0) - NOW.getTime() + HOUR_MS);
     expect(
       await errorOf(
         later.submissions.submit("notice-901", { version: rejected.version }),
@@ -569,7 +568,6 @@ describe("요약과 참조 데이터", () => {
 
     await expect(repos.reference.getConfig()).resolves.toMatchObject({
       maxPublishMonths: 3,
-      minLeadTimeHours: 24,
     });
     const categories = await repos.reference.listCategories();
     expect(categories.map((category) => category.id)).toContain("performance");

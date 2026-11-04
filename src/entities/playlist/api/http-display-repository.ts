@@ -20,7 +20,12 @@ import {
   PREVIEW_DEVICE_ID,
   readLayoutType,
 } from "../model/types";
-import type { ContentKind, Playlist, PlaylistItem } from "../model/types";
+import type {
+  ContentKind,
+  Playlist,
+  PlaylistItem,
+  PlaylistVideo,
+} from "../model/types";
 
 /**
  * TV 편성의 실제 구현 (`API-CHANGES-BACKEND.md` 8절).
@@ -121,6 +126,7 @@ export function parsePlaylist(payload: unknown): Playlist {
         width: readNullableNumber(item, "width", at("width")) ?? 0,
         height: readNullableNumber(item, "height", at("height")) ?? 0,
         durationMs: readNullableNumber(item, "durationMs", at("durationMs")),
+        video: readVideo(item, at("video")),
         subtitle: readNullableString(item, "subtitle", at("subtitle")),
         location: readNullableString(item, "location", at("location")),
         organizerName: readNullableString(
@@ -130,6 +136,19 @@ export function parsePlaylist(payload: unknown): Playlist {
         ),
       };
     }),
+  };
+}
+
+/** 영상 재생 정보. 영상 배포(①) 전 서버는 필드를 보내지 않는다. */
+function readVideo(
+  item: Record<string, unknown>,
+  path: string,
+): PlaylistVideo | null {
+  if (item.video === undefined || item.video === null) return null;
+  const video = readObject(item.video, path);
+  return {
+    url: readString(video, "url", `${path}.url`),
+    hasAudio: video.hasAudio === true,
   };
 }
 
@@ -180,10 +199,13 @@ function toPreviewItem(
     priority: submission.priority,
     // asset은 내용이 바뀌지 않는다. 포스터를 바꾸면 새 asset이 된다.
     checksum: submission.assetId,
-    kind: "IMAGE",
+    kind: submission.posterKind ?? "IMAGE",
     width: submission.posterWidth ?? 0,
     height: submission.posterHeight ?? 0,
-    durationMs: null,
+    durationMs: submission.posterDurationMs,
+    video: submission.posterVideoUrl
+      ? { url: submission.posterVideoUrl, hasAudio: false }
+      : null,
     subtitle: submission.subtitle,
     location: submission.location,
     organizerName: submission.organizerName,

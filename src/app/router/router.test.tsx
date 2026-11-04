@@ -48,7 +48,7 @@ describe("세션 guard", () => {
 
     await waitFor(() => expect(currentPath(router)).toBe("/review"));
     expect(
-      await screen.findByRole("heading", { name: /승인 대기/ }),
+      await screen.findByRole("heading", { name: "심사", level: 1 }),
     ).toBeInTheDocument();
   });
 
@@ -68,14 +68,14 @@ describe("역할 기반 접근", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: /승인 대기 \d+건/ }),
+      screen.queryByRole("heading", { name: "심사", level: 1 }),
     ).not.toBeInTheDocument();
   });
 
   it("하우스 관리자는 검토 화면을 볼 수 있다", async () => {
     renderRoute("/review", { role: "REVIEWER" });
     expect(
-      await screen.findByRole("heading", { name: /승인 대기/ }),
+      await screen.findByRole("heading", { name: "심사", level: 1 }),
     ).toBeInTheDocument();
   });
 
