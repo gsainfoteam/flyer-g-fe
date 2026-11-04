@@ -5,7 +5,7 @@ import { ErrorState, LoadingState } from "@/shared/components";
 import { Button } from "@/shared/ui/button";
 import { useAuth } from "../model/auth-context";
 import { SERVICE_OPERATOR } from "@/shared/config/service-info";
-import { ROLES, getRoleLabel, hasAnyRole } from "../model/types";
+import { ROLES, getPrimaryRole, getRoleLabel, hasAnyRole } from "../model/types";
 import type { Role } from "../model/types";
 
 /**
@@ -69,15 +69,29 @@ export function SessionOrFallback({ fallback }: { fallback: ReactNode }) {
 
 /** 특정 역할만 볼 수 있는 화면을 감싼다. `RequireSession` 안쪽에서 쓴다. */
 export function RequireRole({ allow }: { allow: readonly Role[] }) {
-  const { state } = useAuth();
+  const { state, viewedUser, viewAsUser, setViewAsUser } = useAuth();
 
-  if (state.status !== "authenticated") {
+  if (state.status !== "authenticated" || viewedUser === null) {
     // RequireSession이 이미 처리한다. 여기까지 오면 렌더링만 멈춘다.
     return null;
   }
 
-  if (!hasAnyRole(state.user, allow)) {
-    return <ForbiddenView allow={allow} />;
+  if (!hasAnyRole(viewedUser, allow)) {
+    // 사용자 화면으로 보느라 막힌 것이면 권한 문의가 아니라 돌아가는 길을 알려 준다.
+    return viewAsUser && hasAnyRole(state.user, allow) ? (
+      <div className="flex flex-col items-start gap-3 py-10">
+        <h1 className="text-title text-ink">사용자 화면으로 보는 중이에요</h1>
+        <p className="text-body text-ink-muted">
+          이 화면은 {getRoleLabel(getPrimaryRole(state.user))} 화면에서 볼 수
+          있어요.
+        </p>
+        <Button size="sm" className="mt-1" onClick={() => setViewAsUser(false)}>
+          {getRoleLabel(getPrimaryRole(state.user))} 화면으로 돌아가기
+        </Button>
+      </div>
+    ) : (
+      <ForbiddenView allow={allow} />
+    );
   }
 
   return <Outlet />;
