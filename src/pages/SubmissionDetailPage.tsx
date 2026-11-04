@@ -4,8 +4,12 @@ import { useTargetGroupLabel } from "@/entities/device/api/queries";
 import { fromSubmissionView } from "@/entities/poster";
 import { getRejectionReasonLabel } from "@/entities/review";
 import type { SubmissionEvent } from "@/entities/review/model/types";
+import { SubmissionScene } from "@/entities/scene";
 import {
+  canSubmitterSuspend,
+  EVENT_BANNER_OCCASION_LABELS,
   KIND_INFO,
+  STORY_TAG_LABELS,
   formatPeriod,
   getUserStatus,
   kindOfSubmission,
@@ -21,14 +25,13 @@ import {
   useSubmissionDetail,
   useSubmissionSummary,
 } from "@/features/submissions/api/queries";
+import { SuspendAction } from "@/features/reviews/ui/SuspendAction";
 import { SubmissionHistory } from "@/features/submissions/detail/ui/SubmissionHistory";
 import { SubmitterActions } from "@/features/submissions/detail/ui/SubmitterActions";
 import { PageState } from "@/shared/components";
 import { to } from "@/shared/config/routes";
-import {
-  formatSeoulDayTime,
-  seoulDayCount,
-} from "@/shared/lib/datetime";
+import { formatSeoulDayTime, seoulDayCount } from "@/shared/lib/datetime";
+import { useServerNow } from "@/shared/lib/use-server-now";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 
@@ -40,10 +43,10 @@ import { Button } from "@/shared/ui/button";
  * 진행 순서를 둔다.
  *
  * 관리자가 자기 컨텐츠를 열면 올린 사람 버튼과 함께 심사 화면 링크를 둔다. 자기
- * 게시물도 승인·중단은 심사 화면에서 한다(명세 3.2, 서버도 막지 않는다).
+ * 포스터 중단과 다른 사람의 콘텐츠 검토는 심사 화면에서 한다.
  *
- * 표시 상태는 저장된 값이 아니라 서버 시각 기준 실제 상태다. 기준 시각은 요약
- * 응답의 `calculatedAt`을 쓴다. (명세 6.3)
+ * 표시 상태는 저장된 값이 아니라 서버 시각 기준 실제 상태다. 상세
+ * 응답의 `serverTime`을 우선하고 요약의 `calculatedAt`으로 보완한다. (명세 6.3)
  */
 export function SubmissionDetailPage() {
   const { submissionId = "" } = useParams();
@@ -64,8 +67,16 @@ export function SubmissionDetailPage() {
     void summary.refetch();
   };
 
-  const serverNow = summary.data?.calculatedAt ?? new Date();
-  const view = detail.data ? toSubmissionView(detail.data, serverNow) : null;
+  const serverNow =
+    useServerNow(detail.data?.serverTime, detail.dataUpdatedAt) ??
+    detail.data?.serverTime ??
+    summary.data?.calculatedAt;
+  const view =
+    detail.data && serverNow ? toSubmissionView(detail.data, serverNow) : null;
+
+  const canSuspend = view
+    ? canSubmitterSuspend(view, user.id, serverNow ?? null)
+    : false;
 
   return (
     <PageState
@@ -74,37 +85,51 @@ export function SubmissionDetailPage() {
       onRetry={retry}
       loadingRows={5}
     >
-      {view && (
+      {view && serverNow && (
         <>
           <div>
             <Link
               to={to.mine()}
               className="text-caption text-ink-muted hover:text-ink hover:underline"
             >
-              내 컨텐츠
+              내 콘텐츠
             </Link>
             {/* 좁은 화면에서는 버튼을 제목 아래로 내려 제목이 쪼개지지 않게 한다. */}
             <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
               <div className="min-w-0 flex-1">
                 <h1 className="text-title text-ink">{view.title}</h1>
                 <p className="mt-1 text-label text-ink-muted">
-                  {KIND_INFO[kindOfSubmission(view)].name} · {formatPeriod(view)}{" "}
-                  · {targetLabel ?? "위치 확인 중"}
+                  {KIND_INFO[kindOfSubmission(view)].name} ·{" "}
+                  {formatPeriod(view)} · {targetLabel ?? "위치 확인 중"}
                 </p>
                 <StatusLine view={view} now={serverNow} />
               </div>
               <div className="flex flex-wrap items-center gap-2.5">
                 {view.requesterId === user.id && (
-                  <SubmitterActions submission={view} isReviewer={isReviewer} />
+                  <SubmitterActions
+                    key={view.id}
+                    submission={view}
+                    isReviewer={isReviewer}
+                    canSuspend={canSuspend}
+                  />
                 )}
+                <SuspendAction
+                  key={`suspend-${view.id}`}
+                  submissionId={view.id}
+                  allowed={canSuspend}
+                />
                 {isReviewer && (
                   // 결정·중단은 심사 화면에서 한다. 남의 컨텐츠면 이것이 주 동작이다.
                   <Button
                     size="sm"
-                    variant={view.requesterId === user.id ? "outline" : "default"}
+                    variant={
+                      view.requesterId === user.id ? "outline" : "default"
+                    }
                     asChild
                   >
-                    <Link to={to.reviewDetail(view.id)}>심사 화면에서 보기</Link>
+                    <Link to={to.reviewDetail(view.id)}>
+                      심사 화면에서 보기
+                    </Link>
                   </Button>
                 )}
               </div>
@@ -122,44 +147,108 @@ export function SubmissionDetailPage() {
               aria-labelledby="tv-preview"
               className="min-w-0 flex-[999_1_520px]"
             >
-              <h2 id="tv-preview" className="mb-2.5 text-body font-extrabold text-ink">
-                TV에서 이렇게 보여요
+              <h2
+                id="tv-preview"
+                className="mb-2.5 text-body font-extrabold text-ink"
+              >
+                TV 미리보기
               </h2>
-              <DisplayPreview
-                poster={fromSubmissionView(view)}
-                serverTime={serverNow}
-              />
+              {view.type === "POSTER" ? (
+                <DisplayPreview
+                  poster={fromSubmissionView(view)}
+                  serverTime={serverNow}
+                />
+              ) : (
+                <SubmissionScene view={view} />
+              )}
             </section>
 
             <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-7">
               <section aria-labelledby="content-info">
-                <h2 id="content-info" className="text-body font-extrabold text-ink">
+                <h2
+                  id="content-info"
+                  className="text-body font-extrabold text-ink"
+                >
                   신청 내용
                 </h2>
                 <dl className="mt-2.5 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-y-1.5 text-label">
-                  {view.subtitle && <Meta label="부제">{view.subtitle}</Meta>}
-                  {view.location && <Meta label="장소">{view.location}</Meta>}
-                  <Meta label="주최">{view.organizerName ?? "없음"}</Meta>
-                  <Meta label="분류">{view.categoryName}</Meta>
+                  {view.story && (
+                    <>
+                      <Meta label="말머리">
+                        {STORY_TAG_LABELS[view.story.tag]}
+                        {view.story.storyNumber !== null &&
+                          ` · #${view.story.storyNumber}`}
+                      </Meta>
+                      <Meta label="본문">
+                        <span className="whitespace-pre-line">
+                          {view.story.body}
+                        </span>
+                      </Meta>
+                    </>
+                  )}
+                  {view.eventBanner && (
+                    <>
+                      <Meta label="형식">
+                        {view.eventBanner.mode === "TEMPLATE"
+                          ? "문구로 만들기"
+                          : "이미지 올리기"}
+                        {view.eventBanner.occasion &&
+                          ` · ${EVENT_BANNER_OCCASION_LABELS[view.eventBanner.occasion]}`}
+                      </Meta>
+                      <Meta label="받는 사람">
+                        {view.eventBanner.recipient}
+                      </Meta>
+                      {view.eventBanner.headline && (
+                        <Meta label="큰 문구">
+                          {view.eventBanner.headline}
+                        </Meta>
+                      )}
+                      {view.eventBanner.message && (
+                        <Meta label="작은 문구">
+                          {view.eventBanner.message}
+                        </Meta>
+                      )}
+                      {view.eventBanner.sender && (
+                        <Meta label="보낸 사람">{view.eventBanner.sender}</Meta>
+                      )}
+                    </>
+                  )}
+                  {view.type === "POSTER" && (
+                    <>
+                      {view.subtitle && (
+                        <Meta label="부제">{view.subtitle}</Meta>
+                      )}
+                      {view.location && (
+                        <Meta label="장소">{view.location}</Meta>
+                      )}
+                      <Meta label="주최">{view.organizerName ?? "없음"}</Meta>
+                      <Meta label="분류">{view.categoryName}</Meta>
+                    </>
+                  )}
                   <Meta label="기간">
-                    {formatPeriod(view)} · {seoulDayCount(view.startAt, view.endAt)}일
+                    {formatPeriod(view)}
+                    {view.startAt &&
+                      view.endAt &&
+                      ` · ${seoulDayCount(view.startAt, view.endAt)}일`}
                   </Meta>
                   <Meta label="위치">{targetLabel ?? "확인하는 중"}</Meta>
-                  <Meta label="QR 링크">
-                    {view.detailUrl ? (
-                      <a
-                        href={view.detailUrl}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="inline-flex items-center gap-1 [overflow-wrap:anywhere] underline-offset-4 hover:underline"
-                      >
-                        {view.detailUrl.replace(/^https?:\/\//, "")}
-                        <ExternalLink size={13} aria-hidden="true" />
-                      </a>
-                    ) : (
-                      "없음 · TV에 QR이 나가지 않음"
-                    )}
-                  </Meta>
+                  {view.type === "POSTER" && (
+                    <Meta label="QR 링크">
+                      {view.detailUrl ? (
+                        <a
+                          href={view.detailUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="inline-flex items-center gap-1 [overflow-wrap:anywhere] underline-offset-4 hover:underline"
+                        >
+                          {view.detailUrl.replace(/^https?:\/\//, "")}
+                          <ExternalLink size={13} aria-hidden="true" />
+                        </a>
+                      ) : (
+                        "없음 · TV에 QR이 나가지 않음"
+                      )}
+                    </Meta>
+                  )}
                 </dl>
                 {view.description && (
                   <p className="mt-3 text-label whitespace-pre-line text-ink-muted">
@@ -172,7 +261,10 @@ export function SubmissionDetailPage() {
                 aria-labelledby="progress"
                 className="border-t border-line pt-6"
               >
-                <h2 id="progress" className="mb-2.5 text-body font-extrabold text-ink">
+                <h2
+                  id="progress"
+                  className="mb-2.5 text-body font-extrabold text-ink"
+                >
                   진행
                 </h2>
                 <SubmissionHistory events={history.data ?? []} />
@@ -228,7 +320,10 @@ function DecisionReason({
       aria-labelledby="decision-reason"
       className="rounded-card bg-surface px-6 py-5 ring-1 ring-accent-200"
     >
-      <h2 id="decision-reason" className="text-body font-extrabold text-accent-700">
+      <h2
+        id="decision-reason"
+        className="text-body font-extrabold text-accent-700"
+      >
         {title}
       </h2>
       {latest?.comment && (
@@ -238,7 +333,7 @@ function DecisionReason({
       )}
       {latest && (
         <p className="mt-1.5 text-caption text-ink-subtle">
-          {latest.actorName} · {formatSeoulDayTime(latest.occurredAt, now)}
+          {latest.actorName || "작성자"} · {formatSeoulDayTime(latest.occurredAt, now)}
         </p>
       )}
     </section>

@@ -7,6 +7,8 @@ import {
 import type { BattleState, Team } from "@/entities/game/model/click-battle";
 import type { GameLinkStatus } from "@/shared/lib/ws-game-channel";
 import { QRCodeBox } from "@/shared/components/QRCodeBox";
+import { SurveyCorner } from "@/shared/components/SurveyCorner";
+import type { EventSurvey } from "@/shared/components/SurveyCorner";
 import { to } from "@/shared/config/routes";
 import { cn } from "@/shared/lib/utils";
 
@@ -30,16 +32,16 @@ function statusOf(
     case "LOBBY":
       return {
         title: "참가자 모집 중",
-        detail: "양 팀에 한 명씩 모이면 시작해요",
+        detail: "양 팀에 한 명씩 참가하면 시작",
       };
     case "COUNTDOWN":
-      return { title: `${seconds}초 뒤 시작`, detail: "아직 들어올 수 있어요" };
+      return { title: `${seconds}초 뒤 시작`, detail: "참가 가능" };
     case "PLAYING":
       return { title: `${seconds}초`, detail: "지금 누르세요!" };
     case "RESULT":
       return {
         title: state.winner === "DRAW" ? "무승부!" : `${state.winner}팀 승리!`,
-        detail: `${seconds}초 뒤 다음 참가자를 모집해요`,
+        detail: `${seconds}초 후 다음 참가자 모집`,
       };
   }
 }
@@ -65,7 +67,7 @@ interface ClickBattleBoardProps {
    * 행사 시간대 화면에만 붙이는 설문 QR. 두 팀 칸 아래 전체 폭 띠에 둔다. 팀 참가 QR과
    * 자리·크기가 달라 헷갈리지 않고, 양 팀 칸의 대칭도 깨지 않는다.
    */
-  survey?: { url: string; label: string } | null;
+  survey?: EventSurvey | null;
 }
 
 export function ClickBattleBoard({
@@ -106,7 +108,12 @@ export function ClickBattleBoard({
             : status.detail}
         </p>
         {survey && (
-          <SurveyCorner survey={survey} finished={state.phase === "RESULT"} />
+          <SurveyCorner
+            survey={survey}
+            finished={state.phase === "RESULT"}
+            qrSize="band"
+            className="ml-auto"
+          />
         )}
       </div>
 
@@ -125,12 +132,12 @@ export function ClickBattleBoard({
             }
             closedLabel={
               !joinable
-                ? "경기 중에는\n입장이 마감돼요"
+                ? "경기 중에는\n참가할 수 없습니다"
                 : link === "unauthorized"
-                  ? "이 TV는 게임을 열 수 없어요\n기기 설정 링크로 다시 열어 주세요"
+                  ? "게임을 시작할 수 없습니다\n기기 설정 링크로 다시 연결하세요"
                   : link === "replaced"
-                    ? "다른 화면에서\n이 TV의 게임을 열었어요"
-                    : "연결 준비 중이에요"
+                    ? "다른 화면에서\n이 TV의 게임이 실행 중입니다"
+                    : "연결 준비 중"
             }
           />
         ))}
@@ -143,39 +150,7 @@ export function ClickBattleBoard({
 
 const RULES_TEXT = `팀당 최대 ${BATTLE_RULES.maxPlayersPerTeam}명 · 한 폰에 한 명 · ${
   BATTLE_RULES.matchMs / 1000
-}초 동안 더 많이 누른 팀이 이겨요 · 로그인 없이 이름만 적고 참가해요`;
-
-/**
- * 설문 QR. 상태 줄 오른쪽 끝(화면 우상단)에 둔다. 두 팀 칸 밖이라 팀 참가 QR과 헷갈리지
- * 않고 양 팀 칸의 대칭도 그대로다. 판이 끝난 직후가 폰을 들고 있어 응답하기 좋은 때라,
- * 결과 화면에서는 테두리로 강조하고 문구를 바꾼다.
- */
-function SurveyCorner({
-  survey,
-  finished,
-}: {
-  survey: { url: string; label: string };
-  finished: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "ml-auto flex shrink-0 items-center gap-6 rounded-tv-card bg-surface py-4 pr-8 pl-4",
-        finished && "ring-6 ring-accent",
-      )}
-    >
-      <QRCodeBox value={survey.url} size="band" />
-      <div className="flex flex-col gap-2">
-        <p className="text-[34px] leading-tight font-extrabold text-ink">
-          {finished ? "판이 끝났어요!" : survey.label}
-        </p>
-        <p className="text-[26px] text-ink-muted">
-          {finished ? `${survey.label}에 참여해 주세요` : "QR로 참여해 주세요"}
-        </p>
-      </div>
-    </div>
-  );
-}
+}초 동안 더 많이 누른 팀 승리 · 로그인 없이 이름 입력 후 참가`;
 
 const LINK_LABEL: Record<GameLinkStatus, { text: string; dot: string }> = {
   connecting: { text: "서버 연결 중", dot: "bg-warning" },
@@ -275,13 +250,13 @@ function TeamPanel({
           {state.scores[team].toLocaleString("ko-KR")}
         </p>
         <p className={cn("text-[28px] font-bold text-ink-subtle", compact ? "mt-1" : "mt-3")}>
-          번 눌렀어요
+          회 클릭
         </p>
 
         <p className={cn("shrink-0 truncate text-[28px] text-ink-muted", compact ? "mt-4" : "mt-8")}>
           {players.length > 0
             ? players.map((player) => player.name).join(" · ")
-            : "아직 아무도 없어요"}
+            : "참가자 없음"}
         </p>
       </div>
 
@@ -291,7 +266,7 @@ function TeamPanel({
             {/* QR과 같은 240px 자리. 관리 화면용 빈 QR 상자는 글자가 작아 TV에서 안 읽힌다. */}
             <div
               role="img"
-              aria-label="QR 자리. 실제 TV에서 QR이 나와요"
+              aria-label="QR 미리보기 · 실제 TV에서 QR 표시"
               className="grid size-[240px] place-items-center rounded-tv-poster border-2 border-dashed border-line-strong text-center text-[26px] leading-snug text-ink-subtle"
             >
               미리보기

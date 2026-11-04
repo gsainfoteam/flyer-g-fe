@@ -64,11 +64,11 @@ export function useReviewDesk() {
     ready = {
       queue: {
         total: summary.data.pendingReview,
-        // 종류별 건수는 배포 ②부터 온다. 그 전에는 모두 포스터다.
+        // 서버 요약의 종류별 대기(배포 ②). 옛 서버면 모두 포스터로 읽힌다.
         byKind: {
-          POSTER: summary.data.pendingReview,
-          EVENT_BANNER: 0,
-          STORY: 0,
+          POSTER: summary.data.byType.POSTER.pendingReview,
+          EVENT_BANNER: summary.data.byType.EVENT_BANNER.pendingReview,
+          STORY: summary.data.byType.STORY.pendingReview,
         },
         oldestSubmittedAt:
           pending.data.items[0]?.submittedAt ??
@@ -78,9 +78,14 @@ export function useReviewDesk() {
       },
       oldest: pending.data.items,
       board: items,
-      startsToday: items.filter((item) => today(item.startAt)),
+      startsToday: items.filter(
+        (item) => item.startAt !== null && today(item.startAt),
+      ),
       endsToday: items.filter(
-        (item) => item.status === "PUBLISHED" && today(item.endAt),
+        (item) =>
+          item.status === "PUBLISHED" &&
+          item.endAt !== null &&
+          today(item.endAt),
       ),
       decisions: decisions.data,
       decidedToday: decisions.data.filter((d) => today(d.occurredAt)).length,

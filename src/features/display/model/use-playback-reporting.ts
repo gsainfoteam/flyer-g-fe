@@ -13,7 +13,7 @@ import type { ExposureInput } from "@/features/display/model/use-device-telemetr
  * `lastRenderOkAt`)도 이미지가 실제로 뜬 페이지에서만 갱신한다.
  */
 interface UsePlaybackReportingOptions {
-  page: PosterRenderModel[];
+  page: Pick<PosterRenderModel, "id" | "revision">[];
   /** 지금 페이지의 이미지가 모두 떴는가 */
   rendered: boolean;
   rotationSeconds: number;

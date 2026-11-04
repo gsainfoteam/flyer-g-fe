@@ -20,8 +20,7 @@ export function AppShell() {
           role="note"
           className="bg-ink px-4 py-1.5 text-center text-caption text-ink-inverse"
         >
-          데모 화면이에요. 입력한 내용은 이 브라우저에만 있고, 새로고침하면 처음
-          상태로 돌아가요.
+          데모 화면입니다. 입력한 내용은 이 브라우저에만 보관되며, 새로고침하면 초기화됩니다.
         </div>
       )}
       <Outlet />

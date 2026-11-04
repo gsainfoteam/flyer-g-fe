@@ -1,3 +1,5 @@
+import { useLineupRotation } from "@/features/display/model/use-lineup-rotation";
+import { programSlot } from "@/entities/lineup/model/playback";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play, SkipForward } from "lucide-react";
 import { useParams, useSearchParams } from "react-router";
@@ -20,6 +22,7 @@ import {
 } from "@/entities/playlist/model/types";
 import {
   buildFrames,
+  exposedContent,
   exposedPosters,
   imagesOf,
 } from "@/entities/poster/model/frames";
@@ -56,7 +59,7 @@ import { useDeviceWidgets } from "@/features/display/model/use-device-widgets";
 import { useLocalCafeteria } from "@/features/display/model/use-local-cafeteria";
 import { useLocalWeather } from "@/features/display/model/use-local-weather";
 import { gameSocketBase } from "@/shared/lib/game-socket";
-import { isWidgetReleased } from "@/entities/widget/model/operation";
+import { isWidgetReleased, surveyPrizeOn } from "@/entities/widget/model/operation";
 import { GameFrame } from "@/widgets/game-frame/GameFrame";
 import { toUserMessage } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
@@ -92,7 +95,8 @@ export function DisplayPage() {
   // 첫 편성 요청보다 먼저 설정 링크의 토큰을 저장한다. 렌더 중에 한 번만 한다.
   useState(() => captureDeviceTokenFromUrl(deviceId));
 
-  const feed = useOfflinePlaylist(deviceId);
+  const operatorPreview = isPreview && searchParams.get("operator") === "1";
+  const feed = useOfflinePlaylist(deviceId, { operatorPreview });
   const playlistVersion = feed.playlist?.playlistVersion ?? null;
   // 등록되지 않은 기기(미리보기 등)는 이름 없이 그린다.
   const deviceLabel = feed.playlist?.deviceName ?? null;
@@ -117,6 +121,8 @@ export function DisplayPage() {
     [feed.playlist, failedIds],
   );
 
+  const content = feed.playlist?.content;
+  const lineup = feed.playlist?.lineup;
   const layout = feed.playlist?.layout.type ?? DEFAULT_LAYOUT_TYPE;
   const rotationSeconds = feed.playlist?.layout.rotationSeconds ?? 10;
   const serverTime = feed.playlist?.serverTime ?? null;
@@ -143,7 +149,7 @@ export function DisplayPage() {
   const socketBase = gameSocketBase();
   const [gameToken] = useState(() => deviceCredentials.get(deviceId));
   const canHostGame = socketBase === null || gameToken !== null;
-  const previewGame = !canHostGame && deviceId === PREVIEW_DEVICE_ID;
+  const previewGame = operatorPreview || (!canHostGame && deviceId === PREVIEW_DEVICE_ID);
   // 시간대 점유(관리 화면 설정, 없으면 operation.ts). 이 시간에는 순환을 붙잡고 정한
   // 위젯만 띄운다.
   const timeSlotRules = useTimeSlotRules(deviceId);
@@ -245,14 +251,20 @@ export function DisplayPage() {
   const takeoverSurveyUrl = takeover
     ? readWebUrl(timeSlot?.rule.survey?.url)
     : null;
+  // 경품 안내는 응모 마감(operation.ts의 SURVEY_PRIZE)까지만 붙인다.
   const takeoverSurvey =
     takeoverSurveyUrl && timeSlot?.rule.survey
-      ? { url: takeoverSurveyUrl, label: timeSlot.rule.survey.label }
+      ? {
+          url: takeoverSurveyUrl,
+          label: timeSlot.rule.survey.label,
+          prize: todayKey ? surveyPrizeOn(todayKey) : null,
+        }
       : null;
 
   const [paused, setPaused] = useState(false);
-  const rotation = useRotation({
+  const legacyRotation = useRotation({
     posters,
+    content,
     layout,
     rotationSeconds,
     widgetInterval: widgetInterval(
@@ -265,10 +277,19 @@ export function DisplayPage() {
       rotationSeconds,
       widgetSlots,
     ),
-    pickWidget,
-    paused: isPreview && paused,
+    pickWidget: lineup ? undefined : pickWidget,
+    paused: !!lineup || (isPreview && paused),
     hold: gameActive || takeover,
   });
+
+  const lineupRotation = useLineupRotation(isPreview ? `preview:${deviceId}` : deviceId, lineup && content ? {
+    lineup, posters, content, canHostGame: canHostGame || previewGame,
+    widgetRatio: widgetFeed.ratioPercent,
+    pickWidget,
+    peekWidget: () => picker.peek(widgetSlots, new Date(Date.now() + clockOffsetRef.current)),
+  } : null, serverTime, (isPreview && paused) || gameActive || takeover);
+  const rotation = lineup ? lineupRotation : legacyRotation;
+  const quiet = !!lineup && lineupRotation.quiet;
 
   const nextFrame = rotation.nextFrame;
   usePrefetchImages(imagesOf(nextFrame, posters));
@@ -319,18 +340,22 @@ export function DisplayPage() {
     setShown({ frame: nextShown, survey: takeoverSurvey, label: shownLabel });
   }
   const overtime = finishing ? shown : null;
-  const frame: PlayerFrame | undefined = overtime?.frame ?? nextShown;
+  const frame: PlayerFrame | undefined = quiet ? undefined : overtime?.frame ?? nextShown;
 
   // 위젯 화면은 게시물 노출이 아니다. 행사 화면 뒤에 보관한 포스터도 집계하지 않는다.
   const exposed =
     frame && frame.kind !== "widget"
       ? exposedPosters(frame, posters)
       : [];
+  // 이벤트·제보 장면은 글이라 그려지기를 기다리지 않는다.
+  const exposedScene =
+    frame && frame.kind !== "widget" ? exposedContent(frame) : [];
   usePlaybackReporting({
-    page: exposed,
+    page: exposedScene.length > 0 ? exposedScene : exposed,
     rendered:
-      exposed.length > 0 && exposed.every((poster) => loadedIds.has(poster.id)),
-    rotationSeconds,
+      exposedScene.length > 0 ||
+      (exposed.length > 0 && exposed.every((poster) => loadedIds.has(poster.id))),
+    rotationSeconds: rotation.frameSeconds,
     recordExposure: telemetry.recordExposure,
     reportRenderOk: telemetry.reportRenderOk,
   });
@@ -365,6 +390,11 @@ export function DisplayPage() {
     );
   })();
   const upcoming = rotation.upcoming;
+  const lineupInfoSlots = lineup?.settings.infoBar.flatMap((entry) => {
+    const program = lineup.programs[entry.programId];
+    const slot = program ? programSlot(entry.programId, program, 10) : null;
+    return slot ? [slot] : [];
+  });
   const infoBar = (
     <StageInfoBar
       now={serverTime}
@@ -374,7 +404,7 @@ export function DisplayPage() {
       dday={
         showing === "DDAY" || showing === "EXAM_CHEER" || !serverTime
           ? null
-          : ddayChip(widgetSlots, serverTime)
+          : ddayChip(lineupInfoSlots?.length ? lineupInfoSlots : widgetSlots, serverTime)
       }
       status={
         overtime
@@ -386,9 +416,9 @@ export function DisplayPage() {
             : null
       }
       next={
-        rotation.moving && upcoming && serverTime
+        rotation.moving && (upcoming || (lineup && lineupRotation.upcomingLabel)) && serverTime
           ? {
-              label: frameLabel(upcoming, posters, () =>
+              label: lineup ? lineupRotation.upcomingLabel! : frameLabel(upcoming!, posters, () =>
                 picker.peek(widgetSlots, serverTime, rotation.currentPickId),
               ),
               seconds: rotation.frameSeconds,
@@ -404,11 +434,15 @@ export function DisplayPage() {
       <ScaledStage className="h-full w-full">
         {feed.deviceError ? (
           <DeviceSetupNotice error={feed.deviceError} deviceId={deviceId} />
+        ) : operatorPreview && feed.error && !serverTime ? (
+          <div role="alert" className="flex h-full items-center justify-center text-[32px]">편성 미리보기를 불러오지 못했습니다. 로그인과 접근 권한을 확인하세요.</div>
         ) : feed.isPending || !serverTime ? (
           <div className="flex h-full flex-col items-center justify-center gap-6">
             <Logo size="tv" />
             <p className="text-[30px] text-ink-subtle">편성을 불러오는 중</p>
           </div>
+        ) : quiet ? (
+          <div className="h-full w-full bg-black" aria-label="화면 끄는 시간" />
         ) : (
           <StageFrame bar={infoBar}>
             {!frame ? (
@@ -492,7 +526,7 @@ export function DisplayPage() {
               size="icon-xs"
               className="text-ink-inverse hover:bg-white/15 hover:text-ink-inverse"
               onClick={rotation.advance}
-              disabled={takeover || rotation.frameCount <= 1}
+              disabled={takeover || quiet || gameActive || (!lineup && rotation.frameCount <= 1)}
               aria-label="다음 화면"
             >
               <SkipForward aria-hidden="true" />
@@ -556,7 +590,7 @@ function EmptyDisplay({
           지금 게시 중인 안내가 없습니다
         </h1>
         <p className="text-[32px] text-ink-muted">
-          게시 신청은 Ziggle 공지에서 할 수 있어요 · {ZIGGLE_HOST}
+          Ziggle 공지에서 게시 신청 가능 · {ZIGGLE_HOST}
         </p>
       </div>
     </div>
@@ -579,8 +613,8 @@ function DeviceSetupNotice({
       <Logo size="tv" />
       <h1 className="text-[64px] leading-tight font-extrabold text-ink">
         {error.code === "DEVICE_UNAUTHORIZED"
-          ? "이 TV의 연결이 끊겼어요"
-          : "이 TV는 아직 연결되지 않았어요"}
+          ? "TV 연결 해제"
+          : "TV 연결 필요"}
       </h1>
       <p className="max-w-[1200px] text-[32px] leading-normal text-ink-muted">
         {toUserMessage(error)}
@@ -603,6 +637,10 @@ function frameLabel(
       return posters[template.focusIndex]?.title ?? "포스터";
     case "wall":
       return "모아 보기";
+    case "event":
+      return "이벤트";
+    case "story":
+      return "소식 제보";
     case "widget-slot": {
       const pick = peek();
       return pick ? WIDGET_LABELS[pick.slot.type] : "포스터";

@@ -57,8 +57,8 @@ export function TimeSlotsDialog({ devices, onClose }: TimeSlotsDialogProps) {
         title="시간대 고정"
         description={
           settings.isPending
-            ? "설정을 불러오는 중이에요."
-            : "설정을 불러오지 못했어요. 잠시 후 다시 열어 주세요."
+            ? "설정 불러오는 중"
+            : "설정을 불러오지 못했습니다. 잠시 후 다시 접속하세요."
         }
         confirmLabel="닫기"
         onConfirm={() => undefined}
@@ -107,9 +107,8 @@ function TimeSlotsForm({
       title="시간대 고정"
       description={
         <>
-          정한 시간에는 순환을 멈추고 한 위젯만 띄워요. 끝나면 원래 순환으로 돌아가요. 서울
-          시각 기준이고, 겹치면 위 규칙이 이겨요. 저장하면 TV에 1분 안에 반영돼요.
-          {usingDefaults && " 아직 저장한 적이 없어 기본 규칙을 보여 줘요."}
+          지정한 시간에는 순환을 멈추고 하나의 위젯만 표시합니다. 종료 후 기존 순환으로 돌아갑니다. 한국 시간(KST) 기준이며, 시간이 겹치면 위쪽 규칙이 우선합니다. 저장 후 1분 이내에 TV에 반영됩니다.
+          {usingDefaults && " 저장된 설정이 없어 기본 규칙을 표시합니다."}
         </>
       }
       confirmLabel="저장"
@@ -119,21 +118,21 @@ function TimeSlotsForm({
           throw new IncompleteForm();
         }
         await save.mutateAsync(toTimeSlotRules(drafts));
-        toast.success("시간대 고정을 저장했어요");
+        toast.success("시간대 고정 저장 완료");
       }}
       onError={(error) => {
         if (error instanceof IncompleteForm) return;
-        toast.error("저장하지 못했어요", {
+        toast.error("저장하지 못했습니다", {
           description: isApiError(error)
             ? toUserMessage(error)
-            : "잠시 후 다시 시도해 주세요.",
+            : "잠시 후 다시 시도하세요.",
         });
       }}
     >
       <ul className="-mx-1 flex max-h-[60vh] flex-col gap-3 overflow-y-auto px-1">
         {drafts.length === 0 && (
           <li className="rounded-control border border-dashed border-line px-4 py-6 text-center text-caption text-ink-muted">
-            고정한 시간대가 없어요. TV는 늘 평소 순환으로 돌아요.
+            고정된 시간대 없음. TV는 기존 순환에 따라 표시됩니다.
           </li>
         )}
         {drafts.map((draft) => (
@@ -214,7 +213,7 @@ function TimeSlotCard({
           className="min-w-0 flex-1"
           value={draft.label}
           maxLength={TIME_SLOT_LABEL_MAX}
-          placeholder="예: 클릭 배틀 이벤트 (정보줄에 보여요)"
+          placeholder="예: 클릭 배틀 이벤트 (정보줄에 표시)"
           onChange={(event) => onChange({ label: event.target.value })}
         />
         {phase && (

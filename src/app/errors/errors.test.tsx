@@ -24,7 +24,7 @@ describe("route 오류 화면", () => {
     renderFailingRoute(new Error("Cannot read properties of undefined"));
 
     expect(
-      screen.getByRole("heading", { name: "화면을 여는 중에 문제가 생겼어요" }),
+      screen.getByRole("heading", { name: "화면을 불러오지 못했습니다" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "새로고침" })).toBeInTheDocument();
     // 오류 내용은 공개 화면에 그리지 않는다.
@@ -40,7 +40,7 @@ describe("route 오류 화면", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "새 버전이 나왔어요" }),
+      screen.getByRole("heading", { name: "새 버전 안내" }),
     ).toBeInTheDocument();
   });
 });

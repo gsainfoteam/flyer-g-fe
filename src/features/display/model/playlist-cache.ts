@@ -1,4 +1,8 @@
-import { toPlaylist, toPlaylistDto } from "@/entities/playlist";
+import {
+  mediaOfPlaylist,
+  toPlaylist,
+  toPlaylistDto,
+} from "@/entities/playlist";
 import type { Playlist, PlaylistDto } from "@/entities/playlist/model/types";
 import type { KeyValueStore } from "@/shared/storage";
 
@@ -61,7 +65,7 @@ export function createPlaylistCache(store: KeyValueStore): PlaylistCache {
       const playlist = toPlaylist(record.dto);
       const urls = new Map<string, string>();
 
-      for (const item of playlist.items) {
+      for (const item of mediaOfPlaylist(playlist)) {
         const blob = await store.get<Blob>(mediaKey(item.checksum));
         // 승격 시점에는 전부 있었지만 이후 정리·손상될 수 있다. 없으면 항목을
         // 버리는 것은 호출부(재생 규칙) 몫이라 여기서는 URL만 비워 둔다.
@@ -86,7 +90,8 @@ export function createPlaylistCache(store: KeyValueStore): PlaylistCache {
     },
 
     async save(playlist, media) {
-      for (const item of playlist.items) {
+      const needed = mediaOfPlaylist(playlist);
+      for (const item of needed) {
         if (!media.has(item.checksum)) {
           throw new Error(
             `미디어가 빠진 편성은 캐시로 승격할 수 없습니다: ${item.submissionId}`,
@@ -104,9 +109,7 @@ export function createPlaylistCache(store: KeyValueStore): PlaylistCache {
       await store.set(PLAYLIST_KEY, record);
 
       // 새 편성이 참조하지 않는 미디어를 정리한다. 저장 공간은 기기에서 유한하다.
-      const referenced = new Set(
-        playlist.items.map((item) => mediaKey(item.checksum)),
-      );
+      const referenced = new Set(needed.map((item) => mediaKey(item.checksum)));
       for (const key of await store.keys()) {
         if (key.startsWith(MEDIA_KEY_PREFIX) && !referenced.has(key)) {
           await store.delete(key);

@@ -30,6 +30,7 @@ import { IconTile, PageState } from "@/shared/components";
 import { to } from "@/shared/config/routes";
 import { cn } from "@/shared/lib/utils";
 import { ActivityFeed } from "./ActivityFeed";
+import { RecentStories } from "./RecentStories";
 import { UploadChoicesCompact, UploadChoicesLarge } from "./UploadChoices";
 
 /**
@@ -37,7 +38,8 @@ import { UploadChoicesCompact, UploadChoicesLarge } from "./UploadChoices";
  *
  * - 처음(올린 것 0건): "무엇을 TV에 띄워 볼까요?" 세 종류를 크게, 진행 순서 4단계.
  *   빈 "내 컨텐츠" 칸은 그리지 않는다.
- * - 다시 온 사람: 올리기 세 종류를 작게, 내 컨텐츠 진행 상황, 옆 칸에 최근 소식.
+ * - 다시 온 사람: 올리기 세 종류를 작게, 내 컨텐츠 진행 상황, 옆 칸에 최근 소식과
+ *   지금 TV의 제보.
  */
 const ACTIVE: readonly SubmissionStatus[] = [
   "REJECTED",
@@ -110,10 +112,10 @@ function FirstVisit() {
     <>
       <div>
         <p className="text-body font-bold text-accent">
-          {user.displayName}님, 처음 오셨네요
+          {user.displayName}님의 콘텐츠
         </p>
         <h1 className="mt-1 text-[2rem] leading-tight font-black tracking-[-0.04em] text-ink sm:text-[2.25rem]">
-          무엇을 TV에 띄워 볼까요?
+          콘텐츠 등록
         </h1>
       </div>
       <UploadChoicesLarge />
@@ -123,7 +125,7 @@ function FirstVisit() {
           className="min-w-0 flex-[1.2_1_440px] rounded-block bg-surface px-7 pt-7 pb-6 ring-1 ring-line"
         >
           <h2 id="first-flow" className="text-heading text-ink">
-            올리면 이렇게 진행돼요
+            게시 절차
           </h2>
           <ol className="relative mt-5">
             <span
@@ -131,17 +133,16 @@ function FirstVisit() {
               className="absolute top-5 bottom-6 left-[19px] w-0.5 bg-line"
             />
             <Step icon={PenLine} title="올리기">
-              다 쓰고 심사를 요청하면 끝. 쓰는 동안 자동 저장돼요.
+              콘텐츠를 작성한 뒤 심사를 요청합니다.
             </Step>
             <Step icon={ShieldCheck} title="하우스 관리자 심사">
-              반려되면 사유를 알려 드려요. 고쳐서 다시 낼 수 있어요.
+              심사 결과와 반려 사유는 상세 화면에서 확인할 수 있습니다. 반려된 제보는 새로 작성해야 합니다.
             </Step>
             <Step icon={MonitorPlay} title="TV에 게시">
-              정한 기간 동안 여러 TV에서 번갈아 나와요. 몇 번 나왔는지도 보여
-              드려요.
+              게시 기간 동안 TV에 순환 표시됩니다. 노출 횟수는 내 콘텐츠에서 확인할 수 있습니다.
             </Step>
-            <Step icon={CircleCheck} title="저절로 내려감" last>
-              기간이 끝나면 알아서 내려가요.
+            <Step icon={CircleCheck} title="게시 종료" last>
+              게시 기간이 끝나면 자동 종료됩니다.
             </Step>
           </ol>
         </section>
@@ -197,10 +198,10 @@ function Returning({
       <section aria-labelledby="upload" className="flex flex-col gap-4">
         <div>
           <h1 id="upload" className="text-title text-ink">
-            무엇을 올릴까요?
+            콘텐츠 등록
           </h1>
           <p className="mt-1 text-label text-ink-muted">
-            심사를 거쳐 기숙사 로비 TV에 나와요.
+            심사 후 기숙사 로비 TV에 게시됩니다.
           </p>
         </div>
         <UploadChoicesCompact />
@@ -213,7 +214,7 @@ function Returning({
         >
           <div className="flex items-baseline px-6 pt-3.5 pb-2">
             <h2 id="mine" className="text-subhead text-ink">
-              내 컨텐츠
+              내 콘텐츠
             </h2>
             <Link
               to={to.mine()}
@@ -236,6 +237,7 @@ function Returning({
 
         <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-5">
           <ActivityFeed submissions={[...active, ...past]} now={now} />
+          <RecentStories />
         </aside>
       </div>
     </>

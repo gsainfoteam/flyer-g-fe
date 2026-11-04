@@ -56,8 +56,8 @@ export function WidgetSettingsDialog({ device, onClose }: WidgetSettingsDialogPr
         title={`${device.name} 위젯`}
         description={
           settings.isPending
-            ? "위젯 설정을 불러오는 중이에요."
-            : "위젯 설정을 불러오지 못했어요. 잠시 후 다시 열어 주세요."
+            ? "위젯 설정 불러오는 중"
+            : "위젯 설정을 불러오지 못했습니다. 잠시 후 다시 접속하세요."
         }
         confirmLabel="닫기"
         onConfirm={() => undefined}
@@ -94,7 +94,7 @@ function WidgetSettingsForm({
         if (!open) onClose();
       }}
       title={`${device.name} 위젯`}
-      description="포스터 사이에 한 번에 하나씩 끼울 위젯이에요. 다음 갱신 때 TV에 반영돼요."
+      description="포스터 사이에 하나씩 표시할 위젯을 설정합니다. 다음 갱신 시 TV에 반영됩니다."
       confirmLabel="저장"
       onConfirm={async () => {
         setShowErrors(true);
@@ -108,14 +108,14 @@ function WidgetSettingsForm({
           ratioPercent: Number(ratio),
           widgets: toWidgetSettingDtos(drafts, settings.widgets),
         });
-        toast.success("위젯 설정을 저장했어요");
+        toast.success("위젯 설정 저장 완료");
       }}
       onError={(error) => {
         if (error instanceof IncompleteForm) return;
-        toast.error("저장하지 못했어요", {
+        toast.error("저장하지 못했습니다", {
           description: isApiError(error)
             ? toUserMessage(error)
-            : "잠시 후 다시 시도해 주세요.",
+            : "잠시 후 다시 시도하세요.",
         });
       }}
     >
@@ -237,7 +237,7 @@ function WidgetRow({
               value={draft.durationSeconds}
               onChange={(event) => onChange({ durationSeconds: event.target.value })}
             />
-            <span>초 동안 보여 줘요</span>
+            <span>초간 표시</span>
           </div>
           {messages.length > 0 && (
             <p className="text-caption text-danger" role="alert">

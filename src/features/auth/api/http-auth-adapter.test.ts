@@ -186,6 +186,7 @@ describe("createHttpAuthAdapter", () => {
         user: {
           id: "user_01",
           displayName: "홍길동",
+          email: "hong@example.com",
           roles: ["SUBMITTER", "REVIEWER"],
           organizationIds: [],
         },

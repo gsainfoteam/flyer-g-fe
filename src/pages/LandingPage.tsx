@@ -74,15 +74,14 @@ export function LandingPage() {
               기숙사 로비 TV
             </span>
             <h1 className="mt-5 text-[2rem] leading-[1.2] font-black tracking-[-0.04em] sm:text-[2.75rem]">
-              기숙사 <span className="text-accent">TV</span>에
+              기숙사 <span className="text-accent">TV</span>로
               <br />
-              띄우고 싶은 게
-              <br />
-              있나요?
+              전하는 우리 소식
             </h1>
             <p className="mt-5 max-w-[520px] text-[1.0625rem] leading-[1.65] text-hero-muted sm:text-lg">
-              포스터부터 생일 축하, 익명 제보까지. 올리면 관리자가 확인하고
-              기숙사 로비 TV에 띄워요.
+              포스터부터 생일 축하, 소식 제보까지.
+              <br />
+              관리자 심사를 거쳐 기숙사 로비 TV에 게시됩니다.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-x-4.5 gap-y-3">
               <button
@@ -108,20 +107,17 @@ export function LandingPage() {
             id="kinds"
             className="text-[1.75rem] font-black tracking-[-0.03em]"
           >
-            이런 걸 올릴 수 있어요
+            게시 가능한 콘텐츠
           </h2>
           <div className="grid gap-5 md:grid-cols-3">
             <KindCard kind="POSTER" art={<PosterArt />}>
-              동아리 모집, 공연·행사 안내. 기간을 정하면 끝나는 날 저절로
-              내려가요.
+              동아리 모집, 공연·행사 안내. 지정한 기간이 끝나면 게시가 자동 종료됩니다.
             </KindCard>
             <KindCard kind="EVENT_BANNER" art={<EventArt />}>
-              친구 생일, 합격·수상 소식. 받는 사람과 문구만 쓰면 TV 화면이
-              만들어져요.
+              친구 생일, 합격·수상 소식. 받는 사람과 문구를 입력하면 TV 화면이 생성됩니다.
             </KindCard>
             <KindCard kind="STORY" art={<StoryArt />}>
-              고쳐진 시설, 분실물, 건의. 140자 안으로 쓰면 이름 없이 TV에
-              나가요.
+              시설 수리, 분실물, 건의. 140자 이내로 작성하며, TV에는 작성자 이름이 표시되지 않습니다.
             </KindCard>
           </div>
         </section>
@@ -131,7 +127,7 @@ export function LandingPage() {
             id="flow"
             className="text-[1.75rem] font-black tracking-[-0.03em]"
           >
-            올리면 이렇게 돼요
+            게시 절차
           </h2>
           {/* 네 단계를 같은 폭의 칸에 놓아 화면 폭을 채우고, 원의 가운데끼리 선으로 잇는다. */}
           <ol className="grid rounded-block bg-surface px-5 py-7 ring-1 ring-line sm:px-8 lg:grid-cols-4 lg:px-6 lg:py-9">
@@ -163,10 +159,10 @@ export function LandingPage() {
               step={4}
               when="끝나는 날"
               icon={CircleCheck}
-              title="자동 삭제"
+              title="게시 종료"
               last
             >
-              게시 종료 시 자동 삭제
+              기간 종료 시 TV 게시 자동 종료
             </FlowStep>
           </ol>
         </section>

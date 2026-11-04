@@ -20,9 +20,21 @@ export const SIGNAGE_CONFIG_FIXTURE: SignageConfig = {
   maxUploadBytes: 10 * 1024 * 1024,
   titleMaxLength: 80,
   maxPublishMonths: 3,
-  minLeadTimeHours: 24,
-  allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
+  // 영상을 연 환경처럼 둔다(배포 ①, 서버 `VIDEO_UPLOADS_ENABLED`).
+  allowedMimeTypes: [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "video/mp4",
+    "video/quicktime",
+    "video/webm",
+  ],
   allowedDetailUrlHosts: ["ziggle.gistory.me"],
+  maxVideoUploadBytes: 100 * 1024 * 1024,
+  maxVideoDurationSeconds: 30,
+  eventBannerMaxDays: 3,
+  storyDisplayDays: 2,
+  dailySubmissionLimits: { EVENT_BANNER: 3, STORY: 5 },
 };
 
 /** 서버가 신청 응답에 싣는 카테고리 이름. 모르는 id는 그대로 둔다. */

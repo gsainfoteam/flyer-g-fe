@@ -35,13 +35,16 @@ export function getUserStatus(view: SubmissionView, now: Date): UserStatus {
     case "SCHEDULED":
       return {
         label: "게시 예정",
-        note: `${formatSeoulMonthDay(view.startAt)} 시작`,
+        note: view.startAt ? `${formatSeoulMonthDay(view.startAt)} 시작` : null,
         tone: "progress",
       };
     case "PUBLISHED":
       return {
         label: "게시 중",
-        note: `${formatSeoulMonthDay(seoulLastDay(view.startAt, view.endAt))}까지`,
+        note:
+          view.startAt && view.endAt
+            ? `${formatSeoulMonthDay(seoulLastDay(view.startAt, view.endAt))}까지`
+            : null,
         tone: "live",
       };
     case "REJECTED":
@@ -57,7 +60,18 @@ export function getUserStatus(view: SubmissionView, now: Date): UserStatus {
   }
 }
 
-/** 표의 기간 칸. "11월 3일 – 14일" */
-export function formatPeriod(view: SubmissionView): string {
+/**
+ * 표의 기간 칸. "11월 3일 – 14일". 제보는 승인한 순간부터 기간이 정해지므로
+ * 승인 전에는 기간이 없다. 그때는 승인 뒤 걸리는 날 수(`storyDisplayDays`)를 적는다.
+ */
+export function formatPeriod(
+  view: Pick<SubmissionView, "startAt" | "endAt" | "type">,
+  storyDisplayDays = 2,
+): string {
+  if (!view.startAt || !view.endAt) {
+    return view.type === "STORY"
+      ? `승인 후 ${storyDisplayDays}일`
+      : "승인 후 정해짐";
+  }
   return formatSeoulDayRange(view.startAt, view.endAt);
 }

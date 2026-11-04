@@ -22,7 +22,7 @@ export function DodgePreview({
       readState={readEmpty}
       now={0}
       joinUrl={null}
-      closedLabel={"미리보기\n실제 TV에서 QR이 나와요"}
+      closedLabel={"미리보기\n실제 TV에서 QR 표시"}
       ranking={[]}
       rank={null}
       survey={null}

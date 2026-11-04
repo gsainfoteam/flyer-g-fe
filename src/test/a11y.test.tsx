@@ -29,13 +29,13 @@ async function expectNoViolations(container: HTMLElement) {
 describe("접근성 자동 검사", () => {
   it("소개 화면 (로그인 전)", async () => {
     const { container } = renderRoute("/", { role: null });
-    await screen.findByRole("heading", { name: /띄우고 싶은 게/ });
+    await screen.findByRole("heading", { name: /전하는 우리 소식/ });
     await expectNoViolations(container);
   });
 
   it("첫 화면 (사용자)", async () => {
     const { container } = renderRoute("/", { role: "SUBMITTER" });
-    await screen.findByRole("heading", { name: "내 컨텐츠" });
+    await screen.findByRole("heading", { name: "내 콘텐츠" });
     await screen.findByText(/게시 시작/);
     await expectNoViolations(container);
   });
@@ -54,7 +54,7 @@ describe("접근성 자동 검사", () => {
     await expectNoViolations(container);
   });
 
-  it("내 컨텐츠", async () => {
+  it("내 콘텐츠", async () => {
     const { container } = renderRoute("/mine", { role: "SUBMITTER" });
     await screen.findByRole("table");
     await expectNoViolations(container);
@@ -68,13 +68,13 @@ describe("접근성 자동 검사", () => {
     await expectNoViolations(container);
   });
 
-  it("승인 대기 목록", async () => {
+  it("심사 대기열", async () => {
     const { container } = renderRoute("/review", { role: "REVIEWER" });
-    await screen.findByText(/승인 대기 \d+건/);
+    await screen.findByText(/대기 \d+건/);
     await expectNoViolations(container);
   });
 
-  it("검토 상세", async () => {
+  it("심사 · 고른 건", async () => {
     const { container } = renderRoute("/review/notice-003", {
       role: "REVIEWER",
     });

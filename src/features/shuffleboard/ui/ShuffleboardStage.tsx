@@ -10,6 +10,8 @@ import {
 import type { MatchState, Seat } from "@/entities/game/model/shuffleboard";
 import { SHUFFLEBOARD_RULES } from "@/entities/game/model/shuffleboard-rules";
 import { QRCodeBox } from "@/shared/components/QRCodeBox";
+import { SurveyCorner } from "@/shared/components/SurveyCorner";
+import type { EventSurvey } from "@/shared/components/SurveyCorner";
 import { cn } from "@/shared/lib/utils";
 import { BoardView } from "./BoardView";
 import { SEAT_DOT, SEAT_TEXT } from "./seat-style";
@@ -40,24 +42,24 @@ function statusOf(
           }
         : {
             title: "상대를 기다리는 중",
-            detail: `한 명만 더 오면 시작해요 · ${empty}팀 QR을 찍어 주세요`,
+            detail: `한 명 추가 참가 시 시작 · ${empty}팀 QR을 스캔하세요`,
           };
     }
     case "READY":
-      return { title: `${seconds ?? 0}초 뒤 시작`, detail: "A팀이 먼저 던져요" };
+      return { title: `${seconds ?? 0}초 뒤 시작`, detail: "A팀부터 시작" };
     case "PLAYING": {
       const seat = seatOfTurn(state.turn);
       return shooterSeat(state)
         ? { title: `${seat}팀 차례`, detail: `${seconds ?? 0}초 안에 던지세요` }
-        : { title: `${seat}팀이 던졌어요`, detail: "원반이 멈추면 다음 차례예요" };
+        : { title: `${seat}팀 발사 완료`, detail: "원반이 멈추면 다음 차례 시작" };
     }
     case "FINISHED":
       return {
         title: state.winner === "DRAW" ? "무승부" : `${state.winner}팀 승리`,
         // 설문 QR은 행사 시간대에만 붙는다. 없을 때 QR을 안내하지 않는다.
         detail: hasSurvey
-          ? "오른쪽 위 QR로 전단지 설문에 참여해 주세요"
-          : `${seconds ?? 0}초 뒤 다음 참가자를 모집해요`,
+          ? "오른쪽 위 QR로 전단지 설문 참여"
+          : `${seconds ?? 0}초 후 다음 참가자 모집`,
       };
   }
 }
@@ -73,7 +75,7 @@ interface ShuffleboardStageProps {
    * 오른쪽 위 설문 QR. 클릭 배틀 위젯의 `survey`와 같은 값이다(전단지 운영 설정의 설문 링크).
    * 없으면 그 자리를 비운다.
    */
-  survey: { url: string; label: string } | null;
+  survey: EventSurvey | null;
   /** 맨 위 머리 줄. 화면마다 다르다. */
   header: ReactNode;
 }
@@ -138,42 +140,6 @@ export function ShuffleboardStage({
         <Lobby state={state} joinUrls={joinUrls} closedLabel={closedLabel} />
       )}
     </div>
-  );
-}
-
-/**
- * 오른쪽 위 설문 자리. 노션폼 QR이 대기 중에도 경기 중에도 늘 떠 있다.
- * 경기를 기다리는 사람, 구경하는 사람, 막 끝낸 사람 누구든 찍을 수 있다.
- */
-/**
- * 판이 끝난 직후가 폰을 들고 있어 응답하기 가장 좋은 때라, 결과 화면에서는 강조한다
- * (전단지 클릭 배틀의 설문 띠와 같은 규칙).
- */
-function SurveyCorner({
-  survey,
-  finished,
-}: {
-  survey: { url: string; label: string };
-  finished: boolean;
-}) {
-  return (
-    <section
-      aria-label={survey.label}
-      className={cn(
-        "flex shrink-0 items-center gap-7 rounded-tv-card bg-surface py-4 pr-9 pl-4",
-        finished && "ring-6 ring-accent",
-      )}
-    >
-      <QRCodeBox value={survey.url} size="lg" />
-      <div>
-        <p className="text-[30px] leading-tight font-extrabold text-ink">{survey.label}</p>
-        <p className="mt-2 text-[24px] leading-snug text-ink-muted">
-          QR을 찍고 의견을
-          <br />
-          들려주세요
-        </p>
-      </div>
-    </section>
   );
 }
 
@@ -245,7 +211,7 @@ function Lobby({
                   {seated ? "준비 완료" : "빈 자리"}
                 </p>
                 <p className="mt-6 text-[28px] text-ink-muted">
-                  {seated ? "상대를 기다리고 있어요" : "QR을 찍으면 바로 참가해요"}
+                  {seated ? "상대 참가 대기 중" : "QR 스캔 후 참가"}
                 </p>
               </div>
               <div className="flex w-[280px] shrink-0 flex-col items-center justify-end gap-4">
@@ -267,8 +233,7 @@ function Lobby({
         })}
       </div>
       <p className="shrink-0 text-[24px] text-ink-subtle">
-        1:1 대결 · 번갈아 {SHUFFLEBOARD_RULES.shotsPerSeat}번씩 던져요 · 끝났을 때 보드에 남은 원반으로 점수를 매겨요 ·
-        로그인 없이 QR만 찍으면 바로 참가해요
+        1:1 대결 · 번갈아 {SHUFFLEBOARD_RULES.shotsPerSeat}번씩 발사 · 종료 시 보드에 남은 원반으로 점수 계산 · 로그인 없이 QR로 참가
       </p>
     </>
   );

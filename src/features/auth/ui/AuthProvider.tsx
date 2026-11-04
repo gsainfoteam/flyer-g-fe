@@ -5,6 +5,7 @@ import type { AuthAdapter } from "../api/auth-adapter";
 import { isMockAuthAdapter } from "../api/mock-auth";
 import { AuthContext } from "../model/auth-context";
 import type { AuthContextValue } from "../model/auth-context";
+import { hasAnyRole } from "../model/types";
 import type { AuthState, Role, SessionUser } from "../model/types";
 
 /**
@@ -14,6 +15,26 @@ import type { AuthState, Role, SessionUser } from "../model/types";
  * 로그인 화면으로 보내지 않는다. 로그인한 사용자에게 로그인 화면이 스쳐 보이는
  * 것을 막기 위한 것이다.
  */
+const VIEW_AS_USER_KEY = "flyerg:view-as-user";
+
+/** 저장을 못 쓰는 브라우저에서는 새로고침하면 원래 화면으로 돌아올 뿐이다. */
+function readViewAsUserId(): string | null {
+  try {
+    return window.localStorage.getItem(VIEW_AS_USER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeViewAsUserId(id: string | null) {
+  try {
+    if (id) window.localStorage.setItem(VIEW_AS_USER_KEY, id);
+    else window.localStorage.removeItem(VIEW_AS_USER_KEY);
+  } catch {
+    // 저장하지 못해도 지금 화면에서는 동작한다.
+  }
+}
+
 interface AuthProviderProps {
   adapter: AuthAdapter;
   children: ReactNode;
@@ -21,6 +42,12 @@ interface AuthProviderProps {
 
 export function AuthProvider({ adapter, children }: AuthProviderProps) {
   const [state, setState] = useState<AuthState>({ status: "initializing" });
+  // 사용자 화면 모드. 누가 켰는지 함께 적어 두어 다른 계정으로 들어오면 풀린다.
+  const [viewAsUserId, setViewAsUserId] = useState(readViewAsUserId);
+  const rememberViewAsUser = useCallback((id: string | null) => {
+    setViewAsUserId(id);
+    writeViewAsUserId(id);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -85,8 +112,9 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
 
   const signOut = useCallback(async () => {
     await adapter.signOut();
+    rememberViewAsUser(null);
     setState({ status: "unauthenticated" });
-  }, [adapter]);
+  }, [adapter, rememberViewAsUser]);
 
   const expireSession = useCallback(() => {
     // 서버 세션은 이미 끝났다. 남은 로컬 흔적만 지우며, 실패해도 화면은 넘어간다.
@@ -130,6 +158,24 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
     [adapter],
   );
 
+  const sessionUser = state.status === "authenticated" ? state.user : null;
+  const viewAsUser =
+    sessionUser !== null &&
+    sessionUser.id === viewAsUserId &&
+    hasAnyRole(sessionUser, ["REVIEWER", "SUPER_ADMIN"]);
+  const viewedUser = useMemo<SessionUser | null>(
+    () =>
+      sessionUser && viewAsUser
+        ? { ...sessionUser, roles: ["SUBMITTER"] }
+        : sessionUser,
+    [sessionUser, viewAsUser],
+  );
+  const sessionUserId = sessionUser?.id ?? null;
+  const setViewAsUser = useCallback(
+    (on: boolean) => rememberViewAsUser(on ? sessionUserId : null),
+    [rememberViewAsUser, sessionUserId],
+  );
+
   const value = useMemo<AuthContextValue>(
     () => ({
       state,
@@ -140,6 +186,9 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
       reloadSession,
       switchRole,
       availableRoles,
+      viewAsUser,
+      setViewAsUser,
+      viewedUser,
     }),
     [
       state,
@@ -150,6 +199,9 @@ export function AuthProvider({ adapter, children }: AuthProviderProps) {
       reloadSession,
       switchRole,
       availableRoles,
+      viewAsUser,
+      setViewAsUser,
+      viewedUser,
     ],
   );
 
@@ -161,6 +213,7 @@ function isSameSessionUser(a: SessionUser, b: SessionUser): boolean {
   return (
     a.id === b.id &&
     a.displayName === b.displayName &&
+    a.email === b.email &&
     a.roles.length === b.roles.length &&
     a.roles.every((role) => b.roles.includes(role))
   );

@@ -1,4 +1,4 @@
-import { WifiOff } from "lucide-react";
+import { Moon, WifiOff } from "lucide-react";
 import { Link } from "react-router";
 import { LAYOUT_LABELS } from "@/entities/playlist/model/rotation";
 import { isRenderStalled, isTargetedTo } from "@/entities/device/model/board";
@@ -12,7 +12,8 @@ import { cn } from "@/shared/lib/utils";
  * TV 지금 (기획 4-0 운영자). 기기마다 작은 TV 화면을 그린다.
  *
  * 지금 나오는 장면은 heartbeat `now`(배포 ⑦)부터 알 수 있다. 그 전에는 화면 방식과
- * 걸린 포스터 수를 보여 준다. 꺼진 TV는 회색 화면에 연결 없음 시간을 적는다.
+ * 걸린 포스터 수를 보여 준다. 꺼진 TV는 회색 화면에 연결 없음 시간을 적는다. 화면 끔
+ * 시간의 TV는 정해 둔 대로 쉬는 것이라 꺼짐으로 표시하지 않는다.
  */
 export function DeviceNow({
   devices,
@@ -25,6 +26,9 @@ export function DeviceNow({
 }) {
   const active = devices.filter((device) => device.status !== "DISABLED");
   const onCount = active.filter((device) => device.status === "ONLINE").length;
+  const sleepingCount = active.filter(
+    (device) => device.status === "SLEEPING",
+  ).length;
 
   return (
     <section
@@ -38,6 +42,7 @@ export function DeviceNow({
         </h2>
         <span className="text-caption text-ink-subtle">
           {onCount}/{active.length} 켜짐
+          {sleepingCount > 0 && ` · 화면 끔 ${sleepingCount}`}
         </span>
         <Link
           to={to.tv()}
@@ -55,6 +60,7 @@ export function DeviceNow({
               isTargetedTo(device, item.targetGroupIds),
             ).length;
             const on = device.status === "ONLINE";
+            const sleeping = device.status === "SLEEPING";
             const stalled = isRenderStalled(device, now, posters > 0);
             return (
               <li key={device.id}>
@@ -74,6 +80,11 @@ export function DeviceNow({
                       <span className="text-label font-extrabold text-hero-ink">
                         포스터 {posters}장
                       </span>
+                    </div>
+                  ) : sleeping ? (
+                    <div className="flex flex-col items-center gap-1 text-ink-subtle">
+                      <Moon size={20} aria-hidden="true" />
+                      <span className="text-overline font-normal">화면 끔</span>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center gap-1 text-ink-subtle">
@@ -96,12 +107,22 @@ export function DeviceNow({
                     aria-hidden="true"
                     className={cn(
                       "size-2 rounded-full",
-                      on && !stalled ? "bg-success" : "bg-accent",
+                      sleeping
+                        ? "bg-info"
+                        : on && !stalled
+                          ? "bg-success"
+                          : "bg-accent",
                     )}
                   />
                   {device.name}
                   <span className="sr-only">
-                    {on ? (stalled ? " 재생 멈춤" : " 켜짐") : " 꺼짐"}
+                    {sleeping
+                      ? " 화면 끔"
+                      : on
+                        ? stalled
+                          ? " 재생 멈춤"
+                          : " 켜짐"
+                        : " 꺼짐"}
                   </span>
                 </p>
               </li>

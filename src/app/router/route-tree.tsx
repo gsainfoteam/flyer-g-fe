@@ -63,11 +63,6 @@ const submissionDetailPage = lazyPage(() =>
 const reviewsPage = lazyPage(() =>
   import("@/pages/ReviewsPage").then((m) => ({ default: m.ReviewsPage })),
 );
-const reviewDetailPage = lazyPage(() =>
-  import("@/pages/ReviewDetailPage").then((m) => ({
-    default: m.ReviewDetailPage,
-  })),
-);
 const devicesPage = lazyPage(() =>
   import("@/pages/DevicesPage").then((m) => ({ default: m.DevicesPage })),
 );
@@ -76,6 +71,12 @@ const usersPage = lazyPage(() =>
 );
 const studioPage = lazyPage(() =>
   import("@/pages/StudioPage").then((m) => ({ default: m.StudioPage })),
+);
+const newEventPage = lazyPage(() =>
+  import("@/pages/NewEventPage").then((m) => ({ default: m.NewEventPage })),
+);
+const newStoryPage = lazyPage(() =>
+  import("@/pages/NewStoryPage").then((m) => ({ default: m.NewStoryPage })),
 );
 // 플레이어 로딩 화면은 비워 둔다. TV에 관리용 스켈레톤을 잠깐이라도 띄우지 않는다.
 const displayPage = lazyPage(
@@ -226,15 +227,26 @@ export const routeTree = [
           {
             element: <AdminLayout />,
             children: [
+              // 이벤트 배너와 제보는 칸이 적어 포스터처럼 전용 틀을 쓰지 않는다.
+              {
+                path: paths.newEvent,
+                element: newEventPage,
+                handle: title("이벤트 배너"),
+              },
+              {
+                path: paths.newStory,
+                element: newStoryPage,
+                handle: title("소식 제보"),
+              },
               {
                 path: paths.mine,
                 element: minePage,
-                handle: title("내 컨텐츠"),
+                handle: title("내 콘텐츠"),
               },
               {
                 path: paths.mineDetail,
                 element: submissionDetailPage,
-                handle: title("컨텐츠 상세"),
+                handle: title("콘텐츠 상세"),
               },
               // 심사와 전체 컨텐츠는 하우스 관리자와 운영자만 볼 수 있다.
               {
@@ -245,15 +257,16 @@ export const routeTree = [
                     element: reviewsPage,
                     handle: title("심사"),
                   },
+                  // 목록과 고른 건을 한 화면에 둔다. 주소의 id가 오른쪽 칸이다.
                   {
                     path: paths.reviewDetail,
-                    element: reviewDetailPage,
+                    element: reviewsPage,
                     handle: title("심사"),
                   },
                   {
                     path: paths.contents,
                     element: contentsPage,
-                    handle: title("전체 컨텐츠"),
+                    handle: title("전체 콘텐츠"),
                   },
                 ],
               },

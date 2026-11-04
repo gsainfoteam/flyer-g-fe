@@ -18,14 +18,14 @@ export function validateGroupName(
 ): string | null {
   const trimmed = name.trim();
   const max = TARGET_GROUP_LIMITS.nameMaxLength;
-  if (trimmed.length === 0) return "그룹 이름을 입력해 주세요.";
+  if (trimmed.length === 0) return "그룹 이름을 입력하세요.";
   if (serverTextLength(trimmed) > max)
-    return `그룹 이름은 ${max}자까지 쓸 수 있어요.`;
+    return `그룹 이름은 ${max}자까지 입력할 수 있습니다.`;
   const same = findSameNameGroup(groups, trimmed, exceptId);
   if (same) {
     return same.isHidden
-      ? "같은 이름의 숨긴 그룹이 있어요. 그 그룹을 다시 표시해 주세요."
-      : "같은 이름의 그룹이 이미 있어요.";
+      ? "같은 이름의 숨겨진 그룹이 있습니다. 해당 그룹의 숨김을 해제하세요."
+      : "같은 이름의 그룹이 이미 있습니다.";
   }
   return null;
 }

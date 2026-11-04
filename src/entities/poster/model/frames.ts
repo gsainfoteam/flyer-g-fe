@@ -1,5 +1,9 @@
 import { SPOTLIGHTS_PER_WALL } from "@/entities/playlist/model/rotation";
-import type { LayoutType } from "@/entities/playlist/model/types";
+import type {
+  LayoutType,
+  PlaylistEventBanner,
+  PlaylistStory,
+} from "@/entities/playlist/model/types";
 import type { PosterRenderModel } from "./types";
 import { packWallPages } from "./wall-layout";
 
@@ -9,6 +13,8 @@ import { packWallPages } from "./wall-layout";
  * - `wall`: 모아 보기. 다음에 크게 나올 게시물이 있는 쪽을 보여 준다.
  * - `spotlight`: 하나씩 크게. 제목·장소·QR을 보여 준다. 다음 차례는 아래 정보줄이 맡는다.
  * - `strip`: 흐르는 띠. `focusIndex`번째 게시물이 가운데에 온다.
+ * - `event`: 이벤트 배너 한 건.
+ * - `story`: 제보 카드 두 장.
  */
 export type DisplayFrame =
   | { kind: "wall"; key: string; posters: PosterRenderModel[] }
@@ -17,7 +23,61 @@ export type DisplayFrame =
       key: string;
       poster: PosterRenderModel;
     }
-  | { kind: "strip"; key: string; focusIndex: number };
+  | { kind: "strip"; key: string; focusIndex: number }
+  | { kind: "event"; key: string; banner: PlaylistEventBanner }
+  | { kind: "story"; key: string; stories: PlaylistStory[] };
+
+/** 이벤트 배너·제보. 포스터 순환 사이에 끼운다. */
+export interface ContentScenes {
+  eventBanners: PlaylistEventBanner[];
+  stories: PlaylistStory[];
+}
+
+/** 한 장면의 제보 카드 수 */
+export const STORIES_PER_SCENE = 2;
+/** 글을 읽을 시간. 전환 간격이 짧아도 이만큼은 머문다. */
+const EVENT_SCENE_SECONDS = 10;
+const STORY_SCENE_SECONDS = 15;
+
+/** 이벤트 배너는 한 장면에 한 건, 제보는 두 건씩 묶는다. */
+export function buildContentFrames({
+  eventBanners,
+  stories,
+}: ContentScenes): DisplayFrame[] {
+  const frames: DisplayFrame[] = eventBanners.map((banner) => ({
+    kind: "event",
+    key: `event:${banner.submissionId}`,
+    banner,
+  }));
+  for (let start = 0; start < stories.length; start += STORIES_PER_SCENE) {
+    const page = stories.slice(start, start + STORIES_PER_SCENE);
+    frames.push({
+      kind: "story",
+      key: `story:${page[0]!.submissionId}`,
+      stories: page,
+    });
+  }
+  return frames;
+}
+
+/**
+ * 장면을 포스터 사이에 고르게 끼운다. 포스터가 없으면 장면만 돈다. 한 바퀴에 모두 한
+ * 번씩 나오므로 게시 중인 이벤트·제보가 빠지지 않는다.
+ */
+export function mixContentFrames(
+  frames: DisplayFrame[],
+  content: DisplayFrame[],
+): DisplayFrame[] {
+  if (content.length === 0) return frames;
+  const mixed: DisplayFrame[] = [];
+  let placed = 0;
+  frames.forEach((frame, index) => {
+    mixed.push(frame);
+    const due = Math.floor(((index + 1) * content.length) / frames.length);
+    while (placed < due) mixed.push(content[placed++]!);
+  });
+  return frames.length === 0 ? content : mixed;
+}
 
 /**
  * 편성을 화면 순서로 펼친다. 규칙은 `entities/playlist/model/rotation.ts`와 같다.
@@ -76,7 +136,8 @@ export function buildFrames(
 
 /**
  * 이 화면에서 노출로 세는 게시물. 벽은 보이는 전부, 크게 보기는 그 한 건, 띠는
- * 가운데 한 건이다. 띠 양옆은 흐리게 보이는 미리보기라 세지 않는다.
+ * 가운데 한 건이다. 띠 양옆은 흐리게 보이는 미리보기라 세지 않는다. 이벤트·제보 장면은
+ * 포스터가 없다(`exposedContent`).
  */
 export function exposedPosters(
   frame: DisplayFrame,
@@ -91,7 +152,62 @@ export function exposedPosters(
       const focus = posters[frame.focusIndex];
       return focus ? [focus] : [];
     }
+    case "event":
+    case "story":
+      return [];
   }
+}
+
+/** 이벤트·제보 장면에서 노출로 세는 신청. 포스터 화면이면 빈 목록이다. */
+export function exposedContent(
+  frame: DisplayFrame,
+): { id: string; revision: number }[] {
+  const items =
+    frame.kind === "event"
+      ? [frame.banner]
+      : frame.kind === "story"
+        ? frame.stories
+        : [];
+  return items.map((item) => ({
+    id: item.submissionId,
+    revision: item.revision,
+  }));
+}
+
+/**
+ * 이 화면에서 재생하는 영상 포스터. 크게 보기와 띠 가운데 칸만 재생한다. 벽과 띠
+ * 양옆은 대표 프레임을 그린다. 저사양 TV가 영상 여러 개를 함께 풀지 않게 한다.
+ */
+export function playingVideoOf(
+  frame: DisplayFrame,
+  posters: PosterRenderModel[],
+): PosterRenderModel | null {
+  const poster =
+    frame.kind === "spotlight"
+      ? frame.poster
+      : frame.kind === "strip"
+        ? posters[frame.focusIndex]
+        : undefined;
+  return poster?.videoUrl ? poster : null;
+}
+
+/**
+ * 포스터 화면이 머무는 시간(초). 영상은 끝까지 한 번 보여 주고, 전환 간격보다 짧으면
+ * 그 시간이 찰 때까지 반복한다. 길이 상한은 서버가 지킨다(`maxVideoDurationSeconds`).
+ */
+export function posterFrameSeconds(
+  frame: DisplayFrame,
+  posters: PosterRenderModel[],
+  rotationSeconds: number,
+): number {
+  if (frame.kind === "event") {
+    return Math.max(rotationSeconds, EVENT_SCENE_SECONDS);
+  }
+  if (frame.kind === "story") {
+    return Math.max(rotationSeconds, STORY_SCENE_SECONDS);
+  }
+  const durationMs = playingVideoOf(frame, posters)?.durationMs ?? 0;
+  return Math.max(rotationSeconds, Math.ceil(durationMs / 1000));
 }
 
 /** 다음 화면에서 처음 그려질 이미지. 전환 순간에 빈 칸이 보이지 않게 미리 받는다. */
@@ -100,6 +216,10 @@ export function imagesOf(
   posters: PosterRenderModel[],
 ): string[] {
   if (!frame) return [];
+  if (frame.kind === "event") {
+    const url = frame.banner.assetUrl ?? frame.banner.photoUrl;
+    return url ? [url] : [];
+  }
   if (frame.kind === "strip") {
     // 띠는 다음 칸이 이미 화면 가장자리에 있다. 새로 들어올 두 칸 뒤를 받는다.
     const ahead = posters[(frame.focusIndex + 2) % posters.length];

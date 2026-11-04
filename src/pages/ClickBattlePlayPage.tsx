@@ -41,8 +41,8 @@ export function ClickBattlePlayPage() {
   if (player.paused) {
     return (
       <Notice
-        title="연결을 잠시 쉬고 있어요"
-        description="한동안 쓰지 않아 TV와의 연결을 쉬었어요. 다시 하려면 아래 버튼을 눌러 주세요."
+        title="연결 일시 중지"
+        description="일정 시간 동안 활동이 없어 TV 연결을 중지했습니다. 계속하려면 아래 버튼을 누르세요."
       >
         <Button size="lg" className="mx-auto mt-2 h-12 px-8" onClick={player.resume}>
           다시 연결
@@ -54,11 +54,11 @@ export function ClickBattlePlayPage() {
   if (!player.connected || !state) {
     return (
       <Notice
-        title={player.link === "waiting-host" ? "TV가 아직 게임을 열지 않았어요" : "TV에 연결하는 중이에요"}
+        title={player.link === "waiting-host" ? "TV 게임 시작 대기 중" : "TV 연결 중"}
         description={
           player.link === "waiting-host"
-            ? "TV에 클릭 배틀 화면이 켜지면 바로 이어져요. 이 화면을 열어 두세요."
-            : "인터넷 연결을 확인해 주세요. 계속 안 되면 TV 화면의 QR을 다시 찍어 보세요."
+            ? "TV에 클릭 배틀 화면이 켜지면 자동으로 연결됩니다. 이 화면을 열어 두세요."
+            : "인터넷 연결을 확인하세요. 문제가 계속되면 TV 화면의 QR을 다시 스캔하세요."
         }
       />
     );
@@ -68,8 +68,8 @@ export function ClickBattlePlayPage() {
     if (state.phase === "PLAYING" || state.phase === "RESULT") {
       return (
         <Notice
-          title="지금은 경기 중이에요"
-          description={`${seconds ?? 0}초쯤 뒤에 다음 판 참가자를 모집해요. 이 화면을 열어 두세요.`}
+          title="경기 진행 중"
+          description={`${seconds ?? 0}초 후 다음 경기 참가자를 모집합니다. 이 화면을 열어 두세요.`}
         />
       );
     }
@@ -84,10 +84,10 @@ export function ClickBattlePlayPage() {
         <div>
           <p className={cn("text-label font-bold", style.text)}>클릭 배틀</p>
           <h1 className="mt-2 text-title text-ink">
-            <span className={style.text}>{team}팀</span>으로 참가해요
+            <span className={style.text}>{team}팀</span>으로 참가
           </h1>
           <p className="mt-2 text-body text-ink-muted">
-            로그인은 필요 없어요. TV에 보일 이름만 적어 주세요.
+            로그인 없이 참가할 수 있습니다. TV에 표시할 이름을 입력하세요.
           </p>
         </div>
         <Input
@@ -101,8 +101,8 @@ export function ClickBattlePlayPage() {
         {player.rejection && (
           <p role="alert" className="text-label text-danger">
             {player.rejection === "FULL"
-              ? `${team}팀이 다 찼어요. 다른 팀 QR로 참가하거나 다음 판을 기다려 주세요.`
-              : "방금 경기가 시작됐어요. 다음 판을 기다려 주세요."}
+              ? `${team}팀 정원이 찼습니다. 다른 팀 QR로 참가하거나 다음 경기를 기다리세요.`
+              : "경기가 시작되었습니다. 다음 경기를 기다리세요."}
           </p>
         )}
         <Button type="submit" size="lg" className="mt-auto h-14 text-subhead">
@@ -147,7 +147,7 @@ export function ClickBattlePlayPage() {
     return (
       <Notice
         title={state.winner === "DRAW" ? "무승부!" : won ? "이겼어요!" : "아쉽게 졌어요"}
-        description={`나는 ${player.me.taps.toLocaleString("ko-KR")}번 눌렀어요. ${seconds ?? 0}초 뒤 다음 판을 모집해요.`}
+        description={`내 기록 ${player.me.taps.toLocaleString("ko-KR")}회 클릭 · ${seconds ?? 0}초 후 다음 경기 참가자 모집`}
       >
         <Scoreboard scores={state.scores} myTeam={myTeam} seconds={null} />
       </Notice>
@@ -158,10 +158,10 @@ export function ClickBattlePlayPage() {
     <Notice
       title={
         state.phase === "COUNTDOWN"
-          ? `${seconds ?? 0}초 뒤 시작해요`
-          : "상대 팀을 기다리는 중이에요"
+          ? `${seconds ?? 0}초 후 시작`
+          : "상대 팀 참가 대기 중"
       }
-      description={`${player.me.name} · ${myTeam}팀으로 참가했어요. 시작하면 화면이 버튼으로 바뀌어요.`}
+      description={`${player.me.name} · ${myTeam}팀 참가 완료. 경기가 시작되면 화면에 버튼이 표시됩니다.`}
     />
   );
 }

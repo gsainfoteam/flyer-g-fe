@@ -100,9 +100,7 @@ export function useInfiniteSubmissionViews(
 /**
  * 신청 상세 하나.
  *
- * 표시 상태 판정에 서버 시각이 필요하다. 단건 응답에도 `serverTime`이 있지만 신청
- * 모델(`parseSubmission`)은 목록과 같은 모양이라 담지 않는다. 판정은 호출부가 함께
- * 여는 요약·목록의 서버 시각으로 한다.
+ * 단건 응답의 `serverTime`을 보존해 기간과 작업 가능 여부를 판단한다.
  *
  * id가 없으면 조회하지 않는다. 새 신청 작성처럼 편집 대상이 없는 화면에서
  * 빈 id로 `GET /submissions/`를 보내지 않기 위해서다.
@@ -144,5 +142,34 @@ export function useReviewHistories(submissionIds: readonly string[]) {
       queryFn: ({ signal }: { signal: AbortSignal }) =>
         reviews.listHistory(submissionId, signal),
     })),
+  });
+}
+
+/**
+ * 지금 게시 중인 제보. 최근 승인 순이다(`GET /signage/stories/recent`). 사용자 홈의
+ * "최근 소식"과 제보 작성 화면의 미리보기가 쓴다.
+ */
+export function useRecentStories(limit: number) {
+  const { submissions } = useRepositories();
+  return useQuery({
+    queryKey: queryKeys.submissions.recentStories(limit),
+    queryFn: ({ signal }) => submissions.listRecentStories({ limit }, signal),
+  });
+}
+
+/**
+ * 제보 작성자 열람 (`POST /signage/submissions/{id}/reveal-author`). 운영자만 부를 수
+ * 있고, 부를 때마다 서버가 감사 로그를 남긴다. 그래서 화면을 열 때 자동으로 부르지
+ * 않고 "보기"를 눌렀을 때만 켠다(`enabled`). 한 번 받은 값은 다시 부르지 않는다.
+ */
+export function useStoryAuthor(id: string, enabled: boolean) {
+  const { submissions } = useRepositories();
+  return useQuery({
+    queryKey: queryKeys.submissions.author(id),
+    enabled,
+    queryFn: ({ signal }) => submissions.revealAuthor(id, signal),
+    staleTime: Infinity,
+    gcTime: Infinity,
+    retry: false,
   });
 }

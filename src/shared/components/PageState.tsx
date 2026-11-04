@@ -89,14 +89,14 @@ interface ErrorStateProps {
 
 export function ErrorState({
   error,
-  title = "내용을 불러오지 못했어요",
+  title = "내용을 불러오지 못했습니다",
   onRetry,
   retryLabel = "다시 불러오기",
   className,
 }: ErrorStateProps) {
   const message = isApiError(error)
     ? toUserMessage(error)
-    : "잠시 후 다시 시도해 주세요.";
+    : "잠시 후 다시 시도하세요.";
   const trace = isApiError(error) ? toTraceLabel(error) : null;
 
   return (

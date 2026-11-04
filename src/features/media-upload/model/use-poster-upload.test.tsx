@@ -103,6 +103,9 @@ describe("usePosterUpload", () => {
           height: 1600,
           mimeType: "image/jpeg",
           sizeBytes: 2048,
+          kind: "IMAGE",
+          videoUrl: null,
+          durationMs: null,
         };
       },
     };
@@ -236,5 +239,100 @@ describe("usePosterUpload", () => {
 
     expect(result.current.state.invalidCode).toBe("TOO_LARGE");
     expect(upload).not.toHaveBeenCalled();
+  });
+
+  describe("영상", () => {
+    const MP4_HEAD = [
+      0,
+      0,
+      0,
+      0x18,
+      ...[..."ftypisom"].map((char) => char.charCodeAt(0)),
+    ];
+    const video = () => {
+      const bytes = new Uint8Array(2048);
+      bytes.set(MP4_HEAD, 0);
+      return new File([bytes], "clip.mp4", { type: "video/mp4" });
+    };
+    const probe = async () => ({
+      width: 1080,
+      height: 1920,
+      durationMs: 15_000,
+    });
+
+    it("영상을 받지 않는 환경이면 고르지 못하게 한다", async () => {
+      const upload = vi.fn();
+      const { result } = renderHook(
+        () =>
+          usePosterUpload({
+            limits: { maxSizeBytes: 10 * 1024 * 1024 },
+            videoProbe: probe,
+          }),
+        { wrapper: wrapper({ upload }) },
+      );
+
+      await act(() => result.current.selectFile(video()));
+
+      expect(result.current.state).toMatchObject({
+        status: "invalid",
+        invalidCode: "UNSUPPORTED_TYPE",
+      });
+      expect(upload).not.toHaveBeenCalled();
+    });
+
+    it("받는 환경이면 길이를 재서 올리고, 변환 중임을 알린다", async () => {
+      let finish: () => void = () => {};
+      const service: AssetUploadService = {
+        upload: (_file, options) =>
+          new Promise((resolve) => {
+            options?.onProcessing?.();
+            finish = () =>
+              resolve({
+                assetId: "asset-video",
+                url: "https://example.test/frame.webp",
+                width: 1080,
+                height: 1920,
+                mimeType: "video/mp4",
+                sizeBytes: 2048,
+                kind: "VIDEO",
+                videoUrl: "https://example.test/video.mp4",
+                durationMs: 14_900,
+              });
+          }),
+      };
+      const { result } = renderHook(
+        () =>
+          usePosterUpload({
+            limits: { maxSizeBytes: 10 * 1024 * 1024, acceptsVideo: true },
+            videoProbe: probe,
+          }),
+        { wrapper: wrapper(service) },
+      );
+
+      let selecting: Promise<void> = Promise.resolve();
+      act(() => {
+        selecting = result.current.selectFile(video());
+      });
+      await waitFor(() =>
+        expect(result.current.state).toMatchObject({
+          status: "uploading",
+          mediaKind: "VIDEO",
+          durationMs: 15_000,
+          processing: true,
+        }),
+      );
+
+      await act(async () => {
+        finish();
+        await selecting;
+      });
+      expect(result.current.state).toMatchObject({
+        status: "uploaded",
+        processing: false,
+        // 서버가 잰 길이를 쓴다.
+        durationMs: 14_900,
+        dimensions: { width: 1080, height: 1920 },
+      });
+    });
   });
 });

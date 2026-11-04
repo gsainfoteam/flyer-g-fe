@@ -324,7 +324,7 @@ export function buildWidgetContent(
       return {
         type: "SURVEY",
         url,
-        title: readLabel({ label: slot.params.title }, "설문에 참여해 주세요"),
+        title: readLabel({ label: slot.params.title }, "설문 참여"),
         description: typeof description === "string" && description.trim() ? description.trim() : null,
       };
     }

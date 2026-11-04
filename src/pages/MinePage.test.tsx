@@ -41,8 +41,8 @@ async function repositoriesWithManySubmissions() {
 const tableRows = () =>
   within(screen.getByRole("table")).getAllByRole("row").slice(1);
 
-describe("내 컨텐츠", () => {
-  it("모든 컨텐츠가 pagination으로 접근 가능하다", async () => {
+describe("내 콘텐츠", () => {
+  it("모든 콘텐츠가 pagination으로 접근 가능하다", async () => {
     const user = userEvent.setup();
     const repositories = await repositoriesWithManySubmissions();
     renderRoute("/mine", { role: "SUBMITTER", repositories });
@@ -59,17 +59,53 @@ describe("내 컨텐츠", () => {
     expect(screen.queryByRole("button", { name: /더 보기/ })).toBeNull();
   });
 
-  it.each(["SUBMITTER", "REVIEWER", "SUPER_ADMIN"] as const)(
-    "%s도 새로 올리기를 누르면 포스터 올리기 화면으로 간다",
-    async (role) => {
+  describe.each(["SUBMITTER", "REVIEWER", "SUPER_ADMIN"] as const)("%s의 새로 올리기", (role) => {
+    it.each([
+      ["포스터", "/new/poster"],
+      ["이벤트 배너", "/new/event"],
+      ["소식 제보", "/new/story"],
+    ])("%s를 선택하면 해당 작성 화면으로 간다", async (name, path) => {
       const user = userEvent.setup();
       const { router } = renderRoute("/mine", { role });
-      await user.click(await screen.findByRole("link", { name: "새로 올리기" }));
-      await waitFor(() => expect(currentPath(router)).toBe("/new/poster"));
-    },
-  );
+      await user.click(await screen.findByRole("button", { name: "새로 올리기" }));
+      const dialog = await screen.findByRole("dialog", { name: "무엇을 올릴까요?" });
+      expect(currentPath(router)).toBe("/mine");
+      expect(within(dialog).getAllByRole("link")).toHaveLength(3);
+      await user.click(within(dialog).getByRole("link", { name: new RegExp(name) }));
+      await waitFor(() => {
+        expect(currentPath(router)).toBe(path);
+        expect(screen.queryByRole("dialog")).toBeNull();
+      });
+    });
+  });
 
-  it("다른 사람의 컨텐츠는 나오지 않는다", async () => {
+  it("선택 창을 닫으면 보고 있던 탭과 버튼 초점을 유지한다", async () => {
+    const user = userEvent.setup();
+    const { router } = renderRoute("/mine?view=past", { role: "SUBMITTER" });
+    const trigger = await screen.findByRole("button", { name: "새로 올리기" });
+    await user.click(trigger);
+    await screen.findByRole("dialog");
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(currentPath(router)).toBe("/mine?view=past");
+    expect(trigger).toHaveFocus();
+  });
+
+  it("콘텐츠가 없을 때도 올리러 가기에서 종류를 선택한다", async () => {
+    const user = userEvent.setup();
+    const repositories = createMockRepositories({
+      clock: createFixedClock(TEST_NOW),
+      session: () => ({ ...MOCK_USERS.SUBMITTER, id: "user-new" }),
+      heartbeats: createMemoryHeartbeatLog(),
+    });
+    const { router } = renderRoute("/mine", { role: "SUBMITTER", repositories });
+    await user.click(await screen.findByRole("button", { name: "올리러 가기" }));
+    const dialog = await screen.findByRole("dialog", { name: "무엇을 올릴까요?" });
+    await user.click(within(dialog).getByRole("link", { name: /소식 제보/ }));
+    await waitFor(() => expect(currentPath(router)).toBe("/new/story"));
+  });
+
+  it("다른 사람의 콘텐츠는 나오지 않는다", async () => {
     renderRoute("/mine", { role: "SUBMITTER" });
 
     await screen.findByRole("table");
@@ -106,7 +142,7 @@ describe("내 컨텐츠", () => {
     ).toBeInTheDocument();
   });
 
-  it("반려된 컨텐츠는 할 일 칸에서 고쳐서 다시 내러 간다", async () => {
+  it("반려된 콘텐츠는 할 일 칸에서 고쳐서 다시 내러 간다", async () => {
     renderRoute("/mine", { role: "SUBMITTER" });
     await screen.findByRole("table");
 

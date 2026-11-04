@@ -96,7 +96,7 @@ export class DisplayErrorBoundary extends Component<
               잠시 후 다시 시작합니다
             </h1>
             <p className="text-[32px] text-ink-muted">
-              게시 신청은 Ziggle 공지에서 할 수 있어요 · {ZIGGLE_HOST}
+              Ziggle 공지에서 게시 신청 가능 · {ZIGGLE_HOST}
             </p>
           </div>
         </div>

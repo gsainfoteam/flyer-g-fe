@@ -38,10 +38,17 @@ const PANEL_ID = "submission-list";
 function sentenceFor(submission: SubmissionView, withRequester: boolean) {
   const sentence = getStatusSentence({
     status: submission.status,
-    startsAtLabel: formatSeoulDateTime(submission.startAt),
-    endsAtLabel: formatSeoulShortDate(submission.endAt),
+    startsAtLabel: submission.startAt
+      ? formatSeoulDateTime(submission.startAt)
+      : undefined,
+    endsAtLabel: submission.endAt
+      ? formatSeoulShortDate(submission.endAt)
+      : undefined,
   });
-  return withRequester ? `${submission.requesterName} · ${sentence}` : sentence;
+  // 제보는 작성자를 가린다(작성자 본인 말고는 신청자가 비어 온다).
+  return withRequester
+    ? `${submission.requesterName ?? "작성자 가림"} · ${sentence}`
+    : sentence;
 }
 
 export function SubmissionsPage() {
@@ -71,7 +78,7 @@ export function SubmissionsPage() {
     );
   };
 
-  const title = "전체 컨텐츠";
+  const title = "전체 콘텐츠";
 
   return (
     <>
@@ -88,7 +95,7 @@ export function SubmissionsPage() {
           </p>
         </div>
         <Button variant="secondary" asChild>
-          <Link to={to.mine()}>내 컨텐츠</Link>
+          <Link to={to.mine()}>내 콘텐츠</Link>
         </Button>
       </div>
 
@@ -118,10 +125,10 @@ export function SubmissionsPage() {
                 <EmptyState
                   title={
                     group.key === "all"
-                      ? "아직 들어온 컨텐츠가 없어요"
-                      : `${group.label} 상태의 컨텐츠가 없어요`
+                      ? "접수된 콘텐츠 없음"
+                      : `${group.label} 상태의 콘텐츠 없음`
                   }
-                  description="다른 탭을 눌러 보세요."
+                  description="다른 상태의 탭을 선택하세요."
                   className="px-3"
                 />
               ) : (

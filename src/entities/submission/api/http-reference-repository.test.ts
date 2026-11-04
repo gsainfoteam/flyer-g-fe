@@ -19,7 +19,6 @@ const CONFIG = {
   maxUploadBytes: 10485760,
   titleMaxLength: 80,
   maxPublishMonths: 3,
-  minLeadTimeHours: 24,
   allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
   allowedDetailUrlHosts: ["ziggle.gistory.me"],
 };
@@ -41,7 +40,15 @@ describe("createHttpReferenceRepository", () => {
     const repository = createHttpReferenceRepository(client);
     const signal = new AbortController().signal;
 
-    await expect(repository.getConfig(signal)).resolves.toEqual(CONFIG);
+    await expect(repository.getConfig(signal)).resolves.toEqual({
+      ...CONFIG,
+      // 이 응답은 배포 ①~④ 전 모양이라 새 값은 서버 기본값으로 채운다.
+      maxVideoUploadBytes: 104857600,
+      maxVideoDurationSeconds: 30,
+      eventBannerMaxDays: 3,
+      storyDisplayDays: 2,
+      dailySubmissionLimits: {},
+    });
     await expect(repository.listCategories()).resolves.toEqual([
       { id: "notice", name: "공지" },
     ]);
@@ -49,6 +56,32 @@ describe("createHttpReferenceRepository", () => {
       { id: "grp_a", name: "학사기숙사 A동", deviceCount: 2, isHidden: false },
     ]);
     expect(calls[0]).toMatchObject({ path: "/signage/config", signal });
+  });
+
+  it("배포 ①~④의 설정을 읽는다", async () => {
+    const { client } = fakeClient({
+      "/signage/config": {
+        ...CONFIG,
+        allowedMimeTypes: ["image/jpeg", "video/mp4"],
+        maxVideoUploadBytes: 52428800,
+        maxVideoDurationSeconds: 20,
+        eventBannerMaxDays: 2,
+        storyDisplayDays: 3,
+        dailySubmissionLimits: { EVENT_BANNER: 3, STORY: 5, GAME: 9 },
+      },
+    });
+
+    await expect(
+      createHttpReferenceRepository(client).getConfig(),
+    ).resolves.toMatchObject({
+      allowedMimeTypes: ["image/jpeg", "video/mp4"],
+      maxVideoUploadBytes: 52428800,
+      maxVideoDurationSeconds: 20,
+      eventBannerMaxDays: 2,
+      storyDisplayDays: 3,
+      // 모르는 종류(GAME)는 버린다.
+      dailySubmissionLimits: { EVENT_BANNER: 3, STORY: 5 },
+    });
   });
 
   it("모르는 필드는 버리고 화면이 쓰는 필드만 옮긴다", async () => {

@@ -1,3 +1,10 @@
+import type { PlaybackLineup } from "@/entities/lineup/model/types";
+import type {
+  EventBannerMode,
+  EventBannerOccasion,
+  StoryTag,
+} from "@/entities/submission/model/types";
+
 /**
  * TV 화면 전환 방식. 기기마다 운영자가 고른다.
  *
@@ -28,7 +35,7 @@ export function readLayoutType(value: string): LayoutType | null {
 
 export const DEFAULT_LAYOUT_TYPE: LayoutType = "WALL";
 
-/** 콘텐츠 종류. 지금은 이미지만 있고 영상은 백엔드가 열면 생긴다. */
+/** 콘텐츠 종류. 영상이면 `video`를 재생하고 `assetUrl`은 대표 프레임이다. */
 export const CONTENT_KINDS = ["IMAGE", "VIDEO"] as const;
 export type ContentKind = (typeof CONTENT_KINDS)[number];
 
@@ -67,6 +74,8 @@ export interface PlaylistItemDto {
   height?: number;
   /** 영상 길이(ms). 이미지는 null */
   durationMs?: number | null;
+  /** 영상 포스터의 재생 파일(배포 ①). 이미지는 null */
+  video?: PlaylistVideo | null;
 
   /** 신청자가 입력한 부제·장소·주최. 크게 보기와 흐르는 띠가 그린다. 없으면 null */
   subtitle?: string | null;
@@ -74,7 +83,48 @@ export interface PlaylistItemDto {
   organizerName?: string | null;
 }
 
+export interface PlaylistVideo {
+  /** TV 재생용 mp4. 받는 중이거나 재생에 실패하면 `assetUrl`(대표 프레임)을 띄운다. */
+  url: string;
+  /** 자동 재생은 음소거라 지금은 소리를 내지 않는다. */
+  hasAudio: boolean;
+}
+
+/**
+ * 편성 v2의 이벤트 배너 한 건(배포 ⑥). `photoUrl`·`assetUrl`은 TV용 이미지다. 미디어가
+ * 없는 문구 배너도 있어 둘 다 null일 수 있다. `checksum`은 문구와 미디어로 정해진다.
+ */
+export interface PlaylistEventBannerDto {
+  submissionId: string;
+  revision: number;
+  startsAt: string;
+  endsAt: string;
+  checksum: string;
+  mode: EventBannerMode;
+  occasion: EventBannerOccasion | null;
+  recipient: string;
+  /** 큰 문구. 이 칸이 생기기 전 배너는 null이다. */
+  headline: string | null;
+  message: string | null;
+  sender: string | null;
+  photoUrl: string | null;
+  assetUrl: string | null;
+}
+
+/** 편성 v2의 제보 한 건. 작성자는 어디에도 실리지 않는다. */
+export interface PlaylistStoryDto {
+  submissionId: string;
+  revision: number;
+  startsAt: string;
+  endsAt: string;
+  checksum: string;
+  storyNumber: number | null;
+  tag: StoryTag;
+  body: string;
+}
+
 export interface PlaylistDto {
+  lineup?: PlaybackLineup;
   serverTime: string;
   /**
    * 이 편성을 받는 기기의 표시 이름("A동 로비"). TV 머리에 나온다. 기기는 기기 목록
@@ -86,11 +136,30 @@ export interface PlaylistDto {
   /** 예전 값(SINGLE·FOUR_GRID)이 남은 캐시도 있어 문자열로 받고 읽을 때 바꾼다. */
   layout: { type: string; rotationSeconds: number };
   items: PlaylistItemDto[];
+  /** 편성 v2부터 있다. v1 응답과 예전 오프라인 캐시에는 없다. */
+  eventBanners?: PlaylistEventBannerDto[];
+  stories?: PlaylistStoryDto[];
+}
+
+export interface PlaylistEventBanner extends Omit<
+  PlaylistEventBannerDto,
+  "startsAt" | "endsAt"
+> {
+  startsAt: Date;
+  endsAt: Date;
+}
+
+export interface PlaylistStory extends Omit<
+  PlaylistStoryDto,
+  "startsAt" | "endsAt"
+> {
+  startsAt: Date;
+  endsAt: Date;
 }
 
 export interface PlaylistItem extends Omit<
   PlaylistItemDto,
-  "startsAt" | "endsAt" | "kind" | "width" | "height" | "durationMs"
+  "startsAt" | "endsAt" | "kind" | "width" | "height" | "durationMs" | "video"
 > {
   startsAt: Date;
   endsAt: Date;
@@ -99,9 +168,11 @@ export interface PlaylistItem extends Omit<
   width: number;
   height: number;
   durationMs: number | null;
+  video: PlaylistVideo | null;
 }
 
 export interface Playlist {
+  lineup?: PlaybackLineup;
   /** 편성 판정의 기준 시각. 클라이언트 시계를 쓰지 않는다. */
   serverTime: Date;
   deviceName: string | null;
@@ -109,6 +180,8 @@ export interface Playlist {
   refreshAfterSeconds: number;
   layout: { type: LayoutType; rotationSeconds: number };
   items: PlaylistItem[];
+  eventBanners: PlaylistEventBanner[];
+  stories: PlaylistStory[];
 }
 
 /** 서버가 보낸 전환 간격을 안전 범위로 clamp한다. */

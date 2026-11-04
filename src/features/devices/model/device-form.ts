@@ -60,10 +60,10 @@ function checkSeconds(
 ): string | null {
   const number = Number(value);
   if (value.trim() === "" || !Number.isInteger(number)) {
-    return `${label}은 정수(초)로 입력해 주세요.`;
+    return `${label}은 초 단위 정수로 입력하세요.`;
   }
   if (number < min || number > max) {
-    return `${label}은 ${min}~${max}초 사이여야 해요.`;
+    return `${label}은 ${min}~${max}초 범위로 입력하세요.`;
   }
   return null;
 }
@@ -73,12 +73,16 @@ export function validateDeviceDraft(draft: DeviceDraft): DeviceFieldErrors {
   const errors: DeviceFieldErrors = {};
   const name = draft.name.trim();
   if (name.length === 0) {
-    errors.name = "기기 이름을 입력해 주세요.";
+    errors.name = "기기 이름을 입력하세요.";
   } else if (name.length > DEVICE_LIMITS.nameMaxLength) {
-    errors.name = `기기 이름은 ${DEVICE_LIMITS.nameMaxLength}자까지 쓸 수 있어요.`;
+    errors.name = `기기 이름은 ${DEVICE_LIMITS.nameMaxLength}자까지 입력할 수 있습니다.`;
+  }
+  // 서버가 위치 그룹 중 하나를 편성 그룹으로 쓴다(배포 ⑤). 없으면 등록할 수 없다.
+  if (draft.groupIds.length === 0) {
+    errors.groupIds = "위치 그룹을 하나 이상 선택하세요.";
   }
   if (draft.location.trim().length > DEVICE_LIMITS.locationMaxLength) {
-    errors.location = `위치는 ${DEVICE_LIMITS.locationMaxLength}자까지 쓸 수 있어요.`;
+    errors.location = `위치는 ${DEVICE_LIMITS.locationMaxLength}자까지 입력할 수 있습니다.`;
   }
   const rotation = checkSeconds(
     draft.rotationSeconds,
@@ -102,14 +106,61 @@ export function toDeviceInput(draft: DeviceDraft): DeviceInput {
     groupIds: draft.groupIds,
     // MVP의 TV는 모두 가로다.
     orientation: "LANDSCAPE",
-    layout: draft.layout,
-    rotationSeconds: Number(draft.rotationSeconds),
-    refreshAfterSeconds: Number(draft.refreshAfterSeconds),
   };
 }
 
-export function toUpdateDeviceInput(draft: DeviceDraft): UpdateDeviceInput {
-  return { ...toDeviceInput(draft), isActive: draft.isActive };
+/** 폼에서 바꾼 화면 설정만 뽑는다. 그대로면 기기 예외를 건드리지 않는다. */
+function changedSettings(draft: DeviceDraft, device: DisplayDevice) {
+  const rotationSeconds = Number(draft.rotationSeconds);
+  const refreshAfterSeconds = Number(draft.refreshAfterSeconds);
+  return {
+    ...(draft.layout !== device.layout.type
+      ? { posterLayout: draft.layout }
+      : {}),
+    ...(rotationSeconds !== device.layout.rotationSeconds
+      ? { rotationSeconds }
+      : {}),
+    ...(refreshAfterSeconds !== device.refreshAfterSeconds
+      ? { refreshAfterSeconds }
+      : {}),
+  };
+}
+
+/**
+ * 화면 설정은 배포 ⑤부터 그룹 편성으로 옮겨 갔다. 편성 화면(9.3)이 생기기 전까지는
+ * 기기 예외(`overrides.settings`)로 고친다. 응답에 `programGroupId`가 없는 옛 서버에는
+ * 지금까지처럼 기기 필드로 보낸다.
+ *
+ * 위치 그룹을 바꾸면서 지금 편성 그룹을 빼면 서버가 거절하므로 남은 첫 그룹으로 옮긴다.
+ */
+export function toUpdateDeviceInput(
+  draft: DeviceDraft,
+  device: DisplayDevice,
+): UpdateDeviceInput {
+  const base = { ...toDeviceInput(draft), isActive: draft.isActive };
+  if (device.programGroupId === null) {
+    return {
+      ...base,
+      layout: draft.layout,
+      rotationSeconds: Number(draft.rotationSeconds),
+      refreshAfterSeconds: Number(draft.refreshAfterSeconds),
+    };
+  }
+  const settings = changedSettings(draft, device);
+  return {
+    ...base,
+    ...(draft.groupIds.includes(device.programGroupId)
+      ? {}
+      : { programGroupId: draft.groupIds[0] }),
+    ...(Object.keys(settings).length > 0
+      ? {
+          overrides: {
+            ...device.overrides,
+            settings: { ...device.overrides?.settings, ...settings },
+          },
+        }
+      : {}),
+  };
 }
 
 export interface GroupOption {
@@ -152,7 +203,7 @@ export function groupOptionsFor(
 
 /** 새로 고를 수 없는 그룹이 선택에 남아 있을 때의 안내 */
 export const UNAVAILABLE_GROUP_MESSAGE =
-  "숨겼거나 지운 그룹이 있어요. 표시된 그룹의 선택을 풀어 주세요.";
+  "숨김 또는 삭제된 그룹이 있습니다. 해당 그룹의 선택을 해제하세요.";
 
 /** 서버 422의 `fields`에서 폼 칸에 붙일 것만 고른다. */
 export function toDeviceFieldErrors(
@@ -165,7 +216,13 @@ export function toDeviceFieldErrors(
     "rotationSeconds",
     "refreshAfterSeconds",
   ];
+  // 기기 예외로 보낸 값은 점 경로로 돌아온다(`overrides.settings.rotationSeconds`).
+  const messageOf = (name: DeviceFieldName) =>
+    fields?.[name] ?? fields?.[`overrides.settings.${name}`];
   return Object.fromEntries(
-    names.filter((name) => fields?.[name]).map((name) => [name, fields![name]]),
+    names.flatMap((name) => {
+      const message = messageOf(name);
+      return message ? [[name, message]] : [];
+    }),
   );
 }

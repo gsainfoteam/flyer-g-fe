@@ -165,9 +165,9 @@ export function AimPad({ seat, enabled, onShoot, hint = false, className }: AimP
             ? aim
               ? aim.power < MIN_POWER
                 ? "조금 더 당겨요"
-                : "놓으면 던져요"
+                : "손을 떼면 발사"
               : "원반을 아래로 당겼다가 놓으세요"
-            : "상대가 던지는 중이에요"}
+            : "상대가 던지는 중"}
         </p>
       </div>
       {/* 얼마나 세게 당겼는지만 보여 준다. 숫자는 일부러 보여 주지 않는다(감으로 던진다). */}

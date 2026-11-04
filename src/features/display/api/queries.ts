@@ -1,3 +1,5 @@
+import type { PlaybackLineup } from "@/entities/lineup/model/types";
+import type { ContentScenes } from "@/entities/poster/model/frames";
 import type { PosterRenderModel } from "@/entities/poster";
 import type { LayoutType } from "@/entities/playlist/model/types";
 
@@ -18,10 +20,13 @@ export function clampRefreshSeconds(value: number | undefined): number {
 
 /** 플레이어가 그리는 편성. 기간이 지난 항목은 이미 빠져 있다. */
 export interface DisplayPlaylist {
+  lineup?: PlaybackLineup;
   serverTime: Date;
   deviceName: string | null;
   playlistVersion: string;
   refreshAfterSeconds: number;
   layout: { type: LayoutType; rotationSeconds: number };
   posters: PosterRenderModel[];
+  /** 포스터 사이에 끼우는 이벤트 배너·제보. 기간이 지난 것은 이미 빠져 있다. */
+  content: ContentScenes;
 }

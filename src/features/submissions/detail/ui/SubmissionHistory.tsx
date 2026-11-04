@@ -49,7 +49,7 @@ export function SubmissionHistory({ events }: SubmissionHistoryProps) {
   if (events.length === 0) {
     return (
       <p className="text-body text-ink-muted">
-        아직 제출하지 않아 처리 이력이 없어요.
+        제출 전 · 처리 이력 없음
       </p>
     );
   }
@@ -72,7 +72,7 @@ export function SubmissionHistory({ events }: SubmissionHistoryProps) {
             label={
               isSystemEvent(event)
                 ? meta.label
-                : `${meta.label} · ${event.actorName}`
+                : `${meta.label} · ${event.actorName || "작성자"}`
             }
             detail={
               reason || event.comment ? (

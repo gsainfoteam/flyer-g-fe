@@ -202,7 +202,7 @@ function QuizBody({ content }: { content: Extract<WidgetContent, { type: "QUIZ" 
       <div className="flex shrink-0 flex-col items-center justify-center gap-6">
         <QRCodeBox value={playUrl} size="tv" />
         <p className="text-[38px] font-extrabold text-ink">폰으로 답하기</p>
-        <p className="text-[26px] text-ink-muted">정답은 내일 공개돼요</p>
+        <p className="text-[26px] text-ink-muted">정답은 내일 공개</p>
       </div>
     </div>
   );
@@ -461,7 +461,7 @@ function RestaurantBody({ content }: { content: RestaurantContent }) {
       <div className="flex items-end justify-between gap-10">
         {content.others.length > 0 && (
           <p className="min-w-0 truncate text-[34px] text-ink-muted">
-            여기도 있어요 · {content.others.map((place) => place.name).join(" · ")}
+            다른 장소 · {content.others.map((place) => place.name).join(" · ")}
           </p>
         )}
         {content.source && (

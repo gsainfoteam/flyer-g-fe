@@ -36,7 +36,10 @@ const file = () =>
     type: "image/jpeg",
   });
 
-function setup(overrides: Partial<Record<string, () => unknown>> = {}) {
+function setup(
+  overrides: Partial<Record<string, () => unknown>> = {},
+  { now = () => 0 }: { now?: () => number } = {},
+) {
   const calls: HttpRequest[] = [];
   const client: HttpClient = {
     request: vi.fn(async (request: HttpRequest) => {
@@ -57,12 +60,15 @@ function setup(overrides: Partial<Record<string, () => unknown>> = {}) {
       options.onProgress(1);
     },
   );
+  const sleep = vi.fn(async () => {});
   const service = createHttpUploadService({
     client,
     transport: { put },
     digest: async () => "a".repeat(64),
+    sleep,
+    now,
   });
-  return { service, calls, put };
+  return { service, calls, put, sleep };
 }
 
 describe("createHttpUploadService", () => {
@@ -81,6 +87,9 @@ describe("createHttpUploadService", () => {
       height: 2048,
       mimeType: "image/jpeg",
       sizeBytes: 4,
+      kind: "IMAGE",
+      videoUrl: null,
+      durationMs: null,
     });
     expect(calls[0]).toMatchObject({
       method: "POST",
@@ -107,6 +116,73 @@ describe("createHttpUploadService", () => {
     });
     // 전송은 90%까지, 나머지는 서버 처리다.
     expect(progress).toEqual([0, 0.45, 0.9, 1]);
+  });
+
+  it("영상은 변환이 끝날 때까지 알려 준 시간만큼 기다렸다가 complete를 다시 부른다", async () => {
+    let completes = 0;
+    const { service, calls, sleep } = setup({
+      "/signage/assets/asset_01/complete": () =>
+        ++completes < 3
+          ? {
+              assetId: "asset_01",
+              status: "PROCESSING",
+              kind: "VIDEO",
+              retryAfterSeconds: 5,
+            }
+          : {
+              ...COMPLETED,
+              mimeType: "video/mp4",
+              kind: "VIDEO",
+              videoUrl: "https://cdn.example/asset_01/video.mp4",
+              durationMs: 15_000,
+              hasAudio: true,
+            },
+    });
+    const onProcessing = vi.fn();
+    const video = new File([new Uint8Array(8)], "clip.mp4", {
+      type: "video/mp4",
+    });
+
+    const asset = await service.upload(video, { onProcessing });
+
+    expect(calls[0]).toMatchObject({ body: { mimeType: "video/mp4" } });
+    expect(
+      calls.filter((call) => call.path.endsWith("/complete")),
+    ).toHaveLength(3);
+    expect(sleep).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledWith(5_000, undefined);
+    expect(onProcessing).toHaveBeenCalled();
+    expect(asset).toMatchObject({
+      kind: "VIDEO",
+      videoUrl: "https://cdn.example/asset_01/video.mp4",
+      durationMs: 15_000,
+    });
+  });
+
+  it("영상 변환이 10분을 넘기면 그만 기다린다", async () => {
+    let clock = 0;
+    const { service } = setup(
+      {
+        "/signage/assets/asset_01/complete": () => {
+          clock += 4 * 60_000;
+          return {
+            assetId: "asset_01",
+            status: "PROCESSING",
+            kind: "VIDEO",
+            retryAfterSeconds: 5,
+          };
+        },
+      },
+      { now: () => clock },
+    );
+    const video = new File([new Uint8Array(8)], "clip.mp4", {
+      type: "video/mp4",
+    });
+
+    await expect(service.upload(video)).rejects.toMatchObject({
+      code: "UPLOAD_FAILED",
+      kind: "timeout",
+    });
   });
 
   it("서버가 이미지를 거절하면 사유가 담긴 오류를 그대로 던진다", async () => {

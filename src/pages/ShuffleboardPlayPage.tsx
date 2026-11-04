@@ -16,6 +16,7 @@ import type { FinishedMatch } from "@/features/shuffleboard/model/use-shuffleboa
 import { AimPad } from "@/features/shuffleboard/ui/AimPad";
 import { HowToPlay } from "@/features/shuffleboard/ui/HowToPlay";
 import { SEAT_TEXT } from "@/features/shuffleboard/ui/seat-style";
+import { SurveyPrizeNote } from "@/entities/widget/ui/SurveyPrizeNote";
 import { SURVEY_URL } from "@/entities/widget/model/operation";
 import { readWebUrl } from "@/entities/widget/model/data-content";
 import { gameSocketBase } from "@/shared/lib/game-socket";
@@ -61,8 +62,8 @@ export function ShuffleboardPlayPage() {
   if (player.paused) {
     return (
       <Notice
-        title="연결을 잠시 쉬고 있어요"
-        description="한동안 쓰지 않아 TV와의 연결을 쉬었어요. 다시 하려면 아래 버튼을 눌러 주세요."
+        title="연결 일시 중지"
+        description="일정 시간 동안 활동이 없어 TV 연결을 중지했습니다. 계속하려면 아래 버튼을 누르세요."
       >
         <Button size="lg" className="mx-auto mt-2 h-12 px-8" onClick={player.resume}>
           다시 연결
@@ -74,11 +75,11 @@ export function ShuffleboardPlayPage() {
   if (!player.connected || !state) {
     return (
       <Notice
-        title={player.link === "waiting-host" ? "TV가 아직 게임을 열지 않았어요" : "TV에 연결하는 중이에요"}
+        title={player.link === "waiting-host" ? "TV 게임 시작 대기 중" : "TV 연결 중"}
         description={
           player.link === "waiting-host"
-            ? "TV에 컬링 화면이 켜지면 바로 이어져요. 이 화면을 열어 두세요."
-            : "인터넷 연결을 확인해 주세요. 계속 안 되면 TV 화면의 QR을 다시 찍어 보세요."
+            ? "TV에 컬링 화면이 켜지면 자동으로 연결됩니다. 이 화면을 열어 두세요."
+            : "인터넷 연결을 확인하세요. 문제가 계속되면 TV 화면의 QR을 다시 스캔하세요."
         }
       />
     );
@@ -91,8 +92,8 @@ export function ShuffleboardPlayPage() {
   if (state.phase === "FINISHED") {
     return (
       <Notice
-        title="다음 경기를 준비하고 있어요"
-        description={`${seconds ?? 0}초쯤 뒤에 참가할 수 있어요. 이 화면을 열어 두세요.`}
+        title="다음 경기 준비 중"
+        description={`${seconds ?? 0}초 후 참가할 수 있습니다. 이 화면을 열어 두세요.`}
       />
     );
   }
@@ -101,8 +102,8 @@ export function ShuffleboardPlayPage() {
     if (state.phase !== "WAITING") {
       return (
         <Notice
-          title="지금은 경기 중이에요"
-          description="경기가 끝나면 다음 두 명을 받아요. 이 화면을 열어 두세요."
+          title="경기 진행 중"
+          description="경기 종료 후 다음 참가자 두 명을 모집합니다. 이 화면을 열어 두세요."
         />
       );
     }
@@ -115,18 +116,18 @@ export function ShuffleboardPlayPage() {
             1:1 컬링
           </h1>
           <p className="mt-2 text-body text-ink-muted">
-            <span className={cn("font-bold", SEAT_TEXT[nextSeat])}>{nextSeat}팀</span>으로 참가해요.
-            두 명이 모이면 바로 시작해요.
+            <span className={cn("font-bold", SEAT_TEXT[nextSeat])}>{nextSeat}팀</span>으로 참가.
+            두 명이 참가하면 바로 시작합니다.
           </p>
         </div>
         <HowToPlay seat={nextSeat} />
         {player.rejection && (
           <p role="alert" className="text-label text-danger">
             {player.rejection === "FULL"
-              ? "방금 두 자리가 다 찼어요. 이 경기가 끝나면 다시 참가해 주세요."
+              ? "참가 정원이 찼습니다. 경기 종료 후 다시 참가하세요."
               : player.rejection === "TAKEN"
-                ? `${nextSeat}팀 자리에 이미 누가 있어요. TV의 ${otherSeat}팀 QR을 찍어 주세요.`
-                : "방금 경기가 시작됐어요. 다음 경기를 기다려 주세요."}
+                ? `${nextSeat}팀에 이미 참가자가 있습니다. TV의 ${otherSeat}팀 QR을 스캔하세요.`
+                : "경기가 시작되었습니다. 다음 경기를 기다리세요."}
           </p>
         )}
         <Button
@@ -146,11 +147,11 @@ export function ShuffleboardPlayPage() {
       <div className="flex flex-1 flex-col gap-6 pt-4">
         <div role="status">
           <h1 className="text-title text-ink">
-            {state.phase === "READY" ? `${seconds ?? 0}초 뒤 시작해요` : "상대를 기다리는 중이에요"}
+            {state.phase === "READY" ? `${seconds ?? 0}초 후 시작` : "상대 참가 대기 중"}
           </h1>
           <p className="mt-2 text-body text-ink-muted">
-            <span className={cn("font-bold", SEAT_TEXT[seat])}>{seat}팀</span>으로 참가했어요.{" "}
-            {seat === "A" ? "먼저" : "두 번째로"} 던져요.
+            <span className={cn("font-bold", SEAT_TEXT[seat])}>{seat}팀</span>{" "}
+            참가 완료. {seat === "A" ? "먼저" : "두 번째로"} 던지세요.
           </p>
         </div>
         <HowToPlay seat={seat} />
@@ -167,11 +168,11 @@ export function ShuffleboardPlayPage() {
       <p className={cn("text-heading", myTurn ? SEAT_TEXT[seat] : "text-ink-muted")} aria-live="polite">
         {myTurn
           ? player.waitingForTv
-            ? "던졌어요! TV를 보세요"
+            ? "발사 완료 · TV를 확인하세요"
             : `내 차례 · ${seconds ?? 0}초 · TV를 보고 던지세요`
           : state.rollingUntil !== null
-            ? "원반이 굴러가는 중이에요"
-            : `${seatOfTurn(state.turn)}팀 차례예요`}
+            ? "원반 이동 중"
+            : `${seatOfTurn(state.turn)}팀 차례`}
       </p>
       <AimPad
         seat={seat}
@@ -235,16 +236,16 @@ function FinishView({
     return (
       <div className="flex flex-1 flex-col justify-center gap-4 text-center">
         <h1 className="text-title text-ink">
-          {ended === "survey" ? "설문에 참여해 줘서 고마워요" : "함께해 줘서 고마워요"}
+          {ended === "survey" ? "설문 참여 감사합니다" : "참여 감사합니다"}
         </h1>
-        <p className="text-body text-ink-muted">게임이 끝났어요. 이 창은 닫아도 돼요.</p>
+        <p className="text-body text-ink-muted">게임이 종료되었습니다. 이 창을 닫아도 됩니다.</p>
         <Rejoin room={room} now={now} qrSeat={qrSeat} onRejoin={onRejoin} />
       </div>
     );
   }
 
   const title =
-    finished.result === "DRAW" ? "무승부예요" : finished.result === "WIN" ? "이겼어요!" : "아쉽게 졌어요";
+    finished.result === "DRAW" ? "무승부" : finished.result === "WIN" ? "이겼어요!" : "아쉽게 졌어요";
   return (
     <div className="flex flex-1 flex-col gap-6 pt-4">
       <h1 className="text-title text-ink">{title}</h1>
@@ -262,10 +263,11 @@ function FinishView({
 
       {survey && (
         <div className="flex flex-col gap-2 rounded-card bg-surface px-5 py-4">
-          <h2 className="text-heading text-ink">전단지 설문에 참여해 주세요</h2>
+          <h2 className="text-heading text-ink">전단지 이용 설문</h2>
           <p className="text-body text-ink-muted">
-            로비 TV 게시판을 써 본 느낌을 들려주세요. 1분이면 끝나요.
+            로비 TV 게시판 이용 경험에 관한 설문 · 약 1분 소요
           </p>
+          <SurveyPrizeNote />
         </div>
       )}
 
@@ -313,12 +315,12 @@ function Rejoin({
   if (!room) return null;
   if (room.phase === "FINISHED") {
     const seconds = secondsLeft(room, now) ?? 0;
-    return <p className="mt-8 text-label text-ink-subtle">{seconds}초 뒤 다음 경기를 모집해요</p>;
+    return <p className="mt-8 text-label text-ink-subtle">{seconds}초 후 다음 경기 참가자 모집</p>;
   }
   if (room.phase !== "WAITING") {
     return (
       <p className="mt-8 text-label text-ink-subtle">
-        지금은 다른 사람이 경기 중이에요. 끝나면 다시 참가할 수 있어요.
+        다른 참가자가 경기 중입니다. 경기 종료 후 다시 참가할 수 있습니다.
       </p>
     );
   }
@@ -327,7 +329,7 @@ function Rejoin({
     const other: Seat = seat === "A" ? "B" : "A";
     return (
       <p className="mt-8 text-label text-ink-subtle">
-        {seat}팀 자리에 누가 있어요. 다시 하려면 TV의 {other}팀 QR을 찍어 주세요.
+        {seat}팀에 이미 참가자가 있습니다. 다시 하려면 TV의 {other}팀 QR을 스캔하세요.
       </p>
     );
   }

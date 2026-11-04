@@ -1,3 +1,4 @@
+import { LineupDialog } from "@/features/devices/ui/LineupDialog";
 import { useState } from "react";
 import { CalendarClock, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -42,6 +43,7 @@ export function DevicesPage() {
   const [widgetsOf, setWidgetsOf] = useState<DisplayDevice | null>(null);
   const [setupLink, setSetupLink] = useState<SetupLinkResult | null>(null);
   const [editingSlots, setEditingSlots] = useState(false);
+  const [lineupGroup, setLineupGroup] = useState<TargetGroup | null>(null);
 
   const groupList = groups.data ?? [];
 
@@ -57,7 +59,7 @@ export function DevicesPage() {
           <SectionHeader
             as="h1"
             title={`디스플레이 기기 ${devices.data.items.length}대`}
-            description="로비 TV를 등록하고 화면 설정과 연결을 관리해요."
+            description="로비 TV 등록 및 화면·연결 설정"
             action={
               <div className="flex gap-2">
                 <Button variant="secondary" size="sm" onClick={() => setEditingSlots(true)}>
@@ -75,8 +77,8 @@ export function DevicesPage() {
           <Panel flush>
             {devices.data.items.length === 0 ? (
               <EmptyState
-                title="등록된 기기가 없어요"
-                description="기기를 등록하면 TV를 연결할 설정 링크를 드려요."
+                title="등록된 기기 없음"
+                description="기기를 등록하면 TV 연결용 설정 링크가 발급됩니다."
                 className="px-5"
               />
             ) : (
@@ -90,6 +92,7 @@ export function DevicesPage() {
                     onEdit={() => setEditing(device)}
                     onRotate={() => setRotating(device)}
                     onWidgets={() => setWidgetsOf(device)}
+                    onLineup={device.programGroupId && groupList.some((g) => g.id === device.programGroupId) ? () => setLineupGroup(groupList.find((g) => g.id === device.programGroupId)!) : undefined}
                   />
                 ))}
               </ul>
@@ -97,6 +100,7 @@ export function DevicesPage() {
           </Panel>
 
           <TargetGroupsSection
+            onLineup={setLineupGroup}
             groups={groups.data}
             isLoading={groups.isPending}
             error={groups.error}
@@ -104,6 +108,8 @@ export function DevicesPage() {
           />
         </>
       )}
+
+      {lineupGroup && <LineupDialog group={lineupGroup} devices={devices.data?.items ?? []} onClose={() => setLineupGroup(null)} />}
 
       {editingSlots && devices.data && (
         <TimeSlotsDialog
@@ -138,8 +144,8 @@ export function DevicesPage() {
         onOpenChange={(open) => {
           if (!open) setRotating(null);
         }}
-        title={`${rotating?.name ?? ""} 토큰을 재발급할까요?`}
-        description="지금 연결된 TV는 바로 끊겨요. 새 설정 링크로 TV를 다시 열어야 해요."
+        title={`${rotating?.name ?? ""} 토큰을 재발급하시겠습니까?`}
+        description="현재 TV 연결이 즉시 해제됩니다. 새 설정 링크로 TV를 다시 연결해야 합니다."
         confirmLabel="재발급"
         tone="destructive"
         onConfirm={async () => {
@@ -153,10 +159,10 @@ export function DevicesPage() {
           });
         }}
         onError={(error) =>
-          toast.error("재발급하지 못했어요", {
+          toast.error("재발급하지 못했습니다", {
             description: isApiError(error)
               ? toUserMessage(error)
-              : "잠시 후 다시 시도해 주세요.",
+              : "잠시 후 다시 시도하세요.",
           })
         }
       />
@@ -195,6 +201,7 @@ function DeviceRow({
   onEdit,
   onRotate,
   onWidgets,
+  onLineup,
 }: {
   device: DisplayDevice;
   groups: readonly TargetGroup[];
@@ -202,6 +209,7 @@ function DeviceRow({
   onEdit: () => void;
   onRotate: () => void;
   onWidgets: () => void;
+  onLineup?: () => void;
 }) {
   const facts = [
     `${LAYOUT_LABELS[device.layout.type]} · 포스터 ${device.layout.rotationSeconds}초마다 넘김`,
@@ -236,6 +244,7 @@ function DeviceRow({
         <Button variant="secondary" size="sm" onClick={onEdit}>
           수정
         </Button>
+        {onLineup && <Button variant="secondary" size="sm" onClick={onLineup}>편성</Button>}
         <Button variant="secondary" size="sm" onClick={onWidgets}>
           위젯
         </Button>

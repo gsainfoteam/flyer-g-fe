@@ -232,9 +232,9 @@ describe("기기 연결 (`API-CHANGES-BACKEND.md` 8절)", () => {
     renderRoute("/display/dev_01", { repositories });
 
     expect(
-      await screen.findByRole("heading", { name: "이 TV의 연결이 끊겼어요" }),
+      await screen.findByRole("heading", { name: "TV 연결 해제" }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/새 설정 링크를 받아 주세요/)).toBeInTheDocument();
+    expect(screen.getByText(/새 설정 링크를 받으세요/)).toBeInTheDocument();
     expect(screen.getByText("기기 ID · dev_01")).toBeInTheDocument();
   });
 
@@ -259,7 +259,7 @@ describe("기기 연결 (`API-CHANGES-BACKEND.md` 8절)", () => {
     fireEvent(window, new Event("visibilitychange"));
 
     expect(
-      await screen.findByRole("heading", { name: "이 TV의 연결이 끊겼어요" }),
+      await screen.findByRole("heading", { name: "TV 연결 해제" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "첫 포스터" })).toBeNull();
   });
@@ -291,13 +291,13 @@ describe("기기 연결 (`API-CHANGES-BACKEND.md` 8절)", () => {
     await screen.findByRole("heading", { name: "첫 포스터" });
 
     fireEvent(window, new Event("visibilitychange"));
-    await screen.findByRole("heading", { name: "이 TV의 연결이 끊겼어요" });
+    await screen.findByRole("heading", { name: "TV 연결 해제" });
 
     // 다음 조회는 연결 끊김. 거절은 풀리지 않는다.
     fireEvent(window, new Event("visibilitychange"));
     await vi.waitFor(() => expect(getPlaylist).toHaveBeenCalledTimes(3));
     expect(
-      screen.getByRole("heading", { name: "이 TV의 연결이 끊겼어요" }),
+      screen.getByRole("heading", { name: "TV 연결 해제" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "첫 포스터" })).toBeNull();
 

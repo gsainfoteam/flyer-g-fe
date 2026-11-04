@@ -49,14 +49,14 @@ describe("첫 화면", () => {
 
     renderRoute("/", { role: "SUBMITTER" });
     expect(
-      await screen.findByRole("heading", { name: "무엇을 올릴까요?" }),
+      await screen.findByRole("heading", { name: "콘텐츠 등록" }),
     ).toBeInTheDocument();
   });
 
   it("로그인 전에는 소개 화면을 보여준다", async () => {
     renderRoute("/", { role: null });
     expect(
-      await screen.findByRole("heading", { name: /띄우고 싶은 게/ }),
+      await screen.findByRole("heading", { name: /전하는 우리 소식/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /인포팀 계정으로 로그인/ }),

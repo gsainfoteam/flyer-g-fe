@@ -2,6 +2,7 @@ import { defaultDeviceWidgetSettings } from "@/entities/widget/model/settings";
 import type { DeviceWidgetSettingsDto } from "@/entities/widget/model/settings";
 import type { WidgetType } from "@/entities/widget/model/types";
 import type {
+  DeviceOverrides,
   DisplayDeviceDto,
   TargetGroup,
 } from "@/entities/device/model/types";
@@ -362,6 +363,11 @@ function toDto(seed: SubmissionSeed, now: Date): SignageSubmissionExpandedDto {
     posterThumbUrl: seed.posterUrl,
     posterWidth: posterSize.width,
     posterHeight: posterSize.height,
+    posterKind: "IMAGE",
+    posterDurationMs: null,
+    posterVideoUrl: null,
+    eventBanner: null,
+    story: null,
     subtitle: seed.subtitle,
     location: seed.location,
     description: seed.description,
@@ -523,12 +529,12 @@ export function createEventFixtures(now: Date): SubmissionEventDto[] {
 /**
  * 기기 목록. `lastSeenAt`은 mock repository가 heartbeat 기록으로 덮어쓴다.
  *
- * - A동 로비: 1분마다 heartbeat를 보내는 정상 기기로 흉내 낸다. 모아 보기로 돈다.
+ * - A동 로비: 30초마다 heartbeat를 보내는 정상 기기로 흉내 낸다. 모아 보기로 돈다.
  * - B동 로비: 26분 전부터 연락이 끊긴 기기다. 흐르는 띠로 돈다.
  */
 export interface DeviceSeed extends Omit<
   DisplayDeviceDto,
-  "lastSeenAt" | "status"
+  "lastSeenAt" | "status" | "programGroupId" | "overrides"
 > {
   /**
    * 연락이 끊긴 시점(시작 시각 기준 몇 ms 전). null이면 계속 heartbeat를 보내는
@@ -537,6 +543,9 @@ export interface DeviceSeed extends Omit<
   silentSinceMs: number | null | "never";
   /** false면 사용 안 함(DISABLED) */
   isActive: boolean;
+  /** 편성 그룹. 없으면 위치 그룹의 첫 번째다. */
+  programGroupId?: string;
+  overrides?: DeviceOverrides;
 }
 
 /**
@@ -658,3 +667,199 @@ export const DEVICE_FIXTURES: readonly DeviceSeed[] = [
     layout: { type: "STRIP", rotationSeconds: 10 },
   },
 ];
+
+/**
+ * 개발 서버 전용 이벤트 배너·소식 제보 예시(배포 ③④). 테스트 fixture의 건수를 바꾸지
+ * 않으려고 예시 게시물과 함께만 넣는다. 정하윤은 반려된 제보 한 건을 가진다(다시 낼 수
+ * 없어 "새로 쓰기"를 보는 경우).
+ */
+export function createDemoContentFixtures(
+  now: Date,
+): SignageSubmissionExpandedDto[] {
+  const hours = (offset: number) =>
+    toIsoUtc(new Date(now.getTime() + offset * 60 * MINUTE_MS));
+  const seoulMidnight = (offsetDays: number) => {
+    const shifted = new Date(now.getTime() + 9 * 60 * MINUTE_MS);
+    return toIsoUtc(
+      new Date(
+        Date.UTC(
+          shifted.getUTCFullYear(),
+          shifted.getUTCMonth(),
+          shifted.getUTCDate() + offsetDays,
+        ) -
+          9 * 60 * MINUTE_MS,
+      ),
+    );
+  };
+  const base = (
+    id: string,
+    requester: { id: string; name: string },
+    createdHoursAgo: number,
+  ) => ({
+    id,
+    ziggleNoticeId: null,
+    requesterId: requester.id,
+    requesterName: requester.name,
+    categoryId: null,
+    assetId: null,
+    detailUrl: null,
+    priority: 0,
+    targetGroupIds: [],
+    createdAt: hours(-createdHoursAgo),
+    updatedAt: hours(-createdHoursAgo),
+    submittedAt: hours(-createdHoursAgo),
+    categoryName: null,
+    organizerName: null,
+    posterUrl: null,
+    posterThumbUrl: null,
+    posterWidth: null,
+    posterHeight: null,
+    posterKind: null,
+    posterDurationMs: null,
+    posterVideoUrl: null,
+    subtitle: null,
+    location: null,
+    description: null,
+  });
+  const other = { id: "user-demo-2", name: "정우진" };
+  const story = (
+    id: string,
+    tag: "NEWS" | "PRAISE" | "LOST_FOUND" | "SUGGESTION" | "OTHER",
+    body: string,
+    rest: Partial<SignageSubmissionExpandedDto> & { createdHoursAgo: number },
+  ): SignageSubmissionExpandedDto => {
+    const { createdHoursAgo, ...fields } = rest;
+    return {
+      ...base(id, other, createdHoursAgo),
+      type: "STORY",
+      title: body.slice(0, 40),
+      startAt: null,
+      endAt: null,
+      status: "PENDING_REVIEW",
+      version: 1,
+      lastDecision: null,
+      eventBanner: null,
+      story: { tag, body, storyNumber: null },
+      ...fields,
+    };
+  };
+
+  return [
+    {
+      ...base("demo-event-birthday", other, 9),
+      type: "EVENT_BANNER",
+      title: "생일 · 지민에게",
+      startAt: seoulMidnight(1),
+      endAt: seoulMidnight(2),
+      status: "PENDING_REVIEW",
+      version: 1,
+      lastDecision: null,
+      eventBanner: {
+        mode: "TEMPLATE",
+        occasion: "BIRTHDAY",
+        recipient: "지민",
+        headline: "지민아, 생일 축하해",
+        message: "스물한 살 생일 축하해! 오늘 하루는 네가 주인공",
+        sender: "3층 친구들",
+        photoAssetId: null,
+        photoUrl: null,
+        photoConsent: false,
+        assetId: null,
+        assetUrl: null,
+      },
+      story: null,
+    },
+    story(
+      "demo-story-laundry",
+      "PRAISE",
+      "B동 3층 세탁실 건조기 2번이 고쳐졌어요. 관리실에 연락해 주신 분 고맙습니다!",
+      { createdHoursAgo: 6 },
+    ),
+    story(
+      "demo-story-outlet",
+      "SUGGESTION",
+      "도서관 4층 열람실 콘센트가 몇 개 안 돼요. 자리마다 하나씩 있으면 좋겠어요.",
+      { createdHoursAgo: 1 },
+    ),
+    story(
+      "demo-story-umbrella",
+      "LOST_FOUND",
+      "어제 저녁 학생회관 1층에 검정 장우산을 두고 왔어요. 보신 분은 A동 경비실에 맡겨 주세요.",
+      {
+        createdHoursAgo: 30,
+        status: "PUBLISHED",
+        startAt: hours(-20),
+        endAt: hours(28),
+        version: 2,
+        lastDecision: "APPROVED",
+        story: {
+          tag: "LOST_FOUND",
+          body: "어제 저녁 학생회관 1층에 검정 장우산을 두고 왔어요. 보신 분은 A동 경비실에 맡겨 주세요.",
+          storyNumber: 127,
+        },
+      },
+    ),
+    {
+      ...story(
+        "demo-story-rejected",
+        "NEWS",
+        "기숙사 식당 메뉴 바뀐다던데 언제부터인지 아시는 분 연락처 남겨 주세요 010-",
+        {
+          createdHoursAgo: 26,
+          status: "REJECTED",
+          version: 2,
+          lastDecision: "REJECTED",
+        },
+      ),
+      requesterId: MOCK_USERS.SUBMITTER.id,
+      requesterName: MOCK_USERS.SUBMITTER.displayName,
+    },
+  ];
+}
+
+/** 위 예시의 제출·결정 기록 */
+export function createDemoContentEvents(
+  items: SignageSubmissionExpandedDto[],
+): SubmissionEventDto[] {
+  return items.flatMap((item): SubmissionEventDto[] => {
+    const submitted: SubmissionEventDto = {
+      id: `event-submit-${item.id}`,
+      submissionId: item.id,
+      revision: 1,
+      type: "SUBMITTED",
+      reasonCode: null,
+      comment: null,
+      actorId: item.requesterId ?? "",
+      actorName: item.requesterName ?? "",
+      occurredAt: item.createdAt,
+    };
+    if (item.lastDecision === null) return [submitted];
+    const decidedAt = toIsoUtc(
+      new Date(Date.parse(item.createdAt) + 2 * 60 * MINUTE_MS),
+    );
+    return [
+      submitted,
+      item.lastDecision === "REJECTED"
+        ? {
+            id: `event-reject-${item.id}`,
+            submissionId: item.id,
+            revision: 1,
+            type: "REJECTED",
+            reasonCode: "PERSONAL_INFO",
+            comment: "전화번호가 들어 있어 내보낼 수 없어요. 번호를 빼고 새로 써 주세요.",
+            ...REVIEWER,
+            occurredAt: decidedAt,
+          }
+        : {
+            id: `event-approve-${item.id}`,
+            submissionId: item.id,
+            revision: 1,
+            type: "APPROVED",
+            reasonCode: null,
+            comment: null,
+            ...REVIEWER,
+            occurredAt: decidedAt,
+          },
+    ];
+  });
+}

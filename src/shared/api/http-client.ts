@@ -97,6 +97,13 @@ function readErrorBody(payload: unknown): Partial<ApiErrorBody> {
       typeof record.requestId === "string" ? record.requestId : undefined,
     // 서버 422의 필드 오류. 폼이 입력 칸에 붙인다. (`API-REQUIREMENTS.md` 1.2)
     fields: readFields(record.fields),
+    // code별 부가 정보(예: 하루 한도 초과의 종류·한도)
+    details:
+      typeof record.details === "object" &&
+      record.details !== null &&
+      !Array.isArray(record.details)
+        ? (record.details as Record<string, unknown>)
+        : undefined,
   };
 }
 
@@ -226,6 +233,7 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
         status: response.status,
         requestId: body.requestId ?? requestId,
         fields: body.fields ?? null,
+        details: body.details ?? null,
       });
     }
 

@@ -64,8 +64,8 @@ function rangeError(
   unit: string,
 ): string | null {
   const number = Number(value);
-  if (value.trim() === "" || !Number.isInteger(number)) return `정수로 입력해 주세요.`;
-  if (number < min || number > max) return `${min}~${max}${unit} 사이여야 해요.`;
+  if (value.trim() === "" || !Number.isInteger(number)) return `정수로 입력하세요.`;
+  if (number < min || number > max) return `${min}~${max}${unit} 범위로 입력하세요.`;
   return null;
 }
 
@@ -82,13 +82,13 @@ export function validateWidgetDrafts(
 
     if (DATED_WIDGETS.includes(draft.type)) {
       const label = draft.label.trim();
-      if (!label) own.label = "이름을 입력해 주세요.";
+      if (!label) own.label = "이름을 입력하세요.";
       else if (label.length > LABEL_MAX_LENGTH) {
-        own.label = `이름은 ${LABEL_MAX_LENGTH}자까지 쓸 수 있어요.`;
+        own.label = `이름은 ${LABEL_MAX_LENGTH}자까지 입력할 수 있습니다.`;
       }
-      if (!draft.startDate) own.dates = "날짜를 골라 주세요.";
+      if (!draft.startDate) own.dates = "날짜를 선택하세요.";
       else if (draft.type === "EXAM_CHEER") {
-        if (!draft.endDate) own.dates = "마지막 날을 골라 주세요.";
+        if (!draft.endDate) own.dates = "종료 날짜를 선택하세요.";
         else if (draft.endDate < draft.startDate) {
           own.dates = "마지막 날이 시작일보다 앞서요.";
         }

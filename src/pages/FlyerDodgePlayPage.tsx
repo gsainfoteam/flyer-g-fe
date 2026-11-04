@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "react-router";
 import { DODGE_RULES, dodgeSecondsLeft } from "@/entities/game/model/flyer-dodge";
 import type { Direction } from "@/entities/game/model/flyer-dodge";
 import { readWebUrl } from "@/entities/widget/model/data-content";
+import { SurveyPrizeNote } from "@/entities/widget/ui/SurveyPrizeNote";
 import { SURVEY_URL } from "@/entities/widget/model/operation";
 import { useDodgePlayer } from "@/features/flyer-dodge/model/use-dodge-player";
 import type { MyDodgeResult } from "@/features/flyer-dodge/model/use-dodge-player";
@@ -39,8 +40,8 @@ export function FlyerDodgePlayPage() {
   if (player.paused) {
     return (
       <Notice
-        title="연결을 잠시 쉬고 있어요"
-        description="한동안 쓰지 않아 TV와의 연결을 쉬었어요. 다시 하려면 아래 버튼을 눌러 주세요."
+        title="연결 일시 중지"
+        description="일정 시간 동안 활동이 없어 TV 연결을 중지했습니다. 계속하려면 아래 버튼을 누르세요."
       >
         <Button size="lg" className="mx-auto mt-2 h-12 px-8" onClick={player.resume}>
           다시 연결
@@ -52,11 +53,11 @@ export function FlyerDodgePlayPage() {
   if (!player.connected || !view) {
     return (
       <Notice
-        title={player.link === "waiting-host" ? "TV가 아직 게임을 열지 않았어요" : "TV에 연결하는 중이에요"}
+        title={player.link === "waiting-host" ? "TV 게임 시작 대기 중" : "TV 연결 중"}
         description={
           player.link === "waiting-host"
-            ? "TV에 전단지 피하기 화면이 켜지면 바로 이어져요. 이 화면을 열어 두세요."
-            : "인터넷 연결을 확인해 주세요. 계속 안 되면 TV 화면의 QR을 다시 찍어 보세요."
+            ? "TV에 전단지 피하기 화면이 켜지면 자동으로 연결됩니다. 이 화면을 열어 두세요."
+            : "인터넷 연결을 확인하세요. 문제가 계속되면 TV 화면의 QR을 다시 스캔하세요."
         }
       />
     );
@@ -67,7 +68,7 @@ export function FlyerDodgePlayPage() {
     return (
       <Notice
         title="수고했어요!"
-        description="다시 하려면 잠시 뒤 TV에 새로 뜨는 QR을 찍어 주세요."
+        description="다시 참가하려면 잠시 후 TV에 표시되는 새 QR을 스캔하세요."
       />
     );
   }
@@ -77,16 +78,16 @@ export function FlyerDodgePlayPage() {
     if (view.phase === "LOBBY" && ticket !== view.ticket) {
       return (
         <Notice
-          title="TV의 새 QR을 찍어 주세요"
-          description="이 QR은 지난 판의 것이에요. 판마다 QR이 바뀌어요."
+          title="TV의 새 QR을 스캔하세요"
+          description="이전 경기의 QR입니다. 경기마다 QR이 변경됩니다."
         />
       );
     }
     if (view.phase !== "LOBBY") {
       return (
         <Notice
-          title="지금 다른 사람이 하는 중이에요"
-          description={`${view.player?.name ?? ""} 님이 끝나면 TV에 새 QR이 떠요. 그 QR을 찍어 주세요.`}
+          title="다른 참가자 경기 진행 중"
+          description={`${view.player?.name ?? ""} 님의 경기가 끝나면 TV에 새 QR이 표시됩니다. 새 QR을 스캔하세요.`}
         />
       );
     }
@@ -102,23 +103,23 @@ export function FlyerDodgePlayPage() {
           <p className="text-label font-bold text-accent">게임</p>
           <h1 className="mt-2 text-title text-ink">전단지 피하기</h1>
           <p className="mt-2 text-body text-ink-muted">
-            버튼을 누르고 있으면 TV의 로고가 움직여요. {DODGE_RULES.durationMs / 1_000}초 동안
-            떨어지는 전단지를 피하세요. 로그인 없이 이름만 적어요.
+            버튼을 누르고 있으면 TV의 로고가 움직입니다. {DODGE_RULES.durationMs / 1_000}초 동안
+            떨어지는 전단지를 피하세요. 로그인 없이 이름을 입력해 참가할 수 있습니다.
           </p>
         </div>
         <Input
           aria-label="이름"
           value={name}
           maxLength={DODGE_RULES.nameMaxLength}
-          placeholder="예: 3층 하윤 (TV에 보여요)"
+          placeholder="예: 3층 하윤 (TV에 표시)"
           onChange={(event) => setName(event.target.value)}
           className="h-12 text-subhead"
         />
         {(player.rejection || !ticket) && (
           <p role="alert" className="text-label text-danger">
             {player.rejection === "BUSY"
-              ? "방금 다른 사람이 먼저 시작했어요. 끝나면 TV에 뜨는 새 QR을 찍어 주세요."
-              : "TV에 지금 떠 있는 QR을 다시 찍어 주세요."}
+              ? "다른 참가자가 먼저 시작했습니다. 경기가 끝나면 TV에 표시되는 새 QR을 스캔하세요."
+              : "현재 TV에 표시된 QR을 다시 스캔하세요."}
           </p>
         )}
         <Button type="submit" size="lg" className="mt-auto h-14 text-subhead" disabled={!ticket}>
@@ -148,7 +149,7 @@ export function FlyerDodgePlayPage() {
         <p className="text-title text-ink tabular-nums">{seconds}초</p>
       </div>
       {view.phase === "COUNTDOWN" && (
-        <p className="text-center text-title text-ink">{seconds}초 뒤 시작해요 · TV를 보세요</p>
+        <p className="text-center text-title text-ink">{seconds}초 후 시작 · TV를 보세요</p>
       )}
       <Controls onSteer={player.steer} disabled={view.phase !== "PLAYING"} />
     </div>
@@ -219,14 +220,15 @@ function ResultView({ result, onClose }: { result: MyDodgeResult; onClose: () =>
           {result.score.toLocaleString("ko-KR")}점
         </p>
         <p className="mt-3 text-body text-ink-muted">
-          {(result.survivedMs / 1_000).toFixed(1)}초 버텼어요 ·{" "}
+          {(result.survivedMs / 1_000).toFixed(1)}초 생존 ·{" "}
           {result.rank ? `이 TV ${result.rank}위!` : "이 TV 5위 밖"}
         </p>
       </div>
       {SURVEY && (
         <div className="rounded-card bg-surface px-5 py-4">
-          <p className="text-subhead font-bold text-ink">전단지 설문에 참여해 주세요</p>
-          <p className="mt-1 text-label text-ink-muted">로비 TV 게시판을 써 본 느낌을 들려주세요. 1분이면 끝나요.</p>
+          <p className="text-subhead font-bold text-ink">전단지 이용 설문</p>
+          <p className="mt-1 text-label text-ink-muted">로비 TV 게시판 이용 경험에 관한 설문 · 약 1분 소요</p>
+          <SurveyPrizeNote />
         </div>
       )}
       <div className="mt-auto flex flex-col gap-3">
@@ -240,7 +242,7 @@ function ResultView({ result, onClose }: { result: MyDodgeResult; onClose: () =>
         <Button variant="outline" size="lg" className="h-14 text-subhead" onClick={onClose}>
           닫기
         </Button>
-        <p className="text-center text-label text-ink-subtle">다시 하려면 TV에 새로 뜬 QR을 찍어 주세요.</p>
+        <p className="text-center text-label text-ink-subtle">다시 참가하려면 TV에 표시된 새 QR을 스캔하세요.</p>
       </div>
     </div>
   );

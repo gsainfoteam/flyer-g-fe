@@ -119,6 +119,7 @@ export function SpotlightDisplay({
         fit={hasKnownSize(poster) ? "cover" : "contain"}
         onLoadError={onPosterError}
         onLoad={onPosterLoad}
+        play
       />
     </div>
   );

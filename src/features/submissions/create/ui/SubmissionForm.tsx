@@ -59,7 +59,7 @@ export function SubmissionForm({
   const detailUrl = draft.detailUrl.trim();
 
   const periodHint = config
-    ? `시작은 신청 시각에서 ${config.minLeadTimeHours}시간 이후부터, 기간은 최대 ${config.maxPublishMonths}개월이에요.`
+    ? `기간은 최대 ${config.maxPublishMonths}개월입니다. 시작 시각이 지난 뒤 승인되면 바로 게시됩니다.`
     : undefined;
 
   return (
@@ -119,7 +119,7 @@ export function SubmissionForm({
       <FormField
         label="부제"
         error={errorOf("subtitle")}
-        description="TV에서 제목 아래에 나와요. 일시 안내를 적으면 좋아요."
+        description="TV에서 제목 아래에 표시됩니다. 행사 일시 등을 입력하세요."
       >
         {(control) => (
           <Input
@@ -165,7 +165,7 @@ export function SubmissionForm({
         label="게시 시작"
         required
         error={errorOf("startAt")}
-        description="한국 시간(KST) 기준이에요."
+        description="한국 시간(KST) 기준"
       >
         {(control) => (
           <Input
@@ -200,7 +200,7 @@ export function SubmissionForm({
       <FormField
         label="상세 링크 (QR)"
         error={errorOf("detailUrl")}
-        description="Ziggle 공지 주소를 넣으면 TV에 QR로 나가요. 비우면 QR 없이 게시돼요."
+        description="Ziggle 공지 주소를 입력하면 TV에 QR로 표시됩니다. 입력하지 않으면 QR 없이 게시됩니다."
       >
         {(control) => (
           <Input
@@ -219,19 +219,19 @@ export function SubmissionForm({
         <QRCodeBox
           value={detailUrl}
           size="md"
-          emptyLabel="링크를 넣으면 생겨요"
+          emptyLabel="링크 입력 후 QR 생성"
         />
         <p className="text-caption leading-relaxed text-ink-muted">
           {detailUrl
-            ? "TV에 이 QR이 그대로 나갑니다. 휴대폰으로 스캔해 맞는 주소인지 확인해 보세요."
-            : "상세 링크가 없으면 TV에 QR 칸이 없어요."}
+            ? "TV에 이 QR이 그대로 나갑니다. 휴대폰으로 스캔해 맞는 주소인지 확인하세요."
+            : "상세 링크를 입력하지 않으면 QR은 표시되지 않습니다."}
         </p>
       </div>
 
       <FormField
         label="설명"
         error={errorOf("description")}
-        description="TV에는 나오지 않아요. 검토자와 신청 상세에서 보여요."
+        description="TV에는 표시되지 않습니다. 검토 화면과 신청 상세에서 확인할 수 있습니다."
       >
         {(control) => (
           <Textarea

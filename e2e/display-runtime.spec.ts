@@ -12,7 +12,7 @@ test("게시 중단하면 다음 편성에서 TV에서 사라진다", async ({ p
   await dialog.getByRole("textbox").fill("행사가 취소되어 내립니다.");
   await dialog.getByRole("button", { name: "게시 중단" }).click();
   await expect(
-    page.getByText("게시를 중단했어요", { exact: true }),
+    page.getByText("게시 중단 완료", { exact: true }),
   ).toBeVisible();
 
   // 같은 mock 상태의 TV 편성에서 빠져 있다.

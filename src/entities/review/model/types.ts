@@ -1,3 +1,4 @@
+import type { SubmissionKind } from "@/entities/submission/model/kind";
 import { parseIsoUtc } from "@/shared/lib/datetime";
 
 /**
@@ -26,6 +27,7 @@ export const SUBMISSION_EVENT_TYPES = [
 ] as const;
 export type SubmissionEventType = (typeof SUBMISSION_EVENT_TYPES)[number];
 
+/** 서버가 받는 반려 사유 전체. 종류마다 고를 수 있는 것은 `rejectionReasonsFor`가 거른다. */
 export const REJECTION_REASON_CODES = [
   "LOW_RESOLUTION",
   "ASPECT_RATIO",
@@ -33,6 +35,10 @@ export const REJECTION_REASON_CODES = [
   "INAPPROPRIATE",
   "PERIOD",
   "DUPLICATE",
+  // 소식 제보용 (배포 ④)
+  "PERSONAL_INFO",
+  "DEFAMATION",
+  "ADVERTISEMENT",
   "OTHER",
 ] as const;
 export type RejectionReasonCode = (typeof REJECTION_REASON_CODES)[number];
@@ -44,11 +50,53 @@ const REJECTION_REASON_LABELS: Record<RejectionReasonCode, string> = {
   INAPPROPRIATE: "부적절한 내용",
   PERIOD: "기간 문제",
   DUPLICATE: "중복",
+  PERSONAL_INFO: "개인정보 노출",
+  DEFAMATION: "비방·명예훼손",
+  ADVERTISEMENT: "광고·홍보",
   OTHER: "기타",
 };
 
 export function getRejectionReasonLabel(code: RejectionReasonCode): string {
   return REJECTION_REASON_LABELS[code];
+}
+
+/**
+ * 종류마다 고를 수 있는 반려 사유. 서버는 모든 사유를 받고 거르는 일은 프론트가
+ * 한다. 글만 있는 제보에 해상도·비율은 맞지 않고, 포스터에 비방은 드물다.
+ */
+const REASONS_BY_KIND: Record<SubmissionKind, readonly RejectionReasonCode[]> =
+  {
+    POSTER: [
+      "LOW_RESOLUTION",
+      "ASPECT_RATIO",
+      "INFO_MISMATCH",
+      "INAPPROPRIATE",
+      "PERIOD",
+      "DUPLICATE",
+      "OTHER",
+    ],
+    EVENT_BANNER: [
+      "INAPPROPRIATE",
+      "PERSONAL_INFO",
+      "LOW_RESOLUTION",
+      "PERIOD",
+      "DUPLICATE",
+      "OTHER",
+    ],
+    STORY: [
+      "PERSONAL_INFO",
+      "DEFAMATION",
+      "ADVERTISEMENT",
+      "INAPPROPRIATE",
+      "DUPLICATE",
+      "OTHER",
+    ],
+  };
+
+export function rejectionReasonsFor(
+  kind: SubmissionKind,
+): readonly RejectionReasonCode[] {
+  return REASONS_BY_KIND[kind];
 }
 
 export interface SubmissionEventDto {
@@ -61,9 +109,9 @@ export interface SubmissionEventDto {
   reasonCode: RejectionReasonCode | null;
   /** 게시자에게 공개되는 사유(반려·중단). 내부 메모는 오지 않는다. */
   comment: string | null;
-  actorId: string;
-  /** 한 사람의 표시 이름. ID만으로는 화면에 사람을 보여줄 수 없다. */
-  actorName: string;
+  actorId: string | null;
+  /** 작성자의 직접 중단은 다른 사용자에게 이름과 ID가 가려진다. */
+  actorName: string | null;
   occurredAt: string;
 }
 

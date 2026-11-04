@@ -35,7 +35,7 @@ describe("세션 동기화", () => {
     });
 
     expect(
-      await screen.findByText("로그인이 만료되었어요"),
+      await screen.findByText("로그인이 만료되었습니다"),
     ).toBeInTheDocument();
     expect(currentPath(router)).toBe("/login?returnTo=%2Freview");
   });
@@ -98,7 +98,7 @@ describe("세션 동기화", () => {
     renderRoute("/tv", { authAdapter, repositories });
 
     expect(
-      await screen.findByText("이 화면을 볼 권한이 없어요"),
+      await screen.findByText("접근 권한 없음"),
     ).toBeInTheDocument();
     const nav = within(screen.getByRole("navigation", { name: "주요 메뉴" }));
     expect(nav.queryByRole("link", { name: "TV" })).toBeNull();

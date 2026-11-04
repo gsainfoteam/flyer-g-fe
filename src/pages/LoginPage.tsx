@@ -28,7 +28,7 @@ export function LoginPage() {
   if (state.status === "initializing") {
     return (
       <Split>
-        <LoadingState rows={2} label="로그인 상태를 확인하고 있어요." />
+        <LoadingState rows={2} label="로그인 상태 확인 중" />
       </Split>
     );
   }
@@ -50,23 +50,23 @@ export function LoginPage() {
 
   return (
     <Split>
-      <h1 className="text-display text-ink">인포팀 계정으로 시작하세요</h1>
+      <h1 className="text-display text-ink">인포팀 계정 로그인</h1>
       <p className="mt-2.5 text-body text-ink-muted">
-        GIST 메일로 바로 로그인할 수 있어요.
+        GIST 메일로 로그인할 수 있습니다.
       </p>
 
       {state.status === "unauthenticated" && state.reason === "expired" && (
         <Alert variant="info" className="mt-6 text-left">
           <Info aria-hidden="true" />
           {/* 돌아갈 화면 안내는 버튼 아래 문구가 맡는다. */}
-          <AlertTitle>로그인이 만료되었어요</AlertTitle>
+          <AlertTitle>로그인이 만료되었습니다</AlertTitle>
         </Alert>
       )}
 
       {state.status === "error" && (
         <ErrorState
           error={state.error}
-          title="로그인하지 못했어요"
+          title="로그인하지 못했습니다"
           className="mt-6 text-left"
         />
       )}

@@ -1,0 +1,133 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
+import type { SignageSubmissionExpanded } from "@/entities/submission";
+import { normalizeApiError } from "@/shared/api/error";
+import type { ApiError } from "@/shared/api/error";
+import { queryKeys } from "@/shared/api/query-keys";
+import type {
+  CreateEventBannerInput,
+  CreateStoryInput,
+} from "@/shared/api/repositories";
+import { useRepositories } from "@/shared/api/repositories-context";
+import { createIdempotencyKey } from "@/shared/lib/idempotency";
+
+/**
+ * 이벤트 배너·소식 제보 제출 (배포 ③④). 포스터처럼 만들면 바로 검토 대기다.
+ *
+ * 시도 하나에 key 하나다. 응답을 못 받아 다시 누르면 같은 key로 보내 두 건이 생기지
+ * 않는다. 입력을 고치면 `markInputChanged`로 새 시도를 연다. 진행 중 여부는 ref로도
+ * 들어 더블 클릭을 막는다. (`use-create-submission.ts`와 같은 규칙)
+ */
+export function useCreateContent() {
+  const { submissions } = useRepositories();
+  const queryClient = useQueryClient();
+  const keyRef = useRef<string | null>(null);
+  const inFlightRef = useRef(false);
+
+  const mutation = useMutation<
+    SignageSubmissionExpanded,
+    ApiError,
+    CreateEventBannerInput | CreateStoryInput
+  >({
+    mutationFn: async (input) => {
+      if (inFlightRef.current) {
+        throw normalizeApiError(new DOMException("Aborted", "AbortError"));
+      }
+      inFlightRef.current = true;
+      try {
+        const key = (keyRef.current ??= createIdempotencyKey());
+        return await submissions.createContent(input, { idempotencyKey: key });
+      } catch (cause) {
+        throw normalizeApiError(cause);
+      } finally {
+        inFlightRef.current = false;
+      }
+    },
+    onSuccess: (created) => {
+      keyRef.current = null;
+      queryClient.setQueryData(
+        queryKeys.submissions.detail(created.id),
+        created,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.submissions.all(),
+      });
+    },
+  });
+
+  return {
+    ...mutation,
+    markInputChanged: () => {
+      keyRef.current = null;
+    },
+  };
+}
+
+/**
+ * 이벤트 배너 고치기 (배포 ③). 내용 전체와 기간을 저장하고, 반려·중단된 건이면 이어서
+ * 다시 검토를 요청한다. 대기 중이면 대기 그대로, 예약 건이면 서버가 재승인 대기로 돌린다.
+ *
+ * 저장은 됐는데 재검토 요청만 실패하면, 다시 누를 때 저장을 건너뛰고 서버가 마지막에
+ * 돌려준 version으로 요청만 한다(`use-create-submission.ts`와 같은 규칙).
+ */
+export interface UpdateEventBannerValues {
+  submissionId: string;
+  version: number;
+  eventBanner: CreateEventBannerInput["eventBanner"];
+  startAt: Date;
+  endAt: Date;
+}
+
+export function useUpdateEventBanner() {
+  const { submissions } = useRepositories();
+  const queryClient = useQueryClient();
+  const savedRef = useRef<SignageSubmissionExpanded | null>(null);
+  const submitKeyRef = useRef<string | null>(null);
+
+  const mutation = useMutation<
+    SignageSubmissionExpanded,
+    ApiError,
+    UpdateEventBannerValues
+  >({
+    mutationFn: async ({ submissionId, version, ...fields }) => {
+      try {
+        const saved = (savedRef.current ??= await submissions.update(
+          submissionId,
+          { ...fields, version },
+        ));
+        if (saved.status !== "REJECTED" && saved.status !== "SUSPENDED") {
+          return saved;
+        }
+        const key = (submitKeyRef.current ??= createIdempotencyKey());
+        return await submissions.submit(
+          submissionId,
+          { version: saved.version },
+          { idempotencyKey: key },
+        );
+      } catch (cause) {
+        throw normalizeApiError(cause);
+      }
+    },
+    onSuccess: (updated) => {
+      savedRef.current = null;
+      submitKeyRef.current = null;
+      queryClient.setQueryData(
+        queryKeys.submissions.detail(updated.id),
+        updated,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.submissions.all(),
+      });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.reviews.all() });
+    },
+  });
+
+  return {
+    ...mutation,
+    /** 입력이 바뀌었다. 다음 제출은 저장부터 다시 한다. */
+    markInputChanged: () => {
+      savedRef.current = null;
+      submitKeyRef.current = null;
+    },
+  };
+}

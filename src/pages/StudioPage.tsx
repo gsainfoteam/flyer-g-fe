@@ -80,20 +80,20 @@ function describeEditing(status: SubmissionStatus): {
           : status === "SUSPENDED"
             ? "중단된 신청 수정"
             : "반려된 신청 수정",
-      note: "제출하면 다시 검토를 받아요",
+      note: "제출 후 재검토",
       submitLabel: status === "DRAFT" ? "제출하기" : "다시 신청하기",
     };
   }
   if (needsReapproval(status)) {
     return {
       caption: "예약된 신청 수정",
-      note: "고치면 다시 승인을 받아야 게시돼요",
+      note: "수정 후 재승인 필요",
       submitLabel: "다시 승인 받기",
     };
   }
   return {
     caption: "검토 대기 중인 신청 수정",
-    note: "고쳐도 검토 대기 순서는 그대로예요",
+    note: "수정 후에도 검토 대기 순서 유지",
     submitLabel: "수정 저장",
   };
 }
@@ -110,7 +110,15 @@ export function StudioPage() {
   const uploadLimits = useMemo(
     () =>
       config.data
-        ? { maxSizeBytes: config.data.maxUploadBytes }
+        ? {
+            maxSizeBytes: config.data.maxUploadBytes,
+            // 영상을 연 환경이면 허용 형식에 video/*가 들어 있다(배포 ①).
+            acceptsVideo: config.data.allowedMimeTypes.some((type) =>
+              type.startsWith("video/"),
+            ),
+            maxVideoSizeBytes: config.data.maxVideoUploadBytes,
+            maxVideoDurationSeconds: config.data.maxVideoDurationSeconds,
+          }
         : null,
     [config.data],
   );
@@ -118,7 +126,12 @@ export function StudioPage() {
   const createSubmission = useCreateSubmission();
 
   // 벽·띠 미리보기의 나머지 자리를 채울 게시 중 포스터와, 판정 기준이 되는 서버 시각.
-  const published = useSubmissionViews({ status: "PUBLISHED", limit: 7 });
+  // 편성 v1은 포스터만 띄우므로 이웃 자리도 포스터로만 채운다.
+  const published = useSubmissionViews({
+    status: "PUBLISHED",
+    types: ["POSTER"],
+    limit: 7,
+  });
   const serverNow = useServerNow(
     published.data?.serverTime,
     published.dataUpdatedAt,
@@ -212,17 +225,33 @@ export function StudioPage() {
     editingStatus && !editBlocked ? describeEditing(editingStatus) : null;
   const blocker = useUnsavedChangesWarning(isDirty && submitted === null);
 
+  // 새로 고른 영상은 대표 프레임이 아직 없어 영상만 그린다. 올리고 나면 서버가 뜬
+  // 프레임을 쓴다.
+  const pickedVideo =
+    upload.state.mediaKind === "VIDEO" ? upload.state.previewUrl : null;
   const previewPoster = draftToPosterRenderModel({
     draft,
     submissionId: editingSubmission?.id ?? null,
     categories: categories.data ?? [],
-    posterUrl: upload.state.previewUrl ?? editingSubmission?.posterUrl ?? null,
+    posterUrl: pickedVideo
+      ? (upload.state.asset?.url ?? null)
+      : (upload.state.previewUrl ?? editingSubmission?.posterUrl ?? null),
+    video: upload.state.previewUrl
+      ? pickedVideo
+        ? { url: pickedVideo, durationMs: upload.state.durationMs }
+        : null
+      : editingSubmission?.posterVideoUrl
+        ? {
+            url: editingSubmission.posterVideoUrl,
+            durationMs: editingSubmission.posterDurationMs,
+          }
+        : null,
     posterSize: upload.state.previewUrl
       ? upload.state.dimensions
       : editingSubmission
         ? {
-            width: editingSubmission.posterWidth,
-            height: editingSubmission.posterHeight,
+            width: editingSubmission.posterWidth ?? 0,
+            height: editingSubmission.posterHeight ?? 0,
           }
         : null,
     now: serverNow,
@@ -302,7 +331,7 @@ export function StudioPage() {
             setServerErrors(toFormFieldErrors(error.fields));
             setFocusRequest((count) => count + 1);
           }
-          toast.error("신청을 접수하지 못했어요", {
+          toast.error("신청을 접수하지 못했습니다", {
             description: toUserMessage(error),
           });
         },
@@ -372,7 +401,7 @@ export function StudioPage() {
                     <AlertTriangle aria-hidden="true" />
                     <AlertDescription className="space-y-2">
                       <span>
-                        지금 상태에서는 수정할 수 없어요. 게시가 시작되기
+                        현재 상태에서는 수정할 수 없습니다. 게시가 시작되기
                         전까지만 고칠 수 있습니다.
                       </span>
                       <Button variant="secondary" size="sm" asChild>
@@ -390,8 +419,10 @@ export function StudioPage() {
             <h2 className="text-label text-ink">포스터</h2>
             <p className="mt-0.5 mb-2 text-caption text-ink-muted">
               {editingSubmission && !upload.state.previewUrl
-                ? "기존 포스터를 그대로 쓰거나 새로 올려서 바꿀 수 있어요"
-                : "세로 포스터, 정사각형 사진, 가로 배너 모두 올릴 수 있어요"}
+                ? "기존 포스터 유지 또는 새 파일로 교체"
+                : uploadLimits?.acceptsVideo
+                  ? "세로 포스터·정사각형 사진·가로 배너·짧은 영상 업로드 가능"
+                  : "세로 포스터·정사각형 사진·가로 배너 업로드 가능"}
             </p>
             {editingSubmission?.posterUrl && !upload.state.previewUrl && (
               <div className="mb-3 overflow-hidden rounded-control ring-1 ring-line">
@@ -428,7 +459,7 @@ export function StudioPage() {
           <div className="border-b border-line px-4 py-3.5">
             <h2 className="text-heading text-ink">게시 정보</h2>
             <p className="mt-0.5 text-caption text-ink-muted">
-              제목, 카테고리, 게시 기간을 정하세요
+              제목·카테고리·게시 기간 설정
             </p>
           </div>
 
@@ -487,7 +518,7 @@ export function StudioPage() {
         onOpenChange={(open) => {
           if (!open) blocker.reset?.();
         }}
-        title="작성 중인 신청을 두고 나갈까요?"
+        title="작성 화면을 나가시겠습니까?"
         description="올린 포스터와 입력한 내용은 저장되지 않습니다."
         confirmLabel="나가기"
         cancelLabel="계속 작성"

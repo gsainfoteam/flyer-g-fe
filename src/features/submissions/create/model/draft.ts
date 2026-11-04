@@ -29,12 +29,12 @@ const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
 /**
- * 기본 게시 기간: 모레 09:00 ~ 그로부터 일주일 뒤 18:00 (KST).
+ * 기본 게시 기간: 내일 09:00 ~ 그로부터 일주일 뒤 18:00 (KST).
  *
- * 서버는 시작이 신청 시각에서 24시간 이후여야 받는다(`minLeadTimeHours`). 모레
- * 09:00은 지금이 몇 시든 24시간 이후라, 폼을 열자마자 오류가 뜨지 않는다.
+ * 시작 시각에는 제한이 없다(배포 ②). 심사에 보통 하루가 걸리지 않아 내일 아침이면
+ * 승인 뒤 제때 시작한다.
  */
-export const DEFAULT_START_OFFSET_DAYS = 2;
+export const DEFAULT_START_OFFSET_DAYS = 1;
 export const DEFAULT_PERIOD_DAYS = 7;
 
 function seoulHour(base: Date, offsetDays: number, hour: number): Date {
@@ -70,15 +70,20 @@ export function createEmptyDraft(now: Date): SubmissionDraft {
   };
 }
 
-/** 기존 신청을 고칠 때의 초기값 (명세 FR-DASH-02). */
+/**
+ * 기존 신청을 고칠 때의 초기값 (명세 FR-DASH-02). 이 폼은 포스터를 고친다.
+ * 포스터는 카테고리와 기간이 항상 있지만, 타입상 비어 있을 수 있어 빈 값으로 둔다.
+ */
 export function draftFromSubmission(
   submission: SignageSubmissionExpanded,
 ): SubmissionDraft {
   return {
     title: submission.title,
-    categoryId: submission.categoryId,
-    startAt: toSeoulDateTimeInputValue(submission.startAt),
-    endAt: toSeoulDateTimeInputValue(submission.endAt),
+    categoryId: submission.categoryId ?? "",
+    startAt: submission.startAt
+      ? toSeoulDateTimeInputValue(submission.startAt)
+      : "",
+    endAt: submission.endAt ? toSeoulDateTimeInputValue(submission.endAt) : "",
     detailUrl: submission.detailUrl ?? "",
     organizerName: submission.organizerName ?? "",
     subtitle: submission.subtitle ?? "",

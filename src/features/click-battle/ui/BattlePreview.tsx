@@ -24,7 +24,7 @@ export function BattlePreview({
       link={null}
       local={false}
       previewOnly
-      idleHint="미리보기 · 실제 TV에서는 QR로 참가하면 게임이 시작돼요"
+      idleHint="미리보기 · 실제 TV에서는 QR로 참가 시 게임 시작"
       header={
         <StageHeader
           deviceLabel={deviceLabel}

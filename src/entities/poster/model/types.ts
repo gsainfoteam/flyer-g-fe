@@ -1,4 +1,5 @@
 import type { PlaylistItem } from "@/entities/playlist/model/types";
+import { KIND_INFO } from "@/entities/submission/model/kind";
 import type { SubmissionView } from "@/entities/submission/model/types";
 
 /**
@@ -24,10 +25,17 @@ export interface PosterRenderModel {
   height: number;
   /** QR과 상세 링크의 단일 원천. 없으면 QR 없이 그린다. */
   detailUrl: string | null;
-  startAt: Date;
-  endAt: Date;
+  /** 게시 기간. 승인 전 제보처럼 기간이 아직 없으면 null */
+  startAt: Date | null;
+  endAt: Date | null;
   /** 편성에 실린 신청 버전. 노출 이벤트가 어느 버전을 보여줬는지 남긴다. */
   revision?: number | null;
+  /**
+   * 영상 포스터의 재생 파일과 길이(ms). 이미지면 없다. 영상이어도 `posterUrl`은
+   * 대표 프레임이라, 재생하지 않는 칸과 재생 실패 때 그것을 그린다.
+   */
+  videoUrl?: string | null;
+  durationMs?: number | null;
 }
 
 /** 크기를 모를 때 쓰는 비율. 게시물 대부분이 A판 세로 포스터다. */
@@ -54,16 +62,24 @@ export function fromSubmissionView(view: SubmissionView): PosterRenderModel {
     id: view.id,
     title: view.title,
     subtitle: view.subtitle ?? view.description,
-    categoryName: view.categoryName,
+    // 포스터가 아닌 종류는 카테고리·이미지가 없다. 이름은 종류 이름으로, 이미지는
+    // 비워 두면 그림 자리가 대신 그려진다.
+    categoryName: view.categoryName ?? KIND_INFO[view.type].short,
     organizerName: view.organizerName,
     location: view.location,
-    posterUrl: view.posterUrl,
-    width: view.posterWidth,
-    height: view.posterHeight,
+    posterUrl:
+      view.posterUrl ??
+      view.eventBanner?.assetUrl ??
+      view.eventBanner?.photoUrl ??
+      "",
+    width: view.posterWidth ?? 0,
+    height: view.posterHeight ?? 0,
     detailUrl: view.detailUrl,
     startAt: view.startAt,
     endAt: view.endAt,
     revision: view.version,
+    videoUrl: view.posterVideoUrl,
+    durationMs: view.posterDurationMs,
   };
 }
 
@@ -82,5 +98,7 @@ export function fromPlaylistItem(item: PlaylistItem): PosterRenderModel {
     startAt: item.startsAt,
     endAt: item.endsAt,
     revision: item.revision,
+    videoUrl: item.video?.url ?? null,
+    durationMs: item.durationMs,
   };
 }

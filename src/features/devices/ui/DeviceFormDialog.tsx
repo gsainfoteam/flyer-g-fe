@@ -111,8 +111,8 @@ export function DeviceFormDialog({
       title={device ? `${device.name} 수정` : "기기 등록"}
       description={
         device
-          ? "화면 설정은 다음 편성 갱신 때 TV에 반영돼요."
-          : "등록하면 이 TV를 연결할 설정 링크를 한 번만 보여드려요."
+          ? "화면 설정은 다음 편성 갱신 시 TV에 반영됩니다."
+          : "등록 후 TV 연결용 설정 링크가 한 번만 표시됩니다."
       }
       confirmLabel={device ? "저장" : "등록"}
       onConfirm={async () => {
@@ -124,8 +124,8 @@ export function DeviceFormDialog({
           throw new IncompleteForm();
         }
         if (device) {
-          await update.mutateAsync(toUpdateDeviceInput(draft));
-          toast.success("기기 설정을 저장했어요");
+          await update.mutateAsync(toUpdateDeviceInput(draft, device));
+          toast.success("기기 설정 저장 완료");
         } else {
           onCreated(await create.mutateAsync(toDeviceInput(draft)));
         }
@@ -144,10 +144,10 @@ export function DeviceFormDialog({
           }
           setServerErrors(fieldErrors);
         }
-        toast.error(device ? "저장하지 못했어요" : "등록하지 못했어요", {
+        toast.error(device ? "저장하지 못했습니다" : "등록하지 못했습니다", {
           description: isApiError(error)
             ? toUserMessage(error)
-            : "잠시 후 다시 시도해 주세요.",
+            : "잠시 후 다시 시도하세요.",
         });
       }}
     >
@@ -179,17 +179,15 @@ export function DeviceFormDialog({
         <fieldset className="space-y-1.5">
           <legend className="text-label text-ink">위치 그룹</legend>
           <p className="text-caption text-ink-muted">
-            신청자가 대상 위치로 이 그룹을 고르면 이 TV에 나가요. 대상을 고르지
-            않은 신청은 모든 TV에 나가요.
+            신청자가 이 그룹을 대상 위치로 선택하면 이 TV에 게시됩니다. 대상 위치를 지정하지 않으면 모든 TV에 게시됩니다.
           </p>
           {!groups ? (
             <p className="text-caption text-ink-subtle">
-              위치 그룹 목록을 받지 못했어요. 지금 고른 그룹은 그대로 저장돼요.
+              위치 그룹 목록을 불러오지 못했습니다. 현재 선택한 그룹은 그대로 저장됩니다.
             </p>
           ) : options.length === 0 ? (
             <p className="text-caption text-ink-subtle">
-              고를 수 있는 위치 그룹이 없어요. 기기 목록 아래 위치 그룹에서
-              추가해 주세요.
+              선택 가능한 위치 그룹이 없습니다. 기기 목록 아래의 위치 그룹에서 추가하세요.
             </p>
           ) : (
             <div className="flex flex-wrap gap-2 pt-1">
@@ -220,77 +218,83 @@ export function DeviceFormDialog({
           )}
         </fieldset>
 
-        <FormField
-          label="화면 전환"
-          description={LAYOUT_DESCRIPTIONS[draft.layout]}
-        >
-          {(control) => (
-            <Select
-              value={draft.layout}
-              onValueChange={(value) => {
-                if (value) patch({ layout: value as DeviceDraft["layout"] });
-              }}
+        {/* 새 기기는 그룹 편성의 화면 설정을 따른다. 다르게 할 때만 등록 뒤에 고친다. */}
+        {device && (
+          <>
+            <FormField
+              label="화면 전환"
+              description={LAYOUT_DESCRIPTIONS[draft.layout]}
             >
-              <SelectTrigger id={control.id} className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {LAYOUT_TYPES.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {LAYOUT_LABELS[type]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </FormField>
+              {(control) => (
+                <Select
+                  value={draft.layout}
+                  onValueChange={(value) => {
+                    if (value)
+                      patch({ layout: value as DeviceDraft["layout"] });
+                  }}
+                >
+                  <SelectTrigger id={control.id} className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LAYOUT_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {LAYOUT_LABELS[type]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField
-            label="포스터 전환 간격(초)"
-            error={errorOf("rotationSeconds")}
-            description={`포스터 한 장을 보여 주는 시간이에요. ${DEVICE_LIMITS.rotationSeconds.min}~${DEVICE_LIMITS.rotationSeconds.max}초. 위젯 시간은 '위젯'에서 정해요.`}
-          >
-            {(control) => (
-              <Input
-                {...control}
-                type="number"
-                inputMode="numeric"
-                min={DEVICE_LIMITS.rotationSeconds.min}
-                max={DEVICE_LIMITS.rotationSeconds.max}
-                value={draft.rotationSeconds}
-                onChange={(event) =>
-                  patch({ rotationSeconds: event.target.value })
-                }
-              />
-            )}
-          </FormField>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                label="포스터 전환 간격(초)"
+                error={errorOf("rotationSeconds")}
+                description={`포스터 한 장의 표시 시간. ${DEVICE_LIMITS.rotationSeconds.min}~${DEVICE_LIMITS.rotationSeconds.max}초. 위젯 표시 시간은 '위젯'에서 설정합니다.`}
+              >
+                {(control) => (
+                  <Input
+                    {...control}
+                    type="number"
+                    inputMode="numeric"
+                    min={DEVICE_LIMITS.rotationSeconds.min}
+                    max={DEVICE_LIMITS.rotationSeconds.max}
+                    value={draft.rotationSeconds}
+                    onChange={(event) =>
+                      patch({ rotationSeconds: event.target.value })
+                    }
+                  />
+                )}
+              </FormField>
 
-          <FormField
-            label="편성 갱신 주기(초)"
-            error={errorOf("refreshAfterSeconds")}
-            description="게시 중단이 이 TV에 반영되기까지의 최대 시간이에요."
-          >
-            {(control) => (
-              <Input
-                {...control}
-                type="number"
-                inputMode="numeric"
-                min={DEVICE_LIMITS.refreshAfterSeconds.min}
-                max={DEVICE_LIMITS.refreshAfterSeconds.max}
-                value={draft.refreshAfterSeconds}
-                onChange={(event) =>
-                  patch({ refreshAfterSeconds: event.target.value })
-                }
-              />
-            )}
-          </FormField>
-        </div>
+              <FormField
+                label="편성 갱신 주기(초)"
+                error={errorOf("refreshAfterSeconds")}
+                description="게시 중단이 이 TV에 반영되기까지 걸리는 최대 시간입니다."
+              >
+                {(control) => (
+                  <Input
+                    {...control}
+                    type="number"
+                    inputMode="numeric"
+                    min={DEVICE_LIMITS.refreshAfterSeconds.min}
+                    max={DEVICE_LIMITS.refreshAfterSeconds.max}
+                    value={draft.refreshAfterSeconds}
+                    onChange={(event) =>
+                      patch({ refreshAfterSeconds: event.target.value })
+                    }
+                  />
+                )}
+              </FormField>
+            </div>
+          </>
+        )}
 
         {device && (
           <FormField
             label="사용 여부"
-            description="사용 안 함으로 두면 토큰이 있어도 이 TV가 편성을 받지 못해요."
+            description="사용 안 함으로 설정하면 토큰이 있어도 이 TV는 편성을 받지 못합니다."
           >
             {(control) => (
               <Select

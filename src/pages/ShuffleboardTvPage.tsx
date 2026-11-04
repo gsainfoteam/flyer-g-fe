@@ -5,7 +5,8 @@ import { useShuffleboardHost } from "@/features/shuffleboard/model/use-shufflebo
 import { joinUrlOf } from "@/features/shuffleboard/model/join-url";
 import { LinkBadge, ShuffleboardStageFor } from "@/features/shuffleboard/ui/stage-helpers";
 import { Logo } from "@/shared/components/Logo";
-import { SURVEY_URL } from "@/entities/widget/model/operation";
+import { SURVEY_URL, surveyPrizeOn } from "@/entities/widget/model/operation";
+import { seoulDateKey } from "@/entities/widget/model/content";
 import { readWebUrl } from "@/entities/widget/model/data-content";
 import { gameSocketBase } from "@/shared/lib/game-socket";
 import {
@@ -17,10 +18,13 @@ import {
  * 셔플보드 단독 TV 화면. 이 TV가 경기의 심판이다(`useShuffleboardHost`).
  * 클릭 배틀의 `ClickBattleTvPage`와 같은 모양이다. `:roomId`는 기기 id다.
  */
-const SURVEY = (() => {
-  const url = readWebUrl(SURVEY_URL);
-  return url ? { url, label: "이벤트 설문" } : null;
-})();
+const SURVEY_LINK = readWebUrl(SURVEY_URL);
+
+/** 오른쪽 위 설문 QR. 경품 안내는 응모 마감까지만 붙인다. */
+const surveyOf = (now: Date) =>
+  SURVEY_LINK
+    ? { url: SURVEY_LINK, label: "이벤트 설문", prize: surveyPrizeOn(seoulDateKey(now)) }
+    : null;
 
 export function ShuffleboardTvPage() {
   const { roomId = "lobby" } = useParams();
@@ -44,7 +48,7 @@ export function ShuffleboardTvPage() {
         link={link}
         local={socketBase === null}
         joinUrlOf={(seat) => joinUrlOf(roomId, seat)}
-        survey={SURVEY}
+        survey={surveyOf(new Date())}
         header={
           <header className="flex h-14 shrink-0 items-center gap-6">
             <Logo size="lg" />

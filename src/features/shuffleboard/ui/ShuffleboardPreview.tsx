@@ -22,7 +22,7 @@ export function ShuffleboardPreview({
       state={EMPTY_MATCH}
       now={0}
       joinUrls={NO_QR}
-      closedLabel={"미리보기\n실제 TV에서 QR이 나와요"}
+      closedLabel={"미리보기\n실제 TV에서 QR 표시"}
       survey={null}
       header={
         <StageHeader deviceLabel={deviceLabel} serverTime={serverTime} clockTicking>

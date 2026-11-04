@@ -27,12 +27,12 @@ export function RouteErrorScreen() {
       <div className="mx-auto w-full max-w-content">
         <Logo size="lg" />
         <h1 className="mt-8 text-display text-ink">
-          {staleChunk ? "새 버전이 나왔어요" : "화면을 여는 중에 문제가 생겼어요"}
+          {staleChunk ? "새 버전 안내" : "화면을 불러오지 못했습니다"}
         </h1>
         <p className="mt-2 text-body text-ink-muted">
           {staleChunk
-            ? "새로고침하면 새 버전으로 이어서 쓸 수 있어요."
-            : "새로고침해도 계속되면 잠시 뒤 다시 열어 주세요. 입력하던 내용은 저장되지 않았을 수 있어요."}
+            ? "새로고침하면 새 버전을 사용할 수 있습니다."
+            : "새로고침 후에도 문제가 계속되면 잠시 후 다시 접속하세요. 입력 중이던 내용은 저장되지 않았을 수 있습니다."}
         </p>
         <div className="mt-6 flex gap-2.5">
           <Button onClick={() => window.location.reload()}>새로고침</Button>
@@ -78,7 +78,7 @@ export function DisplayRouteErrorScreen() {
             잠시 후 다시 시작합니다
           </h1>
           <p className="text-[32px] text-ink-muted">
-            게시 신청은 Ziggle 공지에서 할 수 있어요 · {ZIGGLE_HOST}
+            Ziggle 공지에서 게시 신청 가능 · {ZIGGLE_HOST}
           </p>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import type { Lineup, LineupInput, LineupProgram } from "@/entities/lineup/model/types";
 import type {
   DeviceInput,
   DeviceList,
@@ -35,10 +36,15 @@ import type {
   UserListParams,
 } from "@/entities/user/model/types";
 import type {
+  EventBannerMode,
+  EventBannerOccasion,
   Page,
   SignageSubmissionExpanded,
+  StoryTag,
   SubmissionListParams,
   SubmissionSummary,
+  RecentStory,
+  StoryAuthor,
 } from "@/entities/submission/model/types";
 
 /**
@@ -74,6 +80,38 @@ export interface CreateSubmissionInput {
 }
 
 /**
+ * 이벤트 배너 신청 (배포 ③). TEMPLATE은 종류·문구가 필수이고 사진은 선택(있으면
+ * 동의 필수), IMAGE는 배너 이미지(`assetId`)가 필수다. 기간은 서울 자정부터 자정까지
+ * `eventBannerMaxDays`일 이하. 목록 제목은 서버가 만든다("생일 · 지민에게").
+ */
+export interface CreateEventBannerInput {
+  type: "EVENT_BANNER";
+  eventBanner: {
+    mode: EventBannerMode;
+    occasion: EventBannerOccasion | null;
+    recipient: string;
+    headline: string | null;
+    message: string | null;
+    sender: string | null;
+    photoAssetId: string | null;
+    photoConsent: boolean;
+    assetId: string | null;
+  };
+  startAt: Date;
+  endAt: Date;
+  targetGroupIds: string[];
+}
+
+/**
+ * 소식 제보 (배포 ④). 기간은 승인할 때 서버가 정하고, 모든 TV에 나간다. 작성자는
+ * TV·다른 사람에게 가린다.
+ */
+export interface CreateStoryInput {
+  type: "STORY";
+  story: { tag: StoryTag; body: string };
+}
+
+/**
  * 신청 수정. 명세 FR-INT-02.
  *
  * 선택 입력(`detailUrl` 등)은 null이면 비운다. 게시 시작 전 승인 건을 고치면 서버가
@@ -82,6 +120,8 @@ export interface CreateSubmissionInput {
 export interface UpdateSubmissionInput extends Partial<CreateSubmissionInput> {
   /** 화면이 본 버전. 서버는 이 값으로 동시 수정 충돌을 판정한다. */
   version: number;
+  /** 이벤트 배너만. 바꿀 때는 내용 전체를 보낸다(배포 ③). */
+  eventBanner?: CreateEventBannerInput["eventBanner"];
 }
 
 /** 버전만 싣는 상태 변경(재검토 요청, 취소). 최신이 아니면 서버가 409를 준다. */
@@ -115,6 +155,16 @@ export interface SubmissionRepository {
     options?: MutationOptions,
   ): Promise<SignageSubmissionExpanded>;
 
+  /**
+   * 포스터가 아닌 종류(이벤트 배너·소식 제보)를 만든다. 포스터처럼 만들면 바로 검토
+   * 대기다. 종류별 하루 한도(`dailySubmissionLimits`)를 넘으면 429
+   * `DAILY_LIMIT_EXCEEDED`.
+   */
+  createContent(
+    input: CreateEventBannerInput | CreateStoryInput,
+    options?: MutationOptions,
+  ): Promise<SignageSubmissionExpanded>;
+
   update(
     id: string,
     input: UpdateSubmissionInput,
@@ -133,6 +183,21 @@ export interface SubmissionRepository {
     input: SubmissionVersionInput,
     options?: MutationOptions,
   ): Promise<SignageSubmissionExpanded>;
+
+  /**
+   * 제보 작성자 열람. SUPER_ADMIN만 부를 수 있고, 부를 때마다 서버가 감사 로그를
+   * 남긴다. 제보가 아니면 409다. (배포 ④)
+   */
+  revealAuthor(id: string, signal?: AbortSignal): Promise<StoryAuthor>;
+
+  /**
+   * 지금 게시 중인 제보. 최근 승인 순이다. 로그인한 누구나 부를 수 있다.
+   * `limit`은 1~10. (배포 ④, `GET /signage/stories/recent`)
+   */
+  listRecentStories(
+    params: { limit?: number },
+    signal?: AbortSignal,
+  ): Promise<RecentStory[]>;
 }
 
 export interface ApproveInput {
@@ -153,6 +218,7 @@ export interface SuspendInput {
   reason: string;
 }
 
+/** `types`로 종류를 거른다(배포 ②). 비우면 모든 종류다. */
 export interface PendingReviewParams extends Omit<
   SubmissionListParams,
   "status" | "statuses" | "scope"
@@ -317,7 +383,15 @@ export interface UserRepository {
   ): Promise<void>;
 }
 
+export interface LineupRepository {
+  get(groupId: string, signal?: AbortSignal): Promise<Lineup>;
+  save(groupId: string, input: LineupInput, signal?: AbortSignal): Promise<Lineup>;
+  listPrograms(signal?: AbortSignal): Promise<(LineupProgram & { id: string })[]>;
+  preview(deviceId: string, signal?: AbortSignal): Promise<Playlist>;
+}
+
 export interface Repositories {
+  lineups: LineupRepository;
   submissions: SubmissionRepository;
   reviews: ReviewRepository;
   displays: DisplayRepository;

@@ -24,6 +24,7 @@ interface TargetGroupsSectionProps {
   isLoading: boolean;
   error: unknown;
   onRetry: () => void;
+  onLineup?: (group: TargetGroup) => void;
 }
 
 export function TargetGroupsSection({
@@ -31,6 +32,7 @@ export function TargetGroupsSection({
   isLoading,
   error,
   onRetry,
+  onLineup,
 }: TargetGroupsSectionProps) {
   const [editing, setEditing] = useState<TargetGroup | "new" | null>(null);
   const [deleting, setDeleting] = useState<TargetGroup | null>(null);
@@ -62,8 +64,8 @@ export function TargetGroupsSection({
         >
           {list.length === 0 ? (
             <EmptyState
-              title="위치 그룹이 없어요"
-              description="그룹이 없으면 모든 게시물이 모든 TV에 나가요."
+              title="등록된 위치 그룹 없음"
+              description="그룹이 없으면 모든 게시물이 모든 TV에 게시됩니다."
               className="px-5"
             />
           ) : (
@@ -72,6 +74,7 @@ export function TargetGroupsSection({
                 <TargetGroupRow
                   key={group.id}
                   group={group}
+                  onLineup={onLineup ? () => onLineup(group) : undefined}
                   onEdit={() => setEditing(group)}
                   onDelete={() => setDeleting(group)}
                 />
@@ -99,27 +102,27 @@ export function TargetGroupsSection({
         onOpenChange={(open) => {
           if (!open) setDeleting(null);
         }}
-        title={`${deleting?.name ?? ""} 그룹을 삭제할까요?`}
-        description="TV나 신청이 한 번이라도 쓴 그룹은 지울 수 없어요. 그때는 수정에서 숨겨 주세요."
+        title={`${deleting?.name ?? ""} 그룹을 삭제하시겠습니까?`}
+        description="TV나 신청에서 사용한 이력이 있는 그룹은 삭제할 수 없습니다. 수정 화면에서 숨김 처리하세요."
         confirmLabel="삭제"
         tone="destructive"
         onConfirm={async () => {
           if (!deleting) return;
           await remove.mutateAsync(deleting.id);
-          toast.success(`${deleting.name} 그룹을 삭제했어요`);
+          toast.success(`${deleting.name} 그룹 삭제 완료`);
         }}
         onError={(cause) => {
           if (isApiError(cause) && cause.status === 409) {
             setDeleting(null);
-            toast.error("쓰고 있는 그룹이라 지울 수 없어요", {
-              description: "수정에서 숨기면 새 기기·신청에서 고를 수 없어요.",
+            toast.error("사용 이력이 있는 그룹은 삭제할 수 없습니다", {
+              description: "수정 화면에서 숨기면 새 기기·신청에서 선택할 수 없습니다.",
             });
             return;
           }
-          toast.error("삭제하지 못했어요", {
+          toast.error("삭제하지 못했습니다", {
             description: isApiError(cause)
               ? toUserMessage(cause)
-              : "잠시 후 다시 시도해 주세요.",
+              : "잠시 후 다시 시도하세요.",
           });
         }}
       />
@@ -131,10 +134,12 @@ function TargetGroupRow({
   group,
   onEdit,
   onDelete,
+  onLineup,
 }: {
   group: TargetGroup;
   onEdit: () => void;
   onDelete: () => void;
+  onLineup?: () => void;
 }) {
   const facts = [
     group.deviceCount > 0
@@ -160,6 +165,7 @@ function TargetGroupRow({
         </p>
       </div>
       <div className="flex shrink-0 gap-2">
+        {onLineup && <Button variant="secondary" size="sm" onClick={onLineup}>편성</Button>}
         <Button variant="secondary" size="sm" onClick={onEdit}>
           수정
         </Button>

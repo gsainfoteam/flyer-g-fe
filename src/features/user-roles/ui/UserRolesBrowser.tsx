@@ -160,7 +160,7 @@ function SearchResults({
           <div className="flex flex-col gap-2 border-t border-line p-3">
             {nextPageError && (
               <p role="alert" className="text-caption text-danger">
-                다음 목록을 불러오지 못했어요.{" "}
+                다음 목록을 불러오지 못했습니다.{" "}
                 {isApiError(nextPageError) && toUserMessage(nextPageError)}
               </p>
             )}
@@ -181,8 +181,8 @@ function SearchResults({
       {firstPage &&
         (items.length === 0 ? (
           <EmptyState
-            title="찾는 사용자가 없어요"
-            description="한 번이라도 로그인한 사용자만 찾을 수 있어요. 이름·이메일·학번의 일부로도 찾을 수 있어요."
+            title="검색 결과 없음"
+            description="로그인 이력이 있는 사용자만 검색할 수 있습니다. 이름·이메일·학번의 일부로 검색할 수 있습니다."
             className="px-5"
           />
         ) : (
