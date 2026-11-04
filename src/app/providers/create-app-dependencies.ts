@@ -1,3 +1,4 @@
+import { createHttpLineupRepository } from "@/entities/lineup/api/http-lineup-repository";
 import { createAuthAdapter } from "@/features/auth/api/create-auth-adapter";
 import type { AuthAdapter } from "@/features/auth/api/auth-adapter";
 import { isHttpAuthAdapter } from "@/features/auth/api/http-auth-adapter";
@@ -64,6 +65,7 @@ function createApiClient(
 
 /** repository 하나를 어느 연동 단위가 정하는가 */
 const REPOSITORY_UNITS = {
+  lineups: "lineup",
   submissions: "submissions",
   reviews: "reviews",
   displays: "display",
@@ -100,6 +102,7 @@ function createRepositories(
   const real: {
     [K in keyof Repositories]: (client: HttpClient) => Repositories[K];
   } = {
+    lineups: createHttpLineupRepository,
     reference: createHttpReferenceRepository,
     submissions: createHttpSubmissionRepository,
     reviews: createHttpReviewRepository,
@@ -133,6 +136,7 @@ function createRepositories(
     isMockUnit(env, REPOSITORY_UNITS[key]) ? mock[key] : real[key](apiClient!);
 
   return {
+    lineups: pick("lineups"),
     submissions: pick("submissions"),
     reviews: pick("reviews"),
     displays: pick("displays"),

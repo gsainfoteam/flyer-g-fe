@@ -31,8 +31,8 @@ import { Textarea } from "@/shared/ui/textarea";
 import {
   useApproveSubmission,
   useRejectSubmission,
-  useSuspendSubmission,
 } from "../model/use-review-actions";
+import { SuspendAction } from "./SuspendAction";
 
 /**
  * 검토 결정 버튼과 확인 절차 (명세 FR-REV-03 ~ FR-REV-05).
@@ -67,6 +67,7 @@ interface DecisionActionsProps {
   submission: SignageSubmissionExpanded;
   /** 서버 시각 기준 실제 상태 */
   status: SubmissionStatus;
+  serverNow: Date;
   /** 결정이 서버에 반영된 뒤. 다음 건으로 넘어가는 데 쓴다. */
   onDecided?: (kind: ReviewDecisionKind) => void;
   /** 있으면 승인을 확인 없이 이것으로 넘긴다. 호출부가 늦게 보낸다. */
@@ -83,11 +84,12 @@ interface DecisionActionsProps {
   ref?: Ref<DecisionActionsHandle>;
 }
 
-type OpenDialog = ReviewDecisionKind | null;
+type OpenDialog = "approve" | "reject" | null;
 
 export function DecisionActions({
   submission,
   status,
+  serverNow,
   onDecided,
   onApprove,
   onReject,
@@ -100,15 +102,16 @@ export function DecisionActions({
   );
   const [reasonCode, setReasonCode] = useState<RejectionReasonCode | "">("");
   const [comment, setComment] = useState("");
-  const [suspendReason, setSuspendReason] = useState("");
 
   const approve = useApproveSubmission(submission.id);
   const reject = useRejectSubmission(submission.id);
-  const suspend = useSuspendSubmission(submission.id);
   const targetLabel = useTargetGroupLabel(submission.targetGroupIds);
 
   const canDecide = canReviewerDecide(status);
-  const canSuspend = canReviewerSuspend(status);
+  const canSuspend =
+    canReviewerSuspend(status) &&
+    submission.endAt !== null &&
+    submission.endAt.getTime() > serverNow.getTime();
 
   const trimmedComment = comment.trim();
   const rejectReady =
@@ -117,13 +120,13 @@ export function DecisionActions({
     (reasonCode !== "OTHER" ||
       trimmedComment.length >= REJECT_OTHER_MIN_LENGTH);
 
-  const openDialog = (kind: ReviewDecisionKind) => {
+  const openDialog = (kind: "approve" | "reject") => {
     if (kind === "approve" && onApprove) {
       onApprove();
       return;
     }
     // 새 결정이다. 앞선 시도의 idempotency key를 쓰지 않는다.
-    ({ approve, reject, suspend })[kind].startAttempt();
+    ({ approve, reject })[kind].startAttempt();
     setOpen(kind);
   };
 
@@ -195,15 +198,11 @@ export function DecisionActions({
         </>
       )}
 
-      {canSuspend && (
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={() => openDialog("suspend")}
-        >
-          게시 중단하기
-        </Button>
-      )}
+      <SuspendAction
+        submissionId={submission.id}
+        allowed={canSuspend}
+        onSuspended={() => onDecided?.("suspend")}
+      />
 
       {!canDecide && !canSuspend && (
         <p className="text-caption text-ink-muted">
@@ -335,38 +334,6 @@ export function DecisionActions({
             )}
           </FormField>
         </div>
-      </ConfirmActionDialog>
-
-      <ConfirmActionDialog
-        open={open === "suspend"}
-        onOpenChange={(next) => {
-          setOpen(next ? "suspend" : null);
-          if (!next) setSuspendReason("");
-        }}
-        title="게시를 중단하시겠습니까?"
-        description="모든 TV에서 다음 동기화 시 게시가 중단됩니다. 사유는 게시자에게 표시됩니다."
-        confirmLabel="게시 중단"
-        tone="destructive"
-        confirmDisabled={suspendReason.trim().length === 0}
-        onConfirm={async () => {
-          await suspend.mutateAsync({ reason: suspendReason });
-          toast.success("게시 중단 완료");
-          onDecided?.("suspend");
-        }}
-        onError={handleError("중단")}
-      >
-        <FormField label="중단 사유" required>
-          {(control) => (
-            <Textarea
-              {...control}
-              rows={3}
-              maxLength={REJECT_COMMENT_MAX_LENGTH}
-              value={suspendReason}
-              onChange={(event) => setSuspendReason(event.target.value)}
-              placeholder="예: 행사가 취소되어 게시를 내립니다."
-            />
-          )}
-        </FormField>
       </ConfirmActionDialog>
     </div>
   );

@@ -519,3 +519,9 @@ describe("createHttpSubmissionRepository", () => {
     });
   });
 });
+
+
+it("상세 응답의 serverTime을 보존한다", async () => {
+  const { repository } = fakeClient({ ...SUBMISSION, serverTime: "2026-11-04T00:00:00Z" });
+  expect((await repository.getById("sub_01")).serverTime).toEqual(new Date("2026-11-04T00:00:00Z"));
+});

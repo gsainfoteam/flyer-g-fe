@@ -72,7 +72,7 @@ export function SubmissionHistory({ events }: SubmissionHistoryProps) {
             label={
               isSystemEvent(event)
                 ? meta.label
-                : `${meta.label} · ${event.actorName}`
+                : `${meta.label} · ${event.actorName || "작성자"}`
             }
             detail={
               reason || event.comment ? (

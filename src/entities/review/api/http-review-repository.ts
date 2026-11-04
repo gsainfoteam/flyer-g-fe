@@ -73,8 +73,8 @@ function parseReview(payload: unknown, index: number): SubmissionEvent {
         ? (reasonCode as RejectionReasonCode)
         : null,
     comment: readNullableString(body, "comment", `${path}.comment`),
-    actorId: readString(body, "reviewerId", `${path}.reviewerId`),
-    actorName: readString(body, "reviewerName", `${path}.reviewerName`),
+    actorId: readNullableString(body, "reviewerId", `${path}.reviewerId`),
+    actorName: readNullableString(body, "reviewerName", `${path}.reviewerName`),
     occurredAt: readIsoDate(body, "reviewedAt", `${path}.reviewedAt`),
   };
 }

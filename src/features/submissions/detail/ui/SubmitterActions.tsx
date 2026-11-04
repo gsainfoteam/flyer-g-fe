@@ -22,7 +22,7 @@ import { useCancelSubmission } from "../model/use-cancel-submission";
  * - 승인 대기 → 수정 (대기 순서 그대로)
  * - 예약됨(게시 시작 전) → 수정 (다시 승인을 받는다)
  * - 게시가 시작되기 전까지 → 취소
- * - 게시 중 → 직접 내릴 수 없다. 중단은 관리자에게 요청한다. (명세 FR-REV-05)
+ * - 승인·예약·게시 중인 본인 제보·이벤트 → 사유를 적어 게시 중단
  *
  * 무엇을 보여줄지는 `canSubmitterEdit`, `canSubmitterCancel`이 정한다. 버튼 노출은
  * 화면 편의일 뿐이고 최종 판단은 서버가 한다.
@@ -32,12 +32,14 @@ import { useCancelSubmission } from "../model/use-cancel-submission";
  */
 interface SubmitterActionsProps {
   submission: SubmissionView;
+  canSuspend: boolean;
   /** 관리자가 자기 신청을 본다. 게시 중단을 남에게 요청할 필요가 없다. */
   isReviewer?: boolean;
 }
 
 export function SubmitterActions({
   submission,
+  canSuspend,
   isReviewer = false,
 }: SubmitterActionsProps) {
   const [confirmingCancel, setConfirmingCancel] = useState(false);
@@ -89,7 +91,7 @@ export function SubmitterActions({
         </p>
       )}
 
-      {submission.status === "PUBLISHED" && (
+      {submission.status === "PUBLISHED" && !canSuspend && (
         <p className="text-caption text-ink-muted">
           {isReviewer
             ? "게시 중에는 수정할 수 없습니다. 내리려면 검토 화면에서 게시를 중단하세요."

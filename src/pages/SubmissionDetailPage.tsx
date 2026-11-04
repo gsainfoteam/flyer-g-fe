@@ -6,6 +6,7 @@ import { getRejectionReasonLabel } from "@/entities/review";
 import type { SubmissionEvent } from "@/entities/review/model/types";
 import { SubmissionScene } from "@/entities/scene";
 import {
+  canSubmitterSuspend,
   EVENT_BANNER_OCCASION_LABELS,
   KIND_INFO,
   STORY_TAG_LABELS,
@@ -24,11 +25,13 @@ import {
   useSubmissionDetail,
   useSubmissionSummary,
 } from "@/features/submissions/api/queries";
+import { SuspendAction } from "@/features/reviews/ui/SuspendAction";
 import { SubmissionHistory } from "@/features/submissions/detail/ui/SubmissionHistory";
 import { SubmitterActions } from "@/features/submissions/detail/ui/SubmitterActions";
 import { PageState } from "@/shared/components";
 import { to } from "@/shared/config/routes";
 import { formatSeoulDayTime, seoulDayCount } from "@/shared/lib/datetime";
+import { useServerNow } from "@/shared/lib/use-server-now";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 
@@ -40,10 +43,10 @@ import { Button } from "@/shared/ui/button";
  * 진행 순서를 둔다.
  *
  * 관리자가 자기 컨텐츠를 열면 올린 사람 버튼과 함께 심사 화면 링크를 둔다. 자기
- * 게시물도 승인·중단은 심사 화면에서 한다(명세 3.2, 서버도 막지 않는다).
+ * 포스터 중단과 다른 사람의 콘텐츠 검토는 심사 화면에서 한다.
  *
- * 표시 상태는 저장된 값이 아니라 서버 시각 기준 실제 상태다. 기준 시각은 요약
- * 응답의 `calculatedAt`을 쓴다. (명세 6.3)
+ * 표시 상태는 저장된 값이 아니라 서버 시각 기준 실제 상태다. 상세
+ * 응답의 `serverTime`을 우선하고 요약의 `calculatedAt`으로 보완한다. (명세 6.3)
  */
 export function SubmissionDetailPage() {
   const { submissionId = "" } = useParams();
@@ -64,8 +67,16 @@ export function SubmissionDetailPage() {
     void summary.refetch();
   };
 
-  const serverNow = summary.data?.calculatedAt ?? new Date();
-  const view = detail.data ? toSubmissionView(detail.data, serverNow) : null;
+  const serverNow =
+    useServerNow(detail.data?.serverTime, detail.dataUpdatedAt) ??
+    detail.data?.serverTime ??
+    summary.data?.calculatedAt;
+  const view =
+    detail.data && serverNow ? toSubmissionView(detail.data, serverNow) : null;
+
+  const canSuspend = view
+    ? canSubmitterSuspend(view, user.id, serverNow ?? null)
+    : false;
 
   return (
     <PageState
@@ -74,7 +85,7 @@ export function SubmissionDetailPage() {
       onRetry={retry}
       loadingRows={5}
     >
-      {view && (
+      {view && serverNow && (
         <>
           <div>
             <Link
@@ -95,8 +106,18 @@ export function SubmissionDetailPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2.5">
                 {view.requesterId === user.id && (
-                  <SubmitterActions submission={view} isReviewer={isReviewer} />
+                  <SubmitterActions
+                    key={view.id}
+                    submission={view}
+                    isReviewer={isReviewer}
+                    canSuspend={canSuspend}
+                  />
                 )}
+                <SuspendAction
+                  key={`suspend-${view.id}`}
+                  submissionId={view.id}
+                  allowed={canSuspend}
+                />
                 {isReviewer && (
                   // 결정·중단은 심사 화면에서 한다. 남의 컨텐츠면 이것이 주 동작이다.
                   <Button
@@ -312,7 +333,7 @@ function DecisionReason({
       )}
       {latest && (
         <p className="mt-1.5 text-caption text-ink-subtle">
-          {latest.actorName} · {formatSeoulDayTime(latest.occurredAt, now)}
+          {latest.actorName || "작성자"} · {formatSeoulDayTime(latest.occurredAt, now)}
         </p>
       )}
     </section>

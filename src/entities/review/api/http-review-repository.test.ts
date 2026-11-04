@@ -420,3 +420,27 @@ describe("createHttpReviewRepository", () => {
     });
   });
 });
+
+
+describe("작성자 직접 중단 API", () => {
+  it("중단은 version·revision 없이 reason과 재시도 키만 보낸다", async () => {
+    const { repository, calls } = fakeClient({
+      "/signage/submissions/sub_01/suspend": () => { throw new Error("request only"); },
+    });
+    await repository.suspend({ submissionId: "sub_01", reason: "행사 취소" }, { idempotencyKey: "uuid" }).catch(() => undefined);
+    expect(calls[0]).toMatchObject({ method: "POST", body: { reason: "행사 취소" }, idempotencyKey: "uuid" });
+    expect(calls[0]?.body).toEqual({ reason: "행사 취소" });
+  });
+
+  it("가려진 작성자의 중단 이력을 null 그대로 읽는다", async () => {
+    const { repository } = fakeClient({
+      "/signage/submissions/sub_01/reviews": () => [{
+        id: "rev_01", submissionId: "sub_01", revision: 2, decision: "SUSPENDED",
+        reasonCode: null, comment: "행사 취소", reviewerId: null, reviewerName: null,
+        reviewedAt: "2026-11-04T00:00:00Z",
+      }],
+      "/signage/audit-logs": () => page([]),
+    });
+    expect(await repository.listHistory("sub_01")).toEqual([expect.objectContaining({ actorId: null, actorName: null, type: "SUSPENDED" })]);
+  });
+});

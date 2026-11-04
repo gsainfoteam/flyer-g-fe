@@ -109,9 +109,9 @@ export interface SubmissionEventDto {
   reasonCode: RejectionReasonCode | null;
   /** 게시자에게 공개되는 사유(반려·중단). 내부 메모는 오지 않는다. */
   comment: string | null;
-  actorId: string;
-  /** 한 사람의 표시 이름. ID만으로는 화면에 사람을 보여줄 수 없다. */
-  actorName: string;
+  actorId: string | null;
+  /** 작성자의 직접 중단은 다른 사용자에게 이름과 ID가 가려진다. */
+  actorName: string | null;
   occurredAt: string;
 }
 
