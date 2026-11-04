@@ -758,6 +758,7 @@ export function createDemoContentFixtures(
         mode: "TEMPLATE",
         occasion: "BIRTHDAY",
         recipient: "지민",
+        headline: "지민아, 생일 축하해",
         message: "스물한 살 생일 축하해! 오늘 하루는 네가 주인공",
         sender: "3층 친구들",
         photoAssetId: null,

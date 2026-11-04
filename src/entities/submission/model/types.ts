@@ -35,6 +35,7 @@ export type EventBannerMode = (typeof EVENT_BANNER_MODES)[number];
 export const EVENT_BANNER_OCCASIONS = [
   "BIRTHDAY",
   "ADMISSION",
+  "GRADUATION",
   "AWARD",
   "WELCOME",
   "OTHER",
@@ -45,6 +46,7 @@ export const EVENT_BANNER_OCCASION_LABELS: Record<EventBannerOccasion, string> =
   {
     BIRTHDAY: "생일",
     ADMISSION: "합격",
+    GRADUATION: "졸업",
     AWARD: "수상",
     WELCOME: "환영",
     OTHER: "기타",
@@ -58,6 +60,8 @@ export interface EventBanner {
   mode: EventBannerMode;
   occasion: EventBannerOccasion | null;
   recipient: string;
+  /** TV에 크게 나오는 문구. 이 칸이 생기기 전 배너는 null이고 받는 사람을 대신 띄운다. */
+  headline: string | null;
   message: string | null;
   sender: string | null;
   /** TEMPLATE의 사진. 없으면 null */

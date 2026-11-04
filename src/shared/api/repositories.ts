@@ -89,6 +89,7 @@ export interface CreateEventBannerInput {
     mode: EventBannerMode;
     occasion: EventBannerOccasion | null;
     recipient: string;
+    headline: string | null;
     message: string | null;
     sender: string | null;
     photoAssetId: string | null;

@@ -151,6 +151,7 @@ describe("이벤트·제보 장면", () => {
     mode: "TEMPLATE",
     occasion: "BIRTHDAY",
     recipient: "지민",
+    headline: "지민아, 생일 축하해",
     message: "생일 축하해!",
     sender: null,
     photoUrl: null,

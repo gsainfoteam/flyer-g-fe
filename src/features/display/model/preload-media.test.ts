@@ -48,6 +48,7 @@ describe("preloadPlaylistMedia", () => {
       mode: "TEMPLATE" as const,
       occasion: "BIRTHDAY" as const,
       recipient: "지민",
+      headline: "지민아, 생일 축하해",
       message: "축하해",
       sender: null,
     };

@@ -60,7 +60,7 @@ describe("소식 제보 쓰기", () => {
 });
 
 describe("이벤트 배너 만들기", () => {
-  it("문구로 만들기는 종류·받는 사람·문구가 있어야 하고, 미리보기에 바로 보인다", async () => {
+  it("문구로 만들기는 종류·받는 사람·두 문구가 있어야 하고, 큰 문구는 쓴 그대로 나온다", async () => {
     const user = userEvent.setup();
     const repos = repositories();
     const { router } = renderRoute("/new/event", {
@@ -71,19 +71,22 @@ describe("이벤트 배너 만들기", () => {
     await user.click(await screen.findByRole("button", { name: "심사 요청" }));
     expect(screen.getByText("어떤 소식인지 고르세요.")).toBeInTheDocument();
     expect(screen.getByText("받는 사람을 입력하세요.")).toBeInTheDocument();
+    expect(screen.getByText("큰 문구를 입력하세요.")).toBeInTheDocument();
     expect(screen.getByText("전할 말을 입력하세요.")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("radio", { name: "생일" }));
+    await user.click(screen.getByRole("radio", { name: "졸업" }));
     await user.type(screen.getByRole("textbox", { name: /받는 사람/ }), "지민");
+    await user.type(screen.getByRole("textbox", { name: /큰 문구/ }), "Here");
     await user.type(
-      screen.getByRole("textbox", { name: /문구/ }),
-      "생일 축하해!",
+      screen.getByRole("textbox", { name: /작은 문구/ }),
+      "졸업 축하해!",
     );
     const preview = within(
       screen.getByRole("img", { name: "TV 화면 미리보기" }),
     );
-    expect(preview.getByText("지민, 생일 축하해")).toBeInTheDocument();
-    expect(preview.getByText("생일 축하해!")).toBeInTheDocument();
+    // 종류에 따라 문구를 덧붙이지 않는다.
+    expect(preview.getByText("Here")).toBeInTheDocument();
+    expect(preview.getByText("졸업 축하해!")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "심사 요청" }));
 
@@ -93,8 +96,13 @@ describe("이벤트 배너 만들기", () => {
     const id = router.state.location.pathname.split("/").at(-1)!;
     await expect(repos.submissions.getById(id)).resolves.toMatchObject({
       type: "EVENT_BANNER",
-      title: "생일 · 지민에게",
-      eventBanner: { mode: "TEMPLATE", recipient: "지민" },
+      title: "졸업 · 지민에게",
+      eventBanner: {
+        mode: "TEMPLATE",
+        occasion: "GRADUATION",
+        recipient: "지민",
+        headline: "Here",
+      },
     });
   });
 
@@ -107,7 +115,8 @@ describe("이벤트 배너 만들기", () => {
     await user.click(screen.getByRole("button", { name: "심사 요청" }));
 
     expect(screen.getByText("배너 이미지를 올려주세요.")).toBeInTheDocument();
-    expect(screen.queryByRole("textbox", { name: /문구/ })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: /큰 문구/ })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: /작은 문구/ })).toBeNull();
   });
 });
 
@@ -128,6 +137,7 @@ describe("이벤트 배너 고치기", () => {
         mode: "TEMPLATE",
         occasion: "BIRTHDAY",
         recipient: "지민",
+        headline: "지민아, 생일 축하해",
         message: "생일 축하해!",
         sender: null,
         photoAssetId: null,
@@ -159,8 +169,11 @@ describe("이벤트 배너 고치기", () => {
     );
     await user.click(fix);
 
-    const message = await screen.findByRole("textbox", { name: /문구/ });
+    const message = await screen.findByRole("textbox", { name: /작은 문구/ });
     expect(message).toHaveValue("생일 축하해!");
+    expect(screen.getByRole("textbox", { name: /큰 문구/ })).toHaveValue(
+      "지민아, 생일 축하해",
+    );
     expect(screen.getByRole("textbox", { name: /받는 사람/ })).toHaveValue(
       "지민",
     );

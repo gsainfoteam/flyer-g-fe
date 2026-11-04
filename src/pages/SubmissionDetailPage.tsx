@@ -177,8 +177,15 @@ export function SubmissionDetailPage() {
                       <Meta label="받는 사람">
                         {view.eventBanner.recipient}
                       </Meta>
+                      {view.eventBanner.headline && (
+                        <Meta label="큰 문구">
+                          {view.eventBanner.headline}
+                        </Meta>
+                      )}
                       {view.eventBanner.message && (
-                        <Meta label="문구">{view.eventBanner.message}</Meta>
+                        <Meta label="작은 문구">
+                          {view.eventBanner.message}
+                        </Meta>
                       )}
                       {view.eventBanner.sender && (
                         <Meta label="보낸 사람">{view.eventBanner.sender}</Meta>

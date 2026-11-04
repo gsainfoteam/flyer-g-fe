@@ -191,7 +191,7 @@ describe("이벤트·제보 장면", () => {
   };
   const serverTime = new Date("2026-06-08T03:00:00Z");
 
-  it("이벤트 배너는 받는 사람과 문구, 올리기 QR을 그린다", () => {
+  it("이벤트 배너는 쓴 그대로의 큰 문구와 작은 문구, 올리기 QR을 그린다", () => {
     render(
       <DisplayStage
         frame={{
@@ -205,6 +205,7 @@ describe("이벤트·제보 장면", () => {
             mode: "TEMPLATE",
             occasion: "BIRTHDAY",
             recipient: "지민",
+            headline: "지민아, 생일 축하해",
             message: "오늘 하루는 네가 주인공",
             sender: "3층 친구들",
             photoUrl: null,
@@ -217,10 +218,40 @@ describe("이벤트·제보 장면", () => {
       />,
     );
 
-    expect(screen.getByText("지민, 생일 축하해")).toBeInTheDocument();
+    expect(screen.getByText("지민아, 생일 축하해")).toBeInTheDocument();
     expect(screen.getByText("오늘 하루는 네가 주인공")).toBeInTheDocument();
     expect(screen.getByText("나도 이벤트 올리기")).toBeInTheDocument();
     expect(screen.getByText("A동 로비")).toBeInTheDocument();
+  });
+
+  it("큰 문구가 없는 예전 배너는 받는 사람을 띄운다", () => {
+    render(
+      <DisplayStage
+        frame={{
+          kind: "event",
+          key: "event:e2",
+          banner: {
+            ...period,
+            submissionId: "e2",
+            revision: 1,
+            checksum: "sha256:e2",
+            mode: "TEMPLATE",
+            occasion: "BIRTHDAY",
+            recipient: "수민",
+            headline: null,
+            message: "축하해",
+            sender: null,
+            photoUrl: null,
+            assetUrl: null,
+          },
+        }}
+        posters={[]}
+        deviceLabel={null}
+        serverTime={serverTime}
+      />,
+    );
+
+    expect(screen.getByText("수민")).toBeInTheDocument();
   });
 
   it("제보는 말머리와 번호, 본문만 그린다", () => {

@@ -102,6 +102,8 @@ export interface PlaylistEventBannerDto {
   mode: EventBannerMode;
   occasion: EventBannerOccasion | null;
   recipient: string;
+  /** 큰 문구. 이 칸이 생기기 전 배너는 null이다. */
+  headline: string | null;
   message: string | null;
   sender: string | null;
   photoUrl: string | null;

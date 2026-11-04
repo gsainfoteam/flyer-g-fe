@@ -323,6 +323,7 @@ describe("고른 건", () => {
           mode: "TEMPLATE",
           occasion: "BIRTHDAY",
           recipient: "지민",
+          headline: "지민아, 생일 축하해",
           message: "스물한 살 생일 축하해!",
           sender: "3층 친구들",
           photoAssetId: "asset-photo",
@@ -339,7 +340,10 @@ describe("고른 건", () => {
     expect(screen.getByText("받는 사람").nextElementSibling).toHaveTextContent(
       "지민",
     );
-    expect(screen.getByText("문구").nextElementSibling).toHaveTextContent(
+    expect(screen.getByText("큰 문구").nextElementSibling).toHaveTextContent(
+      "지민아, 생일 축하해",
+    );
+    expect(screen.getByText("작은 문구").nextElementSibling).toHaveTextContent(
       "스물한 살 생일 축하해!",
     );
     expect(screen.getByText("보낸 사람").nextElementSibling).toHaveTextContent(

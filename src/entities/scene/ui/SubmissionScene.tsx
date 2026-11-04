@@ -38,6 +38,7 @@ export function SubmissionScene({ view }: { view: SubmissionView }) {
             mode: banner.mode,
             occasion: banner.occasion,
             recipient: banner.recipient,
+            headline: banner.headline,
             message: banner.message,
             sender: banner.sender,
             photoUrl: banner.photoUrl,
