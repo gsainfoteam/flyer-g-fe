@@ -13,15 +13,23 @@ import type { PdfPage, Rect, TextItem } from "./pdf-text";
  * - 끼니: 끼니 이름이 든 칸의 위아래 경계로 가른다. 경계는 그 이름의 x 위치를 지나는
  *   칠한 사각형(칸 배경·테두리)의 위아래 변이다. 식당마다 표를 그리는 방식은 다르지만
  *   (제1: 칸 배경, 제2: 얇은 테두리) 둘 다 이 규칙으로 갈린다.
+ * - 코너: 점심은 일품·한식 두 코너로 나뉜다. 끼니처럼 코너 이름 칸의 위아래 경계로 가르고
+ *   `corners`에 따로 담는다. `menus`는 코너를 위에서 아래로 이은 전체 목록이다.
  * - 메뉴 글자 정리: 알레르기 번호(`10.15`), 표시용 `*`, 빈 칸(`---`)을 뺀다.
  */
 
 export type MealType = "BREAKFAST" | "LUNCH" | "DINNER";
 
+export interface MenuCorner {
+  /** "일품", "한식" */
+  name: string;
+  menus: string[];
+}
+
 export interface MenuDay {
   /** 서울 날짜 "2026-10-26" */
   date: string;
-  meals: { type: MealType; hours: string; menus: string[] }[];
+  meals: { type: MealType; hours: string; menus: string[]; corners?: MenuCorner[] }[];
 }
 
 /**
@@ -45,6 +53,16 @@ const MEAL_LABELS: Record<string, MealType> = {
   중식: "LUNCH",
   저녁: "DINNER",
   석식: "DINNER",
+};
+
+/**
+ * 코너 이름 칸. 제1학생식당은 "한식"을 세로로 "한"/"식" 두 조각으로 찍으므로 "한"을 한식
+ * 칸의 표지로 삼고 "식"은 버린다.
+ */
+const CORNER_LABELS: Record<string, string> = {
+  일품: "일품",
+  한식: "한식",
+  한: "한식",
 };
 
 /** 글자 폭 어림. 한글·한자는 1em, 나머지는 0.55em */
@@ -113,6 +131,7 @@ function edgesAt(rects: Rect[], x: number): number[] {
     .flatMap((rect) => [rect.y1, rect.y2]);
 }
 
+/** 식단표 한 쪽 → 날짜별 끼니 메뉴. 머리줄(날짜)을 못 찾으면 빈 배열이다. */
 export function parseMenuPage({ items, rects }: PdfPage, now: Date): MenuDay[] {
   // 1. 머리줄: 날짜가 든 조각이 가장 많은 줄
   const dated = items.filter((item) => headerDate(item.text));
@@ -146,6 +165,20 @@ export function parseMenuPage({ items, rects }: PdfPage, now: Date): MenuDay[] {
     })
     .filter((section) => Number.isFinite(section.bottom));
 
+  // 2-1. 코너 구간: 끼니 이름 칸 오른쪽의 코너 이름 → 그 칸의 위아래 경계(끼니와 같은 규칙)
+  const corners = items
+    .filter((item) => item.x < left && CORNER_LABELS[item.text.trim()])
+    .map((label) => {
+      const edges = edgesAt(rects, label.x + 1);
+      const below = Math.max(...edges.filter((y) => y < label.y - 1), -Infinity);
+      const above = Math.min(...edges.filter((y) => y > label.y + 1), headerY);
+      return { name: CORNER_LABELS[label.text.trim()]!, bottom: below, top: above };
+    })
+    .filter((corner) => Number.isFinite(corner.bottom))
+    .sort((a, b) => b.top - a.top);
+  const cornerOf = (y: number) =>
+    corners.find((corner) => y > corner.bottom && y < corner.top)?.name ?? null;
+
   // 3. 칸마다 메뉴 줄: (열, 줄) 묶음 → 위에서 아래로
   const lineOf = (item: TextItem) => Math.round(item.y / 3);
   // 표 전체에 걸친 안내 줄("***조식 셀프 즉석라면코너(…)***")은 줄째 뺀다. 글꼴이 섞여
@@ -175,10 +208,23 @@ export function parseMenuPage({ items, rects }: PdfPage, now: Date): MenuDay[] {
           .filter(([key]) => key.startsWith(`${date}|${type}|`))
           .map(([, parts]) => ({ y: Math.max(...parts.map((part) => part.y)), text: joinLine(parts) }))
           .sort((a, b) => b.y - a.y);
-        const menus = lines
-          .map((line) => cleanMenu(line.text))
-          .filter((menu): menu is string => menu !== null);
-        return { type, hours: MEAL_HOURS[type], menus };
+        const cleaned = lines.flatMap((line) => {
+          const menu = cleanMenu(line.text);
+          return menu === null ? [] : [{ menu, corner: cornerOf(line.y) }];
+        });
+        const menus = cleaned.map((line) => line.menu);
+        // 코너 이름 칸 안의 줄만 코너로 묶는다. 둘 이상 나오고 모든 줄이 코너에 들 때만
+        // 코너로 나눈다(코너 밖 줄이 있으면 나눠 그릴 때 빠진다).
+        const named = corners
+          .map((corner) => ({
+            name: corner.name,
+            menus: cleaned.filter((line) => line.corner === corner.name).map((line) => line.menu),
+          }))
+          .filter((corner) => corner.menus.length > 0);
+        const covered = named.reduce((sum, corner) => sum + corner.menus.length, 0) === menus.length;
+        return named.length > 1 && covered
+          ? { type, hours: MEAL_HOURS[type], menus, corners: named }
+          : { type, hours: MEAL_HOURS[type], menus };
       })
       .filter((meal) => meal.menus.length > 0),
   }));

@@ -34,6 +34,26 @@ describe("buildCafeteriaContent", () => {
     expect(content?.meals[1]!.menus).toEqual(["김치찌개"]);
   });
 
+  it("코너는 코너 메뉴가 전체 메뉴와 같을 때만 쓰고, 아니면 전체 목록으로 그린다", () => {
+    const lunch = (corners: unknown) => [
+      { type: "LUNCH", menus: ["부대찌개", "햄계란찜", "흑미밥", "닭갈비"], corners },
+    ];
+    const noon = at("2026-10-28T03:00:00Z");
+    const whole = [
+      { name: "일품", menus: ["부대찌개", "햄계란찜"] },
+      { name: "한식", menus: ["흑미밥", "닭갈비"] },
+    ];
+    expect(
+      buildCafeteriaContent(params("2026-10-28T00:00:00Z", lunch(whole)), noon)?.meals[0]!.corners,
+    ).toEqual(whole);
+    // 한식의 닭갈비가 코너에 없다 → 코너로 그리면 빠지므로 쓰지 않는다.
+    const partial = [whole[0], { name: "한식", menus: ["흑미밥"] }];
+    const meal = buildCafeteriaContent(params("2026-10-28T00:00:00Z", lunch(partial)), noon)
+      ?.meals[0];
+    expect(meal?.corners).toBeUndefined();
+    expect(meal?.menus).toHaveLength(4);
+  });
+
   it("오늘 메뉴가 아니면 내린다", () => {
     expect(
       buildCafeteriaContent(

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { isGameBusy } from "@/shared/lib/game-busy";
 
 /**
  * 새 배포를 알아채고 새로고침한다.
@@ -51,7 +52,8 @@ export function useNewBuildReload({
 
     const check = async () => {
       const deployed = await fetchDeployedBuildId(controller.signal);
-      if (deployed && deployed !== currentBuildId && navigator.onLine) reload();
+      // 게임 판이 진행 중이면 다음 확인으로 미룬다(판 도중에 새로고침하면 판이 날아간다).
+      if (deployed && deployed !== currentBuildId && navigator.onLine && !isGameBusy()) reload();
     };
 
     const id = window.setInterval(() => void check(), intervalMs);

@@ -16,6 +16,8 @@ export interface CafeteriaMeal {
   /** "07:30~09:00" */
   hours: string | null;
   menus: string[];
+  /** 점심의 일품·한식처럼 코너가 나뉘면 코너별 메뉴. `menus`는 이를 이은 전체 목록이다. */
+  corners?: { name: string; menus: string[] }[];
 }
 
 export interface CafeteriaContent {
@@ -138,6 +140,10 @@ export function currentMealType(now: Date): MealType {
   return "DINNER";
 }
 
+/**
+ * 오늘의 학식. 오늘 날짜가 아니거나 메뉴가 없으면 null이다. 지금 시각에 맞는 끼니를
+ * `current`로 짚는다.
+ */
 export function buildCafeteriaContent(
   params: Record<string, unknown>,
   now: Date,
@@ -156,7 +162,28 @@ export function buildCafeteriaContent(
       ? raw.menus.flatMap((menu) => readText(menu) ?? [])
       : [];
     if (!type || menus.length === 0) return [];
-    return [{ type, hours: readText(raw.hours), menus }];
+    const corners = Array.isArray(raw.corners)
+      ? raw.corners.flatMap((corner) => {
+          if (!isRecord(corner)) return [];
+          const name = readText(corner.name);
+          const items = Array.isArray(corner.menus)
+            ? corner.menus.flatMap((menu) => readText(menu) ?? [])
+            : [];
+          return name && items.length > 0 ? [{ name, menus: items }] : [];
+        })
+      : [];
+    // 코너가 둘 이상이고 코너 메뉴를 이은 것이 전체 메뉴와 같을 때만 코너로 그린다.
+    // 코너 밖 메뉴가 있으면 코너로 그릴 때 빠지므로 전체 목록으로 그린다.
+    const covered =
+      corners.flatMap((corner) => corner.menus).join("\n") === menus.join("\n");
+    return [
+      {
+        type,
+        hours: readText(raw.hours),
+        menus,
+        ...(corners.length > 1 && covered ? { corners } : {}),
+      },
+    ];
   });
   if (meals.length === 0) return null;
 

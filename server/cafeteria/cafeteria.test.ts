@@ -93,6 +93,31 @@ describe("식단표 PDF 읽기", () => {
     expect(days[5]!.meals[1]!.menus[0]).toBe("흑미밥");
   });
 
+  it("점심은 일품·한식 코너로 나눠 담고, 일품이 없는 날(주말)은 나누지 않는다", async () => {
+    const first = parseMenuPage(await readPdfPage(FIRST), NOW);
+    expect(first[0]!.meals[1]!.corners).toEqual([
+      { name: "일품", menus: ["삼겹살두부짜글이", "치즈함박스테이크"] },
+      {
+        name: "한식",
+        menus: ["백미밥", "우동장국", "돈민찌메알볶음", "볶음라면", "야채겉절이", "배추김치"],
+      },
+    ]);
+    expect(first[0]!.meals[0]!.corners).toBeUndefined();
+
+    const second = parseMenuPage(await readPdfPage(SECOND), NOW);
+    expect(second[0]!.meals[1]!.corners).toEqual([
+      { name: "일품", menus: ["부대찌개 & 라면사리", "햄계란찜"] },
+      {
+        name: "한식",
+        menus: ["흑미밥", "얼갈이된장국", "닭갈비", "볶음우동", "도토리묵오이무침", "마카로니콘샐러드", "깍두기"],
+      },
+    ]);
+    // 코너를 이은 전체 목록은 그대로다.
+    expect(second[0]!.meals[1]!.menus).toHaveLength(9);
+    expect(second[5]!.meals[1]!.corners).toBeUndefined();
+    expect(second[0]!.meals[2]!.corners).toBeUndefined();
+  });
+
   it("연말 주는 날짜에 가까운 해로 읽는다", async () => {
     const days = parseMenuPage(await readPdfPage(SECOND), new Date("2027-01-02T00:00:00Z"));
     // 10월 표를 1월에 읽으면 지난해 10월이다.

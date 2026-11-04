@@ -2,6 +2,7 @@ import { SURVEY_URL } from "@/entities/widget/model/operation";
 import type { TimeSlotRule } from "@/entities/widget/model/operation";
 import { timeSlotAt } from "@/entities/widget/model/time-slots";
 import { readTimeSlot } from "@/entities/widget/model/tv-settings";
+import { GAME_WIDGETS } from "@/entities/widget/model/types";
 import type { WidgetType } from "@/entities/widget/model/types";
 
 /**
@@ -29,8 +30,8 @@ export type TimeSlotDraftErrors = Record<string, string[]>;
 export const TIME_SLOT_LABEL_MAX = 30;
 const SURVEY_LABEL_MAX = 30;
 
-/** 설문 QR은 지금 클릭 배틀 화면에만 붙는다. */
-export const SURVEY_WIDGETS: readonly WidgetType[] = ["CLICK_BATTLE"];
+/** 설문 QR은 게임 화면(오른쪽 위)에만 붙는다. */
+export const SURVEY_WIDGETS: readonly WidgetType[] = GAME_WIDGETS;
 
 export function draftFromRule(rule: TimeSlotRule): TimeSlotDraft {
   return {
