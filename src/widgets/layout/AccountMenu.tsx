@@ -1,4 +1,4 @@
-import { Eye, LogOut, ShieldCheck } from "lucide-react";
+import { Eye, LogOut, MessageSquare, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useAuth } from "@/features/auth/model/auth-context";
 import {
@@ -39,6 +39,9 @@ export function AccountMenu({ user }: { user: SessionUser }) {
   const navigate = useNavigate();
   // 화면은 사용자로 보여도 메뉴는 실제 역할을 알린다.
   const realUser = state.status === "authenticated" ? state.user : user;
+  const feedbackUrl = new URL("https://cs.gistory.me/");
+  feedbackUrl.searchParams.set("service", "flyer-g");
+  if (realUser.email) feedbackUrl.searchParams.set("email", realUser.email);
   const primaryRole = getPrimaryRole(realUser);
   const roleLabel = getRoleLabel(primaryRole);
   const canSwitchView = primaryRole !== "SUBMITTER";
@@ -113,6 +116,12 @@ export function AccountMenu({ user }: { user: SessionUser }) {
         )}
 
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <a href={feedbackUrl.toString()} target="_blank" rel="noopener noreferrer">
+            <MessageSquare aria-hidden="true" />
+            피드백 및 버그 제보
+          </a>
+        </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => void signOut()}>
           <LogOut aria-hidden="true" />
           로그아웃

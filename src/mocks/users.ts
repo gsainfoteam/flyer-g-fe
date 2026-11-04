@@ -25,18 +25,21 @@ export const MOCK_USERS: Record<Role, SessionUser> = {
   SUBMITTER: {
     id: "user-submitter",
     displayName: "정하윤",
+    email: "hayun.jung@gm.gist.ac.kr",
     roles: ["SUBMITTER"],
     organizationIds: [],
   },
   REVIEWER: {
     id: "user-reviewer",
     displayName: "이수현",
+    email: "suhyun.lee@gist.ac.kr",
     roles: ["SUBMITTER", "REVIEWER"],
     organizationIds: [],
   },
   SUPER_ADMIN: {
     id: "user-operator",
     displayName: "김도윤",
+    email: "doyun.kim@gist.ac.kr",
     roles: ["SUBMITTER", "REVIEWER", "SUPER_ADMIN"],
     organizationIds: [],
   },

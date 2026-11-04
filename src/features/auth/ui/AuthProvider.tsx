@@ -213,6 +213,7 @@ function isSameSessionUser(a: SessionUser, b: SessionUser): boolean {
   return (
     a.id === b.id &&
     a.displayName === b.displayName &&
+    a.email === b.email &&
     a.roles.length === b.roles.length &&
     a.roles.every((role) => b.roles.includes(role))
   );

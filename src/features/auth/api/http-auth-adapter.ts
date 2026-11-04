@@ -117,6 +117,7 @@ export function parseSessionUser(payload: unknown): SessionUser {
   return {
     id: readString(user, "id", "user.id"),
     displayName: readString(user, "displayName", "user.displayName"),
+    email: readString(user, "email", "user.email"),
     roles,
     organizationIds: readStringArray(
       user,
