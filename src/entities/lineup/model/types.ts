@@ -3,7 +3,10 @@ import type { LayoutType } from "@/entities/playlist/model/types";
 export type LineupSubmissionType = "POSTER" | "EVENT_BANNER" | "STORY";
 export type BlockSchedule =
   | { type: "ALWAYS" }
-  | { type: "WINDOWS"; windows: { days: number[]; start: string; end: string }[] }
+  | {
+      type: "WINDOWS";
+      windows: { days: number[]; start: string; end: string }[];
+    }
   | { type: "DATE_RANGE"; from: string; to: string };
 
 export interface LineupSettings {
@@ -54,18 +57,33 @@ export interface PlaybackLineup {
 }
 
 export const LINEUP_LABELS: Record<LineupSubmissionType, string> = {
-  POSTER: "포스터", EVENT_BANNER: "이벤트 배너", STORY: "소식 제보",
+  POSTER: "포스터",
+  EVENT_BANNER: "이벤트 배너",
+  STORY: "소식 제보",
 };
-export const DEFAULT_PER_VISIT = { POSTER: 3, EVENT_BANNER: 1, STORY: 2 } as const;
+export const DEFAULT_PER_VISIT = {
+  POSTER: 3,
+  EVENT_BANNER: 1,
+  STORY: 2,
+} as const;
 export const DEFAULT_LINEUP_SETTINGS: LineupSettings = {
-  posterLayout: "WALL", rotationSeconds: 10, refreshAfterSeconds: 60,
-  infoBar: [], quietHours: [],
+  posterLayout: "WALL",
+  rotationSeconds: 10,
+  refreshAfterSeconds: 60,
+  infoBar: [],
+  quietHours: [],
 };
 
-export function newSubmissionBlock(type: LineupSubmissionType): LineupInput["blocks"][number] {
+export function newSubmissionBlock(
+  type: LineupSubmissionType,
+): LineupInput["blocks"][number] {
   return {
-    source: "SUBMISSIONS", submissionType: type, programId: null,
+    source: "SUBMISSIONS",
+    submissionType: type,
+    programId: null,
     durationSeconds: type === "POSTER" ? 60 : type === "STORY" ? 20 : 15,
-    perVisit: DEFAULT_PER_VISIT[type], schedule: { type: "ALWAYS" }, enabled: true,
+    perVisit: DEFAULT_PER_VISIT[type],
+    schedule: { type: "ALWAYS" },
+    enabled: true,
   };
 }

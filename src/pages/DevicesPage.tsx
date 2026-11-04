@@ -1,3 +1,4 @@
+import { LineupDialog } from "@/features/devices/ui/LineupDialog";
 import { useState } from "react";
 import { CalendarClock, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -42,6 +43,7 @@ export function DevicesPage() {
   const [widgetsOf, setWidgetsOf] = useState<DisplayDevice | null>(null);
   const [setupLink, setSetupLink] = useState<SetupLinkResult | null>(null);
   const [editingSlots, setEditingSlots] = useState(false);
+  const [lineupGroup, setLineupGroup] = useState<TargetGroup | null>(null);
 
   const groupList = groups.data ?? [];
 
@@ -90,6 +92,7 @@ export function DevicesPage() {
                     onEdit={() => setEditing(device)}
                     onRotate={() => setRotating(device)}
                     onWidgets={() => setWidgetsOf(device)}
+                    onLineup={device.programGroupId && groupList.some((g) => g.id === device.programGroupId) ? () => setLineupGroup(groupList.find((g) => g.id === device.programGroupId)!) : undefined}
                   />
                 ))}
               </ul>
@@ -97,6 +100,7 @@ export function DevicesPage() {
           </Panel>
 
           <TargetGroupsSection
+            onLineup={setLineupGroup}
             groups={groups.data}
             isLoading={groups.isPending}
             error={groups.error}
@@ -104,6 +108,8 @@ export function DevicesPage() {
           />
         </>
       )}
+
+      {lineupGroup && <LineupDialog group={lineupGroup} devices={devices.data?.items ?? []} onClose={() => setLineupGroup(null)} />}
 
       {editingSlots && devices.data && (
         <TimeSlotsDialog
@@ -195,6 +201,7 @@ function DeviceRow({
   onEdit,
   onRotate,
   onWidgets,
+  onLineup,
 }: {
   device: DisplayDevice;
   groups: readonly TargetGroup[];
@@ -202,6 +209,7 @@ function DeviceRow({
   onEdit: () => void;
   onRotate: () => void;
   onWidgets: () => void;
+  onLineup?: () => void;
 }) {
   const facts = [
     `${LAYOUT_LABELS[device.layout.type]} · 포스터 ${device.layout.rotationSeconds}초마다 넘김`,
@@ -236,6 +244,7 @@ function DeviceRow({
         <Button variant="secondary" size="sm" onClick={onEdit}>
           수정
         </Button>
+        {onLineup && <Button variant="secondary" size="sm" onClick={onLineup}>편성</Button>}
         <Button variant="secondary" size="sm" onClick={onWidgets}>
           위젯
         </Button>
