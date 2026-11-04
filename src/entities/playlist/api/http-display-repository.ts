@@ -11,6 +11,7 @@ import {
   readObject,
   readString,
 } from "@/shared/api/parse";
+import type { JsonObject } from "@/shared/api/parse";
 import type { DisplayRepository } from "@/shared/api/repositories";
 import type { DeviceCredentials } from "@/shared/lib/device-credential";
 import {
@@ -20,10 +21,17 @@ import {
   PREVIEW_DEVICE_ID,
   readLayoutType,
 } from "../model/types";
+import {
+  EVENT_BANNER_MODES,
+  EVENT_BANNER_OCCASIONS,
+  STORY_TAGS,
+} from "@/entities/submission/model/types";
 import type {
   ContentKind,
   Playlist,
+  PlaylistEventBanner,
   PlaylistItem,
+  PlaylistStory,
   PlaylistVideo,
 } from "../model/types";
 
@@ -83,8 +91,90 @@ function asDeviceError(error: unknown): unknown {
   return error;
 }
 
+/**
+ * 편성 응답. v2(`?v=2`, 배포 ⑥)는 종류별 `submissions`와 `settings`로 오고, 이를 지금
+ * 재생기가 쓰는 모양으로 옮긴다. 블록은 아직 읽지 않는다. 편성 화면(9.3)과 장면 엔진(9.4)
+ * 전이라 게시 중인 세 종류를 모두 순환에 넣는다. `?v=2`를 모르는 서버는 v1로 답한다.
+ */
 export function parsePlaylist(payload: unknown): Playlist {
   const body = readObject(payload);
+  if (body.submissions === undefined || body.submissions === null) {
+    return parseV1Playlist(body);
+  }
+  const submissions = readObject(body.submissions, "submissions");
+  const settings = readObject(body.settings, "settings");
+  return {
+    ...parseV1Playlist({
+      ...body,
+      layout: {
+        type: settings.posterLayout,
+        rotationSeconds: settings.rotationSeconds,
+      },
+      items: submissions.POSTER ?? [],
+    }),
+    eventBanners: readArray(
+      submissions.EVENT_BANNER ?? [],
+      "submissions.EVENT_BANNER",
+    ).flatMap(parseEventBanner),
+    stories: readArray(submissions.STORY ?? [], "submissions.STORY").flatMap(
+      parseStory,
+    ),
+  };
+}
+
+function parseEventBanner(raw: unknown, index: number): PlaylistEventBanner[] {
+  const path = `submissions.EVENT_BANNER[${index}]`;
+  const item = readObject(raw, path);
+  const at = (key: string) => `${path}.${key}`;
+  const mode = readString(item, "mode", at("mode"));
+  const occasion = readNullableString(item, "occasion", at("occasion"));
+  // 모르는 값 한 건 때문에 편성 전체를 버리지 않는다. 그 건만 뺀다.
+  if (
+    !EVENT_BANNER_MODES.some((known) => known === mode) ||
+    (occasion !== null &&
+      !EVENT_BANNER_OCCASIONS.some((known) => known === occasion))
+  ) {
+    return [];
+  }
+  return [
+    {
+      submissionId: readString(item, "submissionId", at("submissionId")),
+      revision: readNumber(item, "revision", at("revision")),
+      startsAt: readIsoDate(item, "startsAt", at("startsAt")),
+      endsAt: readIsoDate(item, "endsAt", at("endsAt")),
+      checksum: readString(item, "checksum", at("checksum")),
+      mode: mode as PlaylistEventBanner["mode"],
+      occasion: occasion as PlaylistEventBanner["occasion"],
+      recipient: readString(item, "recipient", at("recipient")),
+      message: readNullableString(item, "message", at("message")),
+      sender: readNullableString(item, "sender", at("sender")),
+      photoUrl: readNullableString(item, "photoUrl", at("photoUrl")),
+      assetUrl: readNullableString(item, "assetUrl", at("assetUrl")),
+    },
+  ];
+}
+
+function parseStory(raw: unknown, index: number): PlaylistStory[] {
+  const path = `submissions.STORY[${index}]`;
+  const item = readObject(raw, path);
+  const at = (key: string) => `${path}.${key}`;
+  const tag = readString(item, "tag", at("tag"));
+  if (!STORY_TAGS.some((known) => known === tag)) return [];
+  return [
+    {
+      submissionId: readString(item, "submissionId", at("submissionId")),
+      revision: readNumber(item, "revision", at("revision")),
+      startsAt: readIsoDate(item, "startsAt", at("startsAt")),
+      endsAt: readIsoDate(item, "endsAt", at("endsAt")),
+      checksum: readString(item, "checksum", at("checksum")),
+      storyNumber: readNullableNumber(item, "storyNumber", at("storyNumber")),
+      tag: tag as PlaylistStory["tag"],
+      body: readString(item, "body", at("body")),
+    },
+  ];
+}
+
+function parseV1Playlist(body: JsonObject): Playlist {
   const layout = readObject(body.layout, "layout");
   const rawType = readString(layout, "type", "layout.type");
   const type = readLayoutType(rawType);
@@ -136,6 +226,8 @@ export function parsePlaylist(payload: unknown): Playlist {
         ),
       };
     }),
+    eventBanners: [],
+    stories: [],
   };
 }
 
@@ -166,6 +258,45 @@ function readContentKind(
     });
   }
   return value as ContentKind;
+}
+
+/** 게시 중 이벤트 배너·제보 → 편성 항목. 미리보기가 쓴다. */
+function toPreviewEventBanner(
+  submission: SignageSubmissionExpanded,
+): PlaylistEventBanner | null {
+  const banner = submission.eventBanner;
+  if (!banner || !submission.startAt || !submission.endAt) return null;
+  return {
+    submissionId: submission.id,
+    revision: submission.version,
+    startsAt: submission.startAt,
+    endsAt: submission.endAt,
+    checksum: `preview-${submission.id}@${submission.version}`,
+    mode: banner.mode,
+    occasion: banner.occasion,
+    recipient: banner.recipient,
+    message: banner.message,
+    sender: banner.sender,
+    photoUrl: banner.photoUrl,
+    assetUrl: banner.assetUrl,
+  };
+}
+
+function toPreviewStory(
+  submission: SignageSubmissionExpanded,
+): PlaylistStory | null {
+  const story = submission.story;
+  if (!story || !submission.startAt || !submission.endAt) return null;
+  return {
+    submissionId: submission.id,
+    revision: submission.version,
+    startsAt: submission.startAt,
+    endsAt: submission.endAt,
+    checksum: `preview-${submission.id}@${submission.version}`,
+    storyNumber: story.storyNumber,
+    tag: story.tag,
+    body: story.body,
+  };
 }
 
 /**
@@ -224,40 +355,52 @@ export function createHttpDisplayRepository({
     `/signage/devices/${encodeURIComponent(deviceId)}`;
 
   const previewPlaylist = async (signal?: AbortSignal): Promise<Playlist> => {
-    // 편성 v1은 포스터만 띄운다. 다른 종류가 첫 페이지를 채우지 않게 서버에서 거른다.
-    const query = { statuses: "PUBLISHED", type: "POSTER", limit: 100 };
+    // 종류마다 따로 받는다. 제보가 많아도 포스터가 첫 페이지에서 밀리지 않게 한다.
     // 관리자는 전체 게시물을, 게시자는 자기 게시물을 본다.
-    const page = parseSubmissionPage(
-      await userClient
-        .request({
-          path: "/signage/submissions",
-          query: { ...query, scope: "all" },
-          signal,
-        })
-        .catch((error: unknown) => {
-          if (isApiError(error) && error.status === 403) {
-            return userClient.request({
-              path: "/signage/submissions",
-              query: { ...query, scope: "me" },
-              signal,
-            });
-          }
-          throw error;
-        }),
-    );
-    const items = page.items
+    const published = async (type: string, limit: number) =>
+      parseSubmissionPage(
+        await userClient
+          .request({
+            path: "/signage/submissions",
+            query: { statuses: "PUBLISHED", type, limit, scope: "all" },
+            signal,
+          })
+          .catch((error: unknown) => {
+            if (isApiError(error) && error.status === 403) {
+              return userClient.request({
+                path: "/signage/submissions",
+                query: { statuses: "PUBLISHED", type, limit, scope: "me" },
+                signal,
+              });
+            }
+            throw error;
+          }),
+      );
+    const [posters, content] = await Promise.all([
+      published("POSTER", 100),
+      published("EVENT_BANNER,STORY", 50),
+    ]);
+    const items = posters.items
       .map(toPreviewItem)
       .filter((item): item is PlaylistItem => item !== null);
+    const eventBanners = content.items
+      .map(toPreviewEventBanner)
+      .filter((item): item is PlaylistEventBanner => item !== null);
+    const stories = content.items
+      .map(toPreviewStory)
+      .filter((item): item is PlaylistStory => item !== null);
     return {
-      serverTime: page.serverTime,
+      serverTime: posters.serverTime,
       deviceName: null,
-      playlistVersion: items
+      playlistVersion: [...items, ...eventBanners, ...stories]
         .map((item) => `${item.submissionId}@${item.revision}`)
         .sort()
         .join("|"),
       refreshAfterSeconds: 60,
       layout: PREVIEW_LAYOUT,
       items,
+      eventBanners,
+      stories,
     };
   };
 
@@ -275,6 +418,7 @@ export function createHttpDisplayRepository({
       try {
         payload = await deviceClient.request({
           path: `${devicePath(deviceId)}/playlist`,
+          query: { v: 2 },
           headers: previous?.etag
             ? { ...auth, "If-None-Match": previous.etag }
             : auth,

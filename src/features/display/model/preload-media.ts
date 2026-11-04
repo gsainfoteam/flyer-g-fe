@@ -1,3 +1,4 @@
+import { mediaOfPlaylist } from "@/entities/playlist/model/mapper";
 import type { Playlist } from "@/entities/playlist/model/types";
 
 /**
@@ -43,8 +44,8 @@ export async function preloadPlaylistMedia(
   const decoder = options.decoder ?? decodeWithBrowser;
 
   const targets = new Map<string, string>();
-  for (const item of playlist.items) {
-    if (!targets.has(item.checksum)) targets.set(item.checksum, item.assetUrl);
+  for (const item of mediaOfPlaylist(playlist)) {
+    if (!targets.has(item.checksum)) targets.set(item.checksum, item.url);
   }
 
   const media = new Map<string, Blob>();

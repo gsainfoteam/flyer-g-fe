@@ -140,6 +140,100 @@ describe("createHttpDisplayRepository", () => {
     });
   });
 
+  it("편성 v2로 요청해 세 종류를 읽고, 모르는 값이 온 건만 뺀다", async () => {
+    const ctx = setup({
+      "/signage/devices/dev_01/playlist": () => ({
+        body: {
+          serverTime: PLAYLIST.serverTime,
+          timezone: "Asia/Seoul",
+          deviceName: "A동 로비",
+          playlistVersion: "v2-hash",
+          refreshAfterSeconds: 60,
+          settings: {
+            posterLayout: "STRIP",
+            rotationSeconds: 12,
+            refreshAfterSeconds: 60,
+            infoBar: [],
+            quietHours: [],
+          },
+          blocks: [],
+          submissions: {
+            POSTER: PLAYLIST.items,
+            EVENT_BANNER: [
+              {
+                submissionId: "sub_e1",
+                revision: 2,
+                startsAt: "2026-09-27T00:00:00.000Z",
+                endsAt: "2026-09-28T00:00:00.000Z",
+                checksum: "sha256:e1",
+                mode: "TEMPLATE",
+                occasion: "BIRTHDAY",
+                recipient: "지민",
+                message: "생일 축하해!",
+                sender: "3층 친구들",
+                photoUrl: null,
+                assetUrl: null,
+                width: 0,
+                height: 0,
+              },
+            ],
+            STORY: [
+              {
+                submissionId: "sub_s1",
+                revision: 2,
+                startsAt: "2026-09-27T00:00:00.000Z",
+                endsAt: "2026-09-29T00:00:00.000Z",
+                checksum: "sha256:s1",
+                storyNumber: 128,
+                tag: "PRAISE",
+                body: "고맙습니다",
+              },
+              {
+                submissionId: "sub_s2",
+                revision: 1,
+                startsAt: "2026-09-27T00:00:00.000Z",
+                endsAt: "2026-09-29T00:00:00.000Z",
+                checksum: "sha256:s2",
+                storyNumber: 129,
+                tag: "UNKNOWN_TAG",
+                body: "새 말머리",
+              },
+            ],
+          },
+          programs: {},
+          live: null,
+        },
+      }),
+    });
+    ctx.credentials.save("dev_01", "fgd_token");
+
+    const playlist = await ctx.repository.getPlaylist("dev_01");
+
+    expect(ctx.deviceCalls[0]!.query).toEqual({ v: 2 });
+    expect(playlist.layout).toEqual({ type: "STRIP", rotationSeconds: 12 });
+    expect(playlist.items[0]).toMatchObject({ submissionId: "sub_01" });
+    expect(playlist.eventBanners[0]).toMatchObject({
+      submissionId: "sub_e1",
+      recipient: "지민",
+      occasion: "BIRTHDAY",
+    });
+    expect(playlist.stories.map((story) => story.submissionId)).toEqual([
+      "sub_s1",
+    ]);
+  });
+
+  it("v2를 모르는 서버가 v1으로 답해도 그대로 재생한다", async () => {
+    const ctx = setup({
+      "/signage/devices/dev_01/playlist": () => ({ body: PLAYLIST }),
+    });
+    ctx.credentials.save("dev_01", "fgd_token");
+
+    const playlist = await ctx.repository.getPlaylist("dev_01");
+
+    expect(playlist.items).toHaveLength(1);
+    expect(playlist).toMatchObject({ eventBanners: [], stories: [] });
+  });
+
   it("받은 ETag로 조건부 요청하고, 304면 편성은 그대로 두고 서버 시각만 옮긴다", async () => {
     const ctx = setup({
       "/signage/devices/dev_01/playlist": (call) =>
@@ -209,10 +303,26 @@ describe("createHttpDisplayRepository", () => {
     const playlist = await ctx.repository.getPlaylist(PREVIEW_DEVICE_ID);
 
     expect(ctx.deviceCalls).toHaveLength(0);
-    expect(ctx.userCalls.map((call) => call.query)).toEqual([
-      { statuses: "PUBLISHED", type: "POSTER", limit: 100, scope: "all" },
-      { statuses: "PUBLISHED", type: "POSTER", limit: 100, scope: "me" },
-    ]);
-    expect(playlist).toMatchObject({ deviceName: null, items: [] });
+    // 종류마다 따로 묻는다. 제보가 많아도 포스터가 첫 페이지에서 밀리지 않는다.
+    const queries = ctx.userCalls.map((call) => call.query);
+    expect(queries).toHaveLength(4);
+    expect(queries).toEqual(
+      expect.arrayContaining([
+        { statuses: "PUBLISHED", type: "POSTER", limit: 100, scope: "all" },
+        { statuses: "PUBLISHED", type: "POSTER", limit: 100, scope: "me" },
+        {
+          statuses: "PUBLISHED",
+          type: "EVENT_BANNER,STORY",
+          limit: 50,
+          scope: "me",
+        },
+      ]),
+    );
+    expect(playlist).toMatchObject({
+      deviceName: null,
+      items: [],
+      eventBanners: [],
+      stories: [],
+    });
   });
 });

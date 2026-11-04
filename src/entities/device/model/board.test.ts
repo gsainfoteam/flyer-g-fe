@@ -47,6 +47,19 @@ describe("isTargetedTo", () => {
 });
 
 describe("isRenderStalled", () => {
+  it("화면 끔 시간의 TV는 오래 그리지 않아도 재생 멈춤이 아니다", () => {
+    expect(
+      isRenderStalled(
+        {
+          status: "SLEEPING",
+          lastRenderOkAt: new Date("2026-06-08T00:00:00Z"),
+        },
+        new Date("2026-06-08T03:00:00Z"),
+        true,
+      ),
+    ).toBe(false);
+  });
+
   const now = new Date("2026-09-30T03:00:00.000Z");
   const ago = (minutes: number) => new Date(now.getTime() - minutes * 60_000);
 

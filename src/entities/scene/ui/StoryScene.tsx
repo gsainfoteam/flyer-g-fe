@@ -43,6 +43,8 @@ export function StoryScene({
             key={index}
             className={cn(
               "min-w-0 overflow-hidden rounded-[0.8cqw] bg-[#2b2b30] px-[2.3cqw] py-[2cqw]",
+              // 제보가 한 건뿐이면 빈 칸을 남기지 않고 넓게 쓴다.
+              items.length === 1 && "col-span-2",
               item.highlighted && "shadow-[inset_0_0_0_0.2cqw_#f6f6f7]",
               item.placeholder && "opacity-45",
             )}

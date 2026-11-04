@@ -62,7 +62,7 @@ import type { TimeSlotRule } from "@/entities/widget/model/operation";
 import type { TvSettings } from "@/entities/widget/model/tv-settings";
 import type { WidgetType } from "@/entities/widget/model/types";
 import { DEFAULT_LAYOUT_TYPE } from "@/entities/playlist/model/types";
-import type { Playlist } from "@/entities/playlist/model/types";
+import type { LayoutType, Playlist } from "@/entities/playlist/model/types";
 import { USER_QUERY_MAX_LENGTH, isGrantableRole } from "@/entities/user";
 import type { AdminUser, GrantableRole } from "@/entities/user";
 import { hasAnyRole } from "@/features/auth/model/types";
@@ -93,6 +93,7 @@ import type { Clock } from "@/shared/lib/clock";
 import { systemClock } from "@/shared/lib/clock";
 import {
   fromSeoulInput,
+  getSeoulParts,
   parseIsoUtc,
   seoulDayDiff,
   toIsoUtc,
@@ -137,10 +138,24 @@ import type { MockAccountSeed } from "./users";
  */
 const DEFAULT_PAGE_SIZE = 8;
 
-/** 이 시간 안에 heartbeat가 있으면 온라인이다. 서버 기준(3분)과 같다. */
-const ONLINE_WINDOW_MS = 3 * 60 * 1000;
+/** 이 시간 안에 heartbeat가 있으면 온라인이다. 서버 기준(90초)과 같다. */
+const ONLINE_WINDOW_MS = 90 * 1000;
 /** 정상 기기가 heartbeat를 보내는 간격. 플레이어(`use-device-telemetry`)와 같다. */
-const HEARTBEAT_INTERVAL_MS = 60 * 1000;
+const HEARTBEAT_INTERVAL_MS = 30 * 1000;
+
+/**
+ * 화면 끔 시간인가. 서버 `isQuietAt`과 같다: 서울 기준 start 이상 end 미만이고, end가
+ * start보다 이르면 자정을 넘는다.
+ */
+function isQuietAt(quietHours: unknown, now: Date): boolean {
+  if (!Array.isArray(quietHours)) return false;
+  const { hour24, minute } = getSeoulParts(now);
+  const at = `${String(hour24).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  return (quietHours as { start: string; end: string }[]).some(
+    ({ start, end }) =>
+      start <= end ? at >= start && at < end : at >= start || at < end,
+  );
+}
 
 function httpError(
   status: number,
@@ -1398,14 +1413,21 @@ export function createMockRepositories(
         .map(toSignageSubmissionExpanded)
         .filter(
           (item) =>
-            // 편성 v1은 포스터만 싣는다(이벤트 배너·제보는 편성 v2부터).
-            item.type === "POSTER" &&
             resolveEffectiveStatus(item, now) === "PUBLISHED" &&
-            Boolean(item.posterUrl) &&
+            (item.type !== "POSTER" || Boolean(item.posterUrl)) &&
             (!device ||
               item.targetGroupIds.length === 0 ||
               item.targetGroupIds.some((id) => device.groupIds.includes(id))),
         );
+      const posters = playable.filter((item) => item.type === "POSTER");
+      // 게시 중이면 기간이 있다. 체크섬은 내용으로 정해져 고치면 새 값이 된다.
+      const scene = (item: (typeof playable)[number]) => ({
+        submissionId: item.id,
+        revision: item.version,
+        startsAt: toIsoUtc(item.startAt!),
+        endsAt: toIsoUtc(item.endAt!),
+        checksum: `mock-${item.id}@${item.version}`,
+      });
 
       return toPlaylist({
         serverTime: toIsoUtc(now),
@@ -1417,7 +1439,26 @@ export function createMockRepositories(
           type: DEFAULT_LAYOUT_TYPE,
           rotationSeconds: 10,
         },
-        items: playable.map((item) => ({
+        eventBanners: playable.flatMap((item) => {
+          const banner = item.eventBanner;
+          if (!banner) return [];
+          return [
+            {
+              ...scene(item),
+              mode: banner.mode,
+              occasion: banner.occasion,
+              recipient: banner.recipient,
+              message: banner.message,
+              sender: banner.sender,
+              photoUrl: banner.photoUrl,
+              assetUrl: banner.assetUrl,
+            },
+          ];
+        }),
+        stories: playable.flatMap((item) =>
+          item.story ? [{ ...scene(item), ...item.story }] : [],
+        ),
+        items: posters.map((item) => ({
           submissionId: item.id,
           revision: item.version,
           title: item.title,
@@ -1471,19 +1512,38 @@ export function createMockRepositories(
     ) {
       errors.location = `위치는 ${DEVICE_LIMITS.locationMaxLength}자 이하여야 합니다.`;
     }
-    const inRange = (
-      value: number | undefined,
-      { min, max }: { min: number; max: number },
-    ) =>
+    // 화면 설정은 그룹 편성으로 옮겨 갔다(배포 ⑤). 기기 필드로 보내면 거절한다.
+    for (const key of [
+      "layout",
+      "rotationSeconds",
+      "refreshAfterSeconds",
+    ] as const) {
+      if (input[key] !== undefined) {
+        errors[key] =
+          "화면 설정은 그룹 편성(settings)이나 기기 예외(overrides.settings)로 바꿉니다.";
+      }
+    }
+    const inRange = (value: unknown, { min, max }: { min: number; max: number }) =>
       value === undefined ||
-      (Number.isInteger(value) && value >= min && value <= max);
-    if (!inRange(input.rotationSeconds, DEVICE_LIMITS.rotationSeconds)) {
-      errors.rotationSeconds = `전환 간격은 ${DEVICE_LIMITS.rotationSeconds.min}~${DEVICE_LIMITS.rotationSeconds.max}초여야 합니다.`;
+      (Number.isInteger(value) &&
+        (value as number) >= min &&
+        (value as number) <= max);
+    const settings = input.overrides?.settings;
+    if (!inRange(settings?.rotationSeconds, DEVICE_LIMITS.rotationSeconds)) {
+      errors["overrides.settings.rotationSeconds"] =
+        `전환 간격은 ${DEVICE_LIMITS.rotationSeconds.min}~${DEVICE_LIMITS.rotationSeconds.max}초여야 합니다.`;
     }
     if (
-      !inRange(input.refreshAfterSeconds, DEVICE_LIMITS.refreshAfterSeconds)
+      !inRange(
+        settings?.refreshAfterSeconds,
+        DEVICE_LIMITS.refreshAfterSeconds,
+      )
     ) {
-      errors.refreshAfterSeconds = `갱신 주기는 ${DEVICE_LIMITS.refreshAfterSeconds.min}~${DEVICE_LIMITS.refreshAfterSeconds.max}초여야 합니다.`;
+      errors["overrides.settings.refreshAfterSeconds"] =
+        `갱신 주기는 ${DEVICE_LIMITS.refreshAfterSeconds.min}~${DEVICE_LIMITS.refreshAfterSeconds.max}초여야 합니다.`;
+    }
+    if (input.groupIds?.length === 0) {
+      errors.programGroupId = "위치 그룹이 하나 이상 있어야 합니다.";
     }
     const badGroups = unselectableGroupIds(input.groupIds, currentGroupIds);
     if (badGroups.length > 0) {
@@ -1496,11 +1556,12 @@ export function createMockRepositories(
     `fgd_mock_${deviceId}_${clock.now().getTime().toString(36)}`;
 
   const toDevice = (seed: DeviceSeed): DisplayDevice => {
-    const { silentSinceMs, isActive, ...device } = seed;
+    const { silentSinceMs, isActive, programGroupId, overrides, ...device } =
+      seed;
     const now = clock.now();
     const heartbeat = heartbeats.read()[device.id];
     const heartbeatAt = heartbeat ? Date.parse(heartbeat.at) : Number.NaN;
-    // 정상 기기는 1분마다 heartbeat를 보낸다고 치고, 끊긴 기기는 끊긴 시점에
+    // 정상 기기는 30초마다 heartbeat를 보낸다고 치고, 끊긴 기기는 끊긴 시점에
     // 멈춰 있다. 실제 TV 탭이 보낸 기록이 더 최근이면 그것을 쓴다.
     const simulated =
       silentSinceMs === "never"
@@ -1525,15 +1586,19 @@ export function createMockRepositories(
 
     const dto: DisplayDeviceDto = {
       ...device,
+      programGroupId: programGroupId ?? device.groupIds[0] ?? null,
+      overrides: overrides ?? { settings: {}, blocks: {} },
       appVersion: heartbeat?.appVersion ?? device.appVersion,
       resolution: heartbeat?.resolution ?? device.resolution,
       lastSeenAt: lastSeen === null ? null : toIsoUtc(new Date(lastSeen)),
       lastRenderOkAt,
       status: !isActive
         ? "DISABLED"
-        : lastSeen !== null && now.getTime() - lastSeen <= ONLINE_WINDOW_MS
-          ? "ONLINE"
-          : "OFFLINE",
+        : isQuietAt(overrides?.settings?.quietHours, now)
+          ? "SLEEPING"
+          : lastSeen !== null && now.getTime() - lastSeen <= ONLINE_WINDOW_MS
+            ? "ONLINE"
+            : "OFFLINE",
     };
     return toDisplayDevice(dto);
   };
@@ -1581,6 +1646,7 @@ export function createMockRepositories(
       await settle(signal);
       requireSuperAdmin();
       checkDeviceInput(input);
+      // 새 기기는 편성 그룹의 기본 화면 설정을 따른다.
       const issuedAt = toIsoUtc(clock.now());
       const id = `device-${deviceSeeds.length + 1}-${clock.now().getTime().toString(36)}`;
       const seed: DeviceSeed = {
@@ -1591,8 +1657,8 @@ export function createMockRepositories(
         orientation: input.orientation,
         resolution: null,
         appVersion: null,
-        layout: { type: input.layout, rotationSeconds: input.rotationSeconds },
-        refreshAfterSeconds: input.refreshAfterSeconds,
+        layout: { type: DEFAULT_LAYOUT_TYPE, rotationSeconds: 10 },
+        refreshAfterSeconds: 60,
         lastPlaylistVersion: null,
         lastRenderOkAt: null,
         tokenIssuedAt: issuedAt,
@@ -1608,6 +1674,15 @@ export function createMockRepositories(
       requireSuperAdmin();
       const current = findDevice(id);
       checkDeviceInput(input, current.groupIds);
+      const groupIds = input.groupIds ?? current.groupIds;
+      const programGroupId =
+        input.programGroupId ?? current.programGroupId ?? current.groupIds[0];
+      if (programGroupId && !groupIds.includes(programGroupId)) {
+        throw invalid("입력을 확인해 주세요.", {
+          programGroupId: "편성 그룹은 위치 그룹(groupIds) 중 하나여야 합니다.",
+        });
+      }
+      const settings = input.overrides?.settings ?? {};
       const next: DeviceSeed = {
         ...current,
         ...(input.name !== undefined ? { name: input.name.trim() } : {}),
@@ -1618,13 +1693,19 @@ export function createMockRepositories(
         ...(input.orientation !== undefined
           ? { orientation: input.orientation }
           : {}),
+        programGroupId,
+        overrides: input.overrides ?? current.overrides,
         layout: {
-          type: input.layout ?? current.layout.type,
+          type:
+            (settings.posterLayout as LayoutType | undefined) ??
+            current.layout.type,
           rotationSeconds:
-            input.rotationSeconds ?? current.layout.rotationSeconds,
+            (settings.rotationSeconds as number | undefined) ??
+            current.layout.rotationSeconds,
         },
         refreshAfterSeconds:
-          input.refreshAfterSeconds ?? current.refreshAfterSeconds,
+          (settings.refreshAfterSeconds as number | undefined) ??
+          current.refreshAfterSeconds,
         isActive: input.isActive ?? current.isActive,
       };
       deviceSeeds = deviceSeeds.map((item) => (item.id === id ? next : item));
