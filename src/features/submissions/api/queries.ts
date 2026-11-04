@@ -100,9 +100,7 @@ export function useInfiniteSubmissionViews(
 /**
  * 신청 상세 하나.
  *
- * 표시 상태 판정에 서버 시각이 필요하다. 단건 응답에도 `serverTime`이 있지만 신청
- * 모델(`parseSubmission`)은 목록과 같은 모양이라 담지 않는다. 판정은 호출부가 함께
- * 여는 요약·목록의 서버 시각으로 한다.
+ * 단건 응답의 `serverTime`을 보존해 기간과 작업 가능 여부를 판단한다.
  *
  * id가 없으면 조회하지 않는다. 새 신청 작성처럼 편집 대상이 없는 화면에서
  * 빈 id로 `GET /submissions/`를 보내지 않기 위해서다.

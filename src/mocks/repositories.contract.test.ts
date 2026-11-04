@@ -1151,6 +1151,35 @@ describe("이벤트 배너·소식 제보 만들기 (배포 ③④)", () => {
     story: { tag: "PRAISE" as const, body },
   });
 
+  it.each(["STORY", "EVENT_BANNER"] as const)("본인 %s 중단은 사유·버전·이력을 갱신하고 재시도는 한 번만 처리한다", async (type) => {
+    const { repos, signInAs } = setup();
+    const created = await repos.submissions.createContent(type === "STORY" ? storyInput() : eventInput());
+    signInAs(MOCK_USERS.REVIEWER);
+    const approved = await repos.reviews.approve({ submissionId: created.id, revision: created.version });
+    signInAs(MOCK_USERS.SUBMITTER);
+    const input = { submissionId: created.id, reason: "  행사 취소  " };
+    const options = { idempotencyKey: "suspend-once" };
+    const stopped = await repos.reviews.suspend(input, options);
+    expect(stopped).toMatchObject({ status: "SUSPENDED", lastDecision: "SUSPENDED", version: approved.version + 1 });
+    expect((await repos.reviews.suspend(input, options)).version).toBe(stopped.version);
+    expect((await repos.reviews.listHistory(created.id)).filter((e) => e.type === "SUSPENDED")).toHaveLength(1);
+    expect((await repos.reviews.listHistory(created.id)).at(-1)?.comment).toBe("행사 취소");
+    if (type === "STORY") {
+      expect(await statusOf(repos.submissions.submit(created.id, { version: stopped.version }))).toBe(409);
+      signInAs(MOCK_USERS.REVIEWER);
+      expect((await repos.reviews.listHistory(created.id)).find((e) => e.type === "SUSPENDED")).toMatchObject({ actorId: null, actorName: null });
+    } else {
+      expect((await repos.submissions.submit(created.id, { version: stopped.version })).status).toBe("PENDING_REVIEW");
+    }
+  });
+
+  it("중단 요청은 본인 포스터 403, 타인 게시와 없는 게시 404다", async () => {
+    const { repos } = setup();
+    expect(await statusOf(repos.reviews.suspend({ submissionId: "notice-001", reason: "취소" }))).toBe(403);
+    expect(await statusOf(repos.reviews.suspend({ submissionId: "notice-003", reason: "취소" }))).toBe(404);
+    expect(await statusOf(repos.reviews.suspend({ submissionId: "missing", reason: "취소" }))).toBe(404);
+  });
+
   it("이벤트 배너는 바로 검토 대기이고, 제목은 서버가 만든다", async () => {
     const { repos } = setup();
     const created = await repos.submissions.createContent(eventInput());

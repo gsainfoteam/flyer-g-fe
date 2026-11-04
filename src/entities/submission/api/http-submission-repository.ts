@@ -175,6 +175,9 @@ export function parseSubmission(
   const body = readObject(payload, path);
   const at = (key: string) => `${path}.${key}`;
   return {
+    ...(body.serverTime === undefined
+      ? {}
+      : { serverTime: readIsoDate(body, "serverTime", at("serverTime")) }),
     id: readString(body, "id", at("id")),
     ziggleNoticeId: readNullableString(
       body,

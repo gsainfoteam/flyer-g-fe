@@ -40,6 +40,7 @@ import { SubmissionHistory } from "@/features/submissions/detail/ui/SubmissionHi
 import { PageState, Panel } from "@/shared/components";
 import { StatusBadge } from "@/entities/submission/ui/StatusBadge";
 import { formatSeoulDateTime } from "@/shared/lib/datetime";
+import { useServerNow } from "@/shared/lib/use-server-now";
 import { Button } from "@/shared/ui/button";
 
 /**
@@ -98,8 +99,12 @@ export function ReviewPanel({
     void summary.refetch();
   };
 
-  const serverNow = summary.data?.calculatedAt ?? new Date();
-  const view = detail.data ? toSubmissionView(detail.data, serverNow) : null;
+  const serverNow =
+    useServerNow(detail.data?.serverTime, detail.dataUpdatedAt) ??
+    detail.data?.serverTime ??
+    summary.data?.calculatedAt;
+  const view =
+    detail.data && serverNow ? toSubmissionView(detail.data, serverNow) : null;
   const targetLabel = useTargetGroupLabel(view?.targetGroupIds ?? []);
   const companions = useMemo(
     () => (published.data?.items ?? []).map(fromSubmissionView),
@@ -113,7 +118,7 @@ export function ReviewPanel({
       onRetry={retry}
       loadingRows={5}
     >
-      {view && detail.data && (
+      {view && detail.data && serverNow && (
         <>
           <div>
             {header}
@@ -144,6 +149,7 @@ export function ReviewPanel({
                 ref={actionsRef}
                 submission={detail.data}
                 status={view.status}
+                serverNow={serverNow}
                 shortcuts
                 initialReject={openReject}
                 onApprove={onApprove ? () => onApprove(detail.data) : undefined}

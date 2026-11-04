@@ -117,6 +117,7 @@ import {
 import { createStorageHeartbeatLog } from "./heartbeats";
 import type { HeartbeatLog } from "./heartbeats";
 import { withInjection } from "./injection";
+import { createMockLineupRepository } from "./lineups";
 import {
   CATEGORY_FIXTURES,
   SIGNAGE_CONFIG_FIXTURE,
@@ -701,7 +702,7 @@ export function createMockRepositories(
   ): SignageSubmissionExpanded => {
     const saved = store.replace(next);
     store.rememberIdempotency(scope, mutationOptions?.idempotencyKey, saved.id);
-    return toSignageSubmissionExpanded(saved);
+    return { ...toSignageSubmissionExpanded(saved), serverTime: clock.now() };
   };
 
   /**
@@ -887,7 +888,10 @@ export function createMockRepositories(
 
     async getById(id, signal) {
       await settle(signal);
-      return toSignageSubmissionExpanded(present(findVisible(id)));
+      return {
+        ...toSignageSubmissionExpanded(present(findVisible(id))),
+        serverTime: clock.now(),
+      };
     },
 
     async getSummary(params, signal) {
@@ -1257,7 +1261,7 @@ export function createMockRepositories(
         .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt))
         .map((event) =>
           hideAuthor && event.actorId === submission.requesterId
-            ? { ...event, actorId: "", actorName: "작성자 가림" }
+            ? { ...event, actorId: null, actorName: null }
             : event,
         )
         .map((event): SubmissionEvent => toSubmissionEvent(event));
@@ -1280,7 +1284,7 @@ export function createMockRepositories(
             store.all().find((item) => item.id === event.submissionId)?.title ??
             null,
           decision: event.type as ReviewDecision,
-          actorName: event.actorName,
+          actorName: event.actorName ?? "작성자",
           occurredAt: parseIsoUtc(event.occurredAt),
         }));
     },
@@ -1372,16 +1376,23 @@ export function createMockRepositories(
 
     async suspend(input: SuspendInput, mutationOptions?: MutationOptions) {
       await settle(mutationOptions?.signal);
-      const reviewer = requireReviewer();
+      const reviewer = actor() ?? MOCK_USERS.REVIEWER;
+      const current = findVisible(input.submissionId);
+      if (!isReviewer(reviewer) && current.type === "POSTER") {
+        throw forbidden("본인 포스터는 게시 중단할 수 없습니다.");
+      }
       const replay = replayed("suspend", input.submissionId, mutationOptions);
       if (replay) return replay;
-      if (input.reason.trim().length === 0) {
-        throw invalid("중단 사유를 입력해야 합니다.", {
-          reason: "중단 사유를 입력해야 합니다.",
+      if (input.reason.trim().length === 0 || input.reason.trim().length > 1000) {
+        throw invalid("중단 사유를 1~1000자로 입력해야 합니다.", {
+          reason: "중단 사유를 1~1000자로 입력해야 합니다.",
         });
       }
-      const current = store.find(input.submissionId);
-      if (!canReviewerSuspend(effectiveOf(current))) {
+      if (
+        !canReviewerSuspend(effectiveOf(current)) ||
+        !current.endAt ||
+        new Date(current.endAt).getTime() <= clock.now().getTime()
+      ) {
         throw conflict("예약 또는 게시 중인 신청만 중단할 수 있습니다.");
       }
       const now = clock.now();
@@ -1389,7 +1400,7 @@ export function createMockRepositories(
       store.addEvent(
         eventOf(current, "SUSPENDED", reviewer, now, {
           reasonCode: null,
-          comment: input.reason,
+          comment: input.reason.trim(),
         }),
       );
       return decided(
@@ -2089,8 +2100,13 @@ export function createMockRepositories(
     },
   };
 
+  const lineups = createMockLineupRepository({
+    clock, settle, requireSuperAdmin, findGroup,
+  });
+
   // 개발 중 오류·지연을 화면에서 재현할 수 있게 주입 검사를 끼운다.
   return {
+    lineups: withInjection("lineups", lineups),
     submissions: withInjection("submissions", submissions),
     reviews: withInjection("reviews", reviews),
     displays: withInjection("displays", displays),

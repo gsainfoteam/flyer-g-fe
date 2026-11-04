@@ -212,7 +212,10 @@ export interface SignageSubmissionExpandedDto extends SignageSubmissionDto {
 export interface SignageSubmissionExpanded
   extends
     SignageSubmission,
-    Omit<SignageSubmissionExpandedDto, keyof SignageSubmissionDto> {}
+    Omit<SignageSubmissionExpandedDto, keyof SignageSubmissionDto> {
+  /** 단건 응답의 기준 시각. 목록 항목에는 없다. */
+  serverTime?: Date;
+}
 
 /**
  * 목록·카드·상세가 실제로 그리는 표시 모델.

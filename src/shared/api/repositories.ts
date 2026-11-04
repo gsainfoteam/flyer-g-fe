@@ -1,3 +1,4 @@
+import type { Lineup, LineupInput, LineupProgram } from "@/entities/lineup/model/types";
 import type {
   DeviceInput,
   DeviceList,
@@ -382,7 +383,14 @@ export interface UserRepository {
   ): Promise<void>;
 }
 
+export interface LineupRepository {
+  get(groupId: string, signal?: AbortSignal): Promise<Lineup>;
+  save(groupId: string, input: LineupInput, signal?: AbortSignal): Promise<Lineup>;
+  listPrograms(signal?: AbortSignal): Promise<(LineupProgram & { id: string })[]>;
+}
+
 export interface Repositories {
+  lineups: LineupRepository;
   submissions: SubmissionRepository;
   reviews: ReviewRepository;
   displays: DisplayRepository;

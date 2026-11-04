@@ -1,4 +1,4 @@
-import type { SubmissionStatus } from "./types";
+import type { SubmissionStatus, SubmissionView } from "./types";
 
 /**
  * 상태 표현의 단일 원천. 화면에서 상태 문자열을 직접 한글로 바꾸지 않는다.
@@ -57,7 +57,7 @@ const STATUS_META: Record<SubmissionStatus, StatusMeta> = {
   SUSPENDED: {
     label: "게시 중단",
     tone: "attention",
-    description: "관리자가 게시를 즉시 중단했습니다.",
+    description: "게시가 중단되었습니다.",
   },
   CANCELED: {
     label: "신청 취소",
@@ -119,7 +119,7 @@ export function getAllowedTransitions(
 
 /**
  * 게시자가 내용을 고칠 수 있다: 작성 중, 승인 대기, 반려됨, 예약됨(게시 시작 전),
- * 게시 중단됨. 게시가 시작되면 고칠 수 없고 관리자에게 중단을 요청한다.
+ * 게시 중단됨. 게시가 시작되면 수정할 수 없다.
  */
 export function canSubmitterEdit(status: SubmissionStatus): boolean {
   return (
@@ -214,10 +214,26 @@ export function getStatusSentence({
     case "ENDED":
       return "게시 기간 종료";
     case "SUSPENDED":
-      return "관리자 요청으로 게시 중단";
+      return "게시 중단 완료";
     case "CANCELED":
       return "신청 취소 완료";
     case "ARCHIVED":
       return "보관 완료";
   }
+}
+
+/** 작성자 직접 중단. 서버 시각과 종료 시각이 없으면 허용하지 않는다. */
+export function canSubmitterSuspend(
+  submission: Pick<SubmissionView, "requesterId" | "type" | "status" | "endAt">,
+  userId: string,
+  serverNow: Date | null,
+): boolean {
+  return (
+    submission.requesterId === userId &&
+    (submission.type === "STORY" || submission.type === "EVENT_BANNER") &&
+    canReviewerSuspend(submission.status) &&
+    serverNow !== null &&
+    submission.endAt !== null &&
+    submission.endAt.getTime() > serverNow.getTime()
+  );
 }
