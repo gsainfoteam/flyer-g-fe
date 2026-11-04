@@ -150,6 +150,7 @@ export function StripDisplay({
                 fit={hasKnownSize(item.poster) ? "cover" : "contain"}
                 onLoadError={onPosterError}
                 onLoad={onPosterLoad}
+                play={isFocus}
               />
             </div>
           );

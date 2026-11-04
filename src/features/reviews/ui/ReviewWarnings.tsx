@@ -14,7 +14,17 @@ import { Alert, AlertDescription, AlertTitle } from "@/shared/ui/alert";
  *
  * 링크·이미지·해상도는 포스터에만 있는 것이라 포스터일 때만 본다. 기간은 모든
  * 종류에 본다(승인 전 제보는 기간이 아직 없다).
+ *
+ * 이벤트 배너·제보는 글에 전화번호·메일 같은 연락처가 있는지 본다(개인정보 노출 반려
+ * 사유). 이벤트 사진은 받는 사람 동의가 있는지 다시 확인한다.
  */
+const CONTACT_PATTERN =
+  /(01[016789][-.\s]?\d{3,4}[-.\s]?\d{4})|([\w.+-]+@[\w-]+\.[\w.]+)/;
+
+/** 연락처처럼 보이는 글이 있는가. 거르지 않고 관리자에게 짚어 주기만 한다. */
+function hasContactInfo(text: string | null | undefined): boolean {
+  return text ? CONTACT_PATTERN.test(text) : false;
+}
 interface ReviewWarningsProps {
   submission: SignageSubmissionExpanded;
   /** 판정 기준이 되는 서버 시각 */
@@ -77,6 +87,29 @@ export function ReviewWarnings({ submission, serverNow }: ReviewWarningsProps) {
       title: `포스터 해상도가 낮아요 (${size.width}×${size.height})`,
       detail:
         "TV에서 늘려 그려 흐리게 보일 수 있어요. 글자가 읽히는지 확인하고, 어려우면 저해상도로 반려하세요.",
+    });
+  }
+
+  const banner = submission.eventBanner;
+  const writing = [
+    submission.story?.body,
+    banner?.recipient,
+    banner?.message,
+    banner?.sender,
+  ];
+  if (writing.some(hasContactInfo)) {
+    warnings.push({
+      key: "contact",
+      title: "전화번호나 메일 주소가 들어 있어요",
+      detail:
+        "TV에 연락처가 그대로 나가요. 본인이 밝힌 것인지 확인하고, 아니면 개인정보 노출로 반려하세요.",
+    });
+  }
+  if (banner?.photoUrl && !banner.photoConsent) {
+    warnings.push({
+      key: "photo-consent",
+      title: "사진 속 사람의 동의가 확인되지 않았어요",
+      detail: "동의 없이 사진을 TV에 띄울 수 없어요. 반려하세요.",
     });
   }
 

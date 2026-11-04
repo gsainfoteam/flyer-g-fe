@@ -30,7 +30,8 @@ function focusOf(frame: PlayerFrame | undefined, items: PosterRenderModel[]) {
   if (frame.kind === "widget") return `widget:${frame.slot.id}`;
   if (frame.kind === "wall") return "wall";
   if (frame.kind === "spotlight") return frame.poster.id;
-  return items[frame.focusIndex]!.id;
+  if (frame.kind === "strip") return items[frame.focusIndex]!.id;
+  return frame.key;
 }
 
 beforeEach(() => {
@@ -77,6 +78,58 @@ describe("useRotation", () => {
     // 포스터 간격(10초)이 지나도 위젯은 30초를 채운다.
     act(() => vi.advanceTimersByTime(29_000));
     expect(focusOf(result.current.currentFrame, items)).toBe("widget:w");
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("a");
+  });
+
+  it("영상 포스터는 영상이 끝날 때까지 머문다", () => {
+    const items = [
+      { ...poster("v"), videoUrl: "/v.mp4", durationMs: 24_500 },
+      poster("a"),
+    ];
+    const { result } = renderHook(() =>
+      useRotation({ posters: items, layout: "STRIP", rotationSeconds: 10 }),
+    );
+
+    expect(result.current.frameSeconds).toBe(25);
+    act(() => vi.advanceTimersByTime(24_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("v");
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("a");
+    expect(result.current.frameSeconds).toBe(10);
+  });
+
+  it("이벤트·제보 장면을 포스터 사이에 끼우고, 글 읽을 시간만큼 머문다", () => {
+    const items = posters("a", "b");
+    const content = {
+      eventBanners: [],
+      stories: [
+        {
+          submissionId: "s1",
+          revision: 1,
+          startsAt: new Date("2026-06-01T00:00:00Z"),
+          endsAt: new Date("2026-06-30T00:00:00Z"),
+          checksum: "sha256:s1",
+          storyNumber: 128,
+          tag: "PRAISE" as const,
+          body: "고맙습니다",
+        },
+      ],
+    };
+    const { result } = renderHook(() =>
+      useRotation({
+        posters: items,
+        content,
+        layout: "STRIP",
+        rotationSeconds: 10,
+      }),
+    );
+
+    act(() => vi.advanceTimersByTime(20_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("story:s1");
+    expect(result.current.frameSeconds).toBe(15);
+    act(() => vi.advanceTimersByTime(14_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("story:s1");
     act(() => vi.advanceTimersByTime(1_000));
     expect(focusOf(result.current.currentFrame, items)).toBe("a");
   });

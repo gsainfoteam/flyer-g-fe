@@ -2,9 +2,9 @@ import {
   keepPreviousData,
   useInfiniteQuery,
   useQuery,
-  useQueryClient,
 } from "@tanstack/react-query";
 import { toSubmissionView } from "@/entities/submission";
+import type { SubmissionKind } from "@/entities/submission/model/kind";
 import type { SubmissionView } from "@/entities/submission/model/types";
 import { useRepositories } from "@/shared/api/repositories-context";
 import { queryKeys } from "@/shared/api/query-keys";
@@ -56,11 +56,13 @@ export const PENDING_PAGE_SIZE = 20;
 
 /**
  * 승인 대기 전체 목록. "더 보기"로 이어 붙인다.
- * 카테고리 필터는 서버가 거른다. 불러온 페이지 안에서 거르면 뒤 페이지의 건이 빠진다.
+ * 종류 필터는 서버가 거른다. 불러온 페이지 안에서 거르면 뒤 페이지의 건이 빠진다.
  */
-export function useInfinitePendingReviews(categoryId: string | null = null) {
+export function useInfinitePendingReviews(
+  types: readonly SubmissionKind[] = [],
+) {
   const { reviews } = useRepositories();
-  const params = { limit: PENDING_PAGE_SIZE, categoryId };
+  const params = { limit: PENDING_PAGE_SIZE, types };
 
   return useInfiniteQuery({
     queryKey: queryKeys.reviews.pendingInfinite(params),
@@ -82,22 +84,4 @@ export function useInfinitePendingReviews(categoryId: string | null = null) {
       };
     },
   });
-}
-
-/**
- * 결정을 마친 뒤 이어서 볼 다음 승인 대기 건. 없으면 null.
- * 방금 결정한 건이 아직 목록에 남아 있을 수 있어 제외하고 고른다.
- */
-export function useNextPendingReview() {
-  const { reviews } = useRepositories();
-  const queryClient = useQueryClient();
-
-  return async (excludeId: string): Promise<string | null> => {
-    const page = await queryClient.fetchQuery({
-      queryKey: queryKeys.reviews.pending({ limit: 2 }),
-      queryFn: ({ signal }) => reviews.listPending({ limit: 2 }, signal),
-      staleTime: 0,
-    });
-    return page.items.find((item) => item.id !== excludeId)?.id ?? null;
-  };
 }

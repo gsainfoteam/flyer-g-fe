@@ -1,13 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LayoutType } from "@/entities/playlist/model/types";
 import type { PosterRenderModel } from "@/entities/poster";
-import { buildFrames } from "@/entities/poster/model/frames";
-import type { DisplayFrame } from "@/entities/poster/model/frames";
-import type { WidgetPick } from "@/entities/widget/model/policy";
 import {
-  frameDurationSeconds,
-  placeWidgetSlots,
-} from "@/entities/widget/model/schedule";
+  buildContentFrames,
+  buildFrames,
+  mixContentFrames,
+  posterFrameSeconds,
+} from "@/entities/poster/model/frames";
+import type {
+  ContentScenes,
+  DisplayFrame,
+} from "@/entities/poster/model/frames";
+import type { WidgetPick } from "@/entities/widget/model/policy";
+import { placeWidgetSlots } from "@/entities/widget/model/schedule";
 import type { FrameTemplate, PlayerFrame } from "@/entities/widget/model/schedule";
 
 /**
@@ -15,8 +20,8 @@ import type { FrameTemplate, PlayerFrame } from "@/entities/widget/model/schedul
  *
  * - 편성을 화면 순서(`buildFrames`)로 펼치고 포스터 `widgetInterval`장마다 위젯 자리를
  *   둔다(`placeWidgetSlots`). 위젯 자리에 오면 `pickWidget`으로 지금 띄울 위젯을
- *   고르고, 없으면 그 자리는 건너뛴다. 포스터는 기기 전환 간격, 위젯은 자기 시간만큼
- *   머문다.
+ *   고르고, 없으면 그 자리는 건너뛴다. 포스터는 기기 전환 간격(영상은 끝까지 볼 만큼),
+ *   위젯은 자기 시간만큼 머문다.
  * - 목록이 갱신되어도 지금 보이는 화면을 따라간다. 편성이 바뀔 때마다 처음으로
  *   튀면 뒤쪽 게시물은 영영 못 보는 기기가 생긴다.
  * - 화면이 하나뿐이면 timer를 만들지 않는다. 위젯만 도는 경우는 예외다.
@@ -25,6 +30,8 @@ import type { FrameTemplate, PlayerFrame } from "@/entities/widget/model/schedul
  */
 export interface UseRotationOptions {
   posters: PosterRenderModel[];
+  /** 포스터 사이에 끼울 이벤트 배너·제보 장면 */
+  content?: ContentScenes;
   layout: LayoutType;
   rotationSeconds: number;
   /** 포스터 화면 몇 장마다 위젯 자리를 둘까. 0이면 위젯 없음 */
@@ -48,8 +55,11 @@ interface Position {
   pick: WidgetPick | null;
 }
 
+const NO_CONTENT: ContentScenes = { eventBanners: [], stories: [] };
+
 export function useRotation({
   posters,
+  content = NO_CONTENT,
   layout,
   rotationSeconds,
   widgetInterval = 0,
@@ -68,13 +78,34 @@ export function useRotation({
   const signature = `${layout}::${interval}:${minSlots}::${posters
     .map(
       (item) =>
-        `${item.id}@${item.revision ?? ""}:${item.width}x${item.height}:${item.posterUrl}`,
+        `${item.id}@${item.revision ?? ""}:${item.width}x${item.height}:${item.posterUrl}:${item.durationMs ?? ""}`,
     )
+    .join("|")}::${[...content.eventBanners, ...content.stories]
+    .map((item) => `${item.submissionId}@${item.checksum}`)
     .join("|")}`;
   const frames = useMemo<FrameTemplate[]>(
-    () => placeWidgetSlots(buildFrames(posters, layout), interval, minSlots),
+    () =>
+      placeWidgetSlots(
+        mixContentFrames(
+          buildFrames(posters, layout),
+          buildContentFrames(content),
+        ),
+        interval,
+        minSlots,
+      ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- posters는 signature로 대표된다
     [signature],
+  );
+  // 띠 화면은 포스터를 들고 있지 않아 머무는 시간을 펼칠 때 함께 정한다.
+  const posterSeconds = useMemo(
+    () =>
+      frames.map((frame) =>
+        frame.kind === "widget-slot"
+          ? rotationSeconds
+          : posterFrameSeconds(frame, posters, rotationSeconds),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- posters는 frames(signature)로 대표된다
+    [frames, rotationSeconds],
   );
 
   // 고르는 함수는 렌더마다 새로 올 수 있다. timer가 다시 걸리지 않게 ref로 든다.
@@ -166,7 +197,7 @@ export function useRotation({
       const seconds =
         frame.kind === "widget-slot"
           ? (pick?.slot.durationSeconds ?? rotationSeconds)
-          : frameDurationSeconds(frame, rotationSeconds);
+          : posterSeconds[index % frames.length]!;
       id = window.setTimeout(() => {
         step();
         schedule();
@@ -174,7 +205,7 @@ export function useRotation({
     };
     schedule();
     return () => window.clearTimeout(id);
-  }, [paused, rotates, frames, rotationSeconds, step]);
+  }, [paused, rotates, frames, posterSeconds, rotationSeconds, step]);
 
   // 탭이 다시 보이면 즉시 한 화면 넘긴다. 멈춰 있던 화면을 정리하는 목적이다.
   // 미리보기에서 일시정지했으면 그대로 둔다.
@@ -207,7 +238,7 @@ export function useRotation({
       ? rotationSeconds
       : currentTemplate.kind === "widget-slot"
         ? (position.pick?.slot.durationSeconds ?? rotationSeconds)
-        : frameDurationSeconds(currentTemplate, rotationSeconds),
+        : posterSeconds[safeIndex]!,
     /** 다음 자리(위젯 자리일 수 있다). 화면이 하나뿐이면 지금 자리다. 정보줄 "다음" 표시용 */
     upcoming: rotates ? frames[(safeIndex + 1) % frames.length] : undefined,
     /** 지금 위젯. 다음 위젯을 미리 볼 때 바로 앞 위젯을 피하는 데 쓴다. */

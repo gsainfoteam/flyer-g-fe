@@ -33,6 +33,8 @@ export interface DraftPreviewInput {
   posterUrl: string | null;
   /** 포스터 원본 크기. 모르면 null이고 세로 포스터 비율로 그린다. */
   posterSize: { width: number; height: number } | null;
+  /** 영상 포스터면 재생 파일(업로드 전 blob URL이어도 된다)과 길이(ms) */
+  video?: { url: string; durationMs: number | null } | null;
   /** 날짜를 읽지 못했을 때 대신 쓸 시각. 모르면 null. */
   now: Date | null;
 }
@@ -43,6 +45,7 @@ export function draftToPosterRenderModel({
   categories,
   posterUrl,
   posterSize,
+  video = null,
   now,
 }: DraftPreviewInput): PosterRenderModel {
   // TV는 게시 기간을 그리지 않는다. 날짜는 표시 모델을 채우는 데만 쓴다.
@@ -63,5 +66,7 @@ export function draftToPosterRenderModel({
     detailUrl: optionalText(draft.detailUrl),
     startAt,
     endAt,
+    videoUrl: video?.url ?? null,
+    durationMs: video?.durationMs ?? null,
   };
 }

@@ -2,7 +2,8 @@ import type { DeviceStatus } from "@/entities/device/model/types";
 import { cn } from "@/shared/lib/utils";
 
 /**
- * 기기 연결 상태. 서버가 마지막 heartbeat로 판정한 값을 그대로 보여준다(3분).
+ * 기기 상태. 서버가 마지막 heartbeat(90초)와 화면 끔 시간으로 판정한 값을 그대로
+ * 보여준다.
  * 색은 보조 신호이고 구분은 글자가 맡는다. (명세 9.6)
  */
 const STATUS_STYLE: Record<
@@ -13,6 +14,11 @@ const STATUS_STYLE: Record<
     label: "온라인",
     pill: "bg-success-subtle text-success-strong",
     dot: "bg-success",
+  },
+  SLEEPING: {
+    label: "화면 끔",
+    pill: "bg-info-subtle text-info-strong",
+    dot: "bg-info",
   },
   OFFLINE: {
     label: "오프라인",

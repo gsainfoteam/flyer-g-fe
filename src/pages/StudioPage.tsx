@@ -110,7 +110,15 @@ export function StudioPage() {
   const uploadLimits = useMemo(
     () =>
       config.data
-        ? { maxSizeBytes: config.data.maxUploadBytes }
+        ? {
+            maxSizeBytes: config.data.maxUploadBytes,
+            // 영상을 연 환경이면 허용 형식에 video/*가 들어 있다(배포 ①).
+            acceptsVideo: config.data.allowedMimeTypes.some((type) =>
+              type.startsWith("video/"),
+            ),
+            maxVideoSizeBytes: config.data.maxVideoUploadBytes,
+            maxVideoDurationSeconds: config.data.maxVideoDurationSeconds,
+          }
         : null,
     [config.data],
   );
@@ -217,11 +225,27 @@ export function StudioPage() {
     editingStatus && !editBlocked ? describeEditing(editingStatus) : null;
   const blocker = useUnsavedChangesWarning(isDirty && submitted === null);
 
+  // 새로 고른 영상은 대표 프레임이 아직 없어 영상만 그린다. 올리고 나면 서버가 뜬
+  // 프레임을 쓴다.
+  const pickedVideo =
+    upload.state.mediaKind === "VIDEO" ? upload.state.previewUrl : null;
   const previewPoster = draftToPosterRenderModel({
     draft,
     submissionId: editingSubmission?.id ?? null,
     categories: categories.data ?? [],
-    posterUrl: upload.state.previewUrl ?? editingSubmission?.posterUrl ?? null,
+    posterUrl: pickedVideo
+      ? (upload.state.asset?.url ?? null)
+      : (upload.state.previewUrl ?? editingSubmission?.posterUrl ?? null),
+    video: upload.state.previewUrl
+      ? pickedVideo
+        ? { url: pickedVideo, durationMs: upload.state.durationMs }
+        : null
+      : editingSubmission?.posterVideoUrl
+        ? {
+            url: editingSubmission.posterVideoUrl,
+            durationMs: editingSubmission.posterDurationMs,
+          }
+        : null,
     posterSize: upload.state.previewUrl
       ? upload.state.dimensions
       : editingSubmission
@@ -396,7 +420,9 @@ export function StudioPage() {
             <p className="mt-0.5 mb-2 text-caption text-ink-muted">
               {editingSubmission && !upload.state.previewUrl
                 ? "기존 포스터를 그대로 쓰거나 새로 올려서 바꿀 수 있어요"
-                : "세로 포스터, 정사각형 사진, 가로 배너 모두 올릴 수 있어요"}
+                : uploadLimits?.acceptsVideo
+                  ? "세로 포스터, 정사각형 사진, 가로 배너, 짧은 영상 모두 올릴 수 있어요"
+                  : "세로 포스터, 정사각형 사진, 가로 배너 모두 올릴 수 있어요"}
             </p>
             {editingSubmission?.posterUrl && !upload.state.previewUrl && (
               <div className="mb-3 overflow-hidden rounded-control ring-1 ring-line">

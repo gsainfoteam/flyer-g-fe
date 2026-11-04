@@ -18,6 +18,9 @@ export const queryKeys = {
     detail: (id: string) => ["submissions", "detail", id] as const,
     summary: (scope: SubmissionListParams["scope"]) =>
       ["submissions", "summary", scope ?? "me"] as const,
+    recentStories: (limit: number) =>
+      ["submissions", "recent-stories", limit] as const,
+    author: (id: string) => ["submissions", "author", id] as const,
   },
   reviews: {
     all: () => ["reviews"] as const,

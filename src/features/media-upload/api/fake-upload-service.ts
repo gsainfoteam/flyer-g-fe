@@ -1,4 +1,5 @@
 import { ApiError } from "@/shared/api/error";
+import { probeVideoWithBrowser } from "../model/validate-video";
 import type {
   AssetUploadService,
   UploadOptions,
@@ -10,6 +11,8 @@ import type {
  *
  * 실제 네트워크 대신 진행률을 흉내 내고, 취소와 실패 후 재시도를 화면에서 확인할
  * 수 있게 한다. 서버 검증(EXIF 제거, 재인코딩, 바이러스 검사)은 흉내 내지 않는다.
+ *
+ * 영상은 서버처럼 "변환 중"을 한 번 거치고, 대표 프레임을 브라우저에서 떠서 쓴다.
  *
  * 미리보기용 blob URL은 세션이 끝날 때까지 해제하지 않는다. 만든 신청의 포스터가
  * 계속 보여야 하기 때문이며, mock 저장소와 수명을 맞춘 개발 전용 동작이다.
@@ -41,6 +44,9 @@ export interface MockAsset {
   url: string;
   width: number;
   height: number;
+  kind: "IMAGE" | "VIDEO";
+  videoUrl: string | null;
+  durationMs: number | null;
 }
 
 const uploadedAssets = new Map<string, MockAsset>();
@@ -62,6 +68,39 @@ async function measure(file: File): Promise<{ width: number; height: number }> {
   } catch {
     return { width: 0, height: 0 };
   }
+}
+
+/** 영상의 앞 프레임을 이미지로 뜬다. 브라우저가 아니거나 못 열면 빈 문자열이다. */
+function captureFrame(videoUrl: string): Promise<string> {
+  return new Promise((resolve) => {
+    if (typeof document === "undefined") {
+      resolve("");
+      return;
+    }
+    const video = document.createElement("video");
+    video.muted = true;
+    video.preload = "auto";
+    video.onloadeddata = () => {
+      video.currentTime = Math.min(1, video.duration / 2 || 0);
+    };
+    video.onseeked = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        resolve("");
+        return;
+      }
+      context.drawImage(video, 0, 0);
+      canvas.toBlob(
+        (blob) => resolve(blob ? URL.createObjectURL(blob) : ""),
+        "image/webp",
+      );
+    };
+    video.onerror = () => resolve("");
+    video.src = videoUrl;
+  });
 }
 
 function uploadFailed(): ApiError {
@@ -86,7 +125,7 @@ export function createFakeUploadService(
 
   return {
     async upload(file: File, uploadOptions: UploadOptions = {}) {
-      const { onProgress, signal } = uploadOptions;
+      const { onProgress, onProcessing, signal } = uploadOptions;
       const fileKey = `${file.name}:${file.size}:${file.lastModified}`;
       const attempt = (attemptsByFile.get(fileKey) ?? 0) + 1;
       attemptsByFile.set(fileKey, attempt);
@@ -113,17 +152,45 @@ export function createFakeUploadService(
 
       sequence += 1;
       const assetId = `asset-mock-${sequence}`;
-      const url = createObjectUrl(file);
-      const { width, height } = await measure(file);
-      uploadedAssets.set(assetId, { url, width, height });
+      const isVideo = file.type.startsWith("video/");
+      let mock: MockAsset;
+      if (isVideo) {
+        onProcessing?.();
+        if (tickMs > 0) {
+          await new Promise((resolve) => setTimeout(resolve, tickMs * 4));
+        }
+        throwIfAborted();
+        const videoUrl = createObjectUrl(file);
+        const metadata = await probeVideoWithBrowser(file);
+        mock = {
+          url: await captureFrame(videoUrl),
+          width: metadata?.width ?? 0,
+          height: metadata?.height ?? 0,
+          kind: "VIDEO",
+          videoUrl,
+          durationMs: metadata?.durationMs ?? null,
+        };
+      } else {
+        mock = {
+          url: createObjectUrl(file),
+          ...(await measure(file)),
+          kind: "IMAGE",
+          videoUrl: null,
+          durationMs: null,
+        };
+      }
+      uploadedAssets.set(assetId, mock);
 
       const asset: UploadedAsset = {
         assetId,
-        url,
-        width,
-        height,
+        url: mock.url,
+        width: mock.width,
+        height: mock.height,
         mimeType: file.type,
         sizeBytes: file.size,
+        kind: mock.kind,
+        videoUrl: mock.videoUrl,
+        durationMs: mock.durationMs,
       };
       return asset;
     },
