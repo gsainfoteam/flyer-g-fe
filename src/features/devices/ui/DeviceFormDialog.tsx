@@ -124,7 +124,7 @@ export function DeviceFormDialog({
           throw new IncompleteForm();
         }
         if (device) {
-          await update.mutateAsync(toUpdateDeviceInput(draft));
+          await update.mutateAsync(toUpdateDeviceInput(draft, device));
           toast.success("기기 설정을 저장했어요");
         } else {
           onCreated(await create.mutateAsync(toDeviceInput(draft)));
@@ -220,72 +220,78 @@ export function DeviceFormDialog({
           )}
         </fieldset>
 
-        <FormField
-          label="화면 전환"
-          description={LAYOUT_DESCRIPTIONS[draft.layout]}
-        >
-          {(control) => (
-            <Select
-              value={draft.layout}
-              onValueChange={(value) => {
-                if (value) patch({ layout: value as DeviceDraft["layout"] });
-              }}
+        {/* 새 기기는 그룹 편성의 화면 설정을 따른다. 다르게 할 때만 등록 뒤에 고친다. */}
+        {device && (
+          <>
+            <FormField
+              label="화면 전환"
+              description={LAYOUT_DESCRIPTIONS[draft.layout]}
             >
-              <SelectTrigger id={control.id} className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {LAYOUT_TYPES.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {LAYOUT_LABELS[type]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </FormField>
+              {(control) => (
+                <Select
+                  value={draft.layout}
+                  onValueChange={(value) => {
+                    if (value)
+                      patch({ layout: value as DeviceDraft["layout"] });
+                  }}
+                >
+                  <SelectTrigger id={control.id} className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LAYOUT_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {LAYOUT_LABELS[type]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField
-            label="포스터 전환 간격(초)"
-            error={errorOf("rotationSeconds")}
-            description={`포스터 한 장을 보여 주는 시간이에요. ${DEVICE_LIMITS.rotationSeconds.min}~${DEVICE_LIMITS.rotationSeconds.max}초. 위젯 시간은 '위젯'에서 정해요.`}
-          >
-            {(control) => (
-              <Input
-                {...control}
-                type="number"
-                inputMode="numeric"
-                min={DEVICE_LIMITS.rotationSeconds.min}
-                max={DEVICE_LIMITS.rotationSeconds.max}
-                value={draft.rotationSeconds}
-                onChange={(event) =>
-                  patch({ rotationSeconds: event.target.value })
-                }
-              />
-            )}
-          </FormField>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                label="포스터 전환 간격(초)"
+                error={errorOf("rotationSeconds")}
+                description={`포스터 한 장을 보여 주는 시간이에요. ${DEVICE_LIMITS.rotationSeconds.min}~${DEVICE_LIMITS.rotationSeconds.max}초. 위젯 시간은 '위젯'에서 정해요.`}
+              >
+                {(control) => (
+                  <Input
+                    {...control}
+                    type="number"
+                    inputMode="numeric"
+                    min={DEVICE_LIMITS.rotationSeconds.min}
+                    max={DEVICE_LIMITS.rotationSeconds.max}
+                    value={draft.rotationSeconds}
+                    onChange={(event) =>
+                      patch({ rotationSeconds: event.target.value })
+                    }
+                  />
+                )}
+              </FormField>
 
-          <FormField
-            label="편성 갱신 주기(초)"
-            error={errorOf("refreshAfterSeconds")}
-            description="게시 중단이 이 TV에 반영되기까지의 최대 시간이에요."
-          >
-            {(control) => (
-              <Input
-                {...control}
-                type="number"
-                inputMode="numeric"
-                min={DEVICE_LIMITS.refreshAfterSeconds.min}
-                max={DEVICE_LIMITS.refreshAfterSeconds.max}
-                value={draft.refreshAfterSeconds}
-                onChange={(event) =>
-                  patch({ refreshAfterSeconds: event.target.value })
-                }
-              />
-            )}
-          </FormField>
-        </div>
+              <FormField
+                label="편성 갱신 주기(초)"
+                error={errorOf("refreshAfterSeconds")}
+                description="게시 중단이 이 TV에 반영되기까지의 최대 시간이에요."
+              >
+                {(control) => (
+                  <Input
+                    {...control}
+                    type="number"
+                    inputMode="numeric"
+                    min={DEVICE_LIMITS.refreshAfterSeconds.min}
+                    max={DEVICE_LIMITS.refreshAfterSeconds.max}
+                    value={draft.refreshAfterSeconds}
+                    onChange={(event) =>
+                      patch({ refreshAfterSeconds: event.target.value })
+                    }
+                  />
+                )}
+              </FormField>
+            </div>
+          </>
+        )}
 
         {device && (
           <FormField

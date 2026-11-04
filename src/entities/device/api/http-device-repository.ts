@@ -91,6 +91,16 @@ export function parseDevice(payload: unknown, path = "기기"): DisplayDevice {
     name: readString(body, "name", at("name")),
     location: readNullableString(body, "location", at("location")),
     groupIds: readStringArray(body, "groupIds", at("groupIds")),
+    // 그룹 편성(배포 ⑤) 전 서버는 두 필드를 보내지 않는다.
+    programGroupId: readNullableString(
+      body,
+      "programGroupId",
+      at("programGroupId"),
+    ),
+    overrides:
+      body.overrides === null || body.overrides === undefined
+        ? null
+        : readObject(body.overrides, at("overrides")),
     orientation: readOneOf<DeviceOrientation>(
       readString(body, "orientation", at("orientation")),
       DEVICE_ORIENTATIONS,
@@ -172,7 +182,7 @@ export function createHttpDeviceRepository(
         await client.request({
           method: "POST",
           path: "/signage/devices",
-          body: toWireInput(input) satisfies ApiRequestBody<"CreateDeviceDto">,
+          body: input satisfies ApiRequestBody<"CreateDeviceDto">,
           signal,
         }),
       );
@@ -183,7 +193,8 @@ export function createHttpDeviceRepository(
         await client.request({
           method: "PATCH",
           path: devicePath(id),
-          body: toWireInput(input) satisfies ApiRequestBody<"UpdateDeviceDto">,
+          // `programGroupId`·`overrides`는 생성된 계약 타입에 아직 없다(배포 ⑤ 전 문서).
+          body: toWireInput(input) as ApiRequestBody<"UpdateDeviceDto">,
           signal,
         }),
       );

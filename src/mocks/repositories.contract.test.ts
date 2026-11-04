@@ -828,12 +828,52 @@ describe("위치 그룹 관리", () => {
         location: null,
         groupIds: ["group-house-a"],
         orientation: "LANDSCAPE",
-        layout: "STRIP",
-        rotationSeconds: 10,
-        refreshAfterSeconds: 60,
       }),
     );
     expect(created?.fields?.groupIds).toBeTruthy();
+  });
+
+  it("화면 설정은 기기 필드로 바꿀 수 없고 기기 예외로 바꾼다 (배포 ⑤)", async () => {
+    const { repos } = setup(MOCK_USERS.SUPER_ADMIN);
+
+    const legacy = await errorOf(
+      repos.devices.update("house-a-lobby", { rotationSeconds: 20 }),
+    );
+    expect(legacy?.status).toBe(422);
+    expect(legacy?.fields?.rotationSeconds).toContain("그룹 편성");
+
+    const updated = await repos.devices.update("house-a-lobby", {
+      overrides: { settings: { posterLayout: "STRIP", rotationSeconds: 20 } },
+    });
+    expect(updated).toMatchObject({
+      programGroupId: "group-house-a",
+      layout: { type: "STRIP", rotationSeconds: 20 },
+    });
+  });
+
+  it("위치 그룹이 없으면 등록할 수 없고, 편성 그룹은 위치 그룹 안에 있어야 한다 (배포 ⑤)", async () => {
+    const { repos } = setup(MOCK_USERS.SUPER_ADMIN);
+
+    const empty = await errorOf(
+      repos.devices.create({
+        name: "새 TV",
+        location: null,
+        groupIds: [],
+        orientation: "LANDSCAPE",
+      }),
+    );
+    expect(empty?.fields?.programGroupId).toBeTruthy();
+
+    const moved = await errorOf(
+      repos.devices.update("house-a-lobby", { groupIds: ["group-house-b"] }),
+    );
+    expect(moved?.fields?.programGroupId).toBeTruthy();
+    await expect(
+      repos.devices.update("house-a-lobby", {
+        groupIds: ["group-house-b"],
+        programGroupId: "group-house-b",
+      }),
+    ).resolves.toMatchObject({ programGroupId: "group-house-b" });
   });
 
   it("숨긴 그룹을 대상으로 새 신청을 만들 수 없다", async () => {

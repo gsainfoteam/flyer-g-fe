@@ -104,6 +104,25 @@ describe("기기 관리", () => {
     ).toBeInTheDocument();
   });
 
+  it("등록 폼은 위치 그룹을 받고, 화면 설정은 그룹 편성을 따른다", async () => {
+    const user = userEvent.setup();
+    renderRoute("/tv", { role: "SUPER_ADMIN" });
+    await screen.findByRole("heading", { name: /디스플레이 기기/ });
+
+    await user.click(screen.getByRole("button", { name: "기기 등록" }));
+    const form = await screen.findByRole("dialog");
+
+    expect(within(form).queryByText("화면 전환")).toBeNull();
+    await user.type(
+      within(form).getByRole("textbox", { name: /기기 이름/ }),
+      "C동 로비",
+    );
+    await user.click(within(form).getByRole("button", { name: "등록" }));
+    expect(
+      await within(form).findByText("위치 그룹을 하나 이상 골라 주세요."),
+    ).toBeInTheDocument();
+  });
+
   it("고른 그룹이 저장 전에 지워지면 표시해 두고, 선택을 풀면 저장된다", async () => {
     const user = userEvent.setup();
     const repositories = createMockRepositories({
@@ -143,6 +162,9 @@ describe("기기 관리", () => {
     expect(
       within(form).queryByRole("checkbox", { name: "삭제된 그룹" }),
     ).toBeNull();
+    await user.click(
+      within(form).getByRole("checkbox", { name: "학사기숙사 A동" }),
+    );
     await user.click(within(form).getByRole("button", { name: "등록" }));
     expect(
       await screen.findByRole("dialog", { name: "C동 로비 기기를 등록했어요" }),

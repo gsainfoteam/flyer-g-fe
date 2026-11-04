@@ -2,6 +2,7 @@ import { defaultDeviceWidgetSettings } from "@/entities/widget/model/settings";
 import type { DeviceWidgetSettingsDto } from "@/entities/widget/model/settings";
 import type { WidgetType } from "@/entities/widget/model/types";
 import type {
+  DeviceOverrides,
   DisplayDeviceDto,
   TargetGroup,
 } from "@/entities/device/model/types";
@@ -533,7 +534,7 @@ export function createEventFixtures(now: Date): SubmissionEventDto[] {
  */
 export interface DeviceSeed extends Omit<
   DisplayDeviceDto,
-  "lastSeenAt" | "status"
+  "lastSeenAt" | "status" | "programGroupId" | "overrides"
 > {
   /**
    * 연락이 끊긴 시점(시작 시각 기준 몇 ms 전). null이면 계속 heartbeat를 보내는
@@ -542,6 +543,9 @@ export interface DeviceSeed extends Omit<
   silentSinceMs: number | null | "never";
   /** false면 사용 안 함(DISABLED) */
   isActive: boolean;
+  /** 편성 그룹. 없으면 위치 그룹의 첫 번째다. */
+  programGroupId?: string;
+  overrides?: DeviceOverrides;
 }
 
 /**

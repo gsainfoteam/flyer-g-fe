@@ -8,11 +8,23 @@ export type DeviceStatus = (typeof DEVICE_STATUSES)[number];
 export const DEVICE_ORIENTATIONS = ["LANDSCAPE", "PORTRAIT"] as const;
 export type DeviceOrientation = (typeof DEVICE_ORIENTATIONS)[number];
 
+/**
+ * 기기 예외(배포 ⑤). 그룹 편성 설정 위에 이 기기만 덮는 값이다. 서버는 통째로 바꾸므로
+ * 고칠 때는 있던 값에 합쳐 보낸다.
+ */
+export interface DeviceOverrides {
+  settings?: Record<string, unknown>;
+  blocks?: Record<string, unknown>;
+}
+
 export interface DisplayDeviceDto {
   id: string;
   name: string;
   location: string | null;
   groupIds: string[];
+  /** 편성을 따르는 그룹. 그룹 편성(배포 ⑤)을 모르는 서버면 null */
+  programGroupId: string | null;
+  overrides: DeviceOverrides | null;
   /** MVP는 LANDSCAPE만 사용한다. */
   orientation: DeviceOrientation;
   /** 기기가 마지막으로 알린 해상도. heartbeat를 받기 전에는 null */
@@ -20,7 +32,7 @@ export interface DisplayDeviceDto {
   lastSeenAt: string | null;
   appVersion: string | null;
   status: DeviceStatus;
-  /** 이 기기의 편성 화면 설정. 운영자가 정한다. */
+  /** 이 기기의 실제 화면 설정. 배포 ⑤부터는 그룹 편성 + 기기 예외로 계산한 읽기 전용 값이다. */
   layout: { type: LayoutType; rotationSeconds: number };
   /** 편성 갱신 주기(초). 게시 중단이 이 기기에 반영되기까지의 최대 시간이다. */
   refreshAfterSeconds: number;
@@ -57,14 +69,21 @@ export interface DeviceInput {
   location: string | null;
   groupIds: string[];
   orientation: DeviceOrientation;
-  layout: LayoutType;
-  rotationSeconds: number;
-  refreshAfterSeconds: number;
 }
 
 export interface UpdateDeviceInput extends Partial<DeviceInput> {
   /** false면 사용 안 함(DISABLED). 토큰이 있어도 편성을 받지 못한다. */
   isActive?: boolean;
+  /** 편성 그룹. `groupIds` 중 하나여야 한다. */
+  programGroupId?: string;
+  overrides?: DeviceOverrides;
+  /**
+   * 그룹 편성을 모르는 서버(배포 ⑤ 전)에만 보낸다. 배포 ⑤부터는 422이고 `overrides`로
+   * 바꾼다.
+   */
+  layout?: LayoutType;
+  rotationSeconds?: number;
+  refreshAfterSeconds?: number;
 }
 
 /**
