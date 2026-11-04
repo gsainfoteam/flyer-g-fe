@@ -1,6 +1,7 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { MOCK_USERS } from "@/mocks/users";
 import { currentPath, renderRoute } from "@/test/render-route";
 
 /**
@@ -163,6 +164,104 @@ describe("세션 종료", () => {
     );
 
     await waitFor(() => expect(currentPath(router)).toContain("/login"));
+  });
+});
+
+describe("사용자 화면으로 보기", () => {
+  const VIEW_AS_USER_KEY = "flyerg:view-as-user";
+  const nav = () => screen.findByRole("navigation", { name: "주요 메뉴" });
+  const openMenu = () =>
+    userEvent.click(screen.getByRole("button", { name: "계정 메뉴" }));
+
+  afterEach(() => localStorage.removeItem(VIEW_AS_USER_KEY));
+
+  it("관리자는 프로필 메뉴에서 사용자 화면으로 바꾸고 다시 돌아온다", async () => {
+    const { router } = renderRoute("/review", { role: "SUPER_ADMIN" });
+    const menu = within(await nav());
+    expect(menu.getByRole("link", { name: /심사/ })).toBeInTheDocument();
+
+    await openMenu();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "사용자 화면으로 보기" }),
+    );
+
+    await waitFor(() => expect(currentPath(router)).toBe("/"));
+    expect(
+      within(await nav()).queryByRole("link", { name: /심사/ }),
+    ).toBeNull();
+    expect(within(await nav()).queryByRole("link", { name: "TV" })).toBeNull();
+    expect(
+      within(await nav()).getByRole("link", { name: "내 컨텐츠" }),
+    ).toBeInTheDocument();
+
+    await openMenu();
+    expect(
+      await screen.findByText("시스템 운영자 · 사용자 화면으로 보는 중"),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "시스템 운영자 화면으로 돌아가기" }),
+    );
+
+    expect(
+      await within(await nav()).findByRole("link", { name: /심사/ }),
+    ).toBeInTheDocument();
+    expect(localStorage.getItem(VIEW_AS_USER_KEY)).toBeNull();
+  });
+
+  it("사용자에게는 바꾸는 메뉴가 없다", async () => {
+    renderRoute("/mine", { role: "SUBMITTER" });
+    await nav();
+
+    await openMenu();
+
+    await screen.findByRole("menuitem", { name: "로그아웃" });
+    expect(
+      screen.queryByRole("menuitem", { name: "사용자 화면으로 보기" }),
+    ).toBeNull();
+  });
+
+  it("사용자 화면에서 관리 화면 주소를 열면 돌아가는 길을 알려 준다", async () => {
+    localStorage.setItem(VIEW_AS_USER_KEY, MOCK_USERS.REVIEWER.id);
+    renderRoute("/review", { role: "REVIEWER" });
+
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "하우스 관리자 화면으로 돌아가기",
+      }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "심사", level: 1 }),
+    ).toBeInTheDocument();
+  });
+
+  it("새로고침해도 유지하고, 다른 계정에는 적용하지 않는다", async () => {
+    localStorage.setItem(VIEW_AS_USER_KEY, MOCK_USERS.REVIEWER.id);
+    const { unmount } = renderRoute("/", { role: "REVIEWER" });
+    expect(
+      within(await nav()).queryByRole("link", { name: /심사/ }),
+    ).toBeNull();
+    unmount();
+
+    renderRoute("/", { role: "SUPER_ADMIN" });
+    expect(
+      await within(await nav()).findByRole("link", { name: /심사/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("로그아웃하면 풀린다", async () => {
+    localStorage.setItem(VIEW_AS_USER_KEY, MOCK_USERS.REVIEWER.id);
+    renderRoute("/", { role: "REVIEWER" });
+    await nav();
+
+    await openMenu();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "로그아웃" }),
+    );
+
+    await waitFor(() =>
+      expect(localStorage.getItem(VIEW_AS_USER_KEY)).toBeNull(),
+    );
   });
 });
 

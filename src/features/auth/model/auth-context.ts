@@ -26,6 +26,14 @@ export interface AuthContextValue {
   /** 개발용 역할 전환. mock 세션이 아닐 때는 null이다. */
   switchRole: ((role: Role) => void) | null;
   availableRoles: readonly Role[];
+  /**
+   * 관리자가 사용자 화면으로 보는 중인가. 화면만 바꾸는 모드라 서버 권한은 그대로다.
+   * 관리자가 아니면 항상 false다.
+   */
+  viewAsUser: boolean;
+  setViewAsUser: (on: boolean) => void;
+  /** 화면이 따르는 세션. 사용자 화면으로 볼 때는 역할이 사용자뿐이다. */
+  viewedUser: SessionUser | null;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -38,11 +46,14 @@ export function useAuth(): AuthContextValue {
   return value;
 }
 
-/** 인증된 사용자만 쓰는 화면에서 쓴다. guard 안쪽에서만 호출한다. */
+/**
+ * 인증된 사용자만 쓰는 화면에서 쓴다. guard 안쪽에서만 호출한다. 사용자 화면으로 보는
+ * 관리자에게는 역할이 사용자뿐인 세션을 준다.
+ */
 export function useSessionUser(): SessionUser {
-  const { state } = useAuth();
-  if (state.status !== "authenticated") {
+  const { viewedUser } = useAuth();
+  if (viewedUser === null) {
     throw new Error("인증된 세션이 없는 곳에서 useSessionUser를 불렀습니다.");
   }
-  return state.user;
+  return viewedUser;
 }
