@@ -35,6 +35,7 @@ function repositoriesForNewUser() {
     session: () => ({
       id: "user-new",
       displayName: "새내기",
+      email: "new@example.com",
       roles: ["SUBMITTER"],
       organizationIds: [],
     }),

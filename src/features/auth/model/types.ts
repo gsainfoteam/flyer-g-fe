@@ -7,6 +7,7 @@ export type { Role } from "@/entities/user/model/role";
 export interface SessionUser {
   id: string;
   displayName: string;
+  email: string;
   roles: Role[];
   organizationIds: string[];
 }
