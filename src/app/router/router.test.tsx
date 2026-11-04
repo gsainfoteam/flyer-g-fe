@@ -14,7 +14,7 @@ describe("직접 URL 접근", () => {
   it("알 수 없는 경로는 없는 화면을 보여준다", async () => {
     renderRoute("/무엇인가", { role: "REVIEWER" });
     expect(
-      await screen.findByRole("heading", { name: "찾는 화면이 없어요" }),
+      await screen.findByRole("heading", { name: "페이지를 찾을 수 없습니다" }),
     ).toBeInTheDocument();
   });
 
@@ -34,7 +34,7 @@ describe("세션 guard", () => {
     });
     expect(
       await screen.findByRole("heading", {
-        name: /인포팀 계정으로 시작하세요/,
+        name: /인포팀 계정 로그인/,
       }),
     ).toBeInTheDocument();
   });
@@ -65,7 +65,7 @@ describe("역할 기반 접근", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "이 화면을 볼 권한이 없어요",
+        name: "접근 권한 없음",
       }),
     ).toBeInTheDocument();
     expect(
@@ -84,7 +84,7 @@ describe("역할 기반 접근", () => {
     renderRoute("/tv", { role: "REVIEWER" });
     expect(
       await screen.findByRole("heading", {
-        name: "이 화면을 볼 권한이 없어요",
+        name: "접근 권한 없음",
       }),
     ).toBeInTheDocument();
   });
@@ -94,7 +94,7 @@ describe("역할 기반 접근", () => {
     await screen.findByRole("navigation", { name: "주요 메뉴" });
 
     const nav = screen.getByRole("navigation", { name: "주요 메뉴" });
-    expect(nav).toHaveTextContent("내 컨텐츠");
+    expect(nav).toHaveTextContent("내 콘텐츠");
     expect(nav).not.toHaveTextContent("심사");
     expect(nav).not.toHaveTextContent("TV");
     expect(nav).not.toHaveTextContent("설정");
@@ -109,7 +109,7 @@ describe("역할별 메뉴", () => {
     const labels = Array.from(nav.querySelectorAll("a")).map((link) =>
       link.textContent?.replace(/\d+$/, ""),
     );
-    expect(labels).toEqual(["홈", "심사", "전체 컨텐츠", "TV", "설정"]);
+    expect(labels).toEqual(["홈", "심사", "전체 콘텐츠", "TV", "설정"]);
   });
 
   it("하우스 관리자는 TV와 설정 메뉴가 없다", async () => {
@@ -119,7 +119,7 @@ describe("역할별 메뉴", () => {
     const labels = Array.from(nav.querySelectorAll("a")).map((link) =>
       link.textContent?.replace(/\d+$/, ""),
     );
-    expect(labels).toEqual(["홈", "심사", "전체 컨텐츠"]);
+    expect(labels).toEqual(["홈", "심사", "전체 콘텐츠"]);
   });
 });
 
@@ -191,7 +191,7 @@ describe("사용자 화면으로 보기", () => {
     ).toBeNull();
     expect(within(await nav()).queryByRole("link", { name: "TV" })).toBeNull();
     expect(
-      within(await nav()).getByRole("link", { name: "내 컨텐츠" }),
+      within(await nav()).getByRole("link", { name: "내 콘텐츠" }),
     ).toBeInTheDocument();
 
     await openMenu();
@@ -278,7 +278,7 @@ describe("권한 없음", () => {
     renderRoute("/tv", { role: "REVIEWER" });
 
     expect(
-      await screen.findByText(/시스템 운영자에게만 열려 있는 화면이에요/),
+      await screen.findByText(/시스템 운영자만 접근할 수 있는 화면입니다/),
     ).toBeInTheDocument();
   });
 });
@@ -293,7 +293,7 @@ describe("개편 전 주소", () => {
     );
   });
 
-  it("옛 내 신청 상태 탭은 내 컨텐츠의 보기로 바꾼다", async () => {
+  it("옛 내 신청 상태 탭은 내 콘텐츠의 보기로 바꾼다", async () => {
     const { router } = renderRoute("/submissions?status=ended", {
       role: "SUBMITTER",
     });

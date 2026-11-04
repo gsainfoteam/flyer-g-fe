@@ -16,13 +16,13 @@ describe("SurveyCorner", () => {
 
   it("판이 끝나면 결과 화면용 문구와 더 굵은 테두리", () => {
     render(<SurveyCorner survey={{ ...survey, prize }} finished />);
-    expect(screen.getByText("판이 끝났어요! 이벤트 설문 참여하면")).toBeInTheDocument();
+    expect(screen.getByText("경기 종료! 이벤트 설문 참여하면")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "이벤트 설문" }).className).toContain("ring-accent");
   });
 
   it("경품이 없으면(마감 뒤) 설문 안내만 쓴다", () => {
     render(<SurveyCorner survey={{ ...survey, prize: null }} finished={false} />);
     expect(screen.queryByText("추첨으로 소정의 상품")).toBeNull();
-    expect(screen.getByText("QR을 찍고 의견을 들려주세요")).toBeInTheDocument();
+    expect(screen.getByText("QR로 설문 참여")).toBeInTheDocument();
   });
 });

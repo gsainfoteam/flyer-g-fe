@@ -13,25 +13,24 @@ export function HowToPlay({ seat, className }: { seat: Seat; className?: string 
   return (
     <section aria-labelledby="how-to-play" className={cn("rounded-card bg-surface px-5 py-5", className)}>
       <h2 id="how-to-play" className="text-heading text-ink">
-        이렇게 던져요
+        게임 방법
       </h2>
       <div className="mt-4 flex items-center gap-5">
         <SlingshotPicture seat={seat} />
         <ol className="flex min-w-0 flex-1 flex-col gap-3 text-body text-ink">
           <li>
-            <strong className="font-bold">원반을 아래로 당겨요.</strong> 많이 당길수록 멀리 가요.
+            <strong className="font-bold">원반을 아래로 당겨요.</strong> 많이 당길수록 멀리 이동합니다.
           </li>
           <li>
-            <strong className="font-bold">당긴 반대쪽으로 날아가요.</strong> 손을 떼면 던져요.
+            <strong className="font-bold">당긴 방향의 반대쪽으로 이동합니다.</strong> 손을 떼면 발사됩니다.
           </li>
           <li>
-            <strong className="font-bold">TV를 보고 던지세요.</strong> 끝의 초록 칸이 10점, 넘어가면 0점이에요.
+            <strong className="font-bold">TV를 보고 던지세요.</strong> 끝의 초록 칸은 10점, 넘어가면 0점입니다.
           </li>
         </ol>
       </div>
       <p className="mt-4 text-label text-ink-muted">
-        번갈아 {SHUFFLEBOARD_RULES.shotsPerSeat}번씩, 한 번에 {SHUFFLEBOARD_RULES.turnMs / 1000}초 안에
-        던져요. 끝났을 때 보드에 남은 원반으로 점수를 매겨서, 상대 원반을 밀어낼 수도 있어요.
+        번갈아 {SHUFFLEBOARD_RULES.shotsPerSeat}번씩, 한 번에 {SHUFFLEBOARD_RULES.turnMs / 1000}초 안에 던지세요. 경기 종료 시 보드에 남은 원반으로 점수를 계산합니다. 상대 원반을 밀어낼 수도 있습니다.
       </p>
     </section>
   );
@@ -45,7 +44,7 @@ function SlingshotPicture({ seat }: { seat: Seat }) {
       viewBox="0 0 80 120"
       className="h-28 w-[76px] shrink-0"
       role="img"
-      aria-label="원반을 아래로 당기면 위로 날아가요"
+      aria-label="원반을 아래로 당기면 위로 발사"
     >
       {/* 날아가는 방향 */}
       <line x1="40" y1="44" x2="40" y2="8" stroke={fill} strokeWidth="3" strokeDasharray="4 5" strokeLinecap="round" />

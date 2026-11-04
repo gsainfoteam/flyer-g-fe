@@ -259,9 +259,9 @@ export function ReviewsPage() {
                   title={
                     kind
                       ? `기다리는 ${KIND_INFO[kind].short} 없음`
-                      : "기다리는 컨텐츠 없음"
+                      : "기다리는 콘텐츠 없음"
                   }
-                  description="새로 들어오면 여기에 가장 먼저 보여드려요."
+                  description="새 신청은 이곳에 표시됩니다."
                   className="px-4"
                 />
               ) : (
@@ -308,7 +308,7 @@ export function ReviewsPage() {
             </section>
 
             <section
-              aria-label="고른 컨텐츠"
+              aria-label="고른 콘텐츠"
               className={cn(
                 "flex min-w-0 flex-col gap-5",
                 !submissionId && "max-lg:hidden",
@@ -349,7 +349,7 @@ export function ReviewsPage() {
               ) : (
                 <EmptyState
                   title="모두 처리함"
-                  description="다른 종류 탭에 남은 건이 있는지 보세요."
+                  description="다른 종류의 탭에서 대기 중인 신청을 확인하세요."
                   className="rounded-block bg-surface ring-1 ring-line"
                 />
               )}

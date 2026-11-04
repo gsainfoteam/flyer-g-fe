@@ -21,14 +21,14 @@ describe("클릭 배틀 화면의 설문 QR(우상단)", () => {
   it("이벤트 시간대 화면에만 상태 줄 오른쪽에 설문 QR을 둔다", () => {
     board({ url: "https://forms.gle/abc", label: "이벤트 설문" });
     expect(screen.getByText("이벤트 설문")).toBeInTheDocument();
-    expect(screen.getByText("QR을 찍고 의견을 들려주세요")).toBeInTheDocument();
+    expect(screen.getByText("QR로 설문 참여")).toBeInTheDocument();
     expect(screen.getAllByRole("img").length).toBeGreaterThanOrEqual(3);
   });
 
   it("결과 화면에서는 강조해 다시 부른다", () => {
     board({ url: "https://forms.gle/abc", label: "이벤트 설문" }, "RESULT");
-    expect(screen.getByText("판이 끝났어요!")).toBeInTheDocument();
-    expect(screen.getByText("이벤트 설문에 참여해 주세요")).toBeInTheDocument();
+    expect(screen.getByText("경기 종료!")).toBeInTheDocument();
+    expect(screen.getByText("이벤트 설문 참여")).toBeInTheDocument();
   });
 
   it("경품 안내가 있으면 설문 칸에 경품을 크게 쓴다", () => {

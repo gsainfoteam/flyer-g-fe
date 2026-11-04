@@ -98,10 +98,10 @@ export function QuizPlayPage() {
           <CheckCircle2 aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-success" />
           <div>
             <p className="text-label font-bold text-ink">
-              {CHOICE_MARKS[submitted]} {quiz.choices[submitted]}(으)로 제출했어요
+              {CHOICE_MARKS[submitted]} {quiz.choices[submitted]}선택 · 제출 완료
             </p>
             <p className="mt-1 text-caption text-ink-muted">
-              정답은 내일 로비 TV에서 공개돼요.
+              정답은 내일 로비 TV에서 공개됩니다.
             </p>
           </div>
         </div>

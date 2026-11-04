@@ -19,7 +19,7 @@ export async function login(page: Page, path = "/"): Promise<void> {
 
 export async function switchRole(
   page: Page,
-  roleLabel: "게시자" | "하우스 관리자" | "시스템 운영자",
+  roleLabel: "사용자" | "하우스 관리자" | "시스템 운영자",
 ): Promise<void> {
   await page.getByRole("button", { name: "계정 메뉴" }).click();
   await page.getByRole("menuitemradio", { name: roleLabel }).click();

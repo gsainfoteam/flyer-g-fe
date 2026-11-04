@@ -81,18 +81,18 @@ export function validateTimeSlotDrafts(drafts: readonly TimeSlotDraft[]): TimeSl
   for (const draft of drafts) {
     const messages: string[] = [];
     const label = draft.label.trim();
-    if (!label) messages.push("이름을 적어 주세요");
+    if (!label) messages.push("이름을 입력하세요");
     else if (label.length > TIME_SLOT_LABEL_MAX) {
-      messages.push(`이름은 ${TIME_SLOT_LABEL_MAX}자까지예요`);
+      messages.push(`이름은 ${TIME_SLOT_LABEL_MAX}자까지 입력 가능`);
     }
-    if (!draft.dateFrom || !draft.dateTo) messages.push("날짜를 정해 주세요");
-    else if (draft.dateFrom > draft.dateTo) messages.push("끝 날짜가 시작 날짜보다 빨라요");
-    if (!draft.timeFrom || !draft.timeTo) messages.push("시각을 정해 주세요");
-    else if (draft.timeFrom === draft.timeTo) messages.push("시작과 끝 시각이 같아요");
+    if (!draft.dateFrom || !draft.dateTo) messages.push("날짜를 선택하세요");
+    else if (draft.dateFrom > draft.dateTo) messages.push("종료 날짜는 시작 날짜와 같거나 이후로 설정하세요");
+    if (!draft.timeFrom || !draft.timeTo) messages.push("시각을 설정하세요");
+    else if (draft.timeFrom === draft.timeTo) messages.push("시작 시각과 종료 시각을 다르게 설정하세요");
     if (draft.surveyEnabled && SURVEY_WIDGETS.includes(draft.widget)) {
-      if (!isWebUrl(draft.surveyUrl.trim())) messages.push("설문 링크는 https 주소여야 해요");
+      if (!isWebUrl(draft.surveyUrl.trim())) messages.push("설문 링크는 https 주소를 입력하세요");
       if (!draft.surveyLabel.trim() || draft.surveyLabel.trim().length > SURVEY_LABEL_MAX) {
-        messages.push(`설문 이름은 1~${SURVEY_LABEL_MAX}자예요`);
+        messages.push(`설문 이름은 1~${SURVEY_LABEL_MAX}자 범위로 입력하세요`);
       }
     }
     if (messages.length > 0) errors[draft.id] = messages;

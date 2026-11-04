@@ -99,7 +99,7 @@ describe("게시 신청 스튜디오", () => {
     }
     // 기간 규칙은 서버 설정에서 받아 안내한다.
     expect(
-      await screen.findByText(/기간은 최대 3개월이에요/),
+      await screen.findByText(/기간은 최대 3개월입니다/),
     ).toBeInTheDocument();
   });
 
@@ -143,7 +143,7 @@ describe("게시 신청 스튜디오", () => {
     await openStudio();
 
     expect(
-      screen.getByText("상세 링크가 없으면 TV에 QR 칸이 없어요."),
+      screen.getByText("상세 링크를 입력하지 않으면 QR은 표시되지 않습니다."),
     ).toBeInTheDocument();
 
     await user.type(
@@ -172,7 +172,7 @@ describe("게시 신청 스튜디오", () => {
 
     await user.click(screen.getByRole("button", { name: "제출하기" }));
 
-    expect(await screen.findByText(/포스터 이미지를 올려/)).toBeInTheDocument();
+    expect(await screen.findByText(/포스터 이미지를 업로드/)).toBeInTheDocument();
     expect(createSpy).not.toHaveBeenCalled();
   });
 
@@ -204,7 +204,7 @@ describe("게시 신청 스튜디오", () => {
 
     await user.click(screen.getByRole("button", { name: "제출하기" }));
 
-    expect(await screen.findByText("신청이 접수되었어요")).toBeInTheDocument();
+    expect(await screen.findByText("신청 접수 완료")).toBeInTheDocument();
     // 생성과 제출이 한 번이다. 재검토 요청을 따로 보내지 않는다.
     expect(createSpy).toHaveBeenCalledTimes(1);
     expect(submitSpy).not.toHaveBeenCalled();
@@ -234,7 +234,7 @@ describe("게시 신청 스튜디오", () => {
 
     await user.click(screen.getByRole("button", { name: "제출하기" }));
 
-    expect(await screen.findByText("신청이 접수되었어요")).toBeInTheDocument();
+    expect(await screen.findByText("신청 접수 완료")).toBeInTheDocument();
     expect(createSpy).toHaveBeenCalledWith(
       expect.objectContaining({ detailUrl: null }),
       expect.anything(),
@@ -250,7 +250,7 @@ describe("게시 신청 스튜디오", () => {
 
     await user.dblClick(screen.getByRole("button", { name: "제출하기" }));
 
-    expect(await screen.findByText("신청이 접수되었어요")).toBeInTheDocument();
+    expect(await screen.findByText("신청 접수 완료")).toBeInTheDocument();
     const page = await repositories.submissions.list({
       status: "ALL",
       limit: 100,
@@ -361,7 +361,7 @@ describe("게시 신청 스튜디오", () => {
     );
 
     expect(
-      await screen.findByText(/파일 내용이 이미지 형식과 맞지/),
+      await screen.findByText(/파일 내용이 이미지 형식과 일치하지/),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "제출하기" }));
@@ -432,7 +432,7 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
 
     await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
 
-    expect(await screen.findByText("다시 신청했어요")).toBeInTheDocument();
+    expect(await screen.findByText("재신청 완료")).toBeInTheDocument();
     expect(createSpy).not.toHaveBeenCalled();
     expect(updateSpy).toHaveBeenCalledTimes(1);
     expect(submitSpy).toHaveBeenCalledWith(
@@ -455,13 +455,13 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
 
     const location = await screen.findByDisplayValue("학생회관 1층 갤러리");
     expect(
-      await screen.findByText("고쳐도 검토 대기 순서는 그대로예요"),
+      await screen.findByText("수정 후에도 검토 대기 순서 유지"),
     ).toBeInTheDocument();
     await user.clear(location);
     await user.type(location, "학생회관 2층");
     await user.click(screen.getByRole("button", { name: "수정 저장" }));
 
-    expect(await screen.findByText("수정했어요")).toBeInTheDocument();
+    expect(await screen.findByText("수정 완료")).toBeInTheDocument();
     expect(submitSpy).not.toHaveBeenCalled();
     const detail = await repositories.submissions.getById("notice-905");
     expect(detail).toMatchObject({
@@ -493,7 +493,7 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
     await user.type(title, "A동 공지 (수정)");
     await user.click(screen.getByRole("button", { name: "수정 저장" }));
 
-    expect(await screen.findByText("수정했어요")).toBeInTheDocument();
+    expect(await screen.findByText("수정 완료")).toBeInTheDocument();
     // 기간과 대상을 보내지 않아 서버가 그대로 둔다.
     expect(updateSpy.mock.calls[0]![1]).not.toHaveProperty("targetGroupIds");
     expect(updateSpy.mock.calls[0]![1]).not.toHaveProperty("startAt");
@@ -530,7 +530,7 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
     await user.type(title, "곧 시작하는 공지 (오타 수정)");
     await user.click(screen.getByRole("button", { name: "수정 저장" }));
 
-    expect(await screen.findByText("수정했어요")).toBeInTheDocument();
+    expect(await screen.findByText("수정 완료")).toBeInTheDocument();
     expect(updateSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -558,12 +558,12 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
 
     const subtitle = await screen.findByRole("textbox", { name: /부제/ });
     expect(
-      await screen.findByText("고치면 다시 승인을 받아야 게시돼요"),
+      await screen.findByText("수정 후 재승인 필요"),
     ).toBeInTheDocument();
     await user.type(subtitle, "시간이 바뀌었어요");
     await user.click(screen.getByRole("button", { name: "다시 승인 받기" }));
 
-    expect(await screen.findByText("수정했어요")).toBeInTheDocument();
+    expect(await screen.findByText("수정 완료")).toBeInTheDocument();
     const detail = await repositories.submissions.getById(created.id);
     expect(detail.status).toBe("PENDING_REVIEW");
   });
@@ -589,7 +589,7 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
     openEdit("notice-001");
 
     expect(
-      await screen.findByText(/지금 상태에서는 수정할 수 없어요/),
+      await screen.findByText(/현재 상태에서는 수정할 수 없습니다/),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "제출하기" })).toBeDisabled();
   });
@@ -606,7 +606,7 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
 
     await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
 
-    expect(await screen.findByText("다시 신청했어요")).toBeInTheDocument();
+    expect(await screen.findByText("재신청 완료")).toBeInTheDocument();
     expect(updateSpy).toHaveBeenCalledTimes(1);
     // 두 번째 요청은 저장으로 올라간 버전을 쓰고, 같은 key로 보낸다.
     expect(submitSpy.mock.calls[1]).toEqual(submitSpy.mock.calls[0]);
@@ -632,7 +632,7 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
     await user.type(title, "슈퍼-피셜 겨울 모집");
     await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
 
-    expect(await screen.findByText("다시 신청했어요")).toBeInTheDocument();
+    expect(await screen.findByText("재신청 완료")).toBeInTheDocument();
     expect(updateSpy).toHaveBeenLastCalledWith(
       "notice-901",
       expect.objectContaining({ title: "슈퍼-피셜 겨울 모집", version: 3 }),
@@ -663,7 +663,7 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
 
     await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
 
-    expect(await screen.findByText(/입력을 확인해 주세요/)).toBeInTheDocument();
+    expect(await screen.findByText(/입력을 확인하세요/)).toBeInTheDocument();
     expect(updateSpy).not.toHaveBeenCalled();
     expect(submitSpy).not.toHaveBeenCalled();
   });
@@ -674,7 +674,7 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
     await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
 
     await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
-    await screen.findByText("다시 신청했어요");
+    await screen.findByText("재신청 완료");
     await user.keyboard("{Escape}");
 
     await waitFor(() =>

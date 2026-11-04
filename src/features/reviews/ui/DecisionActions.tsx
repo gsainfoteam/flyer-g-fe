@@ -151,15 +151,15 @@ export function DecisionActions({
   const handleError = (action: string) => (error: unknown) => {
     if (isApiError(error) && error.code === "CONFLICT") {
       setOpen(null);
-      toast.error(`${action}하지 못했어요`, {
-        description: "다른 관리자가 먼저 처리했어요. 최신 상태로 바꿨어요.",
+      toast.error(`${action}하지 못했습니다`, {
+        description: "다른 관리자가 먼저 처리했습니다. 최신 상태를 불러왔습니다.",
       });
       return;
     }
-    toast.error(`${action}하지 못했어요`, {
+    toast.error(`${action}하지 못했습니다`, {
       description: isApiError(error)
         ? toUserMessage(error)
-        : "잠시 후 다시 시도해 주세요.",
+        : "잠시 후 다시 시도하세요.",
     });
   };
 
@@ -207,14 +207,14 @@ export function DecisionActions({
 
       {!canDecide && !canSuspend && (
         <p className="text-caption text-ink-muted">
-          {getStatusLabel(status)} 상태에서는 처리할 작업이 없어요.
+          {getStatusLabel(status)} 상태에서 처리 가능한 작업 없음.
         </p>
       )}
 
       <ConfirmActionDialog
         open={open === "approve"}
         onOpenChange={(next) => setOpen(next ? "approve" : null)}
-        title="이 신청을 승인할까요?"
+        title="이 신청을 승인하시겠습니까?"
         description={
           <>
             {submission.startAt && submission.endAt ? (
@@ -234,7 +234,7 @@ export function DecisionActions({
           const updated = await approve.mutateAsync({
             revision: submission.version,
           });
-          toast.success("승인했어요", {
+          toast.success("승인 완료", {
             description: `지금 상태: ${getStatusLabel(updated.status)}`,
           });
           onDecided?.("approve");
@@ -251,8 +251,8 @@ export function DecisionActions({
             setComment("");
           }
         }}
-        title="이 신청을 반려할까요?"
-        description="사유는 게시자에게 그대로 보여요. 무엇을 고쳐야 하는지 알 수 있게 적어주세요."
+        title="이 신청을 반려하시겠습니까?"
+        description="사유는 게시자에게 그대로 표시됩니다. 반려 이유를 구체적으로 작성하세요."
         confirmLabel="반려"
         tone="destructive"
         confirmDisabled={!rejectReady}
@@ -271,8 +271,8 @@ export function DecisionActions({
             reasonCode: reasonCode as RejectionReasonCode,
             comment,
           });
-          toast.success("반려했어요", {
-            description: "게시자가 사유를 확인하고 다시 신청할 수 있어요.",
+          toast.success("반려 완료", {
+            description: "게시자가 상세 화면에서 반려 사유를 확인할 수 있습니다.",
           });
           onDecided?.("reject");
         }}
@@ -319,7 +319,7 @@ export function DecisionActions({
             required
             description={
               reasonCode === "OTHER"
-                ? `기타는 무엇이 문제인지 ${REJECT_OTHER_MIN_LENGTH}자 이상 적어 주세요. ${trimmedComment.length} / ${REJECT_COMMENT_MAX_LENGTH}자`
+                ? `기타는 무엇이 문제인지 ${REJECT_OTHER_MIN_LENGTH}자 이상 작성하세요. ${trimmedComment.length} / ${REJECT_COMMENT_MAX_LENGTH}자`
                 : `${trimmedComment.length} / ${REJECT_COMMENT_MAX_LENGTH}자`
             }
           >
@@ -343,14 +343,14 @@ export function DecisionActions({
           setOpen(next ? "suspend" : null);
           if (!next) setSuspendReason("");
         }}
-        title="게시를 즉시 중단할까요?"
-        description="모든 TV에서 다음 동기화 때 내려가요. 사유는 게시자에게 표시됩니다."
+        title="게시를 중단하시겠습니까?"
+        description="모든 TV에서 다음 동기화 시 게시가 중단됩니다. 사유는 게시자에게 표시됩니다."
         confirmLabel="게시 중단"
         tone="destructive"
         confirmDisabled={suspendReason.trim().length === 0}
         onConfirm={async () => {
           await suspend.mutateAsync({ reason: suspendReason });
-          toast.success("게시를 중단했어요");
+          toast.success("게시 중단 완료");
           onDecided?.("suspend");
         }}
         onError={handleError("중단")}

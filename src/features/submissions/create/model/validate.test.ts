@@ -64,7 +64,7 @@ describe("validateSubmissionForm", () => {
     it("공백만 있으면 비어 있는 것으로 본다", () => {
       expect(
         validateSubmissionForm(validValues({ title: "   " }), OPTIONS).title,
-      ).toBe("제목을 입력해 주세요.");
+      ).toBe("제목을 입력하세요.");
     });
 
     it("서버 설정의 최대 글자 수로 막는다", () => {

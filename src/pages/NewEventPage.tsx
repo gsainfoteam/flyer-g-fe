@@ -204,8 +204,8 @@ function EventBannerForm({
     if (error.fields) setServerErrors(error.fields);
     toast.error(
       editing
-        ? "이벤트 배너를 고치지 못했어요"
-        : "이벤트 배너를 보내지 못했어요",
+        ? "이벤트 배너를 수정하지 못했습니다"
+        : "이벤트 배너를 보내지 못했습니다",
       { description: toUserMessage(error) },
     );
   };
@@ -227,8 +227,8 @@ function EventBannerForm({
         {
           onSuccess: (updated) => {
             toast.success(
-              returned ? "고쳐서 다시 냈어요" : "고친 내용을 저장했어요",
-              { description: "승인되면 정한 날짜에 TV에 나가요." },
+              returned ? "재신청 완료" : "수정 내용 저장 완료",
+              { description: "승인 후 지정한 날짜에 TV에 게시됩니다." },
             );
             void navigate(to.submissionDetail(updated.id), { replace: true });
           },
@@ -247,8 +247,8 @@ function EventBannerForm({
       },
       {
         onSuccess: (created) => {
-          toast.success("이벤트 배너를 보냈어요", {
-            description: "승인되면 정한 날짜에 TV에 나가요.",
+          toast.success("이벤트 배너 접수 완료", {
+            description: "승인 후 지정한 날짜에 TV에 게시됩니다.",
           });
           void navigate(to.submissionDetail(created.id), { replace: true });
         },
@@ -266,13 +266,13 @@ function EventBannerForm({
           to={editing ? to.submissionDetail(editing.id) : to.home()}
           className="text-caption text-ink-muted hover:underline"
         >
-          {editing ? "컨텐츠 상세" : "올리기"}
+          {editing ? "콘텐츠 상세" : "올리기"}
         </Link>
         <h1 className="mt-1 text-display text-ink">
           {editing ? "이벤트 배너 고치기" : "이벤트 배너"}
         </h1>
         <p className="mt-1.5 text-label text-ink-muted">
-          생일·합격·수상 같은 소식을 TV에 띄워요. 하루 단위, 최대 {maxDays}일.
+          생일·합격·수상 소식을 TV에 게시합니다. 하루 단위, 최대 {maxDays}일.
         </p>
       </div>
 
@@ -369,7 +369,7 @@ function EventBannerForm({
               label="큰 문구"
               required
               error={errorOf("eventBanner.headline")}
-              description={`${headline.trim().length} / ${EVENT_BANNER_TEXT_LIMITS.headline}자 · TV에 크게 나와요`}
+              description={`${headline.trim().length} / ${EVENT_BANNER_TEXT_LIMITS.headline}자 · TV에 크게 표시`}
             >
               {(control) => (
                 <Input
@@ -489,7 +489,7 @@ function EventBannerForm({
                       edit();
                     }}
                   />
-                  사진 속 사람에게 TV에 띄워도 된다는 동의를 받았어요
+                  사진 속 인물에게 TV 게시 동의를 받았습니다
                 </label>
               )}
               {errorOf("eventBanner.photoConsent") && (
@@ -565,7 +565,7 @@ function EventBannerForm({
             />
           </SceneFrame>
           <p className="mt-2 text-caption text-ink-muted">
-            {period} 동안 모든 TV에서 한 바퀴마다 나와요
+            {period} 동안 모든 TV에 순환 게시
           </p>
         </section>
       </div>

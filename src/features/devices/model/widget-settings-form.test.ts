@@ -59,9 +59,9 @@ describe("위젯 설정 폼", () => {
     const errors = validateWidgetDrafts(broken);
     expect(Object.keys(errors)).toEqual(["DDAY"]);
     expect(errors.DDAY).toMatchObject({
-      durationSeconds: "5~300초 사이여야 해요.",
-      label: "이름을 입력해 주세요.",
-      dates: "날짜를 골라 주세요.",
+      durationSeconds: "5~300초 범위로 입력하세요.",
+      label: "이름을 입력하세요.",
+      dates: "날짜를 선택하세요.",
     });
   });
 
@@ -85,7 +85,7 @@ describe("위젯 설정 폼", () => {
 
   it("위젯 비율은 10~50% 정수만 받는다", () => {
     expect(validateRatioPercent("25")).toBeNull();
-    expect(validateRatioPercent("5")).toBe("10~50% 사이여야 해요.");
-    expect(validateRatioPercent("")).toBe("정수로 입력해 주세요.");
+    expect(validateRatioPercent("5")).toBe("10~50% 범위로 입력하세요.");
+    expect(validateRatioPercent("")).toBe("정수로 입력하세요.");
   });
 });

@@ -114,7 +114,7 @@ describe("이벤트 배너 만들기", () => {
     await user.type(screen.getByRole("textbox", { name: /받는 사람/ }), "지민");
     await user.click(screen.getByRole("button", { name: "심사 요청" }));
 
-    expect(screen.getByText("배너 이미지를 올려주세요.")).toBeInTheDocument();
+    expect(screen.getByText("배너 이미지를 업로드하세요.")).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: /큰 문구/ })).toBeNull();
     expect(screen.queryByRole("textbox", { name: /작은 문구/ })).toBeNull();
   });

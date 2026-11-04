@@ -41,8 +41,8 @@ async function repositoriesWithManySubmissions() {
 const tableRows = () =>
   within(screen.getByRole("table")).getAllByRole("row").slice(1);
 
-describe("내 컨텐츠", () => {
-  it("모든 컨텐츠가 pagination으로 접근 가능하다", async () => {
+describe("내 콘텐츠", () => {
+  it("모든 콘텐츠가 pagination으로 접근 가능하다", async () => {
     const user = userEvent.setup();
     const repositories = await repositoriesWithManySubmissions();
     renderRoute("/mine", { role: "SUBMITTER", repositories });
@@ -69,7 +69,7 @@ describe("내 컨텐츠", () => {
     },
   );
 
-  it("다른 사람의 컨텐츠는 나오지 않는다", async () => {
+  it("다른 사람의 콘텐츠는 나오지 않는다", async () => {
     renderRoute("/mine", { role: "SUBMITTER" });
 
     await screen.findByRole("table");
@@ -106,7 +106,7 @@ describe("내 컨텐츠", () => {
     ).toBeInTheDocument();
   });
 
-  it("반려된 컨텐츠는 할 일 칸에서 고쳐서 다시 내러 간다", async () => {
+  it("반려된 콘텐츠는 할 일 칸에서 고쳐서 다시 내러 간다", async () => {
     renderRoute("/mine", { role: "SUBMITTER" });
     await screen.findByRole("table");
 

@@ -45,7 +45,7 @@ export function widgetsUnsupported(): ApiError {
   return new ApiError({
     kind: "http",
     code: "WIDGETS_UNSUPPORTED",
-    message: "서버가 아직 위젯 설정을 지원하지 않아요.",
+    message: "서버에서 위젯 설정을 지원하지 않습니다.",
     status: 404,
   });
 }

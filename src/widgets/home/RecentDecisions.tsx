@@ -47,7 +47,7 @@ export function RecentDecisions({
                   </b>{" "}
                   {record.submissionTitle
                     ? `〈${record.submissionTitle}〉`
-                    : "지워진 컨텐츠"}
+                    : "지워진 콘텐츠"}
                 </span>
                 <span className="shrink-0 text-overline font-normal text-ink-subtle">
                   {formatTimeAgo(record.occurredAt, now)}

@@ -74,10 +74,10 @@ export function checkEventBanner(
     if (!message) errors["eventBanner.message"] ??= "전할 말을 입력하세요.";
     if (banner.photoAssetId && !banner.photoConsent) {
       errors["eventBanner.photoConsent"] =
-        "사진 속 사람의 동의를 받았는지 확인해 주세요.";
+        "사진 속 사람의 TV 게시 동의를 확인하세요.";
     }
   } else if (!banner.assetId) {
-    errors["eventBanner.assetId"] = "배너 이미지를 올려주세요.";
+    errors["eventBanner.assetId"] = "배너 이미지를 업로드하세요.";
   }
 
   const { startAt, endAt } = period;

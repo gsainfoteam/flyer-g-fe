@@ -36,10 +36,10 @@ export function DeviceSetupLinkDialog({
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(link);
-      toast.success("설정 링크를 복사했어요");
+      toast.success("설정 링크 복사 완료");
     } catch {
-      toast.error("복사하지 못했어요", {
-        description: "링크를 직접 선택해 복사해 주세요.",
+      toast.error("복사하지 못했습니다", {
+        description: "링크를 직접 선택해 복사하세요.",
       });
     }
   };
@@ -55,20 +55,19 @@ export function DeviceSetupLinkDialog({
         <DialogHeader>
           <DialogTitle>
             {result?.reason === "rotated"
-              ? `${result.deviceName} 토큰을 재발급했어요`
-              : `${result?.deviceName ?? ""} 기기를 등록했어요`}
+              ? `${result.deviceName} 토큰 재발급 완료`
+              : `${result?.deviceName ?? ""} 기기 등록 완료`}
           </DialogTitle>
           <DialogDescription>
-            TV에서 아래 링크를 한 번 열면 연결돼요.
+            TV에서 아래 링크를 열면 연결됩니다.
             {result?.reason === "rotated" &&
-              " 이전 링크로 연결된 TV는 바로 끊겼어요."}
+              " 이전 링크로 연결된 TV의 연결이 해제되었습니다."}
           </DialogDescription>
         </DialogHeader>
 
         <Alert variant="warning">
           <AlertDescription>
-            이 링크는 지금만 볼 수 있어요. 닫기 전에 복사해 두세요. 잃어버리면
-            토큰을 다시 발급해야 해요.
+            이 링크는 한 번만 표시됩니다. 창을 닫기 전에 복사하세요. 분실하면 토큰을 재발급해야 합니다.
           </AlertDescription>
         </Alert>
 

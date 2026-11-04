@@ -35,7 +35,7 @@ export function OldestQueue({
       </div>
       {items.length === 0 ? (
         <p className="px-6 pt-1 pb-4 text-label text-ink-muted">
-          기다리는 컨텐츠 없음
+          기다리는 콘텐츠 없음
         </p>
       ) : (
         <ul>

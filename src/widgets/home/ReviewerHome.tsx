@@ -137,8 +137,7 @@ function ReviewerIntro() {
       <IconTile icon={Info} size="sm" className="bg-surface text-info-strong" />
       <b>처음이라면</b>
       <span className="min-w-0 flex-1">
-        오래 기다린 것부터 심사해 주세요. 반려 사유는 올린 사람의 상세 화면에 그대로
-        보여요.
+        대기 시간이 긴 신청부터 심사하세요. 반려 사유는 게시자의 상세 화면에 그대로 표시됩니다.
       </span>
       <button
         type="button"

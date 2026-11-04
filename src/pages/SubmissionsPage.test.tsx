@@ -7,12 +7,12 @@ import { currentPath, renderRoute } from "@/test/render-route";
  * 전체 컨텐츠 (하우스 관리자·운영자, 명세 FR-DASH-02).
  * 실제 route로 띄워 상태 탭의 URL 동기화를 확인한다.
  */
-describe("전체 컨텐츠", () => {
+describe("전체 콘텐츠", () => {
   it("상태 탭이 URL에 반영되고 직접 접근해도 같은 화면이 나온다", async () => {
     const user = userEvent.setup();
     const { router } = renderRoute("/contents", { role: "REVIEWER" });
 
-    await screen.findByRole("heading", { name: /전체 컨텐츠 \d+건/ });
+    await screen.findByRole("heading", { name: /전체 콘텐츠 \d+건/ });
     await user.click(screen.getByRole("tab", { name: /^반려/ }));
 
     expect(currentPath(router)).toBe("/contents?status=rejected");
@@ -38,7 +38,7 @@ describe("전체 컨텐츠", () => {
     renderRoute("/contents?status=bogus", { role: "REVIEWER" });
 
     expect(
-      await screen.findByRole("heading", { name: /전체 컨텐츠 \d+건/ }),
+      await screen.findByRole("heading", { name: /전체 콘텐츠 \d+건/ }),
     ).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /^전체/ })).toHaveAttribute(
       "aria-selected",
@@ -58,7 +58,7 @@ describe("전체 컨텐츠", () => {
     expect(screen.getByRole("tab", { name: /^승인 대기/ })).toHaveFocus();
   });
 
-  it("남의 컨텐츠는 검토 화면으로, 내 것은 상세로 간다", async () => {
+  it("남의 콘텐츠는 검토 화면으로, 내 것은 상세로 간다", async () => {
     renderRoute("/contents", { role: "REVIEWER" });
 
     const row = await screen.findByRole("link", {
@@ -76,7 +76,7 @@ describe("전체 컨텐츠", () => {
     renderRoute("/contents", { role: "SUBMITTER" });
 
     expect(
-      await screen.findByRole("heading", { name: "이 화면을 볼 권한이 없어요" }),
+      await screen.findByRole("heading", { name: "접근 권한 없음" }),
     ).toBeInTheDocument();
   });
 });

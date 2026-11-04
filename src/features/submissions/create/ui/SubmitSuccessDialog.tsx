@@ -29,16 +29,16 @@ export type SubmitResultKind = "created" | "resubmitted" | "updated";
 
 const COPY: Record<SubmitResultKind, { title: string; description: string }> = {
   created: {
-    title: "신청이 접수되었어요",
-    description: "하우스 관리자가 검토한 뒤 게시가 시작됩니다.",
+    title: "신청 접수 완료",
+    description: "하우스 관리자 승인 후 게시 일정에 따라 게시됩니다.",
   },
   resubmitted: {
-    title: "다시 신청했어요",
-    description: "하우스 관리자가 다시 검토한 뒤 게시가 시작됩니다.",
+    title: "재신청 완료",
+    description: "하우스 관리자 재검토·승인 후 게시 일정에 따라 게시됩니다.",
   },
   updated: {
-    title: "수정했어요",
-    description: "하우스 관리자가 고친 내용을 검토한 뒤 게시가 시작됩니다.",
+    title: "수정 완료",
+    description: "수정 내용 승인 후 게시 일정에 따라 게시됩니다.",
   },
 };
 

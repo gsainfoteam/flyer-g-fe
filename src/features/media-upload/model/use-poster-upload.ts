@@ -121,7 +121,7 @@ function validateMedia(
       ok: false as const,
       code: "UNSUPPORTED_TYPE" as const,
       message:
-        "영상은 아직 올릴 수 없어요. JPG, PNG, WebP 이미지로 올려 주세요.",
+        "영상 업로드는 지원하지 않습니다. JPG, PNG, WebP 이미지를 업로드하세요.",
     });
   }
   return validateVideoFile(file, {

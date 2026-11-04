@@ -73,7 +73,7 @@ export function BattleWidget({
       link={status}
       local={socketBase === null}
       survey={survey}
-      idleHint="QR로 참가하면 게임이 시작돼요"
+      idleHint="QR로 참가 시 게임 시작"
       header={
         <StageHeader
           deviceLabel={deviceLabel}

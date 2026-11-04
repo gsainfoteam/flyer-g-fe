@@ -60,10 +60,10 @@ function checkSeconds(
 ): string | null {
   const number = Number(value);
   if (value.trim() === "" || !Number.isInteger(number)) {
-    return `${label}은 정수(초)로 입력해 주세요.`;
+    return `${label}은 초 단위 정수로 입력하세요.`;
   }
   if (number < min || number > max) {
-    return `${label}은 ${min}~${max}초 사이여야 해요.`;
+    return `${label}은 ${min}~${max}초 범위로 입력하세요.`;
   }
   return null;
 }
@@ -73,16 +73,16 @@ export function validateDeviceDraft(draft: DeviceDraft): DeviceFieldErrors {
   const errors: DeviceFieldErrors = {};
   const name = draft.name.trim();
   if (name.length === 0) {
-    errors.name = "기기 이름을 입력해 주세요.";
+    errors.name = "기기 이름을 입력하세요.";
   } else if (name.length > DEVICE_LIMITS.nameMaxLength) {
-    errors.name = `기기 이름은 ${DEVICE_LIMITS.nameMaxLength}자까지 쓸 수 있어요.`;
+    errors.name = `기기 이름은 ${DEVICE_LIMITS.nameMaxLength}자까지 입력할 수 있습니다.`;
   }
   // 서버가 위치 그룹 중 하나를 편성 그룹으로 쓴다(배포 ⑤). 없으면 등록할 수 없다.
   if (draft.groupIds.length === 0) {
-    errors.groupIds = "위치 그룹을 하나 이상 골라 주세요.";
+    errors.groupIds = "위치 그룹을 하나 이상 선택하세요.";
   }
   if (draft.location.trim().length > DEVICE_LIMITS.locationMaxLength) {
-    errors.location = `위치는 ${DEVICE_LIMITS.locationMaxLength}자까지 쓸 수 있어요.`;
+    errors.location = `위치는 ${DEVICE_LIMITS.locationMaxLength}자까지 입력할 수 있습니다.`;
   }
   const rotation = checkSeconds(
     draft.rotationSeconds,
@@ -203,7 +203,7 @@ export function groupOptionsFor(
 
 /** 새로 고를 수 없는 그룹이 선택에 남아 있을 때의 안내 */
 export const UNAVAILABLE_GROUP_MESSAGE =
-  "숨겼거나 지운 그룹이 있어요. 표시된 그룹의 선택을 풀어 주세요.";
+  "숨김 또는 삭제된 그룹이 있습니다. 해당 그룹의 선택을 해제하세요.";
 
 /** 서버 422의 `fields`에서 폼 칸에 붙일 것만 고른다. */
 export function toDeviceFieldErrors(

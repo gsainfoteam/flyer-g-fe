@@ -51,8 +51,8 @@ export function isWidgetReleased(type: WidgetType, today: string): boolean {
  */
 export const SURVEY_PARAMS = {
   url: SURVEY_URL,
-  title: "전단지 피드백 설문에 참여해 주세요",
-  description: "응답자 중 추첨으로 경품을 드려요 · 11/8까지",
+  title: "전단지 피드백 설문",
+  description: "응답자 추첨 경품 증정 · 11/8까지",
 } as const;
 
 /**

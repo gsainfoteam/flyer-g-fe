@@ -84,15 +84,15 @@ export function NewStoryPage() {
       { type: "STORY", story: { tag, body: body.trim() } },
       {
         onSuccess: (created) => {
-          toast.success("제보를 보냈어요", {
-            description: "승인되면 TV에 이름 없이 나가요.",
+          toast.success("제보 접수 완료", {
+            description: "승인 후 TV에 작성자 이름 없이 게시됩니다.",
           });
           void navigate(to.submissionDetail(created.id), { replace: true });
         },
         onError: (error) => {
           if (error.kind === "canceled") return;
           if (error.fields) setServerErrors(error.fields);
-          toast.error("제보를 보내지 못했어요", {
+          toast.error("제보를 보내지 못했습니다", {
             description: toUserMessage(error),
           });
         },
@@ -104,7 +104,7 @@ export function NewStoryPage() {
   const previewItems: StorySceneItem[] = [
     {
       tag: tag ?? "NEWS",
-      body: body.trim() || "본문을 쓰면 여기에 보여요",
+      body: body.trim() || "본문 입력 후 미리보기",
       storyNumber: null,
       highlighted: true,
     },
@@ -112,7 +112,7 @@ export function NewStoryPage() {
       ? { tag: other.tag, body: other.body, storyNumber: other.storyNumber }
       : {
           tag: "NEWS",
-          body: "다른 제보와 함께 두 장씩 나와요",
+          body: "다른 제보와 함께 두 장씩 표시",
           storyNumber: null,
           placeholder: true,
         },
@@ -129,7 +129,7 @@ export function NewStoryPage() {
         </Link>
         <h1 className="mt-1 text-display text-ink">소식 제보</h1>
         <p className="mt-1.5 text-label text-ink-muted">
-          TV에는 이름 없이 나가요. 승인되면 {displayDays}일 동안 게시돼요.
+          TV에는 작성자 이름이 표시되지 않습니다. 승인되면 {displayDays}일 동안 게시됩니다.
         </p>
       </div>
 
@@ -175,9 +175,9 @@ export function NewStoryPage() {
           </FormField>
 
           <ul className="list-disc space-y-1 pl-5 text-label text-ink-muted">
-            <li>악용을 막기 위해 시스템 운영자만 작성자를 확인할 수 있어요.</li>
-            <li>특정인을 알아볼 수 있는 내용은 반려돼요.</li>
-            <li>반려되면 고쳐 낼 수 없고 새로 써야 해요.</li>
+            <li>악용 방지를 위해 시스템 운영자만 작성자를 확인할 수 있습니다.</li>
+            <li>특정인을 식별할 수 있는 내용은 반려됩니다.</li>
+            <li>반려된 제보는 수정·재신청할 수 없습니다. 새 제보로 작성해야 합니다.</li>
           </ul>
 
           <div className="flex flex-wrap items-center gap-3 border-t border-surface-muted pt-4">
@@ -208,7 +208,7 @@ export function NewStoryPage() {
             />
           </SceneFrame>
           <p className="mt-2 text-caption text-ink-muted">
-            번호는 승인될 때 붙어요 · 테두리 칸이 내 제보
+            승인 시 번호 부여 · 테두리로 표시된 카드가 내 제보
           </p>
         </section>
       </div>

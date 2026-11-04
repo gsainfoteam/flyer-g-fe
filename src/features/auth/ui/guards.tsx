@@ -21,7 +21,7 @@ export function RequireSession() {
   if (state.status === "initializing") {
     return (
       <div className="mx-auto max-w-content px-6 py-16 lg:px-10">
-        <LoadingState rows={3} label="로그인 상태를 확인하고 있어요." />
+        <LoadingState rows={3} label="로그인 상태 확인 중" />
       </div>
     );
   }
@@ -31,7 +31,7 @@ export function RequireSession() {
       <div className="mx-auto max-w-content px-6 py-16 lg:px-10">
         <ErrorState
           error={state.error}
-          title="로그인 상태를 확인하지 못했어요"
+          title="로그인 상태를 확인하지 못했습니다"
           onRetry={() => window.location.reload()}
           retryLabel="다시 시도"
         />
@@ -59,7 +59,7 @@ export function SessionOrFallback({ fallback }: { fallback: ReactNode }) {
   if (state.status === "initializing") {
     return (
       <div className="mx-auto max-w-content px-6 py-16 lg:px-10">
-        <LoadingState rows={3} label="로그인 상태를 확인하고 있어요." />
+        <LoadingState rows={3} label="로그인 상태 확인 중" />
       </div>
     );
   }
@@ -80,10 +80,9 @@ export function RequireRole({ allow }: { allow: readonly Role[] }) {
     // 사용자 화면으로 보느라 막힌 것이면 권한 문의가 아니라 돌아가는 길을 알려 준다.
     return viewAsUser && hasAnyRole(state.user, allow) ? (
       <div className="flex flex-col items-start gap-3 py-10">
-        <h1 className="text-title text-ink">사용자 화면으로 보는 중이에요</h1>
+        <h1 className="text-title text-ink">사용자 화면 보기 모드</h1>
         <p className="text-body text-ink-muted">
-          이 화면은 {getRoleLabel(getPrimaryRole(state.user))} 화면에서 볼 수
-          있어요.
+          이 화면은 {getRoleLabel(getPrimaryRole(state.user))} 화면에서 확인할 수 있습니다.
         </p>
         <Button size="sm" className="mt-1" onClick={() => setViewAsUser(false)}>
           {getRoleLabel(getPrimaryRole(state.user))} 화면으로 돌아가기
@@ -100,7 +99,7 @@ export function RequireRole({ allow }: { allow: readonly Role[] }) {
 /** 이 화면을 볼 수 있는 역할을 사람이 읽을 수 있게. 가장 낮은 역할부터 적는다. */
 function describeAllowed(allow: readonly Role[]): string {
   const labels = ROLES.filter((role) => allow.includes(role)).map(getRoleLabel);
-  return labels.length === 1 ? `${labels[0]}에게만` : `${labels.join("와 ")}에게`;
+  return `${labels.join("와 ")}만`;
 }
 
 export function ForbiddenView({ allow }: { allow: readonly Role[] }) {
@@ -111,10 +110,10 @@ export function ForbiddenView({ allow }: { allow: readonly Role[] }) {
 
   return (
     <div className="flex flex-col items-start gap-3 py-10">
-      <h1 className="text-title text-ink">이 화면을 볼 권한이 없어요</h1>
+      <h1 className="text-title text-ink">접근 권한 없음</h1>
       <p className="text-body text-ink-muted">
-        {describeAllowed(allow)} 열려 있는 화면이에요. 권한이 필요하면 {grantor}에
-        문의해 주세요.
+        {describeAllowed(allow)} 접근할 수 있는 화면입니다. 권한이 필요하면 {grantor}에
+        문의하세요.
       </p>
       <Button variant="secondary" size="sm" asChild className="mt-1">
         <Link to={to.home()}>홈으로</Link>

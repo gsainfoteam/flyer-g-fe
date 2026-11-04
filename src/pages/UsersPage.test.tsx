@@ -54,7 +54,7 @@ describe("사용자 권한", () => {
     renderRoute("/settings/roles", { role: "REVIEWER" });
     expect(
       await screen.findByRole("heading", {
-        name: "이 화면을 볼 권한이 없어요",
+        name: "접근 권한 없음",
       }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "설정" })).toBeNull();
@@ -80,7 +80,7 @@ describe("사용자 권한", () => {
     const own = await screen.findByRole("combobox", { name: "김도윤 역할" });
     expect(own).toBeDisabled();
     expect(own).toHaveAccessibleDescription(
-      "본인 역할은 다른 운영자가 바꿔야 해요",
+      "본인 역할은 다른 운영자만 변경 가능",
     );
     expect(screen.getByRole("combobox", { name: "최인준 역할" })).toBeEnabled();
   });
@@ -114,9 +114,9 @@ describe("사용자 권한", () => {
       "없는사람",
     );
 
-    expect(await screen.findByText("찾는 사용자가 없어요")).toBeInTheDocument();
+    expect(await screen.findByText("검색 결과 없음")).toBeInTheDocument();
     expect(
-      screen.getByText(/한 번이라도 로그인한 사용자만 찾을 수 있어요/),
+      screen.getByText(/로그인 이력이 있는 사용자만 검색할 수 있습니다/),
     ).toBeInTheDocument();
   });
 
@@ -129,14 +129,14 @@ describe("사용자 권한", () => {
     const user = await chooseRole("문태오", "시스템 운영자");
     const dialog = await screen.findByRole("dialog");
     expect(
-      within(dialog).getByText("문태오님을 시스템 운영자로 바꿀까요?"),
+      within(dialog).getByText("문태오님을 시스템 운영자로 변경하시겠습니까?"),
     ).toBeInTheDocument();
     await user.click(
       within(dialog).getByRole("button", { name: "시스템 운영자로 바꾸기" }),
     );
 
     expect(
-      await screen.findByText("문태오님을 시스템 운영자로 바꿨어요"),
+      await screen.findByText("문태오님을 시스템 운영자로 변경 완료"),
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(tableRows().slice(0, 3)).toEqual([
@@ -166,7 +166,7 @@ describe("사용자 권한", () => {
     await chooseRole("최인준", "하우스 관리자");
 
     expect(
-      await screen.findByText("최인준님을 하우스 관리자로 바꿨어요"),
+      await screen.findByText("최인준님을 하우스 관리자로 변경 완료"),
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(tableRows()).toEqual([
@@ -208,7 +208,7 @@ describe("사용자 권한", () => {
     await chooseRole("오세린", "사용자");
 
     expect(
-      await screen.findByText("역할을 바꾸지 못했어요"),
+      await screen.findByText("역할을 변경하지 못했습니다"),
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(

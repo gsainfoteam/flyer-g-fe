@@ -19,7 +19,7 @@ export function SubmissionScene({ view }: { view: SubmissionView }) {
             { ...view.story },
             {
               tag: "NEWS",
-              body: "다른 제보와 함께 두 장씩 나와요",
+              body: "다른 제보와 함께 두 장씩 표시",
               storyNumber: null,
               placeholder: true,
             },
