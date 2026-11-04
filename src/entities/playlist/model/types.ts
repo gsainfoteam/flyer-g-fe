@@ -1,3 +1,4 @@
+import type { PlaybackLineup } from "@/entities/lineup/model/types";
 import type {
   EventBannerMode,
   EventBannerOccasion,
@@ -123,6 +124,7 @@ export interface PlaylistStoryDto {
 }
 
 export interface PlaylistDto {
+  lineup?: PlaybackLineup;
   serverTime: string;
   /**
    * 이 편성을 받는 기기의 표시 이름("A동 로비"). TV 머리에 나온다. 기기는 기기 목록
@@ -170,6 +172,7 @@ export interface PlaylistItem extends Omit<
 }
 
 export interface Playlist {
+  lineup?: PlaybackLineup;
   /** 편성 판정의 기준 시각. 클라이언트 시계를 쓰지 않는다. */
   serverTime: Date;
   deviceName: string | null;

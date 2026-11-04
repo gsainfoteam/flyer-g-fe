@@ -283,3 +283,20 @@ describe("useOfflinePlaylist", () => {
   });
 });
 
+
+
+describe("운영자 편성 미리보기", () => {
+  it("사용자 인증 미리보기만 읽고 기기 편성과 오프라인 캐시를 건드리지 않는다", async () => {
+    const repos = repositoriesWith(async () => playlistFixture(["device"]));
+    vi.spyOn(repos.lineups, "preview").mockResolvedValue(playlistFixture(["preview"]));
+    const store = createMemoryStore();
+    const read = vi.spyOn(store, "get");
+    const write = vi.spyOn(store, "set");
+    const { result } = renderHook(() => useOfflinePlaylist("tv-a", { operatorPreview: true, store, preload: instantPreload }), { wrapper: makeWrapper(repos) });
+    await waitFor(() => expect(result.current.playlist?.posters[0]?.id).toBe("preview"));
+    expect(repos.lineups.preview).toHaveBeenCalled();
+    expect(repos.displays.getPlaylist).not.toHaveBeenCalled();
+    expect(read).not.toHaveBeenCalled();
+    expect(write).not.toHaveBeenCalled();
+  });
+});

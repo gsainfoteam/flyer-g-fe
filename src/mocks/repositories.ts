@@ -1,3 +1,5 @@
+import type { PlaybackLineup } from "@/entities/lineup/model/types";
+import { parseLineupBlock, parseLineupSettings } from "@/entities/lineup/api/parse";
 import type {
   DeviceList,
   DisplayDevice,
@@ -1432,6 +1434,12 @@ export function createMockRepositories(
               item.targetGroupIds.length === 0 ||
               item.targetGroupIds.some((id) => device.groupIds.includes(id))),
         );
+      const saved = device ? lineups.peekSaved(device.programGroupId ?? device.groupIds[0] ?? "") : undefined;
+      const lineup: PlaybackLineup | undefined = saved ? {
+        settings: parseLineupSettings({ ...saved.settings, ...device?.overrides?.settings }),
+        blocks: saved.blocks.map((block) => parseLineupBlock({ ...block, ...(device?.overrides?.blocks?.[block.id] as object ?? {}) })).filter((b) => b.enabled),
+        programs: {},
+      } : undefined;
       const posters = playable.filter((item) => item.type === "POSTER");
       // 게시 중이면 기간이 있다. 체크섬은 내용으로 정해져 고치면 새 값이 된다.
       const scene = (item: (typeof playable)[number]) => ({
@@ -1445,10 +1453,11 @@ export function createMockRepositories(
       return toPlaylist({
         serverTime: toIsoUtc(now),
         deviceName: device?.name ?? null,
-        playlistVersion: hashPlaylist(playable),
+        playlistVersion: hashPlaylist(playable) + (lineup ? JSON.stringify(lineup) : ""),
+        ...(lineup ? { lineup } : {}),
         // 등록된 기기는 운영자가 정한 화면 설정을, 미리보기는 기본값을 쓴다.
-        refreshAfterSeconds: device?.refreshAfterSeconds ?? 60,
-        layout: device?.layout ?? {
+        refreshAfterSeconds: lineup?.settings.refreshAfterSeconds ?? device?.refreshAfterSeconds ?? 60,
+        layout: lineup ? { type: lineup.settings.posterLayout, rotationSeconds: lineup.settings.rotationSeconds } : device?.layout ?? {
           type: DEFAULT_LAYOUT_TYPE,
           rotationSeconds: 10,
         },
@@ -2101,7 +2110,7 @@ export function createMockRepositories(
   };
 
   const lineups = createMockLineupRepository({
-    clock, settle, requireSuperAdmin, findGroup,
+    clock, settle, requireSuperAdmin, findGroup, preview: (id, signal) => displays.getPlaylist(id, signal),
   });
 
   // 개발 중 오류·지연을 화면에서 재현할 수 있게 주입 검사를 끼운다.

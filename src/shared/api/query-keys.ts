@@ -9,6 +9,10 @@ import type { PendingReviewParams } from "./repositories";
  * - 무효화는 가장 얕은 접두사를 쓴다. 예: `queryKeys.submissions.all()`
  */
 export const queryKeys = {
+  lineups: {
+    detail: (id: string) => ["lineups", id] as const,
+    programs: () => ["lineup-programs"] as const,
+  },
   submissions: {
     all: () => ["submissions"] as const,
     list: (params: SubmissionListParams) =>

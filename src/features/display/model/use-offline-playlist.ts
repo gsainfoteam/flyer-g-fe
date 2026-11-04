@@ -81,6 +81,8 @@ export interface OfflinePlaylistResult {
 }
 
 export interface UseOfflinePlaylistOptions {
+  /** Authenticated operator preview; never reads or writes the device's offline cache. */
+  operatorPreview?: boolean;
   /** 테스트 주입용 */
   store?: KeyValueStore;
   preload?: PreloadOptions;
@@ -98,15 +100,16 @@ export function useOfflinePlaylist(
   deviceId: string,
   options: UseOfflinePlaylistOptions = {},
 ): OfflinePlaylistResult {
-  const { displays } = useRepositories();
+  const { displays, lineups } = useRepositories();
   const {
     store: injectedStore,
     preload,
     backoffMs = computeBackoffMs,
+    operatorPreview = false,
   } = options;
 
   const [cacheStore] = useState<Promise<KeyValueStore>>(() =>
-    openVersionedStore(injectedStore ?? defaultStore(), CACHE_SCHEMA_VERSION),
+    openVersionedStore(operatorPreview ? createMemoryStore() : injectedStore ?? defaultStore(), CACHE_SCHEMA_VERSION),
   );
   const cacheRef = useRef<LoadedPlaylistCache | null>(null);
   const [cached, setCached] = useState<LoadedPlaylistCache | null>(null);
@@ -122,8 +125,8 @@ export function useOfflinePlaylist(
   });
 
   const query = useQuery({
-    queryKey: queryKeys.displays.playlist(deviceId),
-    queryFn: ({ signal }) => displays.getPlaylist(deviceId, signal),
+    queryKey: operatorPreview ? ["lineup-preview", deviceId] : queryKeys.displays.playlist(deviceId),
+    queryFn: ({ signal }) => operatorPreview ? lineups.preview(deviceId, signal) : displays.getPlaylist(deviceId, signal),
     refetchInterval: (current) => {
       const { state } = current;
       const backoff = backoffRef.current;
@@ -147,6 +150,7 @@ export function useOfflinePlaylist(
 
   // 시작 시 캐시를 복원한다. 네트워크보다 먼저 도착하면 즉시 그린다.
   useEffect(() => {
+    if (operatorPreview) return;
     let alive = true;
     void (async () => {
       try {
@@ -167,7 +171,7 @@ export function useOfflinePlaylist(
       cacheRef.current?.release();
       cacheRef.current = null;
     };
-  }, [cacheStore]);
+  }, [cacheStore, operatorPreview]);
 
   // 새 편성이 오면 미디어를 전부 검증한 뒤에만 승격한다. 저장은 한 번에 하나씩
   // 한다. 두 버전이 동시에 저장되면 늦게 끝난 쪽의 정리 단계가 다른 쪽 미디어를
@@ -176,6 +180,7 @@ export function useOfflinePlaylist(
   const latestVersionRef = useRef<string | null>(null);
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
   useEffect(() => {
+    if (operatorPreview) return;
     const playlist = query.data;
     if (!playlist) return;
     latestVersionRef.current = playlist.playlistVersion;
@@ -198,7 +203,7 @@ export function useOfflinePlaylist(
         }
       }
     });
-  }, [query.data, cacheStore, preload]);
+  }, [query.data, cacheStore, preload, operatorPreview]);
 
   const { data, dataUpdatedAt, error, errorUpdatedAt, isPending, refetch } =
     query;
@@ -217,7 +222,7 @@ export function useOfflinePlaylist(
     rejection && dataUpdatedAt <= rejection.at ? rejection.error : null;
 
   // 한 번 거절된 뒤에는 이 창에서 읽어 둔 캐시로 돌아가지 않는다.
-  const usableCache = rejection === null ? cached : null;
+  const usableCache = !operatorPreview && rejection === null ? cached : null;
 
   // 거절되면 저장해 둔 편성을 지운다. 진행 중인 승격은 버전 확인에서 멈춘다.
   const rejectedAt = deviceError ? rejection!.at : null;
@@ -360,6 +365,7 @@ function toDisplayPlaylist(
   const stories = playlist.stories.filter((story) => isPlayableAt(story, now));
 
   return {
+    ...(playlist.lineup ? { lineup: playlist.lineup } : {}),
     serverTime: now,
     playlistVersion: playlist.playlistVersion,
     refreshAfterSeconds: clampRefreshSeconds(playlist.refreshAfterSeconds),

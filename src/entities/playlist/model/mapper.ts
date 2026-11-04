@@ -21,6 +21,7 @@ function toPlaylistItem(dto: PlaylistItemDto): PlaylistItem {
 
 export function toPlaylist(dto: PlaylistDto): Playlist {
   return {
+    ...(dto.lineup ? { lineup: dto.lineup } : {}),
     serverTime: parseIsoUtc(dto.serverTime),
     deviceName: dto.deviceName ?? null,
     playlistVersion: dto.playlistVersion,
@@ -96,6 +97,7 @@ export function mediaOfPlaylist(
 /** 도메인 모델 → 전송 모델. 오프라인 캐시가 직렬화할 때 쓴다. */
 export function toPlaylistDto(playlist: Playlist): PlaylistDto {
   return {
+    ...(playlist.lineup ? { lineup: playlist.lineup } : {}),
     serverTime: toIsoUtc(playlist.serverTime),
     deviceName: playlist.deviceName,
     playlistVersion: playlist.playlistVersion,

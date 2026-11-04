@@ -8,12 +8,14 @@ import type { Lineup } from "@/entities/lineup/model/types";
 import { ApiError } from "@/shared/api/error";
 import type { LineupRepository } from "@/shared/api/repositories";
 import type { Clock } from "@/shared/lib/clock";
+import type { Playlist } from "@/entities/playlist/model/types";
 
 interface Dependencies {
   clock: Clock;
   settle: (signal?: AbortSignal) => Promise<void>;
   requireSuperAdmin: () => unknown;
   findGroup: (id: string) => unknown;
+  preview: (id: string, signal?: AbortSignal) => Promise<Playlist>;
 }
 
 /** 그룹마다 독립적인 편성. 반환값이나 저장 입력을 수정해도 저장소는 바뀌지 않는다. */
@@ -22,7 +24,8 @@ export function createMockLineupRepository({
   settle,
   requireSuperAdmin,
   findGroup,
-}: Dependencies): LineupRepository {
+  preview,
+}: Dependencies): LineupRepository & { peekSaved(groupId: string): Lineup | undefined } {
   const saved = new Map<string, Lineup>();
   let sequence = 0;
   const nextBlockId = () => `blk_mock_${++sequence}`;
@@ -58,6 +61,12 @@ export function createMockLineupRepository({
   };
 
   return {
+    async preview(id, signal) { requireSuperAdmin(); return preview(id, signal); },
+    // Legacy fixtures retain their layout until an operator saves a lineup.
+    peekSaved(groupId) {
+      const lineup = saved.get(groupId);
+      return lineup && lineup.version > 1 ? structuredClone(lineup) : undefined;
+    },
     async get(groupId, signal) {
       await settle(signal);
       requireSuperAdmin();

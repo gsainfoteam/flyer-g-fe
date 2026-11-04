@@ -24,6 +24,7 @@ interface TargetGroupsSectionProps {
   isLoading: boolean;
   error: unknown;
   onRetry: () => void;
+  onLineup?: (group: TargetGroup) => void;
 }
 
 export function TargetGroupsSection({
@@ -31,6 +32,7 @@ export function TargetGroupsSection({
   isLoading,
   error,
   onRetry,
+  onLineup,
 }: TargetGroupsSectionProps) {
   const [editing, setEditing] = useState<TargetGroup | "new" | null>(null);
   const [deleting, setDeleting] = useState<TargetGroup | null>(null);
@@ -72,6 +74,7 @@ export function TargetGroupsSection({
                 <TargetGroupRow
                   key={group.id}
                   group={group}
+                  onLineup={onLineup ? () => onLineup(group) : undefined}
                   onEdit={() => setEditing(group)}
                   onDelete={() => setDeleting(group)}
                 />
@@ -131,10 +134,12 @@ function TargetGroupRow({
   group,
   onEdit,
   onDelete,
+  onLineup,
 }: {
   group: TargetGroup;
   onEdit: () => void;
   onDelete: () => void;
+  onLineup?: () => void;
 }) {
   const facts = [
     group.deviceCount > 0
@@ -160,6 +165,7 @@ function TargetGroupRow({
         </p>
       </div>
       <div className="flex shrink-0 gap-2">
+        {onLineup && <Button variant="secondary" size="sm" onClick={onLineup}>편성</Button>}
         <Button variant="secondary" size="sm" onClick={onEdit}>
           수정
         </Button>

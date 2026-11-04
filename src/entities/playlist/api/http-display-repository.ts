@@ -1,3 +1,4 @@
+import { parsePlaybackLineup } from "@/entities/lineup/api/parse";
 import { parseSubmissionPage } from "@/entities/submission/api/http-submission-repository";
 import type { SignageSubmissionExpanded } from "@/entities/submission/model/types";
 import { ApiError, isApiError } from "@/shared/api/error";
@@ -93,8 +94,7 @@ function asDeviceError(error: unknown): unknown {
 
 /**
  * 편성 응답. v2(`?v=2`, 배포 ⑥)는 종류별 `submissions`와 `settings`로 오고, 이를 지금
- * 재생기가 쓰는 모양으로 옮긴다. 블록은 아직 읽지 않는다. 편성 화면(9.3)과 장면 엔진(9.4)
- * 전이라 게시 중인 세 종류를 모두 순환에 넣는다. `?v=2`를 모르는 서버는 v1로 답한다.
+ * 재생기가 쓰는 모양으로 옮긴다. 블록·설정·운영 컨텐츠를 캐시까지 보존한다. `?v=2`를 모르는 서버는 v1로 답한다.
  */
 export function parsePlaylist(payload: unknown): Playlist {
   const body = readObject(payload);
@@ -112,6 +112,7 @@ export function parsePlaylist(payload: unknown): Playlist {
       },
       items: submissions.POSTER ?? [],
     }),
+    ...(body.blocks !== undefined ? { lineup: parsePlaybackLineup(body) } : {}),
     eventBanners: readArray(
       submissions.EVENT_BANNER ?? [],
       "submissions.EVENT_BANNER",
