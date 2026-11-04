@@ -185,6 +185,48 @@ describe("운영자 홈", () => {
   });
 });
 
+describe("화면 끔 시간의 TV (배포 ⑦)", () => {
+  /** B동은 끊긴 기기다. TEST_NOW(서울 12:00)를 덮는 화면 끔 시간을 둔다. */
+  async function repositoriesWithSleepingTv() {
+    const repositories = createMockRepositories({
+      clock: createFixedClock(TEST_NOW),
+      heartbeats: createMemoryHeartbeatLog(),
+    });
+    await repositories.devices.update("house-b-lobby", {
+      overrides: {
+        settings: { quietHours: [{ start: "11:00", end: "13:00" }] },
+      },
+    });
+    return repositories;
+  }
+
+  it("운영자 홈은 꺼진 TV로 알리지 않고 화면 끔으로 보여 준다", async () => {
+    renderRoute("/", {
+      role: "SUPER_ADMIN",
+      repositories: await repositoriesWithSleepingTv(),
+    });
+
+    const section = (
+      await screen.findByRole("heading", { name: "TV 지금" })
+    ).closest("section")!;
+    expect(await within(section).findByText(/1\/2 켜짐/)).toBeInTheDocument();
+    expect(within(section).getByText(/화면 끔 1/)).toBeInTheDocument();
+    expect(within(section).queryByText(/연결 없음/)).toBeNull();
+    expect(screen.queryByText(/B동 로비 꺼짐/)).toBeNull();
+  });
+
+  it("하우스 관리자 홈은 꺼짐이 아니라 화면 끔으로 센다", async () => {
+    renderRoute("/", {
+      role: "REVIEWER",
+      repositories: await repositoriesWithSleepingTv(),
+    });
+
+    expect(
+      await screen.findByText("TV 켜짐 · 화면 끔 1대"),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("제보 (배포 ④)", () => {
   async function repositoriesWithStory() {
     // 작성자 본인에게만 신청자가 보인다. 화면의 사용자(정하윤)로 보고, 심사할 때만 바꾼다.

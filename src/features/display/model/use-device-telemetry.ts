@@ -18,7 +18,7 @@ import { createPlayEventQueue } from "@/features/display/model/play-event-queue"
  * 있으므로 queue 없이 실패를 버리고, 노출 이벤트는 집계용이라 queue에 쌓았다가
  * 재전송한다.
  */
-const HEARTBEAT_INTERVAL_MS = 60_000;
+const HEARTBEAT_INTERVAL_MS = 30_000;
 const FLUSH_INTERVAL_MS = 30_000;
 const TELEMETRY_DB_NAME = "flyer-g-telemetry";
 

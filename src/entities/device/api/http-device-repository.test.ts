@@ -86,6 +86,25 @@ describe("createHttpDeviceRepository", () => {
     expect(result.device.id).toBe("dev_01");
   });
 
+  it("SLEEPING 기기가 섞여도 목록을 읽는다", async () => {
+    const { repository } = fakeClient({
+      serverTime: "2026-09-27T10:00:00.000Z",
+      items: [
+        { ...DEVICE, id: "dev_on", status: "ONLINE" },
+        { ...DEVICE, id: "dev_sleep", status: "SLEEPING" },
+        { ...DEVICE, id: "dev_off", status: "OFFLINE" },
+      ],
+    });
+
+    const { items } = await repository.list();
+
+    expect(items.map((device) => device.status)).toEqual([
+      "ONLINE",
+      "SLEEPING",
+      "OFFLINE",
+    ]);
+  });
+
   it("그룹 편성 서버의 편성 그룹과 기기 예외를 읽는다", async () => {
     const { repository } = fakeClient({
       serverTime: "2026-09-27T10:00:00.000Z",

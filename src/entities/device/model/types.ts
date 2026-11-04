@@ -1,8 +1,17 @@
 import type { LayoutType } from "@/entities/playlist/model/types";
 import { parseIsoUtc } from "@/shared/lib/datetime";
 
-/** 명세 6.4 DisplayDevice */
-export const DEVICE_STATUSES = ["ONLINE", "OFFLINE", "DISABLED"] as const;
+/**
+ * 명세 6.4 DisplayDevice. 서버가 이 순서로 판정한다(배포 ⑦): DISABLED(사용 안 함) →
+ * SLEEPING(편성의 화면 끔 시간 안) → ONLINE(90초 안에 heartbeat) → OFFLINE.
+ * SLEEPING은 정해 둔 시간에 쉬는 정상 상태다. 꺼짐으로 세지 않는다.
+ */
+export const DEVICE_STATUSES = [
+  "ONLINE",
+  "SLEEPING",
+  "OFFLINE",
+  "DISABLED",
+] as const;
 export type DeviceStatus = (typeof DEVICE_STATUSES)[number];
 
 export const DEVICE_ORIENTATIONS = ["LANDSCAPE", "PORTRAIT"] as const;

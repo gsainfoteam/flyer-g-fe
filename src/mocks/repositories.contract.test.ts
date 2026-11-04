@@ -495,7 +495,7 @@ describe("검토", () => {
 });
 
 describe("기기와 편성", () => {
-  it("heartbeat가 3분 안에 있으면 온라인, 아니면 오프라인이다", async () => {
+  it("heartbeat가 90초 안에 있으면 온라인, 아니면 오프라인이다", async () => {
     const { repos, heartbeats } = setup(MOCK_USERS.REVIEWER);
 
     const before = await repos.devices.list();
@@ -517,6 +517,45 @@ describe("기기와 편성", () => {
       status: "ONLINE",
       appVersion: "v0.5.0",
     });
+  });
+
+  it("90초가 넘은 heartbeat는 오프라인이다", async () => {
+    const { repos, heartbeats } = setup(MOCK_USERS.REVIEWER);
+    heartbeats.record("house-b-lobby", {
+      at: new Date(NOW.getTime() - 91_000).toISOString(),
+      appVersion: "v0.5.0",
+      resolution: { width: 1920, height: 1080 },
+    });
+
+    const { items } = await repos.devices.list();
+
+    expect(items.find((device) => device.id === "house-b-lobby")?.status).toBe(
+      "OFFLINE",
+    );
+  });
+
+  it("화면 끔 시간에는 heartbeat가 끊겨도 SLEEPING이고, 사용 안 함이 먼저다", async () => {
+    const { repos, signInAs } = setup(MOCK_USERS.SUPER_ADMIN);
+    // NOW는 서울 12:00이다. 자정을 넘는 구간과 지나간 구간은 걸리지 않는다.
+    const quiet = (start: string, end: string) => ({
+      overrides: { settings: { quietHours: [{ start, end }] } },
+    });
+    const statusOf = async (id: string) =>
+      (await repos.devices.list()).items.find((device) => device.id === id)
+        ?.status;
+
+    await repos.devices.update("house-b-lobby", quiet("11:00", "13:00"));
+    expect(await statusOf("house-b-lobby")).toBe("SLEEPING");
+
+    await repos.devices.update("house-b-lobby", quiet("22:00", "06:00"));
+    expect(await statusOf("house-b-lobby")).toBe("OFFLINE");
+
+    await repos.devices.update("house-b-lobby", quiet("22:00", "13:00"));
+    expect(await statusOf("house-b-lobby")).toBe("SLEEPING");
+
+    await repos.devices.update("house-b-lobby", { isActive: false });
+    signInAs(MOCK_USERS.REVIEWER);
+    expect(await statusOf("house-b-lobby")).toBe("DISABLED");
   });
 
   it("기기는 자기 위치가 대상인 게시물만 받고, 링크 없는 게시물은 QR 없이 받는다", async () => {

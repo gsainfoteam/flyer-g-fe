@@ -37,7 +37,8 @@ import type {
  *
  * 목록은 `{ serverTime, items }` 봉투로 온다. 화면은 이 서버 시각으로 "마지막 연결
  * N분 전"을 센다(클라이언트 시계를 쓰지 않는다).
- * 상태(ONLINE·OFFLINE·DISABLED)는 서버가 마지막 heartbeat로 판정한다(3분).
+ * 상태(ONLINE·SLEEPING·OFFLINE·DISABLED)는 서버가 마지막 heartbeat(90초)와 화면 끔
+ * 시간으로 판정한다.
  */
 function readOneOf<T extends string>(
   value: string,

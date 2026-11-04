@@ -86,6 +86,8 @@ function DeviceTile({ devices }: { devices: DeviceList | undefined }) {
   const all = devices?.items.filter((device) => device.status !== "DISABLED");
   const online = all?.filter((device) => device.status === "ONLINE");
   const offline = all?.filter((device) => device.status === "OFFLINE") ?? [];
+  // 화면 끔 시간의 TV는 정상이다. 켜짐 수가 모자란 이유만 밝힌다.
+  const sleeping = all?.filter((device) => device.status === "SLEEPING") ?? [];
   return (
     <StatTile
       icon={Tv}
@@ -96,11 +98,14 @@ function DeviceTile({ devices }: { devices: DeviceList | undefined }) {
       }
       value={online ? online.length : "–"}
       unit={all ? `/${all.length}` : undefined}
-      label={
-        offline.length > 0
-          ? `TV 켜짐 · ${offline.map((device) => device.name).join(", ")} 꺼짐`
-          : "TV 켜짐"
-      }
+      label={[
+        "TV 켜짐",
+        offline.length > 0 &&
+          `${offline.map((device) => device.name).join(", ")} 꺼짐`,
+        sleeping.length > 0 && `화면 끔 ${sleeping.length}대`,
+      ]
+        .filter(Boolean)
+        .join(" · ")}
     />
   );
 }

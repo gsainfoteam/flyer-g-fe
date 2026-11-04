@@ -529,7 +529,7 @@ export function createEventFixtures(now: Date): SubmissionEventDto[] {
 /**
  * 기기 목록. `lastSeenAt`은 mock repository가 heartbeat 기록으로 덮어쓴다.
  *
- * - A동 로비: 1분마다 heartbeat를 보내는 정상 기기로 흉내 낸다. 모아 보기로 돈다.
+ * - A동 로비: 30초마다 heartbeat를 보내는 정상 기기로 흉내 낸다. 모아 보기로 돈다.
  * - B동 로비: 26분 전부터 연락이 끊긴 기기다. 흐르는 띠로 돈다.
  */
 export interface DeviceSeed extends Omit<

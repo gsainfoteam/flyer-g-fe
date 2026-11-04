@@ -104,6 +104,24 @@ describe("기기 관리", () => {
     ).toBeInTheDocument();
   });
 
+  it("화면 끔 시간의 TV는 오프라인이 아니라 화면 끔으로 표시한다", async () => {
+    const repositories = createMockRepositories({
+      clock: createFixedClock(TEST_NOW),
+      session: () => MOCK_USERS.SUPER_ADMIN,
+      heartbeats: createMemoryHeartbeatLog(),
+    });
+    // TEST_NOW는 서울 12:00이다. B동은 끊긴 기기다.
+    await repositories.devices.update("house-b-lobby", {
+      overrides: {
+        settings: { quietHours: [{ start: "11:00", end: "13:00" }] },
+      },
+    });
+    renderRoute("/tv", { role: "SUPER_ADMIN", repositories });
+
+    expect(await screen.findByText("화면 끔")).toBeInTheDocument();
+    expect(screen.queryByText("오프라인")).toBeNull();
+  });
+
   it("등록 폼은 위치 그룹을 받고, 화면 설정은 그룹 편성을 따른다", async () => {
     const user = userEvent.setup();
     renderRoute("/tv", { role: "SUPER_ADMIN" });

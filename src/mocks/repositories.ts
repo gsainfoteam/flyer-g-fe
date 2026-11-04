@@ -93,6 +93,7 @@ import type { Clock } from "@/shared/lib/clock";
 import { systemClock } from "@/shared/lib/clock";
 import {
   fromSeoulInput,
+  getSeoulParts,
   parseIsoUtc,
   seoulDayDiff,
   toIsoUtc,
@@ -137,10 +138,24 @@ import type { MockAccountSeed } from "./users";
  */
 const DEFAULT_PAGE_SIZE = 8;
 
-/** 이 시간 안에 heartbeat가 있으면 온라인이다. 서버 기준(3분)과 같다. */
-const ONLINE_WINDOW_MS = 3 * 60 * 1000;
+/** 이 시간 안에 heartbeat가 있으면 온라인이다. 서버 기준(90초)과 같다. */
+const ONLINE_WINDOW_MS = 90 * 1000;
 /** 정상 기기가 heartbeat를 보내는 간격. 플레이어(`use-device-telemetry`)와 같다. */
-const HEARTBEAT_INTERVAL_MS = 60 * 1000;
+const HEARTBEAT_INTERVAL_MS = 30 * 1000;
+
+/**
+ * 화면 끔 시간인가. 서버 `isQuietAt`과 같다: 서울 기준 start 이상 end 미만이고, end가
+ * start보다 이르면 자정을 넘는다.
+ */
+function isQuietAt(quietHours: unknown, now: Date): boolean {
+  if (!Array.isArray(quietHours)) return false;
+  const { hour24, minute } = getSeoulParts(now);
+  const at = `${String(hour24).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  return (quietHours as { start: string; end: string }[]).some(
+    ({ start, end }) =>
+      start <= end ? at >= start && at < end : at >= start || at < end,
+  );
+}
 
 function httpError(
   status: number,
@@ -1546,7 +1561,7 @@ export function createMockRepositories(
     const now = clock.now();
     const heartbeat = heartbeats.read()[device.id];
     const heartbeatAt = heartbeat ? Date.parse(heartbeat.at) : Number.NaN;
-    // 정상 기기는 1분마다 heartbeat를 보낸다고 치고, 끊긴 기기는 끊긴 시점에
+    // 정상 기기는 30초마다 heartbeat를 보낸다고 치고, 끊긴 기기는 끊긴 시점에
     // 멈춰 있다. 실제 TV 탭이 보낸 기록이 더 최근이면 그것을 쓴다.
     const simulated =
       silentSinceMs === "never"
@@ -1579,9 +1594,11 @@ export function createMockRepositories(
       lastRenderOkAt,
       status: !isActive
         ? "DISABLED"
-        : lastSeen !== null && now.getTime() - lastSeen <= ONLINE_WINDOW_MS
-          ? "ONLINE"
-          : "OFFLINE",
+        : isQuietAt(overrides?.settings?.quietHours, now)
+          ? "SLEEPING"
+          : lastSeen !== null && now.getTime() - lastSeen <= ONLINE_WINDOW_MS
+            ? "ONLINE"
+            : "OFFLINE",
     };
     return toDisplayDevice(dto);
   };
