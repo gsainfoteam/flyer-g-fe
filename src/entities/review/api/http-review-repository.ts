@@ -130,6 +130,11 @@ function parseAuditEvent(
   );
   if (type === null) return null;
   const bySystem = body.actorType === "SYSTEM";
+  // 작성자를 가리는 제보는 작성자가 한 일의 행위자를 서버가 지워 보낸다(배포 ④).
+  const hidden =
+    body.actorType === "USER" &&
+    (body.actorId ?? null) === null &&
+    (body.actorName ?? null) === null;
   return {
     id: readString(body, "id", `${path}.id`),
     submissionId,
@@ -143,8 +148,10 @@ function parseAuditEvent(
     // 서버 작업은 사람이 아니다. 탈퇴한 사용자는 이름이 없다.
     actorName: bySystem
       ? ""
-      : (readNullableString(body, "actorName", `${path}.actorName`) ??
-        "알 수 없음"),
+      : hidden
+        ? "작성자 가림"
+        : (readNullableString(body, "actorName", `${path}.actorName`) ??
+          "알 수 없음"),
     occurredAt: readIsoDate(body, "createdAt", `${path}.createdAt`),
   };
 }

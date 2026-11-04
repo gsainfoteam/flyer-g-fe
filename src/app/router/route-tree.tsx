@@ -72,6 +72,12 @@ const usersPage = lazyPage(() =>
 const studioPage = lazyPage(() =>
   import("@/pages/StudioPage").then((m) => ({ default: m.StudioPage })),
 );
+const newEventPage = lazyPage(() =>
+  import("@/pages/NewEventPage").then((m) => ({ default: m.NewEventPage })),
+);
+const newStoryPage = lazyPage(() =>
+  import("@/pages/NewStoryPage").then((m) => ({ default: m.NewStoryPage })),
+);
 // 플레이어 로딩 화면은 비워 둔다. TV에 관리용 스켈레톤을 잠깐이라도 띄우지 않는다.
 const displayPage = lazyPage(
   () => import("@/pages/DisplayPage").then((m) => ({ default: m.DisplayPage })),
@@ -221,6 +227,17 @@ export const routeTree = [
           {
             element: <AdminLayout />,
             children: [
+              // 이벤트 배너와 제보는 칸이 적어 포스터처럼 전용 틀을 쓰지 않는다.
+              {
+                path: paths.newEvent,
+                element: newEventPage,
+                handle: title("이벤트 배너"),
+              },
+              {
+                path: paths.newStory,
+                element: newStoryPage,
+                handle: title("소식 제보"),
+              },
               {
                 path: paths.mine,
                 element: minePage,

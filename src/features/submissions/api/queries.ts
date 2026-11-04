@@ -146,3 +146,32 @@ export function useReviewHistories(submissionIds: readonly string[]) {
     })),
   });
 }
+
+/**
+ * 지금 게시 중인 제보. 최근 승인 순이다(`GET /signage/stories/recent`). 사용자 홈의
+ * "최근 소식"과 제보 작성 화면의 미리보기가 쓴다.
+ */
+export function useRecentStories(limit: number) {
+  const { submissions } = useRepositories();
+  return useQuery({
+    queryKey: queryKeys.submissions.recentStories(limit),
+    queryFn: ({ signal }) => submissions.listRecentStories({ limit }, signal),
+  });
+}
+
+/**
+ * 제보 작성자 열람 (`POST /signage/submissions/{id}/reveal-author`). 운영자만 부를 수
+ * 있고, 부를 때마다 서버가 감사 로그를 남긴다. 그래서 화면을 열 때 자동으로 부르지
+ * 않고 "보기"를 눌렀을 때만 켠다(`enabled`). 한 번 받은 값은 다시 부르지 않는다.
+ */
+export function useStoryAuthor(id: string, enabled: boolean) {
+  const { submissions } = useRepositories();
+  return useQuery({
+    queryKey: queryKeys.submissions.author(id),
+    enabled,
+    queryFn: ({ signal }) => submissions.revealAuthor(id, signal),
+    staleTime: Infinity,
+    gcTime: Infinity,
+    retry: false,
+  });
+}

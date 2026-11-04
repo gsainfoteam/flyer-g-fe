@@ -48,6 +48,9 @@ describe("createHttpDeviceRepository", () => {
       name: "A동 로비",
       location: null,
       groupIds: ["grp_a"],
+      // 그룹 편성(배포 ⑤) 전 서버는 보내지 않는다.
+      programGroupId: null,
+      overrides: null,
       orientation: "LANDSCAPE",
       resolution: null,
       lastSeenAt: null,
@@ -69,21 +72,58 @@ describe("createHttpDeviceRepository", () => {
       location: null,
       groupIds: ["grp_a"],
       orientation: "LANDSCAPE" as const,
-      layout: "WALL" as const,
-      rotationSeconds: 10,
-      refreshAfterSeconds: 60,
     };
 
     const result = await repository.create(input);
 
-    // 백엔드가 WALL·STRIP을 받기 전까지 예전 값으로 보낸다.
     expect(calls[0]).toMatchObject({
       method: "POST",
       path: "/signage/devices",
-      body: { ...input, layout: "FOUR_GRID" },
     });
+    // 화면 설정은 보내지 않는다. 배포 ⑤부터 보내면 422다.
+    expect(calls[0]!.body).toEqual(input);
     expect(result.token).toBe("fgd_new");
     expect(result.device.id).toBe("dev_01");
+  });
+
+  it("SLEEPING 기기가 섞여도 목록을 읽는다", async () => {
+    const { repository } = fakeClient({
+      serverTime: "2026-09-27T10:00:00.000Z",
+      items: [
+        { ...DEVICE, id: "dev_on", status: "ONLINE" },
+        { ...DEVICE, id: "dev_sleep", status: "SLEEPING" },
+        { ...DEVICE, id: "dev_off", status: "OFFLINE" },
+      ],
+    });
+
+    const { items } = await repository.list();
+
+    expect(items.map((device) => device.status)).toEqual([
+      "ONLINE",
+      "SLEEPING",
+      "OFFLINE",
+    ]);
+  });
+
+  it("그룹 편성 서버의 편성 그룹과 기기 예외를 읽는다", async () => {
+    const { repository } = fakeClient({
+      serverTime: "2026-09-27T10:00:00.000Z",
+      items: [
+        {
+          ...DEVICE,
+          programGroupId: "grp_a",
+          overrides: { settings: { rotationSeconds: 20 }, blocks: {} },
+          layout: { type: "WALL", rotationSeconds: 20 },
+        },
+      ],
+    });
+
+    const { items } = await repository.list();
+
+    expect(items[0]).toMatchObject({
+      programGroupId: "grp_a",
+      overrides: { settings: { rotationSeconds: 20 } },
+    });
   });
 
   it("수정과 토큰 재발급 경로를 쓴다", async () => {

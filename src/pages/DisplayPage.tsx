@@ -20,6 +20,7 @@ import {
 } from "@/entities/playlist/model/types";
 import {
   buildFrames,
+  exposedContent,
   exposedPosters,
   imagesOf,
 } from "@/entities/poster/model/frames";
@@ -117,6 +118,7 @@ export function DisplayPage() {
     [feed.playlist, failedIds],
   );
 
+  const content = feed.playlist?.content;
   const layout = feed.playlist?.layout.type ?? DEFAULT_LAYOUT_TYPE;
   const rotationSeconds = feed.playlist?.layout.rotationSeconds ?? 10;
   const serverTime = feed.playlist?.serverTime ?? null;
@@ -258,6 +260,7 @@ export function DisplayPage() {
   const [paused, setPaused] = useState(false);
   const rotation = useRotation({
     posters,
+    content,
     layout,
     rotationSeconds,
     widgetInterval: widgetInterval(
@@ -331,10 +334,14 @@ export function DisplayPage() {
     frame && frame.kind !== "widget"
       ? exposedPosters(frame, posters)
       : [];
+  // 이벤트·제보 장면은 글이라 그려지기를 기다리지 않는다.
+  const exposedScene =
+    frame && frame.kind !== "widget" ? exposedContent(frame) : [];
   usePlaybackReporting({
-    page: exposed,
+    page: exposedScene.length > 0 ? exposedScene : exposed,
     rendered:
-      exposed.length > 0 && exposed.every((poster) => loadedIds.has(poster.id)),
+      exposedScene.length > 0 ||
+      (exposed.length > 0 && exposed.every((poster) => loadedIds.has(poster.id))),
     rotationSeconds,
     recordExposure: telemetry.recordExposure,
     reportRenderOk: telemetry.reportRenderOk,
@@ -608,6 +615,10 @@ function frameLabel(
       return posters[template.focusIndex]?.title ?? "포스터";
     case "wall":
       return "모아 보기";
+    case "event":
+      return "이벤트";
+    case "story":
+      return "소식 제보";
     case "widget-slot": {
       const pick = peek();
       return pick ? WIDGET_LABELS[pick.slot.type] : "포스터";

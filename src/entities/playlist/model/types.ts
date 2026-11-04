@@ -1,3 +1,9 @@
+import type {
+  EventBannerMode,
+  EventBannerOccasion,
+  StoryTag,
+} from "@/entities/submission/model/types";
+
 /**
  * TV 화면 전환 방식. 기기마다 운영자가 고른다.
  *
@@ -83,6 +89,37 @@ export interface PlaylistVideo {
   hasAudio: boolean;
 }
 
+/**
+ * 편성 v2의 이벤트 배너 한 건(배포 ⑥). `photoUrl`·`assetUrl`은 TV용 이미지다. 미디어가
+ * 없는 문구 배너도 있어 둘 다 null일 수 있다. `checksum`은 문구와 미디어로 정해진다.
+ */
+export interface PlaylistEventBannerDto {
+  submissionId: string;
+  revision: number;
+  startsAt: string;
+  endsAt: string;
+  checksum: string;
+  mode: EventBannerMode;
+  occasion: EventBannerOccasion | null;
+  recipient: string;
+  message: string | null;
+  sender: string | null;
+  photoUrl: string | null;
+  assetUrl: string | null;
+}
+
+/** 편성 v2의 제보 한 건. 작성자는 어디에도 실리지 않는다. */
+export interface PlaylistStoryDto {
+  submissionId: string;
+  revision: number;
+  startsAt: string;
+  endsAt: string;
+  checksum: string;
+  storyNumber: number | null;
+  tag: StoryTag;
+  body: string;
+}
+
 export interface PlaylistDto {
   serverTime: string;
   /**
@@ -95,6 +132,25 @@ export interface PlaylistDto {
   /** 예전 값(SINGLE·FOUR_GRID)이 남은 캐시도 있어 문자열로 받고 읽을 때 바꾼다. */
   layout: { type: string; rotationSeconds: number };
   items: PlaylistItemDto[];
+  /** 편성 v2부터 있다. v1 응답과 예전 오프라인 캐시에는 없다. */
+  eventBanners?: PlaylistEventBannerDto[];
+  stories?: PlaylistStoryDto[];
+}
+
+export interface PlaylistEventBanner extends Omit<
+  PlaylistEventBannerDto,
+  "startsAt" | "endsAt"
+> {
+  startsAt: Date;
+  endsAt: Date;
+}
+
+export interface PlaylistStory extends Omit<
+  PlaylistStoryDto,
+  "startsAt" | "endsAt"
+> {
+  startsAt: Date;
+  endsAt: Date;
 }
 
 export interface PlaylistItem extends Omit<
@@ -119,6 +175,8 @@ export interface Playlist {
   refreshAfterSeconds: number;
   layout: { type: LayoutType; rotationSeconds: number };
   items: PlaylistItem[];
+  eventBanners: PlaylistEventBanner[];
+  stories: PlaylistStory[];
 }
 
 /** 서버가 보낸 전환 간격을 안전 범위로 clamp한다. */

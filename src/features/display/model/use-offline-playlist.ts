@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fromPlaylistItem } from "@/entities/poster";
-import { selectPlayableItems } from "@/entities/playlist";
+import { isPlayableAt, selectPlayableItems } from "@/entities/playlist";
 import type { Playlist } from "@/entities/playlist/model/types";
 import { isApiError } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
@@ -272,7 +272,7 @@ export function useOfflinePlaylist(
         source: "network",
         isPending: false,
         error: null,
-        playlist: toDisplayPlaylist(data, now, (item) => item.assetUrl),
+        playlist: toDisplayPlaylist(data, now, (item) => item.url),
       };
     }
 
@@ -315,7 +315,8 @@ function useServerNow(timed: TimedPlaylist | null): Date | null {
       setNow(current);
 
       const at = current.getTime();
-      const next = timed.playlist.items
+      const { items, eventBanners, stories } = timed.playlist;
+      const next = [...items, ...eventBanners, ...stories]
         .flatMap((item) => [item.startsAt.getTime(), item.endsAt.getTime()])
         .filter((time) => time > at)
         .reduce((earliest, time) => Math.min(earliest, time), Infinity);
@@ -333,12 +334,30 @@ function useServerNow(timed: TimedPlaylist | null): Date | null {
 function toDisplayPlaylist(
   playlist: Playlist,
   now: Date,
-  resolveUrl: (item: Playlist["items"][number]) => string | undefined,
+  resolveUrl: (item: {
+    submissionId: string;
+    url: string;
+  }) => string | undefined,
 ): DisplayPlaylist {
   const posters = selectPlayableItems(playlist, now).flatMap((item) => {
-    const assetUrl = resolveUrl(item);
+    const assetUrl = resolveUrl({ ...item, url: item.assetUrl });
     return assetUrl ? [fromPlaylistItem({ ...item, assetUrl })] : [];
   });
+  // 이미지 없는 문구 배너는 그대로 띄운다. 이미지가 있는데 찾지 못하면 뺀다.
+  const eventBanners = playlist.eventBanners
+    .filter((banner) => isPlayableAt(banner, now))
+    .flatMap((banner) => {
+      const url = banner.assetUrl ?? banner.photoUrl;
+      if (!url) return [banner];
+      const resolved = resolveUrl({ ...banner, url });
+      if (!resolved) return [];
+      return [
+        banner.assetUrl
+          ? { ...banner, assetUrl: resolved }
+          : { ...banner, photoUrl: resolved },
+      ];
+    });
+  const stories = playlist.stories.filter((story) => isPlayableAt(story, now));
 
   return {
     serverTime: now,
@@ -347,5 +366,6 @@ function toDisplayPlaylist(
     layout: playlist.layout,
     deviceName: playlist.deviceName,
     posters,
+    content: { eventBanners, stories },
   };
 }

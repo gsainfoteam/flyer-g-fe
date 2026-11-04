@@ -1,8 +1,13 @@
+import type { ReactNode } from "react";
 import type { PosterRenderModel } from "@/entities/poster";
 import type { DisplayFrame } from "@/entities/poster/model/frames";
 import { SpotlightDisplay } from "@/entities/poster/ui/SpotlightDisplay";
+import { StageHeader } from "@/entities/poster/ui/StageHeader";
 import { StripDisplay } from "@/entities/poster/ui/StripDisplay";
 import { WallDisplay } from "@/entities/poster/ui/WallDisplay";
+import { STAGE_HEADER_GAP } from "@/entities/poster/ui/stage-metrics";
+import { EventScene, StoryScene } from "@/entities/scene";
+import { to } from "@/shared/config/routes";
 
 /**
  * TV 화면 한 장의 내용.
@@ -71,5 +76,58 @@ export function DisplayStage({
           {...common}
         />
       );
+    case "event":
+      return (
+        <SceneStage
+          deviceLabel={deviceLabel}
+          serverTime={serverTime}
+          clockTicking={clockTicking}
+        >
+          <EventScene
+            qrValue={`${window.location.origin}${to.newEvent()}`}
+            content={{ ...frame.banner, imageUrl: frame.banner.assetUrl }}
+          />
+        </SceneStage>
+      );
+    case "story":
+      return (
+        <SceneStage
+          deviceLabel={deviceLabel}
+          serverTime={serverTime}
+          clockTicking={clockTicking}
+        >
+          <StoryScene
+            qrValue={`${window.location.origin}${to.newStory()}`}
+            items={frame.stories}
+          />
+        </SceneStage>
+      );
   }
+}
+
+/** 이벤트·제보 장면. 머리 줄은 다른 화면과 같은 자리에 두고 아래를 카드로 채운다. */
+function SceneStage({
+  deviceLabel,
+  serverTime,
+  clockTicking,
+  children,
+}: {
+  deviceLabel: string | null;
+  serverTime: Date | null;
+  clockTicking?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="flex h-full flex-col text-hero-ink"
+      style={{ gap: STAGE_HEADER_GAP }}
+    >
+      <StageHeader
+        deviceLabel={deviceLabel}
+        serverTime={serverTime}
+        clockTicking={clockTicking}
+      />
+      <div className="@container min-h-0 flex-1">{children}</div>
+    </div>
+  );
 }

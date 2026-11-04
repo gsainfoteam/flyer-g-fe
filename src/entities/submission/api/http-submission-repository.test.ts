@@ -430,6 +430,50 @@ describe("createHttpSubmissionRepository", () => {
     });
   });
 
+  it("이벤트 배너는 종류와 내용, 서울 자정 기간을 보내고 제보는 기간 없이 보낸다", async () => {
+    const { repository, calls } = fakeClient({ ...SUBMISSION, type: "STORY" });
+
+    await repository.createContent(
+      {
+        type: "EVENT_BANNER",
+        eventBanner: {
+          mode: "TEMPLATE",
+          occasion: "BIRTHDAY",
+          recipient: "지민",
+          message: "생일 축하해!",
+          sender: null,
+          photoAssetId: null,
+          photoConsent: false,
+          assetId: null,
+        },
+        startAt: new Date("2026-11-02T15:00:00.000Z"),
+        endAt: new Date("2026-11-03T15:00:00.000Z"),
+        targetGroupIds: [],
+      },
+      { idempotencyKey: "key-1" },
+    );
+    await repository.createContent({
+      type: "STORY",
+      story: { tag: "PRAISE", body: "세탁실 건조기가 고쳐졌어요." },
+    });
+
+    expect(calls[0]).toMatchObject({
+      method: "POST",
+      path: "/signage/submissions",
+      idempotencyKey: "key-1",
+      body: {
+        type: "EVENT_BANNER",
+        eventBanner: { occasion: "BIRTHDAY", recipient: "지민" },
+        startAt: "2026-11-02T15:00:00.000Z",
+        endAt: "2026-11-03T15:00:00.000Z",
+      },
+    });
+    expect(calls[1]!.body).toEqual({
+      type: "STORY",
+      story: { tag: "PRAISE", body: "세탁실 건조기가 고쳐졌어요." },
+    });
+  });
+
   it("제보 작성자 열람은 POST로 부르고 이름·메일을 읽는다", async () => {
     const { repository, calls } = fakeClient({
       requesterId: "user_09",

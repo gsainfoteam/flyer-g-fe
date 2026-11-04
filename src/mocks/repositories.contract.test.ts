@@ -4,6 +4,7 @@ import type {
   CreateSubmissionInput,
   Repositories,
 } from "@/shared/api/repositories";
+import type { EventBannerValues } from "@/entities/submission/model/content-rules";
 import { parseIsoUtc } from "@/shared/lib/datetime";
 import { createMemoryHeartbeatLog } from "./heartbeats";
 import type { HeartbeatLog } from "./heartbeats";
@@ -68,6 +69,7 @@ async function errorOf(promise: Promise<unknown>): Promise<{
   status?: number;
   code?: string;
   fields?: Record<string, string> | null;
+  details?: Record<string, unknown> | null;
 } | null> {
   try {
     await promise;
@@ -493,7 +495,7 @@ describe("검토", () => {
 });
 
 describe("기기와 편성", () => {
-  it("heartbeat가 3분 안에 있으면 온라인, 아니면 오프라인이다", async () => {
+  it("heartbeat가 90초 안에 있으면 온라인, 아니면 오프라인이다", async () => {
     const { repos, heartbeats } = setup(MOCK_USERS.REVIEWER);
 
     const before = await repos.devices.list();
@@ -515,6 +517,45 @@ describe("기기와 편성", () => {
       status: "ONLINE",
       appVersion: "v0.5.0",
     });
+  });
+
+  it("90초가 넘은 heartbeat는 오프라인이다", async () => {
+    const { repos, heartbeats } = setup(MOCK_USERS.REVIEWER);
+    heartbeats.record("house-b-lobby", {
+      at: new Date(NOW.getTime() - 91_000).toISOString(),
+      appVersion: "v0.5.0",
+      resolution: { width: 1920, height: 1080 },
+    });
+
+    const { items } = await repos.devices.list();
+
+    expect(items.find((device) => device.id === "house-b-lobby")?.status).toBe(
+      "OFFLINE",
+    );
+  });
+
+  it("화면 끔 시간에는 heartbeat가 끊겨도 SLEEPING이고, 사용 안 함이 먼저다", async () => {
+    const { repos, signInAs } = setup(MOCK_USERS.SUPER_ADMIN);
+    // NOW는 서울 12:00이다. 자정을 넘는 구간과 지나간 구간은 걸리지 않는다.
+    const quiet = (start: string, end: string) => ({
+      overrides: { settings: { quietHours: [{ start, end }] } },
+    });
+    const statusOf = async (id: string) =>
+      (await repos.devices.list()).items.find((device) => device.id === id)
+        ?.status;
+
+    await repos.devices.update("house-b-lobby", quiet("11:00", "13:00"));
+    expect(await statusOf("house-b-lobby")).toBe("SLEEPING");
+
+    await repos.devices.update("house-b-lobby", quiet("22:00", "06:00"));
+    expect(await statusOf("house-b-lobby")).toBe("OFFLINE");
+
+    await repos.devices.update("house-b-lobby", quiet("22:00", "13:00"));
+    expect(await statusOf("house-b-lobby")).toBe("SLEEPING");
+
+    await repos.devices.update("house-b-lobby", { isActive: false });
+    signInAs(MOCK_USERS.REVIEWER);
+    expect(await statusOf("house-b-lobby")).toBe("DISABLED");
   });
 
   it("기기는 자기 위치가 대상인 게시물만 받고, 링크 없는 게시물은 QR 없이 받는다", async () => {
@@ -826,12 +867,52 @@ describe("위치 그룹 관리", () => {
         location: null,
         groupIds: ["group-house-a"],
         orientation: "LANDSCAPE",
-        layout: "STRIP",
-        rotationSeconds: 10,
-        refreshAfterSeconds: 60,
       }),
     );
     expect(created?.fields?.groupIds).toBeTruthy();
+  });
+
+  it("화면 설정은 기기 필드로 바꿀 수 없고 기기 예외로 바꾼다 (배포 ⑤)", async () => {
+    const { repos } = setup(MOCK_USERS.SUPER_ADMIN);
+
+    const legacy = await errorOf(
+      repos.devices.update("house-a-lobby", { rotationSeconds: 20 }),
+    );
+    expect(legacy?.status).toBe(422);
+    expect(legacy?.fields?.rotationSeconds).toContain("그룹 편성");
+
+    const updated = await repos.devices.update("house-a-lobby", {
+      overrides: { settings: { posterLayout: "STRIP", rotationSeconds: 20 } },
+    });
+    expect(updated).toMatchObject({
+      programGroupId: "group-house-a",
+      layout: { type: "STRIP", rotationSeconds: 20 },
+    });
+  });
+
+  it("위치 그룹이 없으면 등록할 수 없고, 편성 그룹은 위치 그룹 안에 있어야 한다 (배포 ⑤)", async () => {
+    const { repos } = setup(MOCK_USERS.SUPER_ADMIN);
+
+    const empty = await errorOf(
+      repos.devices.create({
+        name: "새 TV",
+        location: null,
+        groupIds: [],
+        orientation: "LANDSCAPE",
+      }),
+    );
+    expect(empty?.fields?.programGroupId).toBeTruthy();
+
+    const moved = await errorOf(
+      repos.devices.update("house-a-lobby", { groupIds: ["group-house-b"] }),
+    );
+    expect(moved?.fields?.programGroupId).toBeTruthy();
+    await expect(
+      repos.devices.update("house-a-lobby", {
+        groupIds: ["group-house-b"],
+        programGroupId: "group-house-b",
+      }),
+    ).resolves.toMatchObject({ programGroupId: "group-house-b" });
   });
 
   it("숨긴 그룹을 대상으로 새 신청을 만들 수 없다", async () => {
@@ -1039,5 +1120,185 @@ describe("신청 종류 (배포 ②③④)", () => {
     expect(
       await statusOf(repos.submissions.listRecentStories({ limit: 11 })),
     ).toBe(422);
+  });
+});
+
+describe("이벤트 배너·소식 제보 만들기 (배포 ③④)", () => {
+  /** NOW(서울 6/8 12:00) 다음 날 서울 자정 */
+  const TOMORROW = parseIsoUtc("2026-06-08T15:00:00.000Z");
+  const banner: EventBannerValues = {
+    mode: "TEMPLATE",
+    occasion: "BIRTHDAY",
+    recipient: "지민",
+    message: "생일 축하해!",
+    sender: "3층 친구들",
+    photoAssetId: null,
+    photoConsent: false,
+    assetId: null,
+  };
+  const eventInput = (overrides: Partial<EventBannerValues> = {}) => ({
+    type: "EVENT_BANNER" as const,
+    eventBanner: { ...banner, ...overrides },
+    startAt: TOMORROW,
+    endAt: new Date(TOMORROW.getTime() + DAY_MS),
+    targetGroupIds: [],
+  });
+  const storyInput = (
+    body = "B동 세탁실 건조기가 고쳐졌어요. 고맙습니다!",
+  ) => ({
+    type: "STORY" as const,
+    story: { tag: "PRAISE" as const, body },
+  });
+
+  it("이벤트 배너는 바로 검토 대기이고, 제목은 서버가 만든다", async () => {
+    const { repos } = setup();
+    const created = await repos.submissions.createContent(eventInput());
+    expect(created).toMatchObject({
+      type: "EVENT_BANNER",
+      status: "PENDING_REVIEW",
+      title: "생일 · 지민에게",
+      eventBanner: { recipient: "지민", photoConsent: false },
+    });
+  });
+
+  it("이벤트 배너는 템플릿 필수 칸과 서울 자정 기간을 지킨다", async () => {
+    const { repos } = setup();
+    const error = await errorOf(
+      repos.submissions.createContent({
+        ...eventInput({ occasion: null, message: null }),
+        startAt: new Date(TOMORROW.getTime() + HOUR_MS),
+        endAt: new Date(TOMORROW.getTime() + 4 * DAY_MS),
+      }),
+    );
+    expect(error).toMatchObject({ status: 422 });
+    expect(Object.keys(error?.fields ?? {}).sort()).toEqual([
+      "endAt",
+      "eventBanner.message",
+      "eventBanner.occasion",
+      "startAt",
+    ]);
+  });
+
+  it("사진을 넣으면 받는 사람 동의가 있어야 한다", async () => {
+    const { repos } = setup();
+    const error = await errorOf(
+      repos.submissions.createContent(
+        eventInput({ photoAssetId: "asset-photo", photoConsent: false }),
+      ),
+    );
+    expect(error?.fields).toHaveProperty("eventBanner.photoConsent");
+  });
+
+  it("제보는 기간 없이 대기하고, 작성자는 본인에게만 보인다", async () => {
+    const { repos, signInAs } = setup();
+    const created = await repos.submissions.createContent(storyInput());
+    expect(created).toMatchObject({
+      type: "STORY",
+      startAt: null,
+      endAt: null,
+      requesterName: MOCK_USERS.SUBMITTER.displayName,
+      story: { tag: "PRAISE", storyNumber: null },
+    });
+
+    signInAs(MOCK_USERS.REVIEWER);
+    const seen = await repos.submissions.getById(created.id);
+    expect(seen).toMatchObject({ requesterId: null, requesterName: null });
+    const queue = await repos.reviews.listPending({ types: ["STORY"] });
+    expect(queue.items[0]).toMatchObject({
+      id: created.id,
+      requesterName: null,
+    });
+  });
+
+  it("제보는 승인할 때 번호와 게시 기간(2일)을 받는다", async () => {
+    const { repos, signInAs } = setup();
+    const created = await repos.submissions.createContent(storyInput());
+    signInAs(MOCK_USERS.REVIEWER);
+
+    const approved = await repos.reviews.approve({
+      submissionId: created.id,
+      revision: created.version,
+    });
+
+    expect(approved.status).toBe("PUBLISHED");
+    expect(approved.story?.storyNumber).toEqual(expect.any(Number));
+    expect(approved.startAt).toEqual(NOW);
+    expect(approved.endAt).toEqual(new Date(NOW.getTime() + 2 * DAY_MS));
+  });
+
+  it("반려된 제보는 고쳐서 다시 낼 수 없다", async () => {
+    const { repos, signInAs } = setup();
+    const created = await repos.submissions.createContent(storyInput());
+    signInAs(MOCK_USERS.REVIEWER);
+    const rejected = await repos.reviews.reject({
+      submissionId: created.id,
+      revision: created.version,
+      reasonCode: "PERSONAL_INFO",
+      comment: "전화번호를 빼 주세요.",
+    });
+    signInAs(MOCK_USERS.SUBMITTER);
+
+    expect(
+      await errorOf(
+        repos.submissions.submit(created.id, { version: rejected.version }),
+      ),
+    ).toMatchObject({ status: 409, code: "NOT_RESUBMITTABLE" });
+  });
+
+  it("반려된 이벤트 배너는 내용을 고쳐 다시 낼 수 있고, 제목도 따라 바뀐다", async () => {
+    const { repos, signInAs } = setup();
+    const created = await repos.submissions.createContent(eventInput());
+    signInAs(MOCK_USERS.REVIEWER);
+    const rejected = await repos.reviews.reject({
+      submissionId: created.id,
+      revision: created.version,
+      reasonCode: "INAPPROPRIATE",
+      comment: "문구를 다시 써 주세요.",
+    });
+    signInAs(MOCK_USERS.SUBMITTER);
+
+    const updated = await repos.submissions.update(created.id, {
+      version: rejected.version,
+      eventBanner: { ...banner, occasion: "AWARD", message: "수상 축하해!" },
+    });
+    expect(updated).toMatchObject({
+      status: "REJECTED",
+      title: "수상 · 지민에게",
+      eventBanner: { occasion: "AWARD", message: "수상 축하해!" },
+    });
+    await expect(
+      repos.submissions.submit(created.id, { version: updated.version }),
+    ).resolves.toMatchObject({ status: "PENDING_REVIEW" });
+  });
+
+  it("배너를 고칠 때도 서울 자정·최대 일수 규칙을 본다", async () => {
+    const { repos } = setup();
+    const created = await repos.submissions.createContent(eventInput());
+    const error = await errorOf(
+      repos.submissions.update(created.id, {
+        version: created.version,
+        endAt: new Date(TOMORROW.getTime() + 5 * DAY_MS),
+      }),
+    );
+    expect(error?.fields).toHaveProperty("endAt");
+  });
+
+  it("종류별 하루 한도를 넘으면 429와 한도를 준다", async () => {
+    const { repos } = setup();
+    for (let index = 0; index < 5; index++) {
+      await repos.submissions.createContent(
+        storyInput(`제보 본문 ${index}번째예요.`),
+      );
+    }
+    const error = await errorOf(repos.submissions.createContent(storyInput()));
+    expect(error).toMatchObject({
+      status: 429,
+      code: "DAILY_LIMIT_EXCEEDED",
+      details: { type: "STORY", limit: 5 },
+    });
+    // 다른 종류는 따로 센다.
+    await expect(
+      repos.submissions.createContent(eventInput()),
+    ).resolves.toMatchObject({ type: "EVENT_BANNER" });
   });
 });
