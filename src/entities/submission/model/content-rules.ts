@@ -10,6 +10,7 @@ import { STORY_TAGS } from "./types";
  */
 export const EVENT_BANNER_TEXT_LIMITS = {
   recipient: 20,
+  headline: 30,
   message: 60,
   sender: 20,
 } as const;
@@ -22,6 +23,7 @@ export interface EventBannerValues {
   mode: EventBannerMode;
   occasion: EventBannerOccasion | null;
   recipient: string;
+  headline: string | null;
   message: string | null;
   sender: string | null;
   photoAssetId: string | null;
@@ -49,6 +51,11 @@ export function checkEventBanner(
     errors["eventBanner.recipient"] =
       `받는 사람은 ${EVENT_BANNER_TEXT_LIMITS.recipient}자 이하여야 합니다.`;
   }
+  const headline = banner.headline?.trim() ?? "";
+  if (headline.length > EVENT_BANNER_TEXT_LIMITS.headline) {
+    errors["eventBanner.headline"] =
+      `큰 문구는 ${EVENT_BANNER_TEXT_LIMITS.headline}자 이하여야 합니다.`;
+  }
   const message = banner.message?.trim() ?? "";
   if (message.length > EVENT_BANNER_TEXT_LIMITS.message) {
     errors["eventBanner.message"] =
@@ -63,6 +70,7 @@ export function checkEventBanner(
     if (!banner.occasion) {
       errors["eventBanner.occasion"] = "어떤 소식인지 고르세요.";
     }
+    if (!headline) errors["eventBanner.headline"] ??= "큰 문구를 입력하세요.";
     if (!message) errors["eventBanner.message"] ??= "전할 말을 입력하세요.";
     if (banner.photoAssetId && !banner.photoConsent) {
       errors["eventBanner.photoConsent"] =
@@ -113,6 +121,7 @@ export function checkStory(story: {
 const OCCASION_TITLE: Record<EventBannerOccasion, string> = {
   BIRTHDAY: "생일",
   ADMISSION: "합격",
+  GRADUATION: "졸업",
   AWARD: "수상",
   WELCOME: "환영",
   OTHER: "소식",

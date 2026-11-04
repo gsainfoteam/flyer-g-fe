@@ -5,8 +5,8 @@ import type {
 import { SceneCard, SceneQr } from "./SceneFrame";
 
 /**
- * 이벤트 배너 장면 (기획 3절). 문구로 만들기는 말머리 + 크게 받는 사람 + 문구 +
- * 보낸 사람, 사진이 있으면 오른쪽에 둔다. 이미지 올리기는 카드 안에 이미지를 비율
+ * 이벤트 배너 장면 (기획 3절). 문구로 만들기는 말머리 + 큰 문구 + 작은 문구 + 보낸
+ * 사람, 사진이 있으면 오른쪽에 둔다. 큰 문구는 쓴 사람이 정한 그대로 띄운다. 이미지 올리기는 카드 안에 이미지를 비율
  * 그대로 띄운다. QR은 "나도 이벤트 올리기"로 올리는 화면에 보낸다.
  *
  * 글자 단계는 TV 1920px 기준 핵심 104px(5.4cqw)다. 화면을 꽉 채우는 큰 글은 피한다.
@@ -15,6 +15,8 @@ export interface EventSceneContent {
   mode: EventBannerMode;
   occasion: EventBannerOccasion | null;
   recipient: string;
+  /** 큰 문구. 이 칸이 생기기 전 배너는 없어서 받는 사람을 대신 띄운다. */
+  headline: string | null;
   message: string | null;
   sender: string | null;
   /** 문구로 만들기의 사진 */
@@ -26,18 +28,10 @@ export interface EventSceneContent {
 const TAG: Record<EventBannerOccasion, string> = {
   BIRTHDAY: "생일 축하",
   ADMISSION: "합격 축하",
+  GRADUATION: "졸업 축하",
   AWARD: "수상 축하",
   WELCOME: "환영",
   OTHER: "소식",
-};
-
-/** 받는 사람 뒤 조사(아/야)는 이름마다 달라 쓰지 않는다. */
-const HEADLINE: Record<EventBannerOccasion, (name: string) => string> = {
-  BIRTHDAY: (name) => `${name}, 생일 축하해`,
-  ADMISSION: (name) => `${name}, 합격 축하해`,
-  AWARD: (name) => `${name}, 수상 축하해`,
-  WELCOME: (name) => `${name}, 환영해`,
-  OTHER: (name) => `${name}에게`,
 };
 
 export function EventScene({
@@ -48,7 +42,8 @@ export function EventScene({
   qrValue: string;
 }) {
   const qr = <SceneQr label="나도 이벤트 올리기" value={qrValue} />;
-  const recipient = content.recipient.trim() || "받는 사람";
+  const headline =
+    content.headline?.trim() || content.recipient.trim() || "큰 문구";
 
   if (content.mode === "IMAGE") {
     return (
@@ -78,9 +73,7 @@ export function EventScene({
             {content.occasion ? TAG[content.occasion] : "이벤트"}
           </span>
           <p className="text-[5.4cqw] leading-[1.15] font-extrabold tracking-[-0.035em] [overflow-wrap:anywhere]">
-            {(content.occasion ? HEADLINE[content.occasion] : HEADLINE.OTHER)(
-              recipient,
-            )}
+            {headline}
           </p>
           {content.message?.trim() && (
             <p className="text-[2.7cqw] leading-[1.4] font-bold [overflow-wrap:anywhere]">

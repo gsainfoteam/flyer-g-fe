@@ -1130,6 +1130,7 @@ describe("이벤트 배너·소식 제보 만들기 (배포 ③④)", () => {
     mode: "TEMPLATE",
     occasion: "BIRTHDAY",
     recipient: "지민",
+    headline: "지민아, 생일 축하해",
     message: "생일 축하해!",
     sender: "3층 친구들",
     photoAssetId: null,
@@ -1177,6 +1178,21 @@ describe("이벤트 배너·소식 제보 만들기 (배포 ③④)", () => {
       "eventBanner.occasion",
       "startAt",
     ]);
+  });
+
+  it("문구로 만들기는 큰 문구가 있어야 하고, 졸업도 고를 수 있다", async () => {
+    const { repos } = setup();
+    const missing = await errorOf(
+      repos.submissions.createContent(eventInput({ headline: null })),
+    );
+    expect(missing?.fields).toHaveProperty("eventBanner.headline");
+
+    await expect(
+      repos.submissions.createContent(eventInput({ occasion: "GRADUATION" })),
+    ).resolves.toMatchObject({
+      title: "졸업 · 지민에게",
+      eventBanner: { occasion: "GRADUATION", headline: "지민아, 생일 축하해" },
+    });
   });
 
   it("사진을 넣으면 받는 사람 동의가 있어야 한다", async () => {

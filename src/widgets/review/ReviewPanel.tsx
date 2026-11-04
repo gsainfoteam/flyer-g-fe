@@ -327,9 +327,15 @@ function EventBannerFields({ banner }: { banner: EventBanner }) {
         <dt className="text-caption text-ink-subtle">받는 사람</dt>
         <dd className="mt-0.5 text-body text-ink">{banner.recipient}</dd>
       </div>
+      {banner.headline && (
+        <div>
+          <dt className="text-caption text-ink-subtle">큰 문구</dt>
+          <dd className="mt-0.5 text-body text-ink">{banner.headline}</dd>
+        </div>
+      )}
       {banner.message && (
         <div>
-          <dt className="text-caption text-ink-subtle">문구</dt>
+          <dt className="text-caption text-ink-subtle">작은 문구</dt>
           <dd className="mt-0.5 text-body whitespace-pre-line text-ink">
             {banner.message}
           </dd>

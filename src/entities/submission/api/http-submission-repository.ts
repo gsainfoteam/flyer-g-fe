@@ -138,6 +138,7 @@ function parseEventBanner(body: JsonObject, path: string): EventBanner {
       at("occasion"),
     ),
     recipient: readString(body, "recipient", at("recipient")),
+    headline: readNullableString(body, "headline", at("headline")),
     message: readNullableString(body, "message", at("message")),
     sender: readNullableString(body, "sender", at("sender")),
     photoAssetId: readNullableString(body, "photoAssetId", at("photoAssetId")),

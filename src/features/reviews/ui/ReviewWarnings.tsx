@@ -94,6 +94,7 @@ export function ReviewWarnings({ submission, serverNow }: ReviewWarningsProps) {
   const writing = [
     submission.story?.body,
     banner?.recipient,
+    banner?.headline,
     banner?.message,
     banner?.sender,
   ];

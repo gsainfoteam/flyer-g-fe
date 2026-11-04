@@ -103,6 +103,7 @@ function initialOf(editing: SignageSubmissionExpanded | null) {
     mode: banner?.mode ?? ("TEMPLATE" as EventBannerMode),
     occasion: banner?.occasion ?? null,
     recipient: banner?.recipient ?? "",
+    headline: banner?.headline ?? "",
     sender: banner?.sender ?? "",
     message: banner?.message ?? "",
     photoConsent: banner?.photoConsent ?? false,
@@ -144,6 +145,7 @@ function EventBannerForm({
     initial.occasion,
   );
   const [recipient, setRecipient] = useState(initial.recipient);
+  const [headline, setHeadline] = useState(initial.headline);
   const [sender, setSender] = useState(initial.sender);
   const [message, setMessage] = useState(initial.message);
   const [photoConsent, setPhotoConsent] = useState(initial.photoConsent);
@@ -164,6 +166,7 @@ function EventBannerForm({
     mode,
     occasion,
     recipient,
+    headline: isTemplate ? headline.trim() || null : null,
     message: message.trim() || null,
     sender: sender.trim() || null,
     photoAssetId: isTemplate
@@ -363,7 +366,29 @@ function EventBannerForm({
 
           {isTemplate && (
             <FormField
-              label="문구"
+              label="큰 문구"
+              required
+              error={errorOf("eventBanner.headline")}
+              description={`${headline.trim().length} / ${EVENT_BANNER_TEXT_LIMITS.headline}자 · TV에 크게 나와요`}
+            >
+              {(control) => (
+                <Input
+                  {...control}
+                  value={headline}
+                  maxLength={EVENT_BANNER_TEXT_LIMITS.headline}
+                  placeholder="예: 지민아, 생일 축하해"
+                  onChange={(event) => {
+                    setHeadline(event.target.value);
+                    edit();
+                  }}
+                />
+              )}
+            </FormField>
+          )}
+
+          {isTemplate && (
+            <FormField
+              label="작은 문구"
               required
               error={errorOf("eventBanner.message")}
               description={`${message.trim().length} / ${EVENT_BANNER_TEXT_LIMITS.message}자`}
@@ -531,6 +556,7 @@ function EventBannerForm({
                 mode,
                 occasion,
                 recipient,
+                headline,
                 message,
                 sender,
                 photoUrl: isTemplate ? photoUrl : null,
