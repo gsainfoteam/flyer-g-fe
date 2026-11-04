@@ -1,7 +1,10 @@
 import { parseIsoUtc } from "@/shared/lib/datetime";
+import { SUBMISSION_KINDS } from "./kind";
+import type { SubmissionKind } from "./kind";
 import { resolveEffectiveStatus } from "./schedule";
 import { SUBMISSION_STATUSES } from "./types";
 import type {
+  KindQueueSummary,
   SignageSubmission,
   SignageSubmissionExpanded,
   SignageSubmissionExpandedDto,
@@ -26,6 +29,28 @@ export function summarizeSubmissions(
     byStatus[resolveEffectiveStatus(submission, serverNow)] += 1;
   }
 
+  const byType = Object.fromEntries(
+    SUBMISSION_KINDS.map((kind) => {
+      const waiting = submissions
+        .filter(
+          (submission) =>
+            submission.type === kind &&
+            resolveEffectiveStatus(submission, serverNow) === "PENDING_REVIEW",
+        )
+        .map((submission) => submission.submittedAt ?? submission.createdAt);
+      return [
+        kind,
+        {
+          pendingReview: waiting.length,
+          oldestSubmittedAt:
+            waiting.length > 0
+              ? new Date(Math.min(...waiting.map((date) => date.getTime())))
+              : null,
+        },
+      ];
+    }),
+  ) as Record<SubmissionKind, KindQueueSummary>;
+
   return {
     calculatedAt: serverNow,
     total: submissions.length - byStatus.ARCHIVED,
@@ -34,6 +59,7 @@ export function summarizeSubmissions(
     pendingReview: byStatus.PENDING_REVIEW,
     ended: byStatus.ENDED,
     byStatus,
+    byType,
   };
 }
 
@@ -43,8 +69,8 @@ export function toSignageSubmissionExpanded(
 ): SignageSubmissionExpanded {
   return {
     ...dto,
-    startAt: parseIsoUtc(dto.startAt),
-    endAt: parseIsoUtc(dto.endAt),
+    startAt: dto.startAt ? parseIsoUtc(dto.startAt) : null,
+    endAt: dto.endAt ? parseIsoUtc(dto.endAt) : null,
     createdAt: parseIsoUtc(dto.createdAt),
     updatedAt: parseIsoUtc(dto.updatedAt),
     submittedAt: dto.submittedAt ? parseIsoUtc(dto.submittedAt) : null,
@@ -61,6 +87,7 @@ export function toSubmissionView(
 ): SubmissionView {
   return {
     id: submission.id,
+    type: submission.type,
     title: submission.title,
     subtitle: submission.subtitle,
     categoryName: submission.categoryName,
@@ -76,6 +103,11 @@ export function toSubmissionView(
     posterThumbUrl: submission.posterThumbUrl,
     posterWidth: submission.posterWidth,
     posterHeight: submission.posterHeight,
+    posterKind: submission.posterKind,
+    posterDurationMs: submission.posterDurationMs,
+    posterVideoUrl: submission.posterVideoUrl,
+    eventBanner: submission.eventBanner,
+    story: submission.story,
     detailUrl: submission.detailUrl,
     location: submission.location,
     description: submission.description,

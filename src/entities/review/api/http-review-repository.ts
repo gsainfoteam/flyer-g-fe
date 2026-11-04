@@ -1,6 +1,7 @@
 import {
   parseSubmission,
   parseSubmissionPage,
+  typesOf,
 } from "@/entities/submission/api/http-submission-repository";
 import type { ApiRequestBody } from "@/shared/api/contract";
 import type { HttpClient } from "@/shared/api/http-client";
@@ -30,7 +31,7 @@ import type {
  *
  * | 메서드 | 경로 |
  * |---|---|
- * | listPending | `GET /signage/reviews?status=PENDING_REVIEW&categoryId=&cursor=&limit=` |
+ * | listPending | `GET /signage/reviews?status=PENDING_REVIEW&type=&categoryId=&cursor=&limit=` |
  * | approve | `POST /signage/submissions/{id}/approve` (`{ revision }`, Idempotency-Key) |
  * | reject | `POST /signage/submissions/{id}/reject` (`{ revision, reasonCode, comment }`, Idempotency-Key) |
  * | suspend | `POST /signage/submissions/{id}/suspend` (`{ reason }`, Idempotency-Key) |
@@ -230,6 +231,7 @@ export function createHttpReviewRepository(
           path: "/signage/reviews",
           query: {
             status: "PENDING_REVIEW",
+            type: typesOf(params.types),
             categoryId: params.categoryId,
             cursor: params.cursor,
             limit: params.limit,
@@ -312,7 +314,10 @@ export function createHttpReviewRepository(
           path: `${submissionPath(submissionId)}/reject`,
           body: {
             revision,
-            reasonCode,
+            // 생성된 계약 타입은 제보 사유(PERSONAL_INFO 등, 배포 ④) 전 것이다.
+            // 서버는 이 값을 받는다. 계약을 다시 받으면(`bun run api:sync`) 지운다.
+            reasonCode:
+              reasonCode as ApiRequestBody<"RejectSubmissionDto">["reasonCode"],
             comment,
           } satisfies ApiRequestBody<"RejectSubmissionDto">,
           idempotencyKey: options?.idempotencyKey,

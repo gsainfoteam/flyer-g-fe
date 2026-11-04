@@ -27,6 +27,7 @@ function lastActivityOf(submission: SubmissionView, now: Date): number {
   return Math.max(
     (submission.submittedAt ?? submission.createdAt).getTime(),
     ...[submission.startAt, submission.endAt]
+      .filter((date): date is Date => date !== null)
       .map((date) => date.getTime())
       .filter((time) => time <= now.getTime()),
   );

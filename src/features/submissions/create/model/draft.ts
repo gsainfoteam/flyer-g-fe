@@ -70,15 +70,20 @@ export function createEmptyDraft(now: Date): SubmissionDraft {
   };
 }
 
-/** 기존 신청을 고칠 때의 초기값 (명세 FR-DASH-02). */
+/**
+ * 기존 신청을 고칠 때의 초기값 (명세 FR-DASH-02). 이 폼은 포스터를 고친다.
+ * 포스터는 카테고리와 기간이 항상 있지만, 타입상 비어 있을 수 있어 빈 값으로 둔다.
+ */
 export function draftFromSubmission(
   submission: SignageSubmissionExpanded,
 ): SubmissionDraft {
   return {
     title: submission.title,
-    categoryId: submission.categoryId,
-    startAt: toSeoulDateTimeInputValue(submission.startAt),
-    endAt: toSeoulDateTimeInputValue(submission.endAt),
+    categoryId: submission.categoryId ?? "",
+    startAt: submission.startAt
+      ? toSeoulDateTimeInputValue(submission.startAt)
+      : "",
+    endAt: submission.endAt ? toSeoulDateTimeInputValue(submission.endAt) : "",
     detailUrl: submission.detailUrl ?? "",
     organizerName: submission.organizerName ?? "",
     subtitle: submission.subtitle ?? "",

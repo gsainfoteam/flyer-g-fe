@@ -241,4 +241,236 @@ describe("createHttpSubmissionRepository", () => {
       message: expect.stringContaining("신청.lastDecision"),
     });
   });
+
+  describe("신청 종류 (배포 ②③④)", () => {
+    /** 포스터가 아닌 종류는 포스터 필드가 비어 온다. */
+    const notPoster = {
+      ...SUBMISSION,
+      ziggleNoticeId: null,
+      categoryId: null,
+      categoryName: null,
+      assetId: null,
+      posterUrl: null,
+      posterThumbUrl: null,
+      posterKind: null,
+      posterWidth: null,
+      posterHeight: null,
+      posterDurationMs: null,
+      posterVideoUrl: null,
+      detailUrl: null,
+      organizerName: null,
+      location: null,
+    };
+
+    it("이벤트 배너를 읽는다", async () => {
+      const banner = await fakeClient({
+        ...notPoster,
+        type: "EVENT_BANNER",
+        title: "생일 · 지민에게",
+        eventBanner: {
+          mode: "TEMPLATE",
+          occasion: "BIRTHDAY",
+          recipient: "지민",
+          message: "스물한 살 생일 축하해!",
+          sender: "3층 친구들",
+          photoAssetId: null,
+          photoUrl: null,
+          photoConsent: false,
+          assetId: null,
+          assetUrl: null,
+        },
+        story: null,
+      }).repository.getById("sub_01");
+
+      expect(banner).toMatchObject({
+        type: "EVENT_BANNER",
+        categoryName: null,
+        posterUrl: null,
+        posterWidth: null,
+        story: null,
+        eventBanner: {
+          mode: "TEMPLATE",
+          occasion: "BIRTHDAY",
+          recipient: "지민",
+          sender: "3층 친구들",
+          photoConsent: false,
+        },
+      });
+    });
+
+    it("승인 전 제보는 기간이 없고, 작성자 본인이 아니면 신청자가 비어 온다", async () => {
+      const story = await fakeClient({
+        ...notPoster,
+        type: "STORY",
+        title: "B동 3층 세탁실 건조기 2번이 고쳐졌어요.",
+        requesterId: null,
+        requesterName: null,
+        startAt: null,
+        endAt: null,
+        eventBanner: null,
+        story: {
+          tag: "PRAISE",
+          body: "B동 3층 세탁실 건조기 2번이 고쳐졌어요.",
+          storyNumber: null,
+        },
+      }).repository.getById("sub_01");
+
+      expect(story).toMatchObject({
+        type: "STORY",
+        requesterId: null,
+        requesterName: null,
+        startAt: null,
+        endAt: null,
+        story: { tag: "PRAISE", storyNumber: null },
+      });
+    });
+
+    it("영상 포스터의 길이와 재생 주소를 읽는다", async () => {
+      const video = await fakeClient({
+        ...SUBMISSION,
+        posterKind: "VIDEO",
+        posterDurationMs: 12000,
+        posterVideoUrl: "https://cdn.example/asset_01/play.mp4",
+      }).repository.getById("sub_01");
+
+      expect(video).toMatchObject({
+        posterKind: "VIDEO",
+        posterDurationMs: 12000,
+        posterVideoUrl: "https://cdn.example/asset_01/play.mp4",
+      });
+    });
+
+    it("모르는 종류는 응답 오류로 멈춘다", async () => {
+      await expect(
+        fakeClient({ ...SUBMISSION, type: "GAME" }).repository.getById(
+          "sub_01",
+        ),
+      ).rejects.toMatchObject({
+        message: expect.stringContaining("신청.type"),
+      });
+    });
+
+    it("목록은 종류 필터를 type으로 보낸다", async () => {
+      const { repository, calls } = fakeClient({
+        items: [],
+        nextCursor: null,
+        totalCount: 0,
+        serverTime: "2026-11-01T00:00:00.000Z",
+      });
+
+      await repository.list({ types: ["POSTER", "STORY"] });
+      await repository.list({ types: [] });
+
+      expect(calls[0]!.query).toMatchObject({ type: "POSTER,STORY" });
+      expect(calls[1]!.query!.type).toBeUndefined();
+    });
+  });
+
+  describe("종류별 검토 대기 요약", () => {
+    const base = {
+      calculatedAt: "2026-11-01T00:00:00.000Z",
+      total: 4,
+      published: 0,
+      scheduled: 0,
+      pendingReview: 4,
+      ended: 0,
+      byStatus: {
+        DRAFT: 0,
+        PENDING_REVIEW: 4,
+        REJECTED: 0,
+        APPROVED: 0,
+        SCHEDULED: 0,
+        PUBLISHED: 0,
+        ENDED: 0,
+        SUSPENDED: 0,
+        CANCELED: 0,
+        ARCHIVED: 0,
+      },
+    };
+
+    it("byType을 읽는다", async () => {
+      const summary = await fakeClient({
+        ...base,
+        byType: {
+          POSTER: {
+            pendingReview: 3,
+            oldestSubmittedAt: "2026-10-30T02:10:00.000Z",
+          },
+          EVENT_BANNER: {
+            pendingReview: 1,
+            oldestSubmittedAt: "2026-10-31T09:00:00.000Z",
+          },
+          STORY: { pendingReview: 0, oldestSubmittedAt: null },
+        },
+      }).repository.getSummary({ scope: "all" });
+
+      expect(summary.byType).toEqual({
+        POSTER: {
+          pendingReview: 3,
+          oldestSubmittedAt: new Date("2026-10-30T02:10:00.000Z"),
+        },
+        EVENT_BANNER: {
+          pendingReview: 1,
+          oldestSubmittedAt: new Date("2026-10-31T09:00:00.000Z"),
+        },
+        STORY: { pendingReview: 0, oldestSubmittedAt: null },
+      });
+    });
+
+    it("byType이 없는 옛 서버는 대기 전체를 포스터로 본다", async () => {
+      const summary = await fakeClient(base).repository.getSummary({
+        scope: "all",
+      });
+
+      expect(summary.byType).toEqual({
+        POSTER: { pendingReview: 4, oldestSubmittedAt: null },
+        EVENT_BANNER: { pendingReview: 0, oldestSubmittedAt: null },
+        STORY: { pendingReview: 0, oldestSubmittedAt: null },
+      });
+    });
+  });
+
+  it("제보 작성자 열람은 POST로 부르고 이름·메일을 읽는다", async () => {
+    const { repository, calls } = fakeClient({
+      requesterId: "user_09",
+      requesterName: "박제보",
+      requesterEmail: "park@gm.gist.ac.kr",
+    });
+
+    await expect(repository.revealAuthor("sub_09")).resolves.toEqual({
+      requesterId: "user_09",
+      requesterName: "박제보",
+      requesterEmail: "park@gm.gist.ac.kr",
+    });
+    expect(calls[0]).toMatchObject({
+      method: "POST",
+      path: "/signage/submissions/sub_09/reveal-author",
+    });
+  });
+
+  it("최근 제보는 limit을 보내고 공개 필드만 읽는다", async () => {
+    const { repository, calls } = fakeClient({
+      items: [
+        {
+          storyNumber: 128,
+          tag: "LOST_FOUND",
+          body: "A동 로비에서 파란 우산을 주웠어요.",
+          startAt: "2026-11-01T03:00:00.000Z",
+        },
+      ],
+    });
+
+    await expect(repository.listRecentStories({ limit: 3 })).resolves.toEqual([
+      {
+        storyNumber: 128,
+        tag: "LOST_FOUND",
+        body: "A동 로비에서 파란 우산을 주웠어요.",
+        startAt: new Date("2026-11-01T03:00:00.000Z"),
+      },
+    ]);
+    expect(calls[0]).toMatchObject({
+      path: "/signage/stories/recent",
+      query: { limit: 3 },
+    });
+  });
 });

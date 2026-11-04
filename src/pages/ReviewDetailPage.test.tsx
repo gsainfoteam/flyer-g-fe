@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import type { SignageSubmissionExpanded } from "@/entities/submission";
 import { createMockRepositories } from "@/mocks/repositories";
 import { createFixedClock } from "@/shared/lib/clock";
 import { TEST_NOW, renderRoute } from "@/test/render-route";
@@ -13,6 +14,19 @@ const PENDING_ID = "notice-003";
 
 function reviewRepositories() {
   return createMockRepositories({ clock: createFixedClock(TEST_NOW) });
+}
+
+/** 대기 건을 다른 종류로 바꿔 읽게 한다. mock에는 아직 이벤트·제보 예시가 없다. */
+function repositoriesShowing(patch: Partial<SignageSubmissionExpanded>) {
+  const repositories = reviewRepositories();
+  const getById = repositories.submissions.getById.bind(
+    repositories.submissions,
+  );
+  repositories.submissions.getById = async (id, signal) => {
+    const submission = await getById(id, signal);
+    return id === PENDING_ID ? { ...submission, ...patch } : submission;
+  };
+  return repositories;
 }
 
 describe("검토 상세", () => {
@@ -198,5 +212,96 @@ describe("검토 상세", () => {
       await screen.findByRole("link", { name: /전체 신청으로/ }),
     ).toHaveAttribute("href", "/contents");
   });
-});
 
+  it("제보는 말머리와 본문을 보여주고 포스터 칸은 그리지 않는다", async () => {
+    renderRoute(`/review/${PENDING_ID}`, {
+      role: "REVIEWER",
+      repositories: repositoriesShowing({
+        type: "STORY",
+        requesterId: null,
+        requesterName: null,
+        categoryId: null,
+        categoryName: null,
+        posterUrl: null,
+        posterThumbUrl: null,
+        posterWidth: null,
+        posterHeight: null,
+        detailUrl: null,
+        story: {
+          tag: "PRAISE",
+          body: "3층 정수기 고쳐 주신 분 감사합니다",
+          storyNumber: null,
+        },
+      }),
+    });
+
+    const tag = await screen.findByText("말머리");
+    expect(tag.nextElementSibling).toHaveTextContent("칭찬");
+    expect(screen.getByText("본문").nextElementSibling).toHaveTextContent(
+      "3층 정수기 고쳐 주신 분 감사합니다",
+    );
+    expect(screen.getByText(/작성자 가림 신청/)).toBeInTheDocument();
+    expect(screen.queryByText("원본 포스터")).toBeNull();
+    expect(screen.queryByText("상세 링크")).toBeNull();
+  });
+
+  it("이벤트는 받는 사람·문구·사진 동의를 보여준다", async () => {
+    renderRoute(`/review/${PENDING_ID}`, {
+      role: "REVIEWER",
+      repositories: repositoriesShowing({
+        type: "EVENT_BANNER",
+        categoryId: null,
+        categoryName: null,
+        posterUrl: null,
+        posterThumbUrl: null,
+        posterWidth: null,
+        posterHeight: null,
+        detailUrl: null,
+        eventBanner: {
+          mode: "TEMPLATE",
+          occasion: "BIRTHDAY",
+          recipient: "지민",
+          message: "스물한 살 생일 축하해!",
+          sender: "3층 친구들",
+          photoAssetId: "asset-photo",
+          photoUrl: "https://example.com/photo.jpg",
+          photoConsent: true,
+          assetId: null,
+          assetUrl: null,
+        },
+      }),
+    });
+
+    const format = await screen.findByText("형식");
+    expect(format.nextElementSibling).toHaveTextContent("문구로 만들기 · 생일");
+    expect(screen.getByText("받는 사람").nextElementSibling).toHaveTextContent(
+      "지민",
+    );
+    expect(screen.getByText("문구").nextElementSibling).toHaveTextContent(
+      "스물한 살 생일 축하해!",
+    );
+    expect(screen.getByText("보낸 사람").nextElementSibling).toHaveTextContent(
+      "3층 친구들",
+    );
+    expect(
+      screen.getByText("사진", { selector: "dt" }).nextElementSibling,
+    ).toHaveTextContent("있음 · 받는 사람 동의");
+    expect(screen.queryByText("카테고리")).toBeNull();
+  });
+
+  it("영상 포스터는 대표 프레임 대신 영상을 재생할 수 있다", async () => {
+    renderRoute(`/review/${PENDING_ID}`, {
+      role: "REVIEWER",
+      repositories: repositoriesShowing({
+        posterKind: "VIDEO",
+        posterDurationMs: 15_000,
+        posterVideoUrl: "https://example.com/poster.mp4",
+      }),
+    });
+
+    expect(await screen.findByText("원본 영상")).toBeInTheDocument();
+    const video = document.querySelector("video");
+    expect(video).toHaveAttribute("src", "https://example.com/poster.mp4");
+    expect(video).toHaveAttribute("controls");
+  });
+});

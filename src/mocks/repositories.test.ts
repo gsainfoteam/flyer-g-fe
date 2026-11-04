@@ -45,8 +45,8 @@ describe("mock repositories", () => {
     );
     expect(published.length).toBeGreaterThan(0);
     for (const item of published) {
-      expect(item.startAt.getTime()).toBeLessThanOrEqual(NOW.getTime());
-      expect(item.endAt.getTime()).toBeGreaterThan(NOW.getTime());
+      expect(item.startAt!.getTime()).toBeLessThanOrEqual(NOW.getTime());
+      expect(item.endAt!.getTime()).toBeGreaterThan(NOW.getTime());
     }
   });
 

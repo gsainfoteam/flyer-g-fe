@@ -23,6 +23,11 @@ export const SIGNAGE_CONFIG_FIXTURE: SignageConfig = {
   minLeadTimeHours: 24,
   allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
   allowedDetailUrlHosts: ["ziggle.gistory.me"],
+  maxVideoUploadBytes: 100 * 1024 * 1024,
+  maxVideoDurationSeconds: 30,
+  eventBannerMaxDays: 3,
+  storyDisplayDays: 2,
+  dailySubmissionLimits: { EVENT_BANNER: 3, STORY: 5 },
 };
 
 /** 서버가 신청 응답에 싣는 카테고리 이름. 모르는 id는 그대로 둔다. */

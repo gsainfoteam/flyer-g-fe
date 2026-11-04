@@ -27,6 +27,12 @@ const view: SubmissionView = {
   targetGroupIds: [],
   version: 1,
   lastDecision: null,
+  type: "POSTER",
+  posterKind: "IMAGE",
+  posterDurationMs: null,
+  posterVideoUrl: null,
+  eventBanner: null,
+  story: null,
 };
 
 describe("fromSubmissionView", () => {

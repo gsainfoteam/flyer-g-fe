@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ApiError,
   codeForStatus,
+  dailyLimitOf,
   isRetryableError,
   normalizeApiError,
   toTraceLabel,
@@ -81,6 +82,19 @@ describe("isRetryableError", () => {
     expect(isRetryableError(http(429))).toBe(true);
   });
 
+  it("하루 한도 초과(429)는 다음 날까지 같은 답이라 재시도하지 않는다", () => {
+    expect(
+      isRetryableError(
+        new ApiError({
+          kind: "http",
+          code: "DAILY_LIMIT_EXCEEDED",
+          message: "m",
+          status: 429,
+        }),
+      ),
+    ).toBe(false);
+  });
+
   it("다시 보내도 결과가 같은 4xx와 취소는 재시도하지 않는다", () => {
     for (const status of [400, 401, 403, 404, 409, 422]) {
       expect(isRetryableError(http(status))).toBe(false);
@@ -106,5 +120,43 @@ describe("toTraceLabel", () => {
     expect(
       toTraceLabel(new ApiError({ kind: "http", code: "X", message: "m" })),
     ).toBeNull();
+  });
+});
+
+describe("새 오류 code (배포 ③④)", () => {
+  const limited = (details: Record<string, unknown> | null) =>
+    new ApiError({
+      kind: "http",
+      code: "DAILY_LIMIT_EXCEEDED",
+      message: "m",
+      status: 429,
+      details,
+    });
+
+  it("하루 한도 초과는 한도를 넣어 안내하고, 한도를 모르면 일반 문구를 쓴다", () => {
+    expect(dailyLimitOf(limited({ type: "STORY", limit: 5 }))).toEqual({
+      type: "STORY",
+      limit: 5,
+    });
+    expect(toUserMessage(limited({ type: "STORY", limit: 5 }))).toBe(
+      "이 종류는 하루에 5건까지 올릴 수 있어요. 내일 다시 올려 주세요.",
+    );
+    expect(dailyLimitOf(limited({ limit: "5" }))).toBeNull();
+    expect(toUserMessage(limited(null))).toBe(
+      "오늘 올릴 수 있는 수를 다 썼어요. 내일 다시 올려 주세요.",
+    );
+  });
+
+  it("반려·중단된 제보를 다시 내면 새로 쓰라고 안내한다", () => {
+    expect(
+      toUserMessage(
+        new ApiError({
+          kind: "http",
+          code: "NOT_RESUBMITTABLE",
+          message: "m",
+          status: 409,
+        }),
+      ),
+    ).toBe("반려되거나 중단된 제보는 고쳐서 다시 낼 수 없어요. 새로 써 주세요.");
   });
 });

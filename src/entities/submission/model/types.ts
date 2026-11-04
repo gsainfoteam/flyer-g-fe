@@ -22,28 +22,125 @@ export const SUBMISSION_DECISIONS = [
 ] as const;
 export type SubmissionDecision = (typeof SUBMISSION_DECISIONS)[number];
 
-/** 명세 6.1 콘텐츠 유형. MVP는 POSTER만 사용한다. */
-export const CONTENT_TYPES = ["POSTER", "VIDEO", "MESSAGE", "SYSTEM"] as const;
-export type ContentType = (typeof CONTENT_TYPES)[number];
+import type { SubmissionKind } from "./kind";
+
+/** 포스터 파일 종류 (배포 ①). 영상이면 `posterVideoUrl`로 재생한다. */
+export const POSTER_KINDS = ["IMAGE", "VIDEO"] as const;
+export type PosterKind = (typeof POSTER_KINDS)[number];
+
+/** 이벤트 배너 형식 (배포 ③). 문구로 만들기 / 이미지 올리기 */
+export const EVENT_BANNER_MODES = ["TEMPLATE", "IMAGE"] as const;
+export type EventBannerMode = (typeof EVENT_BANNER_MODES)[number];
+
+export const EVENT_BANNER_OCCASIONS = [
+  "BIRTHDAY",
+  "ADMISSION",
+  "AWARD",
+  "WELCOME",
+  "OTHER",
+] as const;
+export type EventBannerOccasion = (typeof EVENT_BANNER_OCCASIONS)[number];
+
+export const EVENT_BANNER_OCCASION_LABELS: Record<EventBannerOccasion, string> =
+  {
+    BIRTHDAY: "생일",
+    ADMISSION: "합격",
+    AWARD: "수상",
+    WELCOME: "환영",
+    OTHER: "기타",
+  };
+
+/**
+ * 이벤트 배너 내용. 입력과 같은 필드에 서버가 만든 미리보기 주소를 더한다.
+ * TEMPLATE은 TV가 문구로 그리고 사진은 선택, IMAGE는 올린 이미지를 그대로 띄운다.
+ */
+export interface EventBanner {
+  mode: EventBannerMode;
+  occasion: EventBannerOccasion | null;
+  recipient: string;
+  message: string | null;
+  sender: string | null;
+  /** TEMPLATE의 사진. 없으면 null */
+  photoAssetId: string | null;
+  photoUrl: string | null;
+  /** 사진에 나온 사람의 동의. 사진이 있으면 true여야 한다. */
+  photoConsent: boolean;
+  /** IMAGE의 배너 이미지. TEMPLATE이면 null */
+  assetId: string | null;
+  assetUrl: string | null;
+}
+
+/** 소식 제보 말머리 (배포 ④) */
+export const STORY_TAGS = [
+  "NEWS",
+  "PRAISE",
+  "LOST_FOUND",
+  "SUGGESTION",
+  "OTHER",
+] as const;
+export type StoryTag = (typeof STORY_TAGS)[number];
+
+export const STORY_TAG_LABELS: Record<StoryTag, string> = {
+  NEWS: "소식",
+  PRAISE: "칭찬",
+  LOST_FOUND: "분실물",
+  SUGGESTION: "건의",
+  OTHER: "기타",
+};
+
+/**
+ * 제보 작성자. 운영자만 열람한다(`reveal-author`). 열람할 때마다 서버가 감사
+ * 로그를 남긴다. TV·편성·다른 화면 어디에도 싣지 않는다.
+ */
+export interface StoryAuthor {
+  requesterId: string;
+  requesterName: string;
+  requesterEmail: string;
+}
+
+/** 지금 게시 중인 제보 한 건. 공개 목록이라 작성자와 신청 id는 없다. */
+export interface RecentStory {
+  storyNumber: number;
+  tag: StoryTag;
+  body: string;
+  /** 승인되어 걸린 시각 */
+  startAt: Date;
+}
+
+/** 소식 제보 내용. 번호는 승인 때 정해진다(승인 전·반려는 null). */
+export interface Story {
+  tag: StoryTag;
+  body: string;
+  storyNumber: number | null;
+}
 
 /**
  * 명세 6.4 SignageSubmission. 서버와 주고받는 전송 모델이다.
  * 날짜는 ISO 8601 UTC 문자열이며 화면에서 직접 쓰지 않는다.
  * (백엔드 `SubmissionDto`, `API-CHANGES-BACKEND.md` 5.1)
+ *
+ * 신청 종류(`type`)가 셋이 되면서(배포 ②③④) 포스터 전용 필드는 포스터가 아니면
+ * null이다. 승인 전 제보는 기간이 null이고, 제보는 작성자 본인이 아니면(검토자
+ * 포함) 신청자가 null이다.
  */
 export interface SignageSubmissionDto {
   id: string;
   /** `detailUrl`이 Ziggle 공지 주소일 때 서버가 뽑은 공지 ID. 아니면 null */
   ziggleNoticeId: string | null;
-  requesterId: string;
-  type: ContentType;
+  /** 제보는 작성자 본인이 아니면 null. 운영자는 작성자 열람으로 확인한다. */
+  requesterId: string | null;
+  type: SubmissionKind;
+  /** 포스터는 신청자가 쓰고, 다른 종류는 서버가 목록용으로 만든다("생일 · 지민에게"). */
   title: string;
-  categoryId: string;
-  assetId: string;
-  /** QR이 가리킬 상세 링크. 없으면 QR 없이 게시한다. */
+  /** 포스터만. 다른 종류는 null */
+  categoryId: string | null;
+  /** 포스터 asset. 포스터가 아니면 null */
+  assetId: string | null;
+  /** QR이 가리킬 상세 링크. 포스터만, 없으면 QR 없이 게시한다. */
   detailUrl: string | null;
-  startAt: string;
-  endAt: string;
+  /** 승인 때 기간을 정하는 종류(제보)는 승인 전까지 null */
+  startAt: string | null;
+  endAt: string | null;
   status: SubmissionStatus;
   priority: number;
   targetGroupIds: string[];
@@ -69,8 +166,8 @@ export interface SignageSubmission extends Omit<
   SignageSubmissionDto,
   "startAt" | "endAt" | "createdAt" | "updatedAt" | "submittedAt"
 > {
-  startAt: Date;
-  endAt: Date;
+  startAt: Date | null;
+  endAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   submittedAt: Date | null;
@@ -81,16 +178,26 @@ export interface SignageSubmission extends Omit<
  * 백엔드는 모든 신청 응답에 이 필드들을 싣는다.
  */
 export interface SignageSubmissionExpandedDto extends SignageSubmissionDto {
-  categoryName: string;
-  /** 신청자 이름. 검토 화면에서 누가 올렸는지 보여준다. */
-  requesterName: string;
-  /** 포스터 미리보기 (1280x1280 안) */
-  posterUrl: string;
-  /** 포스터 썸네일 (400x400 안). 목록 카드용 */
-  posterThumbUrl: string;
+  /** 포스터만. 다른 종류는 null */
+  categoryName: string | null;
+  /** 신청자 이름. `requesterId`와 같은 규칙으로 null일 수 있다. */
+  requesterName: string | null;
+  /** 포스터 미리보기 (1280x1280 안). 영상은 대표 프레임. 포스터가 아니면 null */
+  posterUrl: string | null;
+  /** 포스터 썸네일 (400x400 안). 목록 카드용. 포스터가 아니면 null */
+  posterThumbUrl: string | null;
   /** 포스터 원본 크기(px). 미리보기는 줄인 이미지라 해상도 판단은 이 값으로 한다. */
-  posterWidth: number;
-  posterHeight: number;
+  posterWidth: number | null;
+  posterHeight: number | null;
+  /** 이미지·영상. 포스터가 아니면 null */
+  posterKind: PosterKind | null;
+  /** 영상 포스터의 길이(ms)와 재생용 mp4. 이미지거나 포스터가 아니면 null */
+  posterDurationMs: number | null;
+  posterVideoUrl: string | null;
+  /** 이벤트 배너의 내용. 다른 종류는 null */
+  eventBanner: EventBanner | null;
+  /** 소식 제보의 내용. 다른 종류는 null */
+  story: Story | null;
   /** 주최. 신청자가 자유 입력한다. 조직 모델은 없다. */
   organizerName: string | null;
   subtitle: string | null;
@@ -109,24 +216,36 @@ export interface SignageSubmissionExpanded
  */
 export interface SubmissionView {
   id: string;
+  type: SubmissionKind;
   title: string;
   subtitle: string | null;
-  categoryName: string;
+  /** 포스터만. 다른 종류는 null */
+  categoryName: string | null;
   organizerName: string | null;
   status: SubmissionStatus;
-  startAt: Date;
-  endAt: Date;
+  /** 승인 전 제보는 null */
+  startAt: Date | null;
+  endAt: Date | null;
   createdAt: Date;
   /** 마지막으로 검토에 낸 시각. 관리자 목록의 대기 시간은 이 값으로 센다. */
   submittedAt: Date | null;
-  /** 신청한 사람. 관리자가 남의 신청을 볼 때 게시자 행동을 숨기는 데 쓴다. */
-  requesterId: string;
-  requesterName: string;
-  posterUrl: string;
-  posterThumbUrl: string;
-  /** 포스터 원본 크기(px) */
-  posterWidth: number;
-  posterHeight: number;
+  /**
+   * 신청한 사람. 관리자가 남의 신청을 볼 때 게시자 행동을 숨기는 데 쓴다.
+   * 제보는 작성자 본인이 아니면 null이다.
+   */
+  requesterId: string | null;
+  requesterName: string | null;
+  /** 포스터가 아니면 null */
+  posterUrl: string | null;
+  posterThumbUrl: string | null;
+  /** 포스터 원본 크기(px). 포스터가 아니면 null */
+  posterWidth: number | null;
+  posterHeight: number | null;
+  posterKind: PosterKind | null;
+  posterDurationMs: number | null;
+  posterVideoUrl: string | null;
+  eventBanner: EventBanner | null;
+  story: Story | null;
   detailUrl: string | null;
   location: string | null;
   description: string | null;
@@ -153,6 +272,14 @@ export interface SubmissionSummary {
    * (`API-REQUIREMENTS.md` 7.1)
    */
   byStatus: Record<SubmissionStatus, number>;
+  /** 종류별 검토 대기 건수와 가장 오래 기다린 건의 제출 시각(배포 ②) */
+  byType: Record<SubmissionKind, KindQueueSummary>;
+}
+
+export interface KindQueueSummary {
+  pendingReview: number;
+  /** 대기 건이 없으면 null */
+  oldestSubmittedAt: Date | null;
 }
 
 export interface SubmissionListParams {
@@ -164,6 +291,8 @@ export interface SubmissionListParams {
   statuses?: readonly SubmissionStatus[];
   /** 본인 신청만 볼지 전체를 볼지. 명세 3.2 권한 매트릭스 */
   scope?: "me" | "all";
+  /** 종류 필터(배포 ②). 비우면 모든 종류다. */
+  types?: readonly SubmissionKind[];
   cursor?: string | null;
   limit?: number;
 }

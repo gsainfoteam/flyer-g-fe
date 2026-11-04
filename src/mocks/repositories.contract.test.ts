@@ -997,3 +997,49 @@ describe("사용자 역할 관리", () => {
     expect(role?.fields?.role).toBeTruthy();
   });
 });
+
+describe("신청 종류 (배포 ②③④)", () => {
+  it("종류 필터로 목록과 검토 대기를 거르고, 요약은 종류별 대기를 센다", async () => {
+    const { repos } = setup(MOCK_USERS.REVIEWER);
+
+    const posters = await repos.submissions.list({
+      scope: "all",
+      types: ["POSTER"],
+      limit: 50,
+    });
+    expect(posters.items.length).toBeGreaterThan(0);
+    expect(posters.items.every((item) => item.type === "POSTER")).toBe(true);
+
+    const stories = await repos.reviews.listPending({ types: ["STORY"] });
+    expect(stories.items).toEqual([]);
+
+    const summary = await repos.submissions.getSummary({ scope: "all" });
+    expect(summary.byType.POSTER.pendingReview).toBe(summary.pendingReview);
+    expect(summary.byType.POSTER.oldestSubmittedAt).not.toBeNull();
+    expect(summary.byType.STORY).toEqual({
+      pendingReview: 0,
+      oldestSubmittedAt: null,
+    });
+  });
+
+  it("작성자 열람은 운영자만, 제보에만 할 수 있다", async () => {
+    const { repos, signInAs } = setup(MOCK_USERS.REVIEWER);
+    expect(await statusOf(repos.submissions.revealAuthor("notice-001"))).toBe(
+      403,
+    );
+
+    signInAs(MOCK_USERS.SUPER_ADMIN);
+    expect(await statusOf(repos.submissions.revealAuthor("notice-001"))).toBe(
+      409,
+    );
+  });
+
+  it("최근 제보는 누구나 보고, limit은 1~10이다", async () => {
+    const { repos } = setup(MOCK_USERS.SUBMITTER);
+
+    await expect(repos.submissions.listRecentStories({})).resolves.toEqual([]);
+    expect(
+      await statusOf(repos.submissions.listRecentStories({ limit: 11 })),
+    ).toBe(422);
+  });
+});
