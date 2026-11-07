@@ -1,8 +1,10 @@
-import { act, renderHook } from "@testing-library/react";
+import { useState } from "react";
+import { act, fireEvent, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlaybackContext } from "@/entities/lineup/model/playback";
 import { DEFAULT_LINEUP_SETTINGS, newSubmissionBlock } from "@/entities/lineup/model/types";
 import { useLineupRotation } from "./use-lineup-rotation";
+import { useDisplayKeyboard } from "./use-display-keyboard";
 
 const now = new Date("2026-11-04T03:00:00Z");
 const context = (): PlaybackContext => ({
@@ -14,6 +16,27 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(now); localStorage.clear
 afterEach(() => vi.useRealTimers());
 
 describe("블록 재생 hook", () => {
+  it("일시정지 중에도 수동으로 넘기고 20초 뒤 자동 순환을 재개한다", () => {
+    const ctx = context();
+    const { result } = renderHook(() => {
+      const [held, setHeld] = useState(false);
+      const rotation = useLineupRotation("tv-keyboard", ctx, now, held);
+      useDisplayKeyboard({ enabled: true, onAdvance: rotation.advance, onPauseChange: setHeld });
+      return rotation;
+    });
+    act(() => vi.advanceTimersByTime(14_000));
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    act(() => vi.advanceTimersByTime(250));
+    expect(result.current.currentFrame).toMatchObject({ stories: [{ submissionId: "b" }] });
+    expect(result.current.moving).toBe(false);
+    act(() => vi.advanceTimersByTime(19_750));
+    act(() => vi.advanceTimersByTime(250));
+    expect(result.current.moving).toBe(true);
+    expect(result.current.currentFrame).toMatchObject({ stories: [{ submissionId: "b" }] });
+    act(() => vi.advanceTimersByTime(14_750));
+    expect(result.current.currentFrame).toMatchObject({ stories: [{ submissionId: "c" }] });
+  });
+
   it("내용이 같은 갱신에도 차례를 유지하고 재시작·기기별 커서를 분리한다", () => {
     const { result, rerender, unmount } = renderHook(() => useLineupRotation("tv-a", context(), now, false));
     expect(result.current.currentFrame).toMatchObject({ kind: "story", stories: [{ submissionId: "a" }] });

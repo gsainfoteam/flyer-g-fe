@@ -87,6 +87,24 @@ describe("TV 플레이어", () => {
     expect(screen.queryByText("미리보기")).toBeNull();
   });
 
+  it("운영 화면에서 Enter와 오른쪽 화살표로 한 장씩 넘긴다", async () => {
+    const repositories = withPlaylist(playlistWith([
+      { id: "p1", title: "첫 포스터" },
+      { id: "p2", title: "둘째 포스터" },
+      { id: "p3", title: "셋째 포스터" },
+    ]));
+    renderRoute("/display/device-preview", { repositories });
+    await screen.findByRole("heading", { name: "첫 포스터" });
+    fireEvent.keyDown(window, { key: "Enter" });
+    await screen.findByRole("heading", { name: "둘째 포스터" });
+    expect(screen.getByText("잠시 후 자동 재생")).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "Enter", repeat: true });
+    expect(screen.getByRole("heading", { name: "둘째 포스터" })).toBeInTheDocument();
+    fireEvent.keyUp(window, { key: "Enter" });
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    await screen.findByRole("heading", { name: "셋째 포스터" });
+  });
+
   it("preview 모드에서만 일시정지·다음 컨트롤이 보인다", async () => {
     const repositories = withPlaylist(
       playlistWith([
