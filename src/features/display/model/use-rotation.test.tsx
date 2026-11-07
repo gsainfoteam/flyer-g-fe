@@ -1,9 +1,11 @@
-import { act, renderHook } from "@testing-library/react";
+import { useState } from "react";
+import { act, fireEvent, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PosterRenderModel } from "@/entities/poster";
 import type { PlayerFrame } from "@/entities/widget/model/schedule";
 import type { WidgetSlot } from "@/entities/widget/model/types";
 import { useRotation } from "./use-rotation";
+import { useDisplayKeyboard } from "./use-display-keyboard";
 
 function poster(id: string): PosterRenderModel {
   return {
@@ -57,6 +59,25 @@ function picker(...sequence: (WidgetSlot | null)[]) {
 }
 
 describe("useRotation", () => {
+  it("수동 넘김이 기존 타이머를 멈추고 20초 뒤 새 화면의 자동 재생을 시작한다", () => {
+    const items = posters("a", "b", "c");
+    const { result } = renderHook(() => {
+      const [held, setHeld] = useState(false);
+      const rotation = useRotation({ posters: items, layout: "STRIP", rotationSeconds: 10, hold: held });
+      useDisplayKeyboard({ enabled: true, onAdvance: rotation.advance, onPauseChange: setHeld });
+      return rotation;
+    });
+    act(() => vi.advanceTimersByTime(9_000));
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(focusOf(result.current.currentFrame, items)).toBe("b");
+    expect(result.current.moving).toBe(false);
+    act(() => vi.advanceTimersByTime(20_000));
+    expect(result.current.moving).toBe(true);
+    expect(focusOf(result.current.currentFrame, items)).toBe("b");
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("c");
+  });
+
   it("포스터 N장마다 위젯 자리에서 고른 위젯이 자기 시간만큼 머문다", () => {
     const items = posters("a", "b");
     const pickWidget = picker(widget("w", 30));
