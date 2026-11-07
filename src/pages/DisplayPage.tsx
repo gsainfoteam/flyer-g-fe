@@ -14,6 +14,7 @@ import {
   usePrefetchImages,
 } from "@/features/display";
 import { useRotation } from "@/features/display/model/use-rotation";
+import { useDisplayKeyboard } from "@/features/display/model/use-display-keyboard";
 import { useTimeSlot } from "@/features/display/model/use-time-slot";
 import { useTimeSlotRules } from "@/features/display/model/use-tv-settings";
 import {
@@ -74,7 +75,7 @@ import { Button } from "@/shared/ui/button";
  * TV 플레이어 (명세 FR-PLY-01 ~ FR-PLY-08).
  *
  * 운영 모드에는 조작 UI도 커서도 없다. `?preview=1`일 때만 관리자용 컨트롤을
- * 보여준다.
+ * 보여준다. Enter/오른쪽 화살표로 넘기면 20초 후 자동 재생을 재개한다.
  *
  * 회복력:
  * - 갱신 실패 → 마지막 편성 계속, 지수 backoff로 재시도
@@ -262,6 +263,7 @@ export function DisplayPage() {
       : null;
 
   const [paused, setPaused] = useState(false);
+  const [manualPaused, setManualPaused] = useState(false);
   const legacyRotation = useRotation({
     posters,
     content,
@@ -279,7 +281,7 @@ export function DisplayPage() {
     ),
     pickWidget: lineup ? undefined : pickWidget,
     paused: !!lineup || (isPreview && paused),
-    hold: gameActive || takeover,
+    hold: gameActive || takeover || manualPaused,
   });
 
   const lineupRotation = useLineupRotation(isPreview ? `preview:${deviceId}` : deviceId, lineup && content ? {
@@ -287,9 +289,16 @@ export function DisplayPage() {
     widgetRatio: widgetFeed.ratioPercent,
     pickWidget,
     peekWidget: () => picker.peek(widgetSlots, new Date(Date.now() + clockOffsetRef.current)),
-  } : null, serverTime, (isPreview && paused) || gameActive || takeover);
+  } : null, serverTime, (isPreview && paused) || gameActive || takeover || manualPaused);
   const rotation = lineup ? lineupRotation : legacyRotation;
   const quiet = !!lineup && lineupRotation.quiet;
+  useDisplayKeyboard({
+    enabled: !feed.deviceError && !feed.isPending && !!serverTime &&
+      !!rotation.currentFrame && !quiet && !gameActive && !takeover &&
+      (!!lineup || rotation.frameCount > 1),
+    onAdvance: rotation.advance,
+    onPauseChange: setManualPaused,
+  });
 
   const nextFrame = rotation.nextFrame;
   usePrefetchImages(imagesOf(nextFrame, posters));
@@ -413,6 +422,8 @@ export function DisplayPage() {
             ? `${timeSlot.rule.label} · ${timeSlot.rule.time.to}까지`
             : gameActive
             ? "클릭 배틀 진행 중"
+            : manualPaused
+            ? "잠시 후 자동 재생"
             : null
       }
       next={
