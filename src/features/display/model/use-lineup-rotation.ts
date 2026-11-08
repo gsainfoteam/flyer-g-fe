@@ -13,6 +13,7 @@ export function useLineupRotation(
 ) {
   const [snapshot, setSnapshot] = useState(EMPTY_LINEUP_SNAPSHOT);
   const player = useRef<ReturnType<typeof createLineupPlayer> | null>(null);
+  const flush = useRef<(() => boolean) | null>(null);
   const latest = useRef({ context, paused, offset: 0 });
   useEffect(() => {
     latest.current.context = context;
@@ -42,9 +43,10 @@ export function useLineupRotation(
     player.current = engine;
     let previous = Date.now();
     let saved = JSON.stringify(cursors);
+    let lastSerial = -1;
     const update = () => {
       const { context: ctx, paused: hold, offset } = latest.current;
-      if (!ctx) return;
+      if (!ctx) return false;
       const now = Date.now();
       const next = engine.tick(
         ctx,
@@ -53,6 +55,8 @@ export function useLineupRotation(
         hold,
       );
       previous = now;
+      const moved = next.serial !== lastSerial;
+      lastSerial = next.serial;
       setSnapshot((old) =>
         old.serial === next.serial &&
         old.moving === next.moving &&
@@ -76,18 +80,29 @@ export function useLineupRotation(
           /* Playback continues without persistence. */
         }
       }
+      return moved;
     };
+    flush.current = update;
     update();
     const timer = window.setInterval(update, 250);
     return () => {
       window.clearInterval(timer);
       player.current = null;
+      flush.current = null;
     };
   }, [deviceId, enabled]);
-  const advance = useCallback(() => player.current?.requestAdvance(), []);
+  const advance = useCallback(() => {
+    player.current?.requestAdvance();
+    flush.current?.();
+  }, []);
+  const previous = useCallback(() => {
+    player.current?.requestPrevious();
+    return flush.current?.() ?? false;
+  }, []);
   return {
     ...snapshot,
     advance,
+    previous,
     nextFrame: undefined,
     upcoming: undefined,
     currentPickId: undefined,
