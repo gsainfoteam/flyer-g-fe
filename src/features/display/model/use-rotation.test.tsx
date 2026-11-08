@@ -59,16 +59,71 @@ function picker(...sequence: (WidgetSlot | null)[]) {
 }
 
 describe("useRotation", () => {
+  it("실제로 본 화면으로 돌아간 뒤 짧게 누르면 같은 순서로 이어 간다", () => {
+    vi.setSystemTime(new Date("2026-06-10T00:00:00Z"));
+    const items = posters("a", "b", "c");
+    const { result } = renderHook(() => {
+      const [held, setHeld] = useState(false);
+      const rotation = useRotation({ posters: items, layout: "STRIP", rotationSeconds: 10, hold: held });
+      useDisplayKeyboard({ enabled: true, onAdvance: rotation.advance, onPrevious: rotation.previous, onPauseChange: setHeld });
+      return rotation;
+    });
+    act(() => { expect(result.current.previous()).toBe(false); });
+    act(() => vi.advanceTimersByTime(20_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("c");
+    fireEvent.keyDown(window, { key: "Enter" });
+    act(() => vi.advanceTimersByTime(800));
+    expect(focusOf(result.current.currentFrame, items)).toBe("b");
+    fireEvent.keyUp(window, { key: "Enter" });
+    expect(focusOf(result.current.currentFrame, items)).toBe("b");
+    fireEvent.keyDown(window, { key: "Enter" });
+    fireEvent.keyUp(window, { key: "Enter" });
+    expect(focusOf(result.current.currentFrame, items)).toBe("c");
+    act(() => vi.advanceTimersByTime(20_000));
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(focusOf(result.current.currentFrame, items)).toBe("a");
+  });
+
+  it("삭제·만료된 화면과 끝난 게임을 이력에서 건너뛴다", () => {
+    vi.setSystemTime(new Date("2026-06-10T00:00:00Z"));
+    const items = posters("a", "b", "c");
+    items[1]!.endAt = new Date(Date.now() + 1000);
+    const { result, rerender } = renderHook(({ items }) => useRotation({
+      posters: items, layout: "STRIP", rotationSeconds: 10, paused: true,
+    }), { initialProps: { items } });
+    act(() => result.current.advance());
+    act(() => result.current.advance());
+    act(() => vi.advanceTimersByTime(1000));
+    act(() => { expect(result.current.previous()).toBe(true); });
+    expect(focusOf(result.current.currentFrame, items)).toBe("a");
+    act(() => result.current.advance());
+    expect(focusOf(result.current.currentFrame, items)).toBe("c");
+    rerender({ items: items.slice(1) });
+    act(() => { expect(result.current.previous()).toBe(false); });
+
+    const game = { id: "game", type: "CLICK_BATTLE" as const, durationSeconds: 10, params: {} };
+    const withGame = renderHook(() => useRotation({
+      posters: posters("a", "c"), layout: "STRIP", rotationSeconds: 10, paused: true,
+      widgetInterval: 1, pickWidget: () => ({ slot: game, content: { type: "CLICK_BATTLE" } }),
+    }));
+    act(() => withGame.result.current.advance());
+    expect(withGame.result.current.currentFrame?.kind).toBe("widget");
+    act(() => withGame.result.current.advance());
+    act(() => { expect(withGame.result.current.previous()).toBe(true); });
+    expect(withGame.result.current.currentFrame).toMatchObject({ kind: "strip", focusIndex: 0 });
+  });
+
   it("수동 넘김이 기존 타이머를 멈추고 20초 뒤 새 화면의 자동 재생을 시작한다", () => {
     const items = posters("a", "b", "c");
     const { result } = renderHook(() => {
       const [held, setHeld] = useState(false);
       const rotation = useRotation({ posters: items, layout: "STRIP", rotationSeconds: 10, hold: held });
-      useDisplayKeyboard({ enabled: true, onAdvance: rotation.advance, onPauseChange: setHeld });
+      useDisplayKeyboard({ enabled: true, onAdvance: rotation.advance, onPrevious: rotation.previous, onPauseChange: setHeld });
       return rotation;
     });
     act(() => vi.advanceTimersByTime(9_000));
     fireEvent.keyDown(window, { key: "Enter" });
+    fireEvent.keyUp(window, { key: "Enter" });
     expect(focusOf(result.current.currentFrame, items)).toBe("b");
     expect(result.current.moving).toBe(false);
     act(() => vi.advanceTimersByTime(20_000));

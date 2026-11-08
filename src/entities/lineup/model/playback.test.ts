@@ -71,6 +71,64 @@ const eventId = (
     : null;
 
 describe("편성 재생", () => {
+  it("블록 경계를 넘어 뒤로 탐색하고 앞으로 돌아오면 커서와 자동 순환을 이어 간다", () => {
+    const ctx = context([block("EVENT_BANNER"), block("STORY")]);
+    const player = createLineupPlayer();
+    expect(eventId(player.tick(ctx, now, 0))).toBe("e1");
+    player.requestPrevious();
+    expect(eventId(player.tick(ctx, now, 0, true))).toBe("e1");
+    player.requestAdvance(); player.tick(ctx, now, 0, true); // story s1,s2
+    player.requestAdvance();
+    expect(eventId(player.tick(ctx, now, 0, true))).toBe("e2");
+    player.requestPrevious();
+    expect(player.tick(ctx, now, 0, true).currentFrame).toMatchObject({ kind: "story", stories: [{ submissionId: "s1" }, { submissionId: "s2" }] });
+    player.requestPrevious();
+    expect(eventId(player.tick(ctx, now, 0, true))).toBe("e1");
+    player.requestAdvance(); player.tick(ctx, now, 0, true);
+    player.requestAdvance();
+    expect(eventId(player.tick(ctx, now, 0, true))).toBe("e2");
+    expect(player.cursors).toEqual({ EVENT_BANNER: "e1", STORY: "s2" });
+    expect(player.tick(ctx, now, 15_000).currentFrame).toMatchObject({ kind: "story", stories: [{ submissionId: "s3" }, { submissionId: "s1" }] });
+  });
+
+  it("이력의 게시 기간·삭제·블록 일정을 다시 확인한다", () => {
+    const ctx = context([block("EVENT_BANNER"), block("STORY")]);
+    const player = createLineupPlayer();
+    player.tick(ctx, now, 0);
+    player.requestAdvance(); player.tick(ctx, now, 0, true);
+    player.requestAdvance(); player.tick(ctx, now, 0, true);
+    ctx.lineup.blocks[1]!.enabled = false;
+    ctx.content.eventBanners = ctx.content.eventBanners.filter((b) => b.submissionId !== "e1");
+    player.requestPrevious();
+    expect(eventId(player.tick(ctx, now, 0, true))).toBe("e2");
+
+    const expired = context([block("EVENT_BANNER")]);
+    expired.content.eventBanners[0]!.endsAt = new Date(now.getTime() + 1000);
+    const other = createLineupPlayer();
+    other.tick(expired, now, 0);
+    other.requestAdvance(); other.tick(expired, now, 0, true);
+    other.requestPrevious();
+    expect(eventId(other.tick(expired, new Date(now.getTime() + 1000), 0, true))).toBe("e2");
+  });
+
+  it("이전과 다음 탐색에서 이미 떠난 게임을 건너뛴다", () => {
+    const ctx = context([block("EVENT_BANNER")]);
+    ctx.widgetRatio = 50;
+    const game = { slot: { id: "game", type: "CLICK_BATTLE" as const, durationSeconds: 10, params: {} }, content: { type: "CLICK_BATTLE" as const } };
+    ctx.peekWidget = () => game;
+    ctx.pickWidget = () => game;
+    const player = createLineupPlayer();
+    player.tick(ctx, now, 0);
+    player.requestAdvance();
+    expect(player.tick(ctx, now, 0, true).currentFrame?.kind).toBe("widget");
+    player.requestAdvance();
+    expect(eventId(player.tick(ctx, now, 0, true))).toBe("e2");
+    player.requestPrevious();
+    expect(eventId(player.tick(ctx, now, 0, true))).toBe("e1");
+    player.requestAdvance();
+    expect(eventId(player.tick(ctx, now, 0, true))).toBe("e2");
+  });
+
   it("설정한 블록 시간과 순서대로 일부씩 보여주며 다음 바퀴에 다음 내용을 고른다", () => {
     const ctx = context([block("EVENT_BANNER"), block("STORY")]);
     const player = createLineupPlayer();

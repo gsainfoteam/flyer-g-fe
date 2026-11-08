@@ -13,6 +13,8 @@ import { isGameWidget } from "@/entities/widget/model/types";
 import { WIDGET_LABELS } from "@/entities/widget/model/settings";
 import { isQuietAt, isScheduleActive } from "./schedule";
 import { LINEUP_LABELS } from "./types";
+import { createPlaybackHistory } from "@/shared/lib/playback-history";
+import { isReplayableFrame } from "@/entities/widget/model/replayable-frame";
 import type { LineupBlock, LineupProgram, PlaybackLineup } from "./types";
 
 export interface TimedScene {
@@ -204,12 +206,41 @@ export function createLineupPlayer(
   let widget: TimedScene | null = null;
   let lastWidgetId: string | undefined;
   let pendingNext = false;
+  let pendingPrevious = false;
   let sourceSignature = "";
 
   const current = () => widget ?? visit?.scenes[index];
   const start = () => {
     remaining = (current()?.seconds ?? 1) * 1000;
     serial++;
+  };
+  const capture = () => current() ? {
+    visit, blockId, blockSignature, index, widget, widgetCredit, lastWidgetId,
+    cursors: { ...cursors },
+  } : undefined;
+  type HistoryEntry = NonNullable<ReturnType<typeof capture>>;
+  const history = createPlaybackHistory<HistoryEntry>();
+  const resolve = (entry: HistoryEntry, ctx: PlaybackContext, now: Date): HistoryEntry | null => {
+    const block = ctx.lineup.blocks.find((b) => b.id === entry.blockId);
+    if (!block || !block.enabled || !isScheduleActive(block.schedule, now) ||
+      JSON.stringify(block) !== entry.blockSignature) return null;
+    if (entry.widget) {
+      if (entry.widget.frame.kind !== "widget") return null;
+      const content = buildWidgetContent(entry.widget.frame.slot, now);
+      if (!content || !isReplayableFrame(entry.widget.frame, ctx.posters, now)) return null;
+      return { ...entry, widget: { ...entry.widget, frame: { ...entry.widget.frame, content } } };
+    }
+    const updated = buildVisit(block, ctx, now, entry.cursors[block.id]);
+    const key = entry.visit?.scenes[entry.index]?.frame.key;
+    const found = updated.scenes.findIndex((s) => s.frame.key === key);
+    if (found < 0 || !isReplayableFrame(updated.scenes[found]!.frame, ctx.posters, now)) return null;
+    return { ...entry, visit: updated, index: found };
+  };
+  const restore = (entry: HistoryEntry) => {
+    ({ visit, blockId, blockSignature, index, widget, widgetCredit, lastWidgetId } = entry);
+    for (const id of Object.keys(cursors)) delete cursors[id];
+    Object.assign(cursors, entry.cursors);
+    start();
   };
   const resetVisit = () => {
     visit = null;
@@ -233,6 +264,9 @@ export function createLineupPlayer(
     blockId = null;
   };
   const advance = (ctx: PlaybackContext, now: Date) => {
+    const forward = history.next(capture(), (entry) => resolve(entry, ctx, now));
+    if (forward) { restore(forward); return; }
+    history.record(capture());
     if (widget) {
       widget = null;
       // One interstitial per block. Remaining credit carries to later blocks.
@@ -282,6 +316,9 @@ export function createLineupPlayer(
     requestAdvance() {
       pendingNext = true;
     },
+    requestPrevious() {
+      pendingPrevious = true;
+    },
     tick(
       ctx: PlaybackContext,
       now: Date,
@@ -295,12 +332,17 @@ export function createLineupPlayer(
         ctx.content,
       ]);
       const wasQuiet = quiet;
+      const navigating = pendingNext || pendingPrevious;
       quiet = isQuietAt(ctx.lineup.settings.quietHours, now);
       if (quiet) {
         if (!wasQuiet) {
           resetVisit();
+          history.clear();
           serial++;
         }
+      } else if (pendingPrevious) {
+        const previous = history.previous(capture(), (entry) => resolve(entry, ctx, now));
+        if (previous) restore(previous);
       } else if (!paused || pendingNext) {
         const block = ctx.lineup.blocks.find((b) => b.id === blockId);
         const changed = block && JSON.stringify(block) !== blockSignature;
@@ -363,9 +405,10 @@ export function createLineupPlayer(
           remaining -= paused ? 0 : Math.max(0, elapsedMs);
           if (remaining <= 0 || pendingNext) advance(ctx, now);
         }
-        pendingNext = false;
       }
-      if (!paused || quiet) sourceSignature = sources;
+      pendingNext = false;
+      pendingPrevious = false;
+      if (!paused || quiet || navigating) sourceSignature = sources;
       const scene = quiet ? undefined : current();
       const blocks = ctx.lineup.blocks;
       const currentBlockIndex = blocks.findIndex((b) => b.id === blockId);

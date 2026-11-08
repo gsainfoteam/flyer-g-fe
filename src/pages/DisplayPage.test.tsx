@@ -96,6 +96,9 @@ describe("TV 플레이어", () => {
     renderRoute("/display/device-preview", { repositories });
     await screen.findByRole("heading", { name: "첫 포스터" });
     fireEvent.keyDown(window, { key: "Enter" });
+    expect(screen.getByRole("progressbar", { name: "이전으로 돌아가기" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "첫 포스터" })).toBeInTheDocument();
+    fireEvent.keyUp(window, { key: "Enter" });
     await screen.findByRole("heading", { name: "둘째 포스터" });
     expect(screen.getByText("잠시 후 자동 재생")).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "Enter", repeat: true });

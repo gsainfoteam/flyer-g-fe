@@ -16,12 +16,36 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(now); localStorage.clear
 afterEach(() => vi.useRealTimers());
 
 describe("블록 재생 hook", () => {
+  it("빠른 연속 누름도 각각 반영하고 길게 누른 뒤 자동 재생을 이어 간다", () => {
+    const ctx = context();
+    const { result } = renderHook(() => {
+      const [held, setHeld] = useState(false);
+      const rotation = useLineupRotation("tv-history", ctx, now, held);
+      useDisplayKeyboard({ enabled: true, onAdvance: rotation.advance, onPrevious: rotation.previous, onPauseChange: setHeld });
+      return rotation;
+    });
+    for (let n = 0; n < 2; n++) {
+      fireEvent.keyDown(window, { key: "Enter" });
+      fireEvent.keyUp(window, { key: "Enter" });
+    }
+    expect(result.current.currentFrame).toMatchObject({ stories: [{ submissionId: "c" }] });
+    fireEvent.keyDown(window, { key: "Enter" });
+    act(() => vi.advanceTimersByTime(800));
+    fireEvent.keyUp(window, { key: "Enter" });
+    expect(result.current.currentFrame).toMatchObject({ stories: [{ submissionId: "b" }] });
+    act(() => vi.advanceTimersByTime(20_000));
+    act(() => vi.advanceTimersByTime(15_000));
+    expect(result.current.currentFrame).toMatchObject({ stories: [{ submissionId: "c" }] });
+    act(() => vi.advanceTimersByTime(15_000));
+    expect(result.current.currentFrame).toMatchObject({ stories: [{ submissionId: "a" }] });
+  });
+
   it("일시정지 중에도 수동으로 넘기고 20초 뒤 자동 순환을 재개한다", () => {
     const ctx = context();
     const { result } = renderHook(() => {
       const [held, setHeld] = useState(false);
       const rotation = useLineupRotation("tv-keyboard", ctx, now, held);
-      useDisplayKeyboard({ enabled: true, onAdvance: rotation.advance, onPauseChange: setHeld });
+      useDisplayKeyboard({ enabled: true, onAdvance: rotation.advance, onPrevious: rotation.previous, onPauseChange: setHeld });
       return rotation;
     });
     act(() => vi.advanceTimersByTime(14_000));

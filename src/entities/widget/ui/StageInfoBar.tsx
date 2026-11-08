@@ -21,6 +21,7 @@ export interface StageInfoNext {
 }
 
 interface StageInfoBarProps {
+  interaction?: { pressProgress: number | null; feedback: string | null };
   now: Date | null;
   clockTicking?: boolean;
   weather?: WeatherContent | null;
@@ -48,6 +49,7 @@ export function StageInfoBar({
   dday,
   next,
   status,
+  interaction,
 }: StageInfoBarProps) {
   const sky = weather ? SKY_LABEL[weather.sky] : null;
   const air = airChip(weather);
@@ -83,6 +85,21 @@ export function StageInfoBar({
         </span>
       )}
 
+      {interaction && (
+        <span className="ml-auto flex shrink-0 flex-col gap-1 text-[20px] text-ink-muted">
+          <span>{interaction.pressProgress !== null && interaction.pressProgress < 1
+            ? "계속 누르면 이전으로 돌아가기"
+            : "짧게: 다음 · 길게: 이전"}</span>
+          {interaction.pressProgress !== null && (
+            <span role="progressbar" aria-label="이전으로 돌아가기" aria-valuemin={0} aria-valuemax={100}
+              aria-valuenow={Math.round(interaction.pressProgress * 100)}
+              className="h-1.5 w-full overflow-hidden rounded-pill bg-surface-muted">
+              <span className="block h-full origin-left bg-accent"
+                style={{ transform: `scaleX(${interaction.pressProgress})` }} />
+            </span>
+          )}
+        </span>
+      )}
       {(status || next) && (
         <span className="ml-auto flex w-[420px] shrink-0 items-center gap-4">
           {status ? (
