@@ -14,6 +14,8 @@ import type {
 import type { WidgetPick } from "@/entities/widget/model/policy";
 import { placeWidgetSlots } from "@/entities/widget/model/schedule";
 import type { FrameTemplate, PlayerFrame } from "@/entities/widget/model/schedule";
+import { isReplayableFrame } from "@/entities/widget/model/replayable-frame";
+import { createPlaybackHistory } from "@/shared/lib/playback-history";
 
 /**
  * 재생 순환 (명세 FR-PLY-03).
@@ -47,6 +49,7 @@ export interface UseRotationOptions {
   paused?: boolean;
   /** 지금 화면에 머문다(게임 세션 중). 풀리면 호출부가 `advance`로 넘긴다. */
   hold?: boolean;
+  getNow?: () => Date;
 }
 
 interface Position {
@@ -54,6 +57,7 @@ interface Position {
   /** 지금 자리가 위젯 자리면 고른 위젯 */
   pick: WidgetPick | null;
 }
+interface HistoryPosition { key: string; pick: WidgetPick | null }
 
 const NO_CONTENT: ContentScenes = { eventBanners: [], stories: [] };
 
@@ -67,6 +71,7 @@ export function useRotation({
   pickWidget,
   paused: pausedByUser = false,
   hold = false,
+  getNow = () => new Date(),
 }: UseRotationOptions) {
   const paused = pausedByUser || hold;
   // 화면 identity는 배열 참조가 아니라 **내용**으로 고정한다. 호출부가 렌더마다
@@ -116,6 +121,9 @@ export function useRotation({
 
   const [position, setPosition] = useState<Position>({ index: 0, pick: null });
   const positionRef = useRef(position);
+  const history = useRef(createPlaybackHistory<HistoryPosition>());
+  const latest = useRef({ posters, getNow });
+  useEffect(() => { latest.current = { posters, getNow }; }, [posters, getNow]);
   useEffect(() => {
     positionRef.current = position;
   }, [position]);
@@ -165,13 +173,42 @@ export function useRotation({
   /** 넘어간 횟수. 같은 화면이 다시 와도 정보줄 진행 막대를 처음부터 채우는 데 쓴다. */
   const [serial, setSerial] = useState(0);
 
-  const step = useCallback(() => {
-    const next = nextFrom(positionRef.current.index);
-    if (!next) return;
+  const capture = useCallback((): HistoryPosition | undefined => {
+    const pos = positionRef.current;
+    const frame = frames[pos.index];
+    return frame ? { key: frame.key, pick: pos.pick } : undefined;
+  }, [frames]);
+  const resolve = useCallback((entry: HistoryPosition): HistoryPosition | null => {
+    const frame = frames.find((f) => f.key === entry.key);
+    if (!frame) return null;
+    const shown: PlayerFrame | null = frame.kind === "widget-slot"
+      ? entry.pick && { kind: "widget", key: frame.key, ...entry.pick }
+      : frame;
+    return shown && isReplayableFrame(shown, latest.current.posters, latest.current.getNow()) ? entry : null;
+  }, [frames]);
+  const restore = useCallback((entry: HistoryPosition) => {
+    const next = { index: frames.findIndex((f) => f.key === entry.key), pick: entry.pick };
     positionRef.current = next;
     setPosition(next);
     setSerial((count) => count + 1);
-  }, [nextFrom]);
+  }, [frames]);
+  const previous = useCallback(() => {
+    const entry = history.current.previous(capture(), resolve);
+    if (!entry) return false;
+    restore(entry);
+    return true;
+  }, [capture, resolve, restore]);
+
+  const step = useCallback(() => {
+    const entry = history.current.next(capture(), resolve);
+    if (entry) { restore(entry); return; }
+    const next = nextFrom(positionRef.current.index);
+    if (!next) return;
+    history.current.record(capture());
+    positionRef.current = next;
+    setPosition(next);
+    setSerial((count) => count + 1);
+  }, [nextFrom, capture, resolve, restore]);
 
   const current: PlayerFrame | undefined = (() => {
     const frame = frames[safeIndex];
@@ -233,6 +270,7 @@ export function useRotation({
         : undefined,
     frameCount: frames.length,
     advance: step,
+    previous,
     /** 지금 화면이 머무는 시간(초) */
     frameSeconds: !currentTemplate
       ? rotationSeconds
