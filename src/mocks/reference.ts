@@ -19,7 +19,7 @@ export const CATEGORY_FIXTURES: readonly Category[] = [
 export const SIGNAGE_CONFIG_FIXTURE: SignageConfig = {
   maxUploadBytes: 10 * 1024 * 1024,
   titleMaxLength: 80,
-  maxPublishMonths: 3,
+  maxPublishDays: 30,
   // 영상을 연 환경처럼 둔다(배포 ①, 서버 `VIDEO_UPLOADS_ENABLED`).
   allowedMimeTypes: [
     "image/jpeg",

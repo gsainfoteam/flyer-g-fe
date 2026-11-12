@@ -291,7 +291,7 @@ export interface paths {
          *     **검증** (기준은 `GET /signage/config`)
          *     - 제목: 앞뒤 공백 제거 후 1~80자
          *     - 포스터: 본인이 올려 complete까지 끝낸 asset
-         *     - 기간: 시작은 지금부터 24시간 이후, 종료는 시작보다 뒤, 최대 3개월(서울 달력)
+         *     - 기간: 시작은 지금부터 24시간 이후, 종료는 시작보다 뒤, 최대 maxPublishDays × 24시간(현재 30일, 정확히 30일 허용)
          *     - 상세 링크(선택): 허용된 호스트의 HTTPS. Ziggle 공지 주소(`/notice/{id}`)면 공지 ID를 뽑아 **공지 하나에 신청 하나**를 지킨다. 끝난 신청(취소·종료·보관)은 세지 않는다
          *     - 대상 위치(선택): 숨기지 않은 그룹. 비우면 전체 기기
          */
@@ -895,10 +895,10 @@ export interface components {
              */
             titleMaxLength: number;
             /**
-             * @description 최대 게시 기간(개월). 종료 시각은 시작 시각에서 이 개월 수를 더한 시각(Asia/Seoul 달력 기준) 이하여야 한다
-             * @example 3
+             * @description 포스터 최대 게시 기간(일). 종료 시각 − 시작 시각은 maxPublishDays × 24시간 이하여야 한다. 초과하면 endAt 필드 오류로 “게시 기간은 최대 30일입니다.”를 반환한다
+             * @example 30
              */
-            maxPublishMonths: number;
+            maxPublishDays: number;
             /**
              * @description 게시 시작 전 최소 신청 시간(시간). 시작 시각은 신청 시각에서 이 시간 이상 뒤여야 한다. 0이면 제한 없음
              * @example 24

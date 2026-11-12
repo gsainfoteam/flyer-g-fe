@@ -934,7 +934,7 @@
     },
     "/signage/submissions": {
       "post": {
-        "description": "신청을 만들고 바로 검토를 요청한다 (`status: PENDING_REVIEW`).\n\n**검증** (기준은 `GET /signage/config`)\n- 제목: 앞뒤 공백 제거 후 1~80자\n- 포스터: 본인이 올려 complete까지 끝낸 asset\n- 기간: 시작은 지금부터 24시간 이후, 종료는 시작보다 뒤, 최대 3개월(서울 달력)\n- 상세 링크(선택): 허용된 호스트의 HTTPS. Ziggle 공지 주소(`/notice/{id}`)면 공지 ID를 뽑아 **공지 하나에 신청 하나**를 지킨다. 끝난 신청(취소·종료·보관)은 세지 않는다\n- 대상 위치(선택): 숨기지 않은 그룹. 비우면 전체 기기",
+        "description": "신청을 만들고 바로 검토를 요청한다 (`status: PENDING_REVIEW`).\n\n**검증** (기준은 `GET /signage/config`)\n- 제목: 앞뒤 공백 제거 후 1~80자\n- 포스터: 본인이 올려 complete까지 끝낸 asset\n- 기간: 시작은 지금부터 24시간 이후, 종료는 시작보다 뒤, 최대 maxPublishDays × 24시간(현재 30일, 정확히 30일 허용)\n- 상세 링크(선택): 허용된 호스트의 HTTPS. Ziggle 공지 주소(`/notice/{id}`)면 공지 ID를 뽑아 **공지 하나에 신청 하나**를 지킨다. 끝난 신청(취소·종료·보관)은 세지 않는다\n- 대상 위치(선택): 숨기지 않은 그룹. 비우면 전체 기기",
         "operationId": "SubmissionsController_create",
         "parameters": [
           {
@@ -3434,10 +3434,10 @@
             "description": "제목 최대 글자 수 (앞뒤 공백 제외)",
             "example": 80
           },
-          "maxPublishMonths": {
+          "maxPublishDays": {
             "type": "number",
-            "description": "최대 게시 기간(개월). 종료 시각은 시작 시각에서 이 개월 수를 더한 시각(Asia/Seoul 달력 기준) 이하여야 한다",
-            "example": 3
+            "description": "포스터 최대 게시 기간(일). 종료 시각 − 시작 시각은 maxPublishDays × 24시간 이하여야 한다. 초과하면 endAt 필드 오류로 “게시 기간은 최대 30일입니다.”를 반환한다",
+            "example": 30
           },
           "minLeadTimeHours": {
             "type": "number",
@@ -3475,7 +3475,7 @@
         "required": [
           "maxUploadBytes",
           "titleMaxLength",
-          "maxPublishMonths",
+          "maxPublishDays",
           "minLeadTimeHours",
           "allowedMimeTypes",
           "allowedDetailUrlHosts"
