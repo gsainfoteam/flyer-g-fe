@@ -19,6 +19,7 @@ import type {
   SubmissionView,
 } from "@/entities/submission/model/types";
 import { USER_STATUS_TEXT } from "@/entities/submission/ui/user-status-style";
+import { ApprovalDelayNotice } from "@/entities/submission/ui/ApprovalDelayNotice";
 import {
   useInfiniteSubmissionViews,
   useSubmissionSummary,
@@ -164,6 +165,9 @@ export function MinePage() {
               />
             ) : (
               <>
+                {items.some((item) => item.status === "PENDING_REVIEW") && (
+                  <ApprovalDelayNotice className="mb-3" />
+                )}
                 <MineTable
                   items={items}
                   impressions={impressions}
