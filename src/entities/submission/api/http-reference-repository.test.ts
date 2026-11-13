@@ -18,12 +18,31 @@ function fakeClient(responses: Record<string, unknown>) {
 const CONFIG = {
   maxUploadBytes: 10485760,
   titleMaxLength: 80,
-  maxPublishMonths: 3,
+  maxPublishDays: 30,
   allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
   allowedDetailUrlHosts: ["ziggle.gistory.me"],
 };
 
 describe("createHttpReferenceRepository", () => {
+  it.each([7, 30, 45])("서버의 maxPublishDays %i를 그대로 읽는다", async (maxPublishDays) => {
+    const { client } = fakeClient({
+      "/signage/config": { ...CONFIG, maxPublishDays },
+    });
+    await expect(createHttpReferenceRepository(client).getConfig()).resolves.toMatchObject({
+      maxPublishDays,
+    });
+  });
+
+  it("maxPublishDays가 없으면 이전 개월 필드나 하드코딩한 값으로 대체하지 않는다", async () => {
+    const { client } = fakeClient({
+      "/signage/config": { ...CONFIG, maxPublishDays: undefined, maxPublishMonths: 3 },
+    });
+    await expect(createHttpReferenceRepository(client).getConfig()).rejects.toMatchObject({
+      code: "INVALID_RESPONSE",
+      message: expect.stringContaining("maxPublishDays"),
+    });
+  });
+
   it("운영 설정·카테고리·대상 그룹을 서버 경로에서 받는다", async () => {
     const { client, calls } = fakeClient({
       "/signage/config": CONFIG,
@@ -143,14 +162,14 @@ describe("createHttpReferenceRepository", () => {
 
   it("응답 모양이 틀리면 어느 필드인지 알리며 멈춘다", async () => {
     const { client } = fakeClient({
-      "/signage/config": { ...CONFIG, maxPublishMonths: "3" },
+      "/signage/config": { ...CONFIG, maxPublishDays: "30" },
       "/signage/target-groups": [{ id: "grp_a", name: "A동", deviceCount: 1 }],
     });
     const repository = createHttpReferenceRepository(client);
 
     await expect(repository.getConfig()).rejects.toMatchObject({
       code: "INVALID_RESPONSE",
-      message: expect.stringContaining("maxPublishMonths"),
+      message: expect.stringContaining("maxPublishDays"),
     });
     await expect(repository.listTargetGroups()).rejects.toMatchObject({
       code: "INVALID_RESPONSE",

@@ -164,6 +164,26 @@ describe("신청 생성 (생성과 제출이 한 번)", () => {
     ({ repos } = setup());
   });
 
+  it("정확히 30일은 생성하고 1밀리초 초과하면 endAt 오류를 반환한다", async () => {
+    const startAt = new Date(NOW.getTime() + DAY_MS);
+    const endAt = new Date(startAt.getTime() + 30 * DAY_MS);
+    await expect(
+      repos.submissions.create(createInput({ startAt, endAt, detailUrl: null })),
+    ).resolves.toMatchObject({ startAt, endAt });
+    const error = await errorOf(
+      repos.submissions.create(createInput({
+        startAt,
+        endAt: new Date(endAt.getTime() + 1),
+        detailUrl: null,
+      })),
+    );
+    expect(error).toMatchObject({
+      status: 422,
+      code: "VALIDATION_FAILED",
+      fields: { endAt: "게시 기간은 최대 30일입니다." },
+    });
+  });
+
   it("만들면 바로 검토 대기이고, 입력한 주최·장소와 신청자가 담긴다", async () => {
     const created = await repos.submissions.create(createInput());
 
@@ -194,7 +214,7 @@ describe("신청 생성 (생성과 제출이 한 번)", () => {
     const error = await errorOf(
       repos.submissions.create(
         createInput({
-          // 시작은 이미 지났어도 되지만(배포 ②), 3개월을 넘기고 허용하지 않는 주소다.
+          // 시작은 이미 지났어도 되지만(배포 ②), 30일을 넘기고 허용하지 않는 주소다.
           startAt: new Date(NOW.getTime() - HOUR_MS),
           endAt: new Date(NOW.getTime() + 120 * DAY_MS),
           detailUrl: "https://evil.example.com/notice/1",
@@ -248,6 +268,33 @@ describe("신청 생성 (생성과 제출이 한 번)", () => {
 });
 
 describe("수정·재검토·취소", () => {
+  it("기간 수정은 30일 초과를 거절하고 정확히 30일로 수정한 뒤 재제출할 수 있다", async () => {
+    const { repos } = setup();
+    const rejected = await repos.submissions.getById("notice-901");
+    const startAt = new Date(NOW.getTime() + DAY_MS);
+    const endAt = new Date(startAt.getTime() + 30 * DAY_MS);
+    const error = await errorOf(
+      repos.submissions.update(rejected.id, {
+        startAt,
+        endAt: new Date(endAt.getTime() + 1),
+        version: rejected.version,
+      }),
+    );
+    expect(error).toMatchObject({
+      status: 422,
+      code: "VALIDATION_FAILED",
+      fields: { endAt: "게시 기간은 최대 30일입니다." },
+    });
+    const updated = await repos.submissions.update(rejected.id, {
+      startAt,
+      endAt,
+      version: rejected.version,
+    });
+    await expect(
+      repos.submissions.submit(updated.id, { version: updated.version }),
+    ).resolves.toMatchObject({ status: "PENDING_REVIEW", startAt, endAt });
+  });
+
   it("반려 건은 고친 뒤 재검토를 요청한다. 대기 시간은 다시 낸 때부터 센다", async () => {
     const { repos, signInAs } = setup(MOCK_USERS.SUBMITTER);
     const rejected = await repos.submissions.getById("notice-901");
@@ -608,7 +655,7 @@ describe("요약과 참조 데이터", () => {
     const { repos } = setup(MOCK_USERS.SUBMITTER);
 
     await expect(repos.reference.getConfig()).resolves.toMatchObject({
-      maxPublishMonths: 3,
+      maxPublishDays: 30,
     });
     const categories = await repos.reference.listCategories();
     expect(categories.map((category) => category.id)).toContain("performance");

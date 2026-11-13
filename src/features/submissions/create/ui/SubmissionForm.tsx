@@ -59,7 +59,7 @@ export function SubmissionForm({
   const detailUrl = draft.detailUrl.trim();
 
   const periodHint = config
-    ? `기간은 최대 ${config.maxPublishMonths}개월입니다. 시작 시각이 지난 뒤 승인되면 바로 게시됩니다.`
+    ? `기간은 최대 ${config.maxPublishDays}일입니다. 시작 시각이 지난 뒤 승인되면 바로 게시됩니다.`
     : undefined;
 
   return (
