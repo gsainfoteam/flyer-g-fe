@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { to } from "@/shared/config/routes";
 import { Logo } from "@/shared/components/Logo";
 import { fromSubmissionView } from "@/entities/poster";
+import { ApprovalDelayNotice } from "@/entities/submission/ui/ApprovalDelayNotice";
 import {
   canSubmitterEdit,
   canSubmitterResubmit,
@@ -482,6 +483,7 @@ export function StudioPage() {
               disabled={createSubmission.isSubmitting}
               onChange={patchDraft}
             />
+            <ApprovalDelayNotice />
           </div>
         </aside>
 

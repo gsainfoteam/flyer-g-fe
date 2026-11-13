@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { EventScene, SceneFrame } from "@/entities/scene";
+import { ApprovalDelayNotice } from "@/entities/submission/ui/ApprovalDelayNotice";
 import { useSignageConfig } from "@/entities/submission/api/queries";
 import {
   EVENT_BANNER_TEXT_LIMITS,
@@ -274,6 +275,7 @@ function EventBannerForm({
         <p className="mt-1.5 text-label text-ink-muted">
           생일·합격·수상 소식을 TV에 게시합니다. 하루 단위, 최대 {maxDays}일.
         </p>
+        <ApprovalDelayNotice className="mt-2" />
       </div>
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
