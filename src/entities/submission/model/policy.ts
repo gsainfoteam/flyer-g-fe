@@ -1,4 +1,3 @@
-import { addSeoulMonths } from "@/shared/lib/datetime";
 import type { SubmissionKind } from "./kind";
 
 /**
@@ -11,8 +10,8 @@ export interface SignageConfig {
   maxUploadBytes: number;
   /** 제목 최대 글자 수(앞뒤 공백 제외) */
   titleMaxLength: number;
-  /** 최대 게시 기간(개월, 서울 달력 기준) */
-  maxPublishMonths: number;
+  /** 포스터 최대 게시 기간(일, 1일 = 24시간) */
+  maxPublishDays: number;
   /** 지금 업로드를 받는 MIME. 영상(`video/*`)은 영상 업로드를 연 환경에서만 있다. */
   allowedMimeTypes: string[];
   /** 상세 링크(QR)로 허용하는 호스트. HTTPS만 허용한다 */
@@ -48,13 +47,13 @@ export interface ScheduleErrors {
  *
  * - 시작은 제한하지 않는다. 이미 지났으면 승인하는 즉시 게시된다(배포 ②)
  * - 종료는 시작보다 뒤, 지금보다 뒤
- * - 기간은 시작에서 `maxPublishMonths`개월(서울 달력, 말일 보정) 이하
+ * - 종료 시각 − 시작 시각은 `maxPublishDays` × 24시간 이하 (경계값 포함)
  */
 export function checkSchedule(
   startAt: Date,
   endAt: Date,
   now: Date,
-  config: Pick<SignageConfig, "maxPublishMonths">,
+  config: Pick<SignageConfig, "maxPublishDays">,
 ): ScheduleErrors {
   const errors: ScheduleErrors = {};
   if (endAt.getTime() <= startAt.getTime()) {
@@ -62,9 +61,10 @@ export function checkSchedule(
   } else if (endAt.getTime() <= now.getTime()) {
     errors.endAt = "종료 시각은 현재 시각 이후로 설정하세요.";
   } else if (
-    endAt.getTime() > addSeoulMonths(startAt, config.maxPublishMonths).getTime()
+    endAt.getTime() - startAt.getTime() >
+    config.maxPublishDays * 24 * 60 * 60 * 1000
   ) {
-    errors.endAt = `게시 기간은 최대 ${config.maxPublishMonths}개월입니다.`;
+    errors.endAt = `게시 기간은 최대 ${config.maxPublishDays}일입니다.`;
   }
   return errors;
 }

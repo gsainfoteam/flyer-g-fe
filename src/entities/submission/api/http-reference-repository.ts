@@ -71,7 +71,7 @@ export function parseSignageConfig(payload: unknown): SignageConfig {
   return {
     maxUploadBytes: readNumber(body, "maxUploadBytes"),
     titleMaxLength: readNumber(body, "titleMaxLength"),
-    maxPublishMonths: readNumber(body, "maxPublishMonths"),
+    maxPublishDays: readNumber(body, "maxPublishDays"),
     allowedMimeTypes: readStringArray(body, "allowedMimeTypes"),
     allowedDetailUrlHosts: readStringArray(body, "allowedDetailUrlHosts"),
     maxVideoUploadBytes: readOptionalNumber(body, "maxVideoUploadBytes"),

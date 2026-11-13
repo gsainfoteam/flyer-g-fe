@@ -90,6 +90,21 @@ async function uploadPoster(user: User) {
 }
 
 describe("게시 신청 스튜디오", () => {
+  it.each([7, 45])("서버 설정이 %i일로 바뀌면 폼 안내에도 반영한다", async (maxPublishDays) => {
+    const { repositories } = studioRepositories();
+    const config = await repositories.reference.getConfig();
+    vi.spyOn(repositories.reference, "getConfig").mockResolvedValue({
+      ...config,
+      maxPublishDays,
+    });
+    await openStudio(repositories);
+    expect(
+      await screen.findByText(`기간은 최대 ${maxPublishDays}일입니다.`, {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("빈 폼에서 시작하고 TV에 나가는 정보를 직접 입력한다", async () => {
     await openStudio();
 
@@ -99,7 +114,7 @@ describe("게시 신청 스튜디오", () => {
     }
     // 기간 규칙은 서버 설정에서 받아 안내한다.
     expect(
-      await screen.findByText(/기간은 최대 3개월입니다/),
+      await screen.findByText(/기간은 최대 30일입니다/),
     ).toBeInTheDocument();
   });
 

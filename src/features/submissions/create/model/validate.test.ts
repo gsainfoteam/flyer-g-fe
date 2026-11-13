@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SignageSubmissionExpanded } from "@/entities/submission";
-import { fromSeoulInput, parseIsoUtc } from "@/shared/lib/datetime";
+import { fromSeoulInput, parseIsoUtc, toSeoulDateTimeInputValue } from "@/shared/lib/datetime";
 import { CATEGORY_FIXTURES, SIGNAGE_CONFIG_FIXTURE } from "@/mocks/reference";
 import { createEmptyDraft, draftFromSubmission } from "./draft";
 import {
@@ -105,7 +105,7 @@ describe("validateSubmissionForm", () => {
     });
   });
 
-  describe("게시 기간 (서버 설정: 24시간 전 신청, 최대 3개월)", () => {
+  describe("게시 기간 (서버 설정: 최대 30일)", () => {
     it("종료가 시작보다 앞서거나 같으면 막는다", () => {
       expect(
         validateSubmissionForm(
@@ -136,12 +136,12 @@ describe("validateSubmissionForm", () => {
       }
     });
 
-    it("기간은 서울 달력 기준 3개월까지다", () => {
+    it("기간은 정확히 30일까지다", () => {
       expect(
         validateSubmissionForm(
           validValues({
             startAt: "2026-06-10T09:00",
-            endAt: "2026-09-10T09:00",
+            endAt: "2026-07-10T09:00",
           }),
           OPTIONS,
         ).endAt,
@@ -150,12 +150,43 @@ describe("validateSubmissionForm", () => {
         validateSubmissionForm(
           validValues({
             startAt: "2026-06-10T09:00",
-            endAt: "2026-09-10T09:01",
+            endAt: "2026-07-10T09:01",
           }),
           OPTIONS,
         ).endAt,
-      ).toContain("3개월");
+      ).toBe("게시 기간은 최대 30일입니다.");
     });
+
+    it.each(["PENDING_REVIEW", "REJECTED", "SUSPENDED", "DRAFT", "SCHEDULED"] as const)(
+      "%s 기간 수정·재제출은 서버 설정의 일수로 검증한다",
+      (status) => {
+        const schedule = { startAt: "2026-06-10T09:00", endAt: "2026-07-25T09:00" };
+        for (const maxPublishDays of [7, 30, 45]) {
+          const endAt = new Date(fromSeoulInput(schedule.startAt).getTime() + maxPublishDays * 86_400_000);
+          const options: ValidateOptions = {
+            ...OPTIONS,
+            config: { ...SIGNAGE_CONFIG_FIXTURE, maxPublishDays },
+            editing: { status, schedule },
+          };
+          const values = validValues({
+            startAt: schedule.startAt,
+            endAt: toSeoulDateTimeInputValue(endAt),
+          });
+          expect(validateSubmissionForm(values, options)).toEqual({});
+          expect(validateSubmissionForm({
+            ...values,
+            endAt: toSeoulDateTimeInputValue(new Date(endAt.getTime() + 60_000)),
+          }, options)).toEqual({ endAt: `게시 기간은 최대 ${maxPublishDays}일입니다.` });
+          // 기간이 그대로여도 재제출·재승인 때는 새 제한값으로 다시 검증한다.
+          if (status !== "PENDING_REVIEW") {
+            expect(validateSubmissionForm(validValues(schedule), {
+              ...options,
+              config: { ...SIGNAGE_CONFIG_FIXTURE, maxPublishDays: 30 },
+            })).toEqual({ endAt: "게시 기간은 최대 30일입니다." });
+          }
+        }
+      },
+    );
 
     it("서버 시각이나 설정을 아직 모르면 지금과 비교하는 판정을 서버에 맡긴다", () => {
       const past = validValues({
