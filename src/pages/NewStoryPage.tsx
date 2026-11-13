@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { StoryScene, SceneFrame } from "@/entities/scene";
+import { ApprovalDelayNotice } from "@/entities/submission/ui/ApprovalDelayNotice";
 import type { StorySceneItem } from "@/entities/scene";
 import { useSignageConfig } from "@/entities/submission/api/queries";
 import {
@@ -131,6 +132,7 @@ export function NewStoryPage() {
         <p className="mt-1.5 text-label text-ink-muted">
           TV에는 작성자 이름이 표시되지 않습니다. 승인되면 {displayDays}일 동안 게시됩니다.
         </p>
+        <ApprovalDelayNotice className="mt-2" />
       </div>
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">

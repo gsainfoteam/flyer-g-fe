@@ -1,5 +1,6 @@
 import type { SignageSubmissionExpanded } from "@/entities/submission";
 import { StatusBadge } from "@/entities/submission/ui/StatusBadge";
+import { ApprovalDelayNotice } from "@/entities/submission/ui/ApprovalDelayNotice";
 import { Button } from "@/shared/ui/button";
 import {
   Dialog,
@@ -71,6 +72,8 @@ export function SubmitSuccessDialog({
           <DialogTitle>{COPY[kind].title}</DialogTitle>
           <DialogDescription>{COPY[kind].description}</DialogDescription>
         </DialogHeader>
+
+        <ApprovalDelayNotice />
 
         {submission && (
           <div className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface-muted p-3">

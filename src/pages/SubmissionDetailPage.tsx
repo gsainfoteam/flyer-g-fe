@@ -17,6 +17,7 @@ import {
 } from "@/entities/submission";
 import type { SubmissionView } from "@/entities/submission/model/types";
 import { USER_STATUS_TEXT } from "@/entities/submission/ui/user-status-style";
+import { ApprovalDelayNotice } from "@/entities/submission/ui/ApprovalDelayNotice";
 import { useSessionUser } from "@/features/auth/model/auth-context";
 import { hasAnyRole } from "@/features/auth/model/types";
 import { DisplayPreview } from "@/features/display-preview";
@@ -135,6 +136,8 @@ export function SubmissionDetailPage() {
               </div>
             </div>
           </div>
+
+          {view.status === "PENDING_REVIEW" && <ApprovalDelayNotice />}
 
           <DecisionReason
             view={view}
