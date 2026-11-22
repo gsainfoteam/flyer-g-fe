@@ -1,6 +1,4 @@
 import { Link, useSearchParams } from "react-router";
-import { fromSubmissionView } from "@/entities/poster";
-import { PosterThumb } from "@/entities/poster/ui/PosterThumb";
 import { useImpressionStats } from "@/entities/impression/api/queries";
 import {
   impressionRange,
@@ -9,16 +7,16 @@ import {
 import type { ImpressionStatsItem } from "@/entities/impression/model/types";
 import {
   KIND_INFO,
-  canSubmitterResubmit,
+  fixActionOf,
   formatPeriod,
   getUserStatus,
-  kindOfSubmission,
 } from "@/entities/submission";
 import type {
   SubmissionStatus,
   SubmissionView,
 } from "@/entities/submission/model/types";
 import { USER_STATUS_TEXT } from "@/entities/submission/ui/user-status-style";
+import { SubmissionThumb } from "@/entities/submission/ui/SubmissionThumb";
 import { ApprovalDelayNotice } from "@/entities/submission/ui/ApprovalDelayNotice";
 import {
   useInfiniteSubmissionViews,
@@ -239,10 +237,10 @@ function MineTable({ items, impressions, now }: RowsProps) {
               <tr key={item.id} className="border-t border-surface-muted">
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-3.5">
-                    <PosterThumb poster={fromSubmissionView(item)} size="sm" />
+                    <SubmissionThumb submission={item} />
                     <div className="min-w-0">
                       <p className="text-caption text-ink-subtle">
-                        {KIND_INFO[kindOfSubmission(item)].name}
+                        {KIND_INFO[item.type].name}
                       </p>
                       <Link
                         to={to.submissionDetail(item.id)}
@@ -301,10 +299,10 @@ function MineList({ items, impressions, now }: RowsProps) {
               to={to.submissionDetail(item.id)}
               className="flex items-center gap-3.5 px-4 py-3.5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
             >
-              <PosterThumb poster={fromSubmissionView(item)} size="sm" />
+              <SubmissionThumb submission={item} />
               <div className="min-w-0 flex-1">
                 <p className="text-caption text-ink-subtle">
-                  {KIND_INFO[kindOfSubmission(item)].name} · {formatPeriod(item)}
+                  {KIND_INFO[item.type].name} · {formatPeriod(item)}
                 </p>
                 <p className="truncate font-bold text-ink">{item.title}</p>
                 <p className="text-caption text-ink-muted">
@@ -335,15 +333,8 @@ function actionOf(item: SubmissionView): {
   href: string;
   strong: boolean;
 } {
-  if (item.status === "REJECTED" || item.status === "SUSPENDED") {
-    if (canSubmitterResubmit(item.status)) {
-      return {
-        label: "고쳐서 다시 내기",
-        href: to.editPoster(item.id),
-        strong: true,
-      };
-    }
-  }
+  const fix = fixActionOf(item);
+  if (fix) return { ...fix, strong: true };
   return { label: "상세", href: to.submissionDetail(item.id), strong: false };
 }
 

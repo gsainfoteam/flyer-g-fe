@@ -7,3 +7,4 @@ export * from "./model/mapper";
 export * from "./model/progress";
 export * from "./model/kind";
 export * from "./model/user-status";
+export * from "./model/fix-action";

@@ -2,8 +2,6 @@ import { CircleCheck, MonitorPlay, PenLine, ShieldCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { fromSubmissionView } from "@/entities/poster";
-import { PosterThumb } from "@/entities/poster/ui/PosterThumb";
 import { useImpressionStats } from "@/entities/impression/api/queries";
 import {
   impressionRange,
@@ -12,15 +10,16 @@ import {
 import type { ImpressionStatsItem } from "@/entities/impression/model/types";
 import {
   KIND_INFO,
+  fixActionOf,
   formatPeriod,
   getUserStatus,
-  kindOfSubmission,
 } from "@/entities/submission";
 import type {
   SubmissionStatus,
   SubmissionView,
 } from "@/entities/submission/model/types";
 import { USER_STATUS_TEXT } from "@/entities/submission/ui/user-status-style";
+import { SubmissionThumb } from "@/entities/submission/ui/SubmissionThumb";
 import { useSessionUser } from "@/features/auth/model/auth-context";
 import {
   useSubmissionSummary,
@@ -115,7 +114,7 @@ function FirstVisit() {
           {user.displayName}님의 콘텐츠
         </p>
         <h1 className="mt-1 text-[2rem] leading-tight font-black tracking-[-0.04em] text-ink sm:text-[2.25rem]">
-          콘텐츠 등록
+          콘텐츠 올리기
         </h1>
       </div>
       <UploadChoicesLarge />
@@ -198,7 +197,7 @@ function Returning({
       <section aria-labelledby="upload" className="flex flex-col gap-4">
         <div>
           <h1 id="upload" className="text-title text-ink">
-            콘텐츠 등록
+            콘텐츠 올리기
           </h1>
           <p className="mt-1 text-label text-ink-muted">
             심사 후 기숙사 로비 TV에 게시됩니다.
@@ -254,13 +253,13 @@ function MineRow({
   now: Date;
 }) {
   const status = getUserStatus(item, now);
-  const fix = item.status === "REJECTED" || item.status === "SUSPENDED";
+  const fix = fixActionOf(item);
   return (
     <li className="flex items-center gap-4 border-t border-surface-muted px-6 py-3.5">
-      <PosterThumb poster={fromSubmissionView(item)} size="sm" />
+      <SubmissionThumb submission={item} />
       <div className="min-w-0 flex-1">
         <p className="text-caption text-ink-subtle">
-          {KIND_INFO[kindOfSubmission(item)].name} · {formatPeriod(item)}
+          {KIND_INFO[item.type].name} · {formatPeriod(item)}
         </p>
         <p className="truncate font-bold text-ink">
           {/* 반려·중단 사유는 상세에만 있다. 오른쪽 링크가 수정 화면일 때도 사유에 닿게 한다. */}
@@ -280,13 +279,13 @@ function MineRow({
         </p>
       </div>
       <Link
-        to={fix ? to.editPoster(item.id) : to.submissionDetail(item.id)}
+        to={fix?.href ?? to.submissionDetail(item.id)}
         className={cn(
           "shrink-0 text-label underline-offset-4 hover:underline",
           fix ? "font-bold text-accent-700" : "text-ink",
         )}
       >
-        {fix ? "고쳐서 다시 내기" : "상세"}
+        {fix?.label ?? "상세"}
       </Link>
     </li>
   );

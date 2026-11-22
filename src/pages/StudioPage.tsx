@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { to } from "@/shared/config/routes";
 import { Logo } from "@/shared/components/Logo";
 import { fromSubmissionView } from "@/entities/poster";
-import { ApprovalDelayNotice } from "@/entities/submission/ui/ApprovalDelayNotice";
 import {
   canSubmitterEdit,
   canSubmitterResubmit,
@@ -82,7 +81,7 @@ function describeEditing(status: SubmissionStatus): {
             ? "중단된 신청 수정"
             : "반려된 신청 수정",
       note: "제출 후 재검토",
-      submitLabel: status === "DRAFT" ? "제출하기" : "다시 신청하기",
+      submitLabel: status === "DRAFT" ? "심사 요청" : "고쳐서 다시 내기",
     };
   }
   if (needsReapproval(status)) {
@@ -340,7 +339,7 @@ export function StudioPage() {
     );
   };
 
-  const submitLabel = editingCopy?.submitLabel ?? "제출하기";
+  const submitLabel = editingCopy?.submitLabel ?? "심사 요청";
 
   return (
     <>
@@ -350,9 +349,11 @@ export function StudioPage() {
         </Link>
         <div className="hidden h-7 w-px bg-line sm:block" />
         <div className="min-w-0">
-          <h1 className="text-heading whitespace-nowrap text-ink">게시 신청</h1>
+          <h1 className="text-heading whitespace-nowrap text-ink">
+            {editingCopy ? "포스터 고치기" : "포스터 올리기"}
+          </h1>
           <p className="hidden text-caption text-ink-muted sm:block">
-            포스터를 올리고 TV 게시판에 게시를 신청합니다
+            심사 후 기숙사 로비 TV에 게시
           </p>
         </div>
         <Button
@@ -483,7 +484,6 @@ export function StudioPage() {
               disabled={createSubmission.isSubmitting}
               onChange={patchDraft}
             />
-            <ApprovalDelayNotice />
           </div>
         </aside>
 

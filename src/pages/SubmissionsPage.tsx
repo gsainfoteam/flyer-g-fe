@@ -2,10 +2,13 @@ import { Link, useSearchParams } from "react-router";
 import { to } from "@/shared/config/routes";
 import { SubmissionRow } from "@/entities/submission/ui/SubmissionRow";
 import {
+  KIND_INFO,
+  SUBMISSION_KINDS,
   countByStatusGroup,
   findStatusGroup,
   getStatusSentence,
 } from "@/entities/submission";
+import type { SubmissionKind } from "@/entities/submission";
 import type { SubmissionView } from "@/entities/submission/model/types";
 import { useSessionUser } from "@/features/auth/model/auth-context";
 import {
@@ -13,7 +16,7 @@ import {
   useSubmissionSummary,
 } from "@/features/submissions/api/queries";
 import { StatusGroupTabs } from "@/features/submissions/list/ui/StatusGroupTabs";
-import { EmptyState, PageState, Panel } from "@/shared/components";
+import { ChoicePills, EmptyState, PageState, Panel } from "@/shared/components";
 import { StatusBadge } from "@/entities/submission/ui/StatusBadge";
 import {
   formatSeoulDateTime,
@@ -32,9 +35,21 @@ import { Spinner } from "@/shared/ui/spinner";
  * 나와야 하고, 홈이 특정 탭으로 바로 보낼 수 있어야 한다.
  */
 const STATUS_PARAM = "status";
+const KIND_PARAM = "kind";
 const PANEL_ID = "submission-list";
 
-/** 전체 신청(관리자)에서는 누가 올렸는지를 앞에 붙인다. */
+const ALL_KINDS = "ALL";
+type KindFilter = SubmissionKind | typeof ALL_KINDS;
+const KIND_OPTIONS: readonly { value: KindFilter; label: string }[] = [
+  { value: ALL_KINDS, label: "모든 종류" },
+  ...SUBMISSION_KINDS.map((kind) => ({ value: kind, label: KIND_INFO[kind].short })),
+];
+
+function readKind(value: string | null): SubmissionKind | null {
+  return SUBMISSION_KINDS.find((kind) => kind === value) ?? null;
+}
+
+/** 전체 신청(관리자)에서는 종류와 누가 올렸는지를 앞에 붙인다. */
 function sentenceFor(submission: SubmissionView, withRequester: boolean) {
   const sentence = getStatusSentence({
     status: submission.status,
@@ -46,19 +61,21 @@ function sentenceFor(submission: SubmissionView, withRequester: boolean) {
       : undefined,
   });
   // 제보는 작성자를 가린다(작성자 본인 말고는 신청자가 비어 온다).
+  const kind = KIND_INFO[submission.type].short;
   return withRequester
-    ? `${submission.requesterName ?? "작성자 가림"} · ${sentence}`
-    : sentence;
+    ? `${kind} · ${submission.requesterName ?? "작성자 가림"} · ${sentence}`
+    : `${kind} · ${sentence}`;
 }
 
 export function SubmissionsPage() {
   const user = useSessionUser();
   const [searchParams, setSearchParams] = useSearchParams();
   const group = findStatusGroup(searchParams.get(STATUS_PARAM));
+  const kind = readKind(searchParams.get(KIND_PARAM));
   const scope = "all";
 
   const summary = useSubmissionSummary(scope);
-  const list = useInfiniteSubmissionViews(group.statuses, scope);
+  const list = useInfiniteSubmissionViews(group.statuses, scope, kind ? [kind] : undefined);
   const items = list.data?.items ?? [];
   const counts = summary.data
     ? countByStatusGroup(summary.data.byStatus)
@@ -104,8 +121,18 @@ export function SubmissionsPage() {
         onSelect={(key) =>
           updateParams({ [STATUS_PARAM]: key === "all" ? null : key })
         }
-        counts={counts}
+        // 상태별 건수는 모든 종류를 센 값이다. 종류를 거르면 건수를 감춘다.
+        counts={kind ? undefined : counts}
         panelId={PANEL_ID}
+      />
+
+      <ChoicePills
+        label="종류"
+        options={KIND_OPTIONS}
+        value={kind ?? ALL_KINDS}
+        onChange={(value) =>
+          updateParams({ [KIND_PARAM]: value === ALL_KINDS ? null : value })
+        }
       />
 
       <div
@@ -123,12 +150,14 @@ export function SubmissionsPage() {
             <Panel flush>
               {items.length === 0 ? (
                 <EmptyState
-                  title={
-                    group.key === "all"
-                      ? "접수된 콘텐츠 없음"
-                      : `${group.label} 상태의 콘텐츠 없음`
+                  title={`${group.key === "all" ? "접수된" : `${group.label} 상태의`} ${
+                    kind ? KIND_INFO[kind].short : "콘텐츠"
+                  } 없음`}
+                  description={
+                    kind
+                      ? "다른 상태나 종류를 선택하세요."
+                      : "다른 상태의 탭을 선택하세요."
                   }
-                  description="다른 상태의 탭을 선택하세요."
                   className="px-3"
                 />
               ) : (

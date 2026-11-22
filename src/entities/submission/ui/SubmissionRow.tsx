@@ -1,16 +1,15 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { fromSubmissionView } from "@/entities/poster";
 import type { SubmissionView } from "@/entities/submission/model/types";
 import { cn } from "@/shared/lib/utils";
-import { PosterThumb } from "@/entities/poster/ui/PosterThumb";
+import { SubmissionThumb } from "./SubmissionThumb";
 
 /**
  * 목록의 신청 한 건.
  *
  * 관리자는 많은 건을 빠르게 훑어야 하므로 제목이 가장 먼저 읽히고, 그 아래
  * **지금 어떤 상황인지 한 문장**이 붙는다. 배지 색을 구분하지 못해도 상황을 알 수
- * 있어야 한다. 썸네일은 어느 포스터인지 알아보는 보조 역할이다.
+ * 있어야 한다. 썸네일은 어느 컨텐츠인지 알아보는 보조 역할이다(이미지가 없으면 종류 타일).
  */
 interface SubmissionRowProps {
   submission: SubmissionView;
@@ -40,7 +39,7 @@ export function SubmissionRow({
 }: SubmissionRowProps) {
   const body = (
     <>
-      <PosterThumb poster={fromSubmissionView(submission)} size={thumbSize} />
+      <SubmissionThumb submission={submission} size={thumbSize} />
 
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-2 text-subhead text-ink">

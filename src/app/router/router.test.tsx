@@ -138,7 +138,7 @@ describe("셸 분리", () => {
 
   it("포스터 올리기 화면도 관리 내비게이션을 쓰지 않는다", async () => {
     renderRoute("/new/poster", { role: "SUBMITTER" });
-    await screen.findByRole("heading", { name: "게시 신청" });
+    await screen.findByRole("heading", { name: "포스터 올리기" });
 
     expect(
       screen.queryByRole("navigation", { name: "주요 메뉴" }),
