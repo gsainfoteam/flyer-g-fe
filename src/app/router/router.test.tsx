@@ -136,13 +136,23 @@ describe("셸 분리", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("포스터 올리기 화면도 관리 내비게이션을 쓰지 않는다", async () => {
-    renderRoute("/new/poster", { role: "SUBMITTER" });
-    await screen.findByRole("heading", { name: "포스터 올리기" });
+  it.each([
+    ["/new/poster", "포스터 올리기"],
+    ["/new/event", "이벤트 배너 올리기"],
+    ["/new/story", "소식 제보 올리기"],
+  ])("올리기 화면 %s도 같은 내비게이션과 돌아가기 링크를 쓴다", async (path, heading) => {
+    renderRoute(path, { role: "SUBMITTER" });
+    await screen.findByRole("heading", { name: heading, level: 1 });
 
     expect(
-      screen.queryByRole("navigation", { name: "주요 메뉴" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("navigation", { name: "주요 메뉴" }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("main")).getByRole("link", { name: "홈" }),
+    ).toHaveAttribute("href", "/");
+    expect(
+      screen.getByRole("region", { name: "TV 미리보기" }),
+    ).toBeInTheDocument();
   });
 
   it("관리 화면에는 내비게이션과 푸터가 있다", async () => {

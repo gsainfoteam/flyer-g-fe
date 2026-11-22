@@ -8,7 +8,6 @@ import { AdminLayout } from "@/app/layouts/AdminLayout";
 import { AppShell } from "@/app/layouts/AppShell";
 import { DisplayLayout } from "@/app/layouts/DisplayLayout";
 import { PlayLayout } from "@/app/layouts/PlayLayout";
-import { StudioLayout } from "@/app/layouts/StudioLayout";
 import { paths } from "@/shared/config/routes";
 import type { RouteHandle } from "@/app/router/use-document-title";
 import { legacyRoutes } from "@/app/router/legacy-redirects";
@@ -215,28 +214,23 @@ export const routeTree = [
         element: <RequireSession />,
         children: [
           {
-            element: <StudioLayout />,
+            element: <AdminLayout />,
             children: [
+              // 올리기 화면 셋은 같은 틀(`UploadFrame`)과 같은 내비게이션을 쓴다.
               {
                 path: paths.newPoster,
                 element: studioPage,
                 handle: title("포스터 올리기"),
               },
-            ],
-          },
-          {
-            element: <AdminLayout />,
-            children: [
-              // 이벤트 배너와 제보는 칸이 적어 포스터처럼 전용 틀을 쓰지 않는다.
               {
                 path: paths.newEvent,
                 element: newEventPage,
-                handle: title("이벤트 배너"),
+                handle: title("이벤트 배너 올리기"),
               },
               {
                 path: paths.newStory,
                 element: newStoryPage,
-                handle: title("소식 제보"),
+                handle: title("소식 제보 올리기"),
               },
               {
                 path: paths.mine,

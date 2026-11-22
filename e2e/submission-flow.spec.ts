@@ -23,7 +23,9 @@ test("게시자가 게시 정보를 입력해 신청하면 바로 승인 대기�
 
   // 미리보기가 입력을 따라온다.
   await expect(
-    page.getByRole("main").getByText("공연동아리 페이드인"),
+    page
+      .getByRole("region", { name: "TV 미리보기" })
+      .getByText("공연동아리 페이드인"),
   ).toBeVisible();
 
   await uploadGeneratedPoster(page);
