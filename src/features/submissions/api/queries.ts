@@ -5,6 +5,7 @@ import {
   useQuery,
 } from "@tanstack/react-query";
 import { toSubmissionView } from "@/entities/submission";
+import type { SubmissionKind } from "@/entities/submission";
 import type {
   SubmissionListParams,
   SubmissionStatus,
@@ -70,9 +71,11 @@ export const SUBMISSION_PAGE_SIZE = 10;
 export function useInfiniteSubmissionViews(
   statuses: readonly SubmissionStatus[],
   scope: SubmissionListParams["scope"] = "me",
+  /** 종류 필터. 비우면 모든 종류다. */
+  types?: readonly SubmissionKind[],
 ) {
   const { submissions } = useRepositories();
-  const params = { statuses, scope, limit: SUBMISSION_PAGE_SIZE };
+  const params = { statuses, scope, types, limit: SUBMISSION_PAGE_SIZE };
 
   return useInfiniteQuery({
     queryKey: queryKeys.submissions.infinite(params),

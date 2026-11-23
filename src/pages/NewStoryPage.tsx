@@ -1,9 +1,8 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { StoryScene, SceneFrame } from "@/entities/scene";
-import { ApprovalDelayNotice } from "@/entities/submission/ui/ApprovalDelayNotice";
 import type { StorySceneItem } from "@/entities/scene";
 import { useSignageConfig } from "@/entities/submission/api/queries";
 import {
@@ -20,7 +19,7 @@ import {
   useSubmissionViews,
 } from "@/features/submissions/api/queries";
 import { useCreateContent } from "@/features/submissions/create/model/use-create-content";
-import { ChoicePills, FormField, PillField } from "@/shared/components";
+import { BackLink, ChoicePills, FormField, PillField } from "@/shared/components";
 import { toUserMessage } from "@/shared/api/error";
 import { to } from "@/shared/config/routes";
 import { seoulDayDiff } from "@/shared/lib/datetime";
@@ -122,17 +121,11 @@ export function NewStoryPage() {
   return (
     <>
       <div>
-        <Link
-          to={to.home()}
-          className="text-caption text-ink-muted hover:underline"
-        >
-          올리기
-        </Link>
+        <BackLink to={to.home()}>홈</BackLink>
         <h1 className="mt-1 text-display text-ink">소식 제보</h1>
         <p className="mt-1.5 text-label text-ink-muted">
           TV에는 작성자 이름이 표시되지 않습니다. 승인되면 {displayDays}일 동안 게시됩니다.
         </p>
-        <ApprovalDelayNotice className="mt-2" />
       </div>
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">

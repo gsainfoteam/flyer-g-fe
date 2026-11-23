@@ -52,7 +52,7 @@ describe("사용자 홈", () => {
     renderRoute("/", { role: "SUBMITTER", repositories });
 
     expect(
-      await screen.findByRole("heading", { name: "콘텐츠 등록" }),
+      await screen.findByRole("heading", { name: "콘텐츠 올리기" }),
     ).toBeInTheDocument();
     expect(listPending).not.toHaveBeenCalled();
     expect(
@@ -64,7 +64,7 @@ describe("사용자 홈", () => {
     renderRoute("/", { role: "SUBMITTER", repositories: repositoriesForNewUser() });
 
     expect(
-      await screen.findByRole("heading", { name: "콘텐츠 등록" }),
+      await screen.findByRole("heading", { name: "콘텐츠 올리기" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "게시 절차" }),
@@ -74,7 +74,7 @@ describe("사용자 홈", () => {
 
   it("세 종류 모두 올리는 화면으로 간다", async () => {
     renderRoute("/", { role: "SUBMITTER" });
-    await screen.findByRole("heading", { name: "콘텐츠 등록" });
+    await screen.findByRole("heading", { name: "콘텐츠 올리기" });
 
     expect(screen.getByRole("link", { name: /포스터/ })).toHaveAttribute(
       "href",
@@ -255,7 +255,7 @@ describe("제보 (배포 ④)", () => {
   it("사용자 홈은 지금 TV에 걸린 제보를 보여 주고, 없으면 칸을 그리지 않는다", async () => {
     const { repositories, story, asReviewer } = await repositoriesWithStory();
     const { unmount } = renderRoute("/", { role: "SUBMITTER", repositories });
-    await screen.findByRole("heading", { name: "콘텐츠 등록" });
+    await screen.findByRole("heading", { name: "콘텐츠 올리기" });
     expect(screen.queryByRole("heading", { name: "지금 TV의 제보" })).toBeNull();
     unmount();
 

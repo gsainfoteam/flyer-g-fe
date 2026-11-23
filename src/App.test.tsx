@@ -49,7 +49,7 @@ describe("첫 화면", () => {
 
     renderRoute("/", { role: "SUBMITTER" });
     expect(
-      await screen.findByRole("heading", { name: "콘텐츠 등록" }),
+      await screen.findByRole("heading", { name: "콘텐츠 올리기" }),
     ).toBeInTheDocument();
   });
 

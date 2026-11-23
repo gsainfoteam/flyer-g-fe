@@ -21,3 +21,4 @@ export { Kbd } from "./Kbd";
 export { ProgressSplit } from "./ProgressSplit";
 export type { SplitPart } from "./ProgressSplit";
 export { ChoicePills, PillField } from "./ChoicePills";
+export { BackLink } from "./BackLink";

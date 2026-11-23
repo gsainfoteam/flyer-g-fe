@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { EventScene, SceneFrame } from "@/entities/scene";
-import { ApprovalDelayNotice } from "@/entities/submission/ui/ApprovalDelayNotice";
 import { useSignageConfig } from "@/entities/submission/api/queries";
 import {
   EVENT_BANNER_TEXT_LIMITS,
@@ -25,12 +24,7 @@ import {
   useUpdateEventBanner,
 } from "@/features/submissions/create/model/use-create-content";
 import type { SignageSubmissionExpanded } from "@/entities/submission";
-import {
-  ChoicePills,
-  FormField,
-  PageState,
-  PillField,
-} from "@/shared/components";
+import { BackLink, ChoicePills, FormField, PageState, PillField } from "@/shared/components";
 import { toUserMessage } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
 import { to } from "@/shared/config/routes";
@@ -263,19 +257,15 @@ function EventBannerForm({
   return (
     <>
       <div>
-        <Link
-          to={editing ? to.submissionDetail(editing.id) : to.home()}
-          className="text-caption text-ink-muted hover:underline"
-        >
-          {editing ? "콘텐츠 상세" : "올리기"}
-        </Link>
+        <BackLink to={editing ? to.submissionDetail(editing.id) : to.home()}>
+          {editing ? "콘텐츠 상세" : "홈"}
+        </BackLink>
         <h1 className="mt-1 text-display text-ink">
           {editing ? "이벤트 배너 고치기" : "이벤트 배너"}
         </h1>
         <p className="mt-1.5 text-label text-ink-muted">
           생일·합격·수상 소식을 TV에 게시합니다. 하루 단위, 최대 {maxDays}일.
         </p>
-        <ApprovalDelayNotice className="mt-2" />
       </div>
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
