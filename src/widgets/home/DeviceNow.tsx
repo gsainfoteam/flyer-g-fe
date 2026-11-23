@@ -12,7 +12,7 @@ import { cn } from "@/shared/lib/utils";
  * TV 지금 (기획 4-0 운영자). 기기마다 작은 TV 화면을 그린다.
  *
  * 지금 나오는 장면은 heartbeat `now`(배포 ⑦)부터 알 수 있다. 그 전에는 화면 방식과
- * 걸린 포스터 수를 보여 준다. 꺼진 TV는 회색 화면에 연결 없음 시간을 적는다. 화면 끔
+ * 걸린 포스터 수를 보여 준다. 꺼진 TV는 빨간 화면에 연결 없음 시간을 적는다. 화면 끔
  * 시간의 TV는 정해 둔 대로 쉬는 것이라 꺼짐으로 표시하지 않는다.
  */
 export function DeviceNow({
@@ -69,7 +69,9 @@ export function DeviceNow({
                     "relative flex aspect-video items-center justify-center rounded-tile",
                     on
                       ? "bg-stage ring-1 ring-zinc-800 ring-inset"
-                      : "bg-surface-muted ring-1 ring-line ring-inset",
+                      : sleeping
+                        ? "bg-surface-muted ring-1 ring-line ring-inset"
+                        : "bg-danger-subtle ring-1 ring-accent-300 ring-inset",
                   )}
                 >
                   {on ? (
@@ -87,9 +89,9 @@ export function DeviceNow({
                       <span className="text-overline font-normal">화면 끔</span>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center gap-1 text-ink-subtle">
+                    <div className="flex flex-col items-center gap-1 text-accent-700">
                       <WifiOff size={20} aria-hidden="true" />
-                      <span className="text-overline font-normal">
+                      <span className="text-overline font-bold">
                         {device.lastSeenAt
                           ? `${formatElapsed(device.lastSeenAt, now)}째 연결 없음`
                           : "연결 기록 없음"}

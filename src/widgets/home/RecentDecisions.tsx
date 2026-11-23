@@ -2,7 +2,10 @@ import type { DecisionRecord, ReviewDecision } from "@/entities/review/model/typ
 import { formatTimeAgo } from "@/shared/lib/datetime";
 import { cn } from "@/shared/lib/utils";
 
-/** 최근 처리. 누가 무엇을 승인·반려·중단했는지 짧게. (기획 4-0) */
+/**
+ * 최근 처리. 누가 무엇을 승인·반려·중단했는지 짧게. (기획 4-0)
+ * 하우스 관리자와 운영자 홈이 같은 이름으로 쓴다.
+ */
 const DECISION: Record<ReviewDecision, { label: string; className: string }> = {
   APPROVED: { label: "승인", className: "text-success-strong" },
   REJECTED: { label: "반려", className: "text-accent-700" },
@@ -10,11 +13,9 @@ const DECISION: Record<ReviewDecision, { label: string; className: string }> = {
 };
 
 export function RecentDecisions({
-  title = "최근 처리",
   decisions,
   now,
 }: {
-  title?: string;
   decisions: DecisionRecord[];
   now: Date;
 }) {
@@ -24,7 +25,7 @@ export function RecentDecisions({
       className="rounded-block bg-surface px-6 py-5.5 ring-1 ring-line"
     >
       <h2 id="recent-decisions" className="text-subhead text-ink">
-        {title}
+        최근 처리
       </h2>
       {decisions.length === 0 ? (
         <p className="mt-3 text-label text-ink-muted">아직 처리한 건 없음</p>

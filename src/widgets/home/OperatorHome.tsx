@@ -14,18 +14,22 @@ import { DeviceNow } from "./DeviceNow";
 import { LONG_WAIT_MS } from "./OldestQueue";
 import { QueueCard } from "./QueueHero";
 import { RecentDecisions } from "./RecentDecisions";
+import { TodayOnTv } from "./TodayOnTv";
 import type { ReviewDesk } from "./use-review-desk";
 import { QUEUE_LIMIT, useReviewDesk } from "./use-review-desk";
 
 /**
  * 운영자 홈 (기획 4-0). 온 이유는 "문제 없나, 지금 뭐가 나오나"다.
  *
- * 맨 위에 확인할 것(꺼진 TV, 오래 기다린 심사)을 두고, TV마다 지금 모습, 옆 칸에
- * 심사 대기와 최근 처리를 둔다. 긴급 공지·지금 띄우기(9.5), 오늘 편성 흐름(9.3),
- * 오늘 참여(9.7), 수집 실패(9.6)는 그 단계에서 더한다.
+ * 맨 위에 확인할 것(꺼진 TV는 빨간 경고, 오래 기다린 심사)을 두고, TV마다 지금 모습과
+ * 오늘 TV(지금 걸린 종류 구성, 오늘 시작·끝), 옆 칸에 심사 대기와 최근 처리를 둔다. 심사
+ * 대기는 하우스 관리자 홈과 같은 어두운 카드를 작게 쓴다. 긴급 공지·지금 띄우기(9.5),
+ * 오늘 편성 흐름(9.3), 오늘 참여(9.7), 수집 실패(9.6)는 그 단계에서 더한다.
  */
 export function OperatorHome() {
   const desk = useReviewDesk();
+  const published =
+    desk.ready?.board.filter((item) => item.status === "PUBLISHED") ?? [];
 
   return (
     <PageState
@@ -60,16 +64,18 @@ export function OperatorHome() {
             <div className="flex min-w-0 flex-[999_1_640px] flex-col gap-5">
               <DeviceNow
                 devices={desk.devices?.items ?? []}
-                published={desk.ready.board.filter(
-                  (item) => item.status === "PUBLISHED",
-                )}
+                published={published}
                 now={desk.ready.now}
+              />
+              <TodayOnTv
+                published={published}
+                starts={desk.ready.startsToday}
+                ends={desk.ready.endsToday}
               />
             </div>
             <aside className="flex min-w-0 flex-[1_1_320px] flex-col gap-5 lg:max-w-[420px]">
               <QueueCard queue={desk.ready.queue} />
               <RecentDecisions
-                title="최근 기록"
                 decisions={desk.ready.decisions.slice(0, 4)}
                 now={desk.ready.now}
               />

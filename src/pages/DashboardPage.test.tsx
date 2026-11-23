@@ -91,13 +91,15 @@ describe("사용자 홈", () => {
     expect(screen.queryByText("준비 중")).toBeNull();
   });
 
-  it("반려·중단된 콘텐츠는 고쳐서 다시 내러 가는 길을 둔다", async () => {
+  it("반려·중단된 콘텐츠는 맨 위 고칠 콘텐츠에 모으고 고치러 가는 길을 둔다", async () => {
     renderRoute("/", { role: "SUBMITTER" });
 
-    const mine = (
-      await screen.findByRole("heading", { name: "내 콘텐츠" })
-    ).closest("section")!;
-    const fixes = within(mine).getAllByRole("link", {
+    const heading = await screen.findByRole("heading", {
+      name: /고칠 콘텐츠/,
+      level: 1,
+    });
+    const fix = heading.closest("section")!;
+    const fixes = within(fix).getAllByRole("link", {
       name: "고쳐서 다시 내기",
     });
     expect(fixes.map((link) => link.getAttribute("href"))).toEqual(
@@ -106,6 +108,18 @@ describe("사용자 홈", () => {
         "/new/poster?submissionId=notice-903",
       ]),
     );
+    // 사유는 상세에만 있어서 줄마다 사유로 가는 길도 둔다.
+    expect(
+      within(fix).getAllByRole("link", { name: "사유 보기" })[0],
+    ).toHaveAttribute("href", expect.stringMatching(/^\/mine\//));
+
+    // 아래 내 콘텐츠 목록에는 같은 건을 다시 두지 않는다.
+    const mine = screen
+      .getByRole("heading", { name: "내 콘텐츠" })
+      .closest("section")!;
+    expect(
+      within(mine).queryByRole("link", { name: "고쳐서 다시 내기" }),
+    ).toBeNull();
   });
 
   it("지금 TV에·오늘의 퀴즈 칸은 두지 않는다", async () => {
@@ -128,6 +142,17 @@ describe("하우스 관리자 홈", () => {
       .getAllByRole("link")
       .filter((link) => link.getAttribute("href")?.startsWith("/review/"));
     expect(rows.length).toBeGreaterThan(0);
+  });
+
+  it("처리 수와 오늘 시작·끝은 오늘 칸 하나에 모은다", async () => {
+    renderRoute("/", { role: "REVIEWER" });
+    const today = (
+      await screen.findByRole("heading", { name: "오늘" })
+    ).closest("section")!;
+    expect(within(today).getByText("오늘 처리")).toBeInTheDocument();
+    expect(within(today).getByText("이번 주 처리")).toBeInTheDocument();
+    expect(within(today).getByText(/TV 켜짐/)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "오늘 TV에서" })).toBeNull();
   });
 
   it("꺼진 TV를 이름으로 알린다", async () => {
@@ -173,6 +198,25 @@ describe("운영자 홈", () => {
     expect(await within(now).findByText(/B동 로비/)).toBeInTheDocument();
     expect(within(now).getByText(/A동 로비/)).toBeInTheDocument();
     expect(within(now).getAllByText(/연결 없음/).length).toBeGreaterThan(0);
+  });
+
+  it("오늘 TV에 지금 게시 중인 건수와 오늘 시작·끝을 둔다", async () => {
+    renderRoute("/", { role: "SUPER_ADMIN" });
+    const today = (
+      await screen.findByRole("heading", { name: "오늘 TV" })
+    ).closest("section")!;
+    expect(within(today).getByText(/지금 게시 중 \d+건/)).toBeInTheDocument();
+    expect(
+      within(today).getByRole("link", { name: "전체 콘텐츠" }),
+    ).toHaveAttribute("href", "/contents");
+  });
+
+  it("하우스 관리자 홈과 같은 이름으로 최근 처리를 보여준다", async () => {
+    renderRoute("/", { role: "SUPER_ADMIN" });
+    expect(
+      await screen.findByRole("heading", { name: "최근 처리" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "최근 기록" })).toBeNull();
   });
 
   it("운영자도 심사하므로 심사 대기를 작게 둔다", async () => {
@@ -293,4 +337,3 @@ describe("제보 (배포 ④)", () => {
     expect(screen.queryByRole("link", { name: /고쳐서 다시 내기/ })).toBeNull();
   });
 });
-
