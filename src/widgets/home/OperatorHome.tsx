@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { isTargetedTo } from "@/entities/device/model/board";
 import type { DisplayDevice } from "@/entities/device/model/types";
 import { DeviceScreen } from "@/entities/device/ui/DeviceScreen";
+import { KIND_INFO } from "@/entities/submission/model/kind";
 import type { SubmissionView } from "@/entities/submission/model/types";
 import { PageState } from "@/shared/components";
 import { to } from "@/shared/config/routes";
@@ -23,8 +24,8 @@ import type { ReviewDesk } from "./use-review-desk";
  * 주인공이다. 게시자 홈(올리기)·하우스 관리자 홈(다음 차례)과 같은 틀에서 맨 위 칸만
  * 역할의 일로 바뀐다.
  *
- * 제목 줄에 TV 수와 꺼진 TV, 그 아래 TV마다 화면 카드(꺼진 TV는 화면 자리에 이유와
- * 바로 가는 길), 아래 세 칸에 심사 대기·오늘 TV·최근 처리. 긴급 공지·지금 띄우기(9.5),
+ * 제목 줄에 TV 수와 꺼진 TV. 왼쪽에 TV마다 작은 화면(꺼진 TV는 화면 자리에 이유와 바로
+ * 가는 길)과 그 아래 지금 걸린 콘텐츠, 오른쪽에 심사 대기와 최근 처리. 긴급 공지·지금 띄우기(9.5),
  * 오늘 편성 흐름(9.3), 오늘 참여(9.7), 수집 실패(9.6)는 그 단계에서 더한다.
  */
 export function OperatorHome() {
@@ -60,15 +61,18 @@ export function OperatorHome() {
             </Link>
           </div>
 
-          <TvScreens devices={devices} desk={desk.ready} />
-
-          <div className="mt-2 grid items-start gap-4 md:grid-cols-3">
-            <QueueSummary desk={desk.ready} />
-            <TodayOnTv desk={desk.ready} />
-            <RecentDecisions
-              decisions={desk.ready.decisions.slice(0, 3)}
-              now={desk.ready.now}
-            />
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-4">
+              <TvScreens devices={devices} desk={desk.ready} />
+              <TodayOnTv desk={desk.ready} />
+            </div>
+            <aside className="flex min-w-0 flex-[1_1_280px] flex-col gap-4">
+              <QueueSummary desk={desk.ready} />
+              <RecentDecisions
+                decisions={desk.ready.decisions.slice(0, 5)}
+                now={desk.ready.now}
+              />
+            </aside>
           </div>
         </>
       )}
@@ -97,7 +101,10 @@ function DeviceLine({ devices }: { devices: DisplayDevice[] }) {
   );
 }
 
-/** TV마다 화면 카드. 화면 끔 시간의 TV는 정해 둔 대로 쉬는 것이라 꺼짐으로 짚지 않는다. */
+/**
+ * TV마다 작은 화면. 한 칸에 모아 TV가 늘어도 한눈에 들어오게 칸 크기를 작게 고정하고
+ * 줄을 바꿔 채운다. 화면 끔 시간의 TV는 정해 둔 대로 쉬는 것이라 꺼짐으로 짚지 않는다.
+ */
 function TvScreens({
   devices,
   desk,
@@ -105,41 +112,42 @@ function TvScreens({
   devices: DisplayDevice[];
   desk: ReviewDesk;
 }) {
-  if (devices.length === 0) {
-    return (
-      <section
-        aria-label="TV 화면"
-        className="rounded-card bg-surface px-6 py-8 ring-1 ring-line"
-      >
-        <p className="text-subhead text-ink">등록한 TV가 없어요</p>
-        <Link
-          to={to.tv()}
-          className="mt-1 inline-flex items-center text-label text-ink-muted hover:text-ink"
-        >
-          TV 관리에서 등록하기
-          <ChevronRight size={15} aria-hidden="true" />
-        </Link>
-      </section>
-    );
-  }
   const published = desk.board.filter((item) => item.status === "PUBLISHED");
   return (
-    <ul
-      aria-label="TV 화면"
-      className={cn(
-        "grid gap-4 sm:grid-cols-2",
-        devices.length > 2 && "lg:grid-cols-3",
-      )}
+    <section
+      aria-labelledby="tv-now"
+      className="rounded-card bg-surface p-4 ring-1 ring-line sm:p-5"
     >
-      {devices.map((device) => (
-        <TvCard
-          key={device.id}
-          device={device}
-          published={published}
-          now={desk.now}
-        />
-      ))}
-    </ul>
+      <h2 id="tv-now" className="mb-3.5 text-subhead text-ink">
+        TV 지금
+      </h2>
+      {devices.length === 0 ? (
+        <div className="py-4">
+          <p className="text-label text-ink-muted">등록한 TV가 없어요.</p>
+          <Link
+            to={to.tv()}
+            className="mt-1 inline-flex items-center text-label font-semibold text-ink hover:underline"
+          >
+            TV 관리에서 등록하기
+            <ChevronRight size={15} aria-hidden="true" />
+          </Link>
+        </div>
+      ) : (
+        <ul
+          aria-label="TV 화면"
+          className="grid grid-cols-[repeat(auto-fill,minmax(12.5rem,1fr))] gap-x-4 gap-y-5"
+        >
+          {devices.map((device) => (
+            <TvCard
+              key={device.id}
+              device={device}
+              published={published}
+              now={desk.now}
+            />
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -168,12 +176,7 @@ function TvCard({
         : "켜짐";
 
   return (
-    <li
-      className={cn(
-        "flex flex-col gap-3 rounded-card bg-surface p-3.5 shadow-card ring-1",
-        offline ? "ring-accent-300" : "ring-line",
-      )}
-    >
+    <li className="flex min-w-0 flex-col gap-2">
       <DeviceScreen
         device={device}
         posters={posters}
@@ -181,38 +184,42 @@ function TvCard({
         action={
           <Link
             to={to.tv()}
-            className="inline-flex h-8 items-center rounded-control bg-accent px-3 text-caption font-bold text-accent-on transition-colors hover:bg-accent-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            className="inline-flex h-7 items-center rounded-control bg-accent px-2.5 text-caption font-bold text-accent-on transition-colors hover:bg-accent-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             기기 보기
           </Link>
         }
       />
-      <div className="flex items-center gap-2 px-1">
-        <span
-          aria-hidden="true"
-          className={cn(
-            "size-1.75 shrink-0 rounded-full",
-            offline ? "bg-accent" : sleeping ? "bg-info" : "bg-success",
+      <div className="min-w-0 px-0.5">
+        <div className="flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className={cn(
+              "size-1.75 shrink-0 rounded-full",
+              offline ? "bg-accent" : sleeping ? "bg-info" : "bg-success",
+            )}
+          />
+          <h3 className="min-w-0 truncate text-label font-bold text-ink">
+            {device.name}
+          </h3>
+          {device.programGroupId && (
+            <Link
+              to={to.tvLineup(device.programGroupId)}
+              className="ml-auto inline-flex shrink-0 items-center text-caption text-ink-muted hover:text-ink"
+            >
+              편성
+              <ChevronRight size={14} aria-hidden="true" />
+            </Link>
           )}
-        />
-        <h2 className="shrink-0 text-subhead text-ink">{device.name}</h2>
-        <span
+        </div>
+        <p
           className={cn(
-            "min-w-0 truncate text-label",
-            offline ? "text-accent-700" : "text-ink-muted",
+            "mt-0.5 truncate text-caption",
+            offline ? "text-accent-700" : "text-ink-subtle",
           )}
         >
           {meta}
-        </span>
-        {device.programGroupId && (
-          <Link
-            to={to.tvLineup(device.programGroupId)}
-            className="ml-auto inline-flex shrink-0 items-center text-label text-ink-muted hover:text-ink"
-          >
-            편성
-            <ChevronRight size={15} aria-hidden="true" />
-          </Link>
-        )}
+        </p>
       </div>
     </li>
   );
@@ -263,17 +270,38 @@ function QueueSummary({ desk }: { desk: ReviewDesk }) {
 }
 
 /** 지금 게시 중 수와 오늘 시작·끝나는 수. 그룹 편성(9.3) 뒤에는 오늘 편성 흐름으로 바꾼다. */
+const ON_AIR_SHOWN = 4;
+
+/**
+ * 지금 TV에 걸린 콘텐츠. 곧 끝나는 것부터 몇 건을 한 줄씩 두고, 제목 줄에 게시 중·오늘
+ * 시작·오늘 끝 수를 짧게 붙인다. TV 화면 칸 바로 아래에 두어 "지금 뭐가 나오나"에 이어서
+ * 답한다.
+ */
 function TodayOnTv({ desk }: { desk: ReviewDesk }) {
-  const published = desk.board.filter((item) => item.status === "PUBLISHED");
+  const published = desk.board
+    .filter((item) => item.status === "PUBLISHED")
+    .sort(
+      (a, b) =>
+        (a.endAt?.getTime() ?? Infinity) - (b.endAt?.getTime() ?? Infinity),
+    );
+  const endsToday = new Set(desk.endsToday.map((item) => item.id));
+  const startsToday = new Set(desk.startsToday.map((item) => item.id));
+  const shown = published.slice(0, ON_AIR_SHOWN);
+
   return (
     <section
       aria-labelledby="today-on-tv"
-      className="rounded-card bg-surface px-5 pt-4 pb-2 ring-1 ring-line"
+      className="overflow-hidden rounded-card bg-surface ring-1 ring-line"
     >
-      <div className="mb-1.5 flex items-center">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-5 py-3.5">
         <h2 id="today-on-tv" className="text-subhead text-ink">
           오늘 TV
         </h2>
+        <p className="flex flex-wrap gap-x-3 text-label text-ink-muted">
+          <Count label="게시 중">{published.length}건</Count>
+          <Count label="오늘 시작">{desk.startsToday.length}건</Count>
+          <Count label="오늘 끝">{desk.endsToday.length}건</Count>
+        </p>
         <Link
           to={to.contents()}
           className="ml-auto inline-flex items-center text-label text-ink-muted hover:text-ink"
@@ -282,21 +310,58 @@ function TodayOnTv({ desk }: { desk: ReviewDesk }) {
           <ChevronRight size={15} aria-hidden="true" />
         </Link>
       </div>
-      <dl>
-        <Row label="게시 중">{published.length}건</Row>
-        <Row label="오늘 시작">{desk.startsToday.length}건</Row>
-        <Row label="오늘 끝">{desk.endsToday.length}건</Row>
-      </dl>
+      {shown.length === 0 ? (
+        <p className="px-5 py-4 text-label text-ink-muted">
+          지금 게시 중인 콘텐츠 없음
+        </p>
+      ) : (
+        <ul>
+          {shown.map((item) => (
+            <li
+              key={item.id}
+              className="flex items-center gap-3 border-t border-surface-muted px-5 py-2.75 text-label first:border-t-0"
+            >
+              <span className="min-w-0 flex-1 truncate font-semibold text-ink">
+                {item.title}
+              </span>
+              <span className="hidden w-20 shrink-0 text-ink-muted sm:block">
+                {KIND_INFO[item.type].short}
+              </span>
+              <span
+                className={cn(
+                  "w-28 shrink-0 text-right",
+                  endsToday.has(item.id) ? "text-ink" : "text-ink-muted",
+                )}
+              >
+                {endsToday.has(item.id)
+                  ? "오늘 끝"
+                  : startsToday.has(item.id)
+                    ? "오늘 시작"
+                    : item.endAt
+                      ? `${formatSeoulMonthDay(item.endAt)}까지`
+                      : "기간 없음"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {published.length > shown.length && (
+        <Link
+          to={to.contents()}
+          className="flex items-center justify-center border-t border-surface-muted py-2.5 text-label text-ink-muted hover:text-ink"
+        >
+          {published.length - shown.length}건 더 보기
+        </Link>
+      )}
     </section>
   );
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
+function Count({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex justify-between gap-4 border-t border-surface-muted py-2.5 text-label">
-      <dt className="text-ink-muted">{label}</dt>
-      <dd className="font-semibold text-ink">{children}</dd>
-    </div>
+    <span>
+      {label} <b className="font-semibold text-ink">{children}</b>
+    </span>
   );
 }
 
