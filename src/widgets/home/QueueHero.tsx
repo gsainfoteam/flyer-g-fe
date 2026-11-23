@@ -53,29 +53,41 @@ export function QueueHero({ queue }: { queue: QueueNumbers }) {
   );
 }
 
-/** 심사 대기 작은 칸. 운영자 홈 옆 칸에 둔다(운영자도 심사한다). */
+/**
+ * 심사 대기 작은 칸. 운영자 홈 옆 칸에 둔다(운영자도 심사한다). 하우스 관리자 홈의 큰
+ * 카드와 같은 어두운 면·숫자·종류 막대·버튼을 작게 줄인 모양이다.
+ */
 export function QueueCard({ queue }: { queue: QueueNumbers }) {
   return (
-    <section
-      aria-labelledby="queue-card"
-      className="rounded-block bg-surface px-6 py-5.5 ring-1 ring-line"
-    >
-      <h2 id="queue-card" className="text-label font-bold text-ink-muted">
-        심사 대기
-      </h2>
-      <p className="text-[2.75rem] leading-[1.1] font-black tracking-[-0.04em] tabular-nums">
-        {queue.total}
-        <span className="text-[1.125rem] font-bold tracking-normal">건</span>
-      </p>
-      <KindSplit byKind={queue.byKind} className="mt-3" />
+    <HeroPanel labelledBy="queue-card" className="sm:px-6 sm:py-5.5">
+      <div className="flex items-end gap-3">
+        <div>
+          <h2 id="queue-card" className="text-label font-bold text-hero-muted">
+            심사 대기
+          </h2>
+          <p className="text-[2.75rem] leading-[1.1] font-black tracking-[-0.04em] tabular-nums">
+            {queue.total}
+            <span className="ml-0.5 text-[1.125rem] font-bold tracking-normal">
+              건
+            </span>
+          </p>
+        </div>
+        {queue.oldestSubmittedAt && (
+          <span className="mb-1.5 ml-auto inline-flex h-7 items-center gap-1.5 rounded-pill bg-accent/20 px-2.5 text-caption font-bold text-accent-300">
+            <Clock size={14} aria-hidden="true" />
+            가장 오래 {formatElapsed(queue.oldestSubmittedAt, queue.now)}
+          </span>
+        )}
+      </div>
+      <KindSplit byKind={queue.byKind} className="mt-3" onDark />
       <Link
         to={to.review()}
-        className="mt-3.5 flex h-11 items-center justify-center gap-2 rounded-tile bg-ink text-label font-extrabold text-ink-inverse transition-colors hover:bg-ink/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        className="mt-4 flex h-11 items-center justify-center gap-2 rounded-tile bg-accent text-label font-extrabold text-accent-on transition-colors hover:bg-accent-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
       >
         {queue.total > 0 ? "오래된 것부터 심사" : "심사 화면 열기"}
         <ArrowRight size={16} strokeWidth={2.5} aria-hidden="true" />
       </Link>
-    </section>
+    </HeroPanel>
   );
 }
 

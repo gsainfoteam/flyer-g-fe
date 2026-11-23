@@ -64,7 +64,73 @@ export function UploadChoicesCompact() {
   );
 }
 
-function ChoiceCard({ kind, large = false }: { kind: SubmissionKind; large?: boolean }) {
+/**
+ * 다시 온 사람의 홈: 세 종류를 한 줄에. 휴대폰에서도 한 줄이라 아래의 할 일과 내 콘텐츠가
+ * 첫 화면에 들어온다.
+ */
+export function UploadChoicesStrip() {
+  return (
+    <ul className="grid grid-cols-3 gap-2 sm:gap-3">
+      {SUBMISSION_KINDS.map((kind) => {
+        const copy = COPY[kind];
+        const style = KIND_STYLE[kind];
+        const body = (
+          <>
+            <TypeIcon kind={kind} size="sm" />
+            <span className="min-w-0 text-center sm:text-left">
+              <b className="block text-label font-extrabold text-ink sm:text-body">
+                {KIND_INFO[kind].name}
+              </b>
+              <span className="hidden truncate text-caption text-ink-subtle sm:block">
+                {copy.rule}
+              </span>
+            </span>
+            {copy.href && (
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "ml-auto hidden size-8 shrink-0 items-center justify-center rounded-full md:inline-flex",
+                  style.solid,
+                )}
+              >
+                <ArrowRight size={16} strokeWidth={2.5} />
+              </span>
+            )}
+          </>
+        );
+        const frame =
+          "flex h-full flex-col items-center gap-1.5 rounded-card bg-surface px-2 py-3 ring-1 ring-line sm:flex-row sm:gap-3 sm:px-4 sm:py-3.5";
+        return (
+          <li key={kind}>
+            {copy.href ? (
+              <Link
+                to={copy.href}
+                className={cn(
+                  frame,
+                  "transition-shadow hover:shadow-floating hover:ring-line-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+                )}
+              >
+                {body}
+              </Link>
+            ) : (
+              <div className={cn(frame, "opacity-75")} aria-disabled="true">
+                {body}
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function ChoiceCard({
+  kind,
+  large = false,
+}: {
+  kind: SubmissionKind;
+  large?: boolean;
+}) {
   const copy = COPY[kind];
   const style = KIND_STYLE[kind];
   const ready = copy.href !== null;

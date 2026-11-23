@@ -19,15 +19,29 @@ export interface CheckItem {
   href: string;
 }
 
-const KIND: Record<CheckItem["kind"], { icon: LucideIcon; tone: string; action: string }> = {
+/** 꺼진 TV는 로비 화면이 멈춘 것이라 빨간 경고로, 오래 기다린 심사는 노란 알림으로 둔다. */
+const KIND: Record<
+  CheckItem["kind"],
+  {
+    icon: LucideIcon;
+    card: string;
+    tone: string;
+    title: string;
+    action: string;
+  }
+> = {
   device: {
     icon: WifiOff,
-    tone: "bg-accent-100 text-accent-700",
+    card: "bg-danger-subtle ring-accent-300",
+    tone: "bg-accent text-accent-on",
+    title: "text-danger-strong",
     action: "text-accent-700",
   },
   wait: {
     icon: Clock,
+    card: "bg-surface ring-line",
     tone: "bg-warning-subtle text-warning-strong",
+    title: "text-ink",
     action: "text-warning-strong",
   },
 };
@@ -58,11 +72,16 @@ export function ChecksToDo({ items }: { items: CheckItem[] }) {
               <li key={item.key}>
                 <Link
                   to={item.href}
-                  className="flex items-center gap-3.5 rounded-card bg-surface px-4.5 py-4 ring-1 ring-line transition-shadow hover:shadow-floating focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                  className={cn(
+                    "flex items-center gap-3.5 rounded-card px-4.5 py-4 ring-1 transition-shadow hover:shadow-floating focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+                    kind.card,
+                  )}
                 >
                   <IconTile icon={kind.icon} size="md" className={kind.tone} />
                   <span className="min-w-0 flex-1">
-                    <b className="block truncate text-ink">{item.title}</b>
+                    <b className={cn("block truncate", kind.title)}>
+                      {item.title}
+                    </b>
                     <span className="text-caption text-ink-muted">
                       {item.detail}
                     </span>

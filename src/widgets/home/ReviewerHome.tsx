@@ -1,26 +1,22 @@
-import {
-  CalendarCheck,
-  CheckCheck,
-  Info,
-  ListChecks,
-  Tv,
-  X,
-} from "lucide-react";
+import { CheckCheck, Info, ListChecks, Tv, WifiOff, X } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
 import type { DeviceList } from "@/entities/device/model/types";
-import { IconTile, PageState, StatTile } from "@/shared/components";
+import type { SubmissionView } from "@/entities/submission/model/types";
+import { IconTile, PageState } from "@/shared/components";
+import { cn } from "@/shared/lib/utils";
 import { OldestQueue } from "./OldestQueue";
 import { QueueHero } from "./QueueHero";
 import { RecentDecisions } from "./RecentDecisions";
-import { TodayOnTv } from "./TodayOnTv";
+import { TodayStartsEnds } from "./TodayOnTv";
 import { useReviewDesk } from "./use-review-desk";
 
 /**
  * 하우스 관리자 홈 (기획 4-0). 온 이유는 "쌓인 것 처리"다.
  *
- * 심사 대기 건수를 어두운 강조 카드에 가장 크게 두고, 옆에 오늘 처리·이번 주 처리·
- * 오늘 게시 시작·TV 상태를 숫자 칸으로 둔다. 아래는 오래 기다린 다섯 건과 오늘 TV
- * 일정, 최근 처리다. 처음 한 번은 심사 안내를 보여 준다(닫으면 다시 안 나옴).
+ * 심사 대기 건수를 어두운 강조 카드에 가장 크게 두고, 옆 "오늘" 칸에 처리 수·TV 상태·
+ * 오늘 시작·끝나는 콘텐츠를 모은다. 아래는 오래 기다린 다섯 건과 최근 처리다. 처음 한
+ * 번은 심사 안내를 보여 준다(닫으면 다시 안 나옴).
  */
 const INTRO_KEY = "flyerg:reviewer-intro-dismissed";
 
@@ -39,38 +35,20 @@ export function ReviewerHome() {
           <ReviewerIntro />
           <div className="flex flex-wrap items-stretch gap-5">
             <QueueHero queue={desk.ready.queue} />
-            <div className="grid min-w-0 flex-[1_1_320px] grid-cols-2 gap-3">
-              <StatTile
-                icon={CheckCheck}
-                tone="bg-success-subtle text-success-strong"
-                value={desk.ready.decidedToday}
-                label="오늘 처리"
-              />
-              <StatTile
-                icon={ListChecks}
-                tone="bg-type-poster-subtle text-type-poster"
-                value={desk.ready.decidedThisWeek}
-                unit={desk.ready.decisionsCapped ? "+" : undefined}
-                label="이번 주 처리"
-              />
-              <StatTile
-                icon={CalendarCheck}
-                tone="bg-success-subtle text-success-strong"
-                value={desk.ready.startsToday.length}
-                label="오늘 TV 게시 시작"
-              />
-              <DeviceTile devices={desk.devices} />
-            </div>
+            <ReviewerToday
+              decidedToday={desk.ready.decidedToday}
+              decidedThisWeek={desk.ready.decidedThisWeek}
+              decisionsCapped={desk.ready.decisionsCapped}
+              devices={desk.devices}
+              starts={desk.ready.startsToday}
+              ends={desk.ready.endsToday}
+            />
           </div>
           <div className="flex flex-wrap items-start gap-5">
             <OldestQueue items={desk.ready.oldest} now={desk.ready.now} />
             <aside className="flex min-w-0 flex-[1_1_320px] flex-col gap-5">
-              <TodayOnTv
-                starts={desk.ready.startsToday}
-                ends={desk.ready.endsToday}
-              />
               <RecentDecisions
-                decisions={desk.ready.decisions.slice(0, 4)}
+                decisions={desk.ready.decisions.slice(0, 5)}
                 now={desk.ready.now}
               />
             </aside>
@@ -81,32 +59,110 @@ export function ReviewerHome() {
   );
 }
 
-/** TV 켜짐 수. 하우스 관리자는 기기를 읽기만 한다. */
-function DeviceTile({ devices }: { devices: DeviceList | undefined }) {
+/**
+ * 오늘 한눈에: 처리 수, TV 상태, 오늘 시작·끝나는 콘텐츠. 숫자 칸 네 개를 하나로 합쳤다.
+ * 0이 큰 숫자로 자리를 차지하지 않게 작은 글로 둔다.
+ */
+function ReviewerToday({
+  decidedToday,
+  decidedThisWeek,
+  decisionsCapped,
+  devices,
+  starts,
+  ends,
+}: {
+  decidedToday: number;
+  decidedThisWeek: number;
+  decisionsCapped: boolean;
+  devices: DeviceList | undefined;
+  starts: SubmissionView[];
+  ends: SubmissionView[];
+}) {
+  return (
+    <section
+      aria-labelledby="reviewer-today"
+      className="flex min-w-0 flex-[1_1_320px] flex-col rounded-block bg-surface px-6 py-5.5 ring-1 ring-line"
+    >
+      <h2 id="reviewer-today" className="text-subhead text-ink">
+        오늘
+      </h2>
+      <dl className="mt-3 grid grid-cols-2 gap-3">
+        <Count
+          icon={CheckCheck}
+          label="오늘 처리"
+          value={`${decidedToday}건`}
+        />
+        <Count
+          icon={ListChecks}
+          label="이번 주 처리"
+          value={`${decidedThisWeek}${decisionsCapped ? "+" : ""}건`}
+        />
+      </dl>
+      <DeviceLine devices={devices} />
+      <TodayStartsEnds
+        starts={starts}
+        ends={ends}
+        className="mt-4 border-t border-surface-muted pt-4"
+      />
+    </section>
+  );
+}
+
+function Count({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <Icon size={16} className="shrink-0 text-ink-subtle" aria-hidden="true" />
+      <dt className="text-label text-ink-muted">{label}</dt>
+      <dd className="ml-auto text-label font-extrabold text-ink tabular-nums">
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+/** TV 켜짐 수. 하우스 관리자는 기기를 읽기만 한다. 꺼진 TV가 있으면 빨간 줄로 알린다. */
+function DeviceLine({ devices }: { devices: DeviceList | undefined }) {
   const all = devices?.items.filter((device) => device.status !== "DISABLED");
   const online = all?.filter((device) => device.status === "ONLINE");
   const offline = all?.filter((device) => device.status === "OFFLINE") ?? [];
   // 화면 끔 시간의 TV는 정상이다. 켜짐 수가 모자란 이유만 밝힌다.
   const sleeping = all?.filter((device) => device.status === "SLEEPING") ?? [];
+  const label = [
+    "TV 켜짐",
+    offline.length > 0 &&
+      `${offline.map((device) => device.name).join(", ")} 꺼짐`,
+    sleeping.length > 0 && `화면 끔 ${sleeping.length}대`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return (
-    <StatTile
-      icon={Tv}
-      tone={
+    <p
+      className={cn(
+        "mt-3 flex items-center gap-2 rounded-tile px-3 py-2.5 text-label",
         offline.length > 0
-          ? "bg-accent-100 text-accent-700"
-          : "bg-success-subtle text-success-strong"
-      }
-      value={online ? online.length : "–"}
-      unit={all ? `/${all.length}` : undefined}
-      label={[
-        "TV 켜짐",
-        offline.length > 0 &&
-          `${offline.map((device) => device.name).join(", ")} 꺼짐`,
-        sleeping.length > 0 && `화면 끔 ${sleeping.length}대`,
-      ]
-        .filter(Boolean)
-        .join(" · ")}
-    />
+          ? "bg-danger-subtle text-danger-strong"
+          : "bg-surface-muted text-ink-muted",
+      )}
+    >
+      {offline.length > 0 ? (
+        <WifiOff size={16} className="shrink-0" aria-hidden="true" />
+      ) : (
+        <Tv size={16} className="shrink-0 text-ink-subtle" aria-hidden="true" />
+      )}
+      <span className="min-w-0 flex-1">{label}</span>
+      <b className="shrink-0 font-extrabold tabular-nums">
+        {online ? online.length : "–"}
+        {all && `/${all.length}`}
+      </b>
+    </p>
   );
 }
 

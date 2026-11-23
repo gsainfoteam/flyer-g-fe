@@ -42,7 +42,7 @@ describe("접근성 자동 검사", () => {
 
   it("첫 화면 (하우스 관리자)", async () => {
     const { container } = renderRoute("/", { role: "REVIEWER" });
-    await screen.findByRole("heading", { name: "오늘 TV에서" });
+    await screen.findByRole("heading", { name: "오늘" });
     await screen.findByText(/TV 켜짐/);
     await expectNoViolations(container);
   });
