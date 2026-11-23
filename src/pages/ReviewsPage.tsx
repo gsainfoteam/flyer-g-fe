@@ -75,7 +75,7 @@ export function ReviewsPage() {
 
   const serverTime = pending.data?.serverTime ?? null;
   const queue = (pending.data?.items ?? []).filter(
-    (item) => !decisions.hiddenIds.has(item.id),
+    (item) => !decisions.isHidden(item),
   );
   const selectedId = submissionId ?? queue[0]?.id ?? null;
   const selectedIndex = queue.findIndex((item) => item.id === selectedId);
@@ -246,118 +246,169 @@ export function ReviewsPage() {
             })}
           </div>
 
-          <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(300px,400px)_minmax(0,1fr)]">
-            <section
-              aria-label="대기열"
-              className={cn(
-                "overflow-hidden rounded-block bg-surface ring-1 ring-line",
-                submissionId && "max-lg:hidden",
-              )}
-            >
-              {queue.length === 0 ? (
-                <EmptyState
-                  title={
-                    kind
-                      ? `기다리는 ${KIND_INFO[kind].short} 없음`
-                      : "기다리는 콘텐츠 없음"
-                  }
-                  description="새 신청은 이곳에 표시됩니다."
-                  className="px-4"
-                />
-              ) : (
-                <ul>
-                  {queue.map((item) => (
-                    <QueueRow
-                      key={item.id}
-                      item={item}
-                      now={serverTime}
-                      href={hrefOf(item.id)}
-                      selected={item.id === selectedId}
-                      // 주소에 id가 없으면 넓은 화면만 맨 앞 건을 오른쪽에 띄운다.
-                      implicit={!submissionId}
-                      // 제보는 본문이 짧아 목록에서 바로 처리한다. 일괄 처리는 두지 않는다.
-                      inline={
-                        kind === "STORY" && item.type === "STORY"
-                          ? {
-                              onApprove: () => approve(item),
-                              onReject: () => askReject(item.id),
-                            }
-                          : undefined
-                      }
-                    />
-                  ))}
-                </ul>
-              )}
-              {pending.hasNextPage && (
-                <div className="border-t border-line p-3">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="w-full"
-                    disabled={pending.isFetchingNextPage}
-                    onClick={() => void pending.fetchNextPage()}
-                  >
-                    {pending.isFetchingNextPage && (
-                      <Spinner aria-hidden="true" />
-                    )}
-                    더 보기 ({pending.data.items.length} /{" "}
-                    {pending.data.totalCount})
-                  </Button>
-                </div>
-              )}
-            </section>
-
-            <section
-              aria-label="고른 콘텐츠"
-              className={cn(
-                "flex min-w-0 flex-col gap-5",
-                !submissionId && "max-lg:hidden",
-              )}
-            >
-              {selectedId ? (
-                <ReviewPanel
-                  submissionId={selectedId}
-                  actionsRef={actionsRef}
-                  openReject={rejectingId === selectedId}
-                  header={
+          {!selectedId ? (
+            // 볼 건이 하나도 없으면 두 칸으로 나누지 않고 안내 하나만 둔다.
+            <AllClear
+              kind={kind}
+              elsewhere={
+                kind && total !== null
+                  ? Math.max(0, total - (countOf(kind) ?? 0))
+                  : 0
+              }
+              onShowAll={() => setKind(null)}
+            />
+          ) : (
+            <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(300px,400px)_minmax(0,1fr)]">
+              <section
+                aria-label="대기열"
+                className={cn(
+                  "overflow-hidden rounded-block bg-surface ring-1 ring-line",
+                  submissionId && "max-lg:hidden",
+                )}
+              >
+                {queue.length === 0 ? (
+                  <EmptyState
+                    title={
+                      kind
+                        ? `기다리는 ${KIND_INFO[kind].short} 없음`
+                        : "기다리는 콘텐츠 없음"
+                    }
+                    description="새 신청은 이곳에 표시됩니다."
+                    className="px-4"
+                  />
+                ) : (
+                  <ul>
+                    {queue.map((item) => (
+                      <QueueRow
+                        key={item.id}
+                        item={item}
+                        now={serverTime}
+                        href={hrefOf(item.id)}
+                        selected={item.id === selectedId}
+                        // 주소에 id가 없으면 넓은 화면만 맨 앞 건을 오른쪽에 띄운다.
+                        implicit={!submissionId}
+                        // 제보는 본문이 짧아 목록에서 바로 처리한다. 일괄 처리는 두지 않는다.
+                        inline={
+                          kind === "STORY" && item.type === "STORY"
+                            ? {
+                                onApprove: () => approve(item),
+                                onReject: () => askReject(item.id),
+                              }
+                            : undefined
+                        }
+                      />
+                    ))}
+                  </ul>
+                )}
+                {pending.hasNextPage && (
+                  <div className="border-t border-line p-3">
                     <Button
-                      variant="ghost"
+                      variant="secondary"
                       size="sm"
-                      asChild
-                      className="mb-2 -ml-2.5 lg:hidden"
+                      className="w-full"
+                      disabled={pending.isFetchingNextPage}
+                      onClick={() => void pending.fetchNextPage()}
                     >
-                      <Link to={hrefOf(null)}>
-                        <ArrowLeft aria-hidden="true" />
-                        대기열로
-                      </Link>
+                      {pending.isFetchingNextPage && (
+                        <Spinner aria-hidden="true" />
+                      )}
+                      더 보기 ({pending.data.items.length} /{" "}
+                      {pending.data.totalCount})
                     </Button>
-                  }
-                  onApprove={approve}
-                  onReject={(submission, values) => {
-                    decisions.schedule(
-                      {
-                        kind: "reject",
-                        submissionId: submission.id,
-                        revision: submission.version,
-                        ...values,
-                      },
-                      `반려 · ${getRejectionReasonLabel(values.reasonCode)} · ${submission.title}`,
-                    );
-                    select(nextAfter(submission.id));
-                  }}
-                />
-              ) : (
-                <EmptyState
-                  title="모두 처리함"
-                  description="다른 종류의 탭에서 대기 중인 신청을 확인하세요."
-                  className="rounded-block bg-surface ring-1 ring-line"
-                />
-              )}
-            </section>
-          </div>
+                  </div>
+                )}
+              </section>
+
+              <section
+                aria-label="고른 콘텐츠"
+                className={cn(
+                  "flex min-w-0 flex-col gap-5",
+                  !submissionId && "max-lg:hidden",
+                )}
+              >
+                {selectedId && (
+                  <ReviewPanel
+                    submissionId={selectedId}
+                    actionsRef={actionsRef}
+                    openReject={rejectingId === selectedId}
+                    header={
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        asChild
+                        className="mb-2 -ml-2.5 lg:hidden"
+                      >
+                        <Link to={hrefOf(null)}>
+                          <ArrowLeft aria-hidden="true" />
+                          대기열로
+                        </Link>
+                      </Button>
+                    }
+                    onApprove={approve}
+                    onReject={(submission, values) => {
+                      decisions.schedule(
+                        {
+                          kind: "reject",
+                          submissionId: submission.id,
+                          revision: submission.version,
+                          ...values,
+                        },
+                        `반려 · ${getRejectionReasonLabel(values.reasonCode)} · ${submission.title}`,
+                      );
+                      select(nextAfter(submission.id));
+                    }}
+                  />
+                )}
+              </section>
+            </div>
+          )}
         </>
       )}
     </PageState>
+  );
+}
+
+/**
+ * 볼 건이 없을 때의 안내. 다른 종류 탭에 기다리는 건이 있으면 그리로 가는 길을, 정말 다
+ * 처리했으면 홈으로 가는 길을 둔다.
+ */
+function AllClear({
+  kind,
+  elsewhere,
+  onShowAll,
+}: {
+  kind: SubmissionKind | null;
+  /** 지금 탭 밖에서 기다리는 건수 */
+  elsewhere: number;
+  onShowAll: () => void;
+}) {
+  return (
+    <section
+      aria-label="대기열"
+      className="rounded-block bg-surface px-6 py-12 text-center ring-1 ring-line"
+    >
+      <h2 className="text-subhead text-ink">
+        {kind
+          ? `기다리는 ${KIND_INFO[kind].short}가 없어요`
+          : "심사할 콘텐츠가 없어요"}
+      </h2>
+      <p className="mt-1.5 text-label text-ink-muted">
+        {elsewhere > 0
+          ? `다른 종류에 기다리는 신청이 ${elsewhere}건 있어요.`
+          : "새 신청이 들어오면 이곳에 바로 표시돼요."}
+      </p>
+      <div className="mt-4">
+        {elsewhere > 0 ? (
+          <Button size="sm" onClick={onShowAll}>
+            전체 보기
+          </Button>
+        ) : (
+          <Button size="sm" variant="secondary" asChild>
+            <Link to={to.home()}>홈으로</Link>
+          </Button>
+        )}
+      </div>
+    </section>
   );
 }
 

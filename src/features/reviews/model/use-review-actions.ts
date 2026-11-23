@@ -207,12 +207,14 @@ export function useSendDecision() {
         throw normalizeApiError(cause);
       } finally {
         // 성공이면 대기열에서 빠지고, 409면 화면이 본 것이 낡았다. 둘 다 새로 받는다.
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.reviews.all(),
-        });
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.submissions.all(),
-        });
+        // 새 목록이 도착할 때까지 기다린다. 기다리지 않으면 부른 쪽이 숨김을 푸는 순간
+        // 낡은 목록에 결정한 건이 잠깐 되살아난다(심사 화면의 포스터 깜빡임).
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.reviews.all() }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.submissions.all(),
+          }),
+        ]);
       }
     },
     [queryClient, reviews, submissions],
