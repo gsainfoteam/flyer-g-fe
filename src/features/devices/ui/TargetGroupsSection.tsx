@@ -1,3 +1,4 @@
+import { ListVideo, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { TargetGroup } from "@/entities/device/model/types";
@@ -10,6 +11,13 @@ import {
   SectionHeader,
 } from "@/shared/components";
 import { Button } from "@/shared/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
 import { useDeleteTargetGroup } from "../model/use-target-group-mutations";
 import { TargetGroupFormDialog } from "./TargetGroupFormDialog";
 
@@ -164,14 +172,36 @@ function TargetGroupRow({
           {facts.join(" · ")}
         </p>
       </div>
-      <div className="flex shrink-0 gap-2">
-        {onLineup && <Button variant="secondary" size="sm" onClick={onLineup}>편성</Button>}
-        <Button variant="secondary" size="sm" onClick={onEdit}>
-          수정
-        </Button>
-        <Button variant="outline" size="sm" onClick={onDelete}>
-          삭제
-        </Button>
+      <div className="flex shrink-0 items-center gap-2">
+        {/* TV 카드와 같다: 자주 하는 편성만 드러내고 수정·삭제는 더보기에 둔다. */}
+        {onLineup && (
+          <Button variant="secondary" size="sm" onClick={onLineup}>
+            <ListVideo aria-hidden="true" />
+            편성
+          </Button>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`${group.name} 그룹 더보기`}
+            >
+              <MoreHorizontal aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-36">
+            <DropdownMenuItem onSelect={onEdit}>
+              <Pencil aria-hidden="true" />
+              수정
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+              <Trash2 aria-hidden="true" />
+              삭제
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </li>
   );

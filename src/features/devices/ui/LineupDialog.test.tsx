@@ -14,7 +14,7 @@ const setup = async () => {
   });
   const user = userEvent.setup();
   renderRoute("/tv", { role: "SUPER_ADMIN", repositories: repos });
-  await screen.findByRole("heading", { name: /디스플레이 기기/ });
+  await screen.findByRole("heading", { name: /로비 TV \d+대/ });
   await user.click(
     (await screen.findAllByRole("button", { name: "편성" }))[0]!,
   );
