@@ -3,7 +3,6 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { to } from "@/shared/config/routes";
-import { Logo } from "@/shared/components/Logo";
 import { fromSubmissionView } from "@/entities/poster";
 import {
   canSubmitterEdit,
@@ -49,6 +48,7 @@ import { useServerNow } from "@/shared/lib/use-server-now";
 import { Alert, AlertDescription } from "@/shared/ui/alert";
 import { Button } from "@/shared/ui/button";
 import { Spinner } from "@/shared/ui/spinner";
+import { UploadFrame } from "@/widgets/upload/UploadFrame";
 
 /**
  * 게시 신청 (명세 FR-SUB-01 ~ FR-SUB-04).
@@ -56,8 +56,8 @@ import { Spinner } from "@/shared/ui/spinner";
  * 포스터를 올리고 게시 정보를 입력하면 미리보기가 즉시 따라온다. 미리보기는 TV
  * 플레이어와 같은 컴포넌트라 여기서 보이는 것이 실제 결과다.
  *
- * 넓은 화면은 세 칸(포스터 / 미리보기 / 게시 정보)이고, 좁은 화면은 입력 →
- * 미리보기 순으로 쌓인다. 휴대폰으로 바로 신청하는 경우가 많다.
+ * 이벤트 배너·소식 제보와 같은 틀(`UploadFrame`)이다. 왼쪽에 포스터와 게시 정보, 오른쪽에
+ * 미리보기. 휴대폰으로 바로 신청하는 경우가 많아서 좁은 화면에서는 미리보기를 접어 둔다.
  *
  * `?submissionId=`가 있으면 수정 모드다. 저장하면 상태에 따라 이어진다
  * (`API-CHANGES-BACKEND.md` 5.6): 반려·중단은 다시 검토를 요청하고, 검토 대기는 그대로
@@ -257,8 +257,8 @@ export function StudioPage() {
     now: serverNow,
   });
 
-  // 제출이 막히면 첫 문제 칸으로 옮긴다. 제출 버튼은 머리에 있고 오류는 아래에
-  // 있어서, 그대로 두면 무엇이 문제인지 찾아 헤매야 한다.
+  // 제출이 막히면 첫 문제 칸으로 옮긴다. 제출 버튼은 화면 아래에 고정돼 있고 오류 칸은
+  // 위에 있을 수 있어서, 그대로 두면 무엇이 문제인지 찾아 헤매야 한다.
   useEffect(() => {
     if (focusRequest === 0) return;
     const firstInvalid = formRef.current?.querySelector<HTMLElement>(
@@ -343,43 +343,23 @@ export function StudioPage() {
 
   return (
     <>
-      <header className="sticky top-0 z-(--layer-header) flex h-(--layout-header-height) shrink-0 items-center gap-3 border-b border-line bg-surface px-4 sm:gap-4 sm:px-6">
-        <Link to={to.home()} className="flex shrink-0">
-          <Logo size="md" />
-        </Link>
-        <div className="hidden h-7 w-px bg-line sm:block" />
-        <div className="min-w-0">
-          <h1 className="text-heading whitespace-nowrap text-ink">
-            {editingCopy ? "포스터 고치기" : "포스터 올리기"}
-          </h1>
-          <p className="hidden text-caption text-ink-muted sm:block">
-            심사 후 기숙사 로비 TV에 게시
-          </p>
-        </div>
-        <Button
-          size="sm"
-          type="submit"
-          form={FORM_ID}
-          disabled={isBusy || isSubmitted || editBlocked}
-          className="ml-auto shrink-0"
-        >
-          {createSubmission.isSubmitting && <Spinner aria-hidden="true" />}
-          {submitLabel}
-        </Button>
-      </header>
-
-      <form
-        ref={formRef}
-        id={FORM_ID}
-        className="flex flex-col lg:min-h-0 lg:flex-1 lg:flex-row"
+      <UploadFrame
+        kind="POSTER"
+        back={
+          editingId
+            ? { to: to.submissionDetail(editingId), label: "콘텐츠 상세" }
+            : { to: to.home(), label: "홈" }
+        }
+        title={editingCopy ? "포스터 고치기" : "포스터 올리기"}
+        description="심사 후 기숙사 로비 TV에 게시"
+        formId={FORM_ID}
+        formRef={formRef}
         onSubmit={(event) => {
           event.preventDefault();
           handleSubmit();
         }}
-        noValidate
-      >
-        <aside className="order-1 flex flex-col gap-4 border-b border-line bg-surface p-4 lg:h-full lg:w-75 lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-b-0">
-          {editingId && (
+        notice={
+          editingId && (
             <PageState
               isLoading={editing.isPending}
               error={editing.error}
@@ -415,93 +395,96 @@ export function StudioPage() {
                   </Alert>
                 ))}
             </PageState>
-          )}
+          )
+        }
+        submit={
+          <Button
+            type="submit"
+            disabled={isBusy || isSubmitted || editBlocked}
+          >
+            {createSubmission.isSubmitting && <Spinner aria-hidden="true" />}
+            {submitLabel}
+          </Button>
+        }
+        preview={
+          <DisplayPreview
+            poster={previewPoster}
+            companions={companions}
+            serverTime={serverNow}
+          />
+        }
+      >
+        {summary && (
+          <div ref={summaryRef} tabIndex={-1} className="outline-none">
+            <Alert variant="destructive">
+              <AlertTriangle aria-hidden="true" />
+              <AlertDescription>{summary}</AlertDescription>
+            </Alert>
+          </div>
+        )}
 
+        <section aria-labelledby="poster-media" className="space-y-2">
           <div>
-            <h2 className="text-label text-ink">포스터</h2>
-            <p className="mt-0.5 mb-2 text-caption text-ink-muted">
+            <h2 id="poster-media" className="text-subhead text-ink">
+              포스터
+            </h2>
+            <p className="mt-0.5 text-caption text-ink-muted">
               {editingSubmission && !upload.state.previewUrl
                 ? "기존 포스터 유지 또는 새 파일로 교체"
                 : uploadLimits?.acceptsVideo
                   ? "세로 포스터·정사각형 사진·가로 배너·짧은 영상 업로드 가능"
                   : "세로 포스터·정사각형 사진·가로 배너 업로드 가능"}
             </p>
-            {editingSubmission?.posterUrl && !upload.state.previewUrl && (
-              <div className="mb-3 overflow-hidden rounded-control ring-1 ring-line">
-                <div className="aspect-3/4 w-full bg-surface-muted">
-                  <img
-                    src={editingSubmission.posterUrl}
-                    alt="현재 포스터"
-                    className="h-full w-full object-contain"
-                  />
-                </div>
-                <p className="bg-surface px-2.5 py-1.5 text-caption text-ink-muted">
-                  현재 포스터
-                </p>
-              </div>
-            )}
-            <PosterDropzone
-              state={upload.state}
-              onSelectFile={(file) => {
-                markChanged();
-                void upload.selectFile(file);
-              }}
-              onRetry={upload.retry}
-              onClear={() => {
-                markChanged();
-                upload.clear();
-              }}
-              error={showErrors ? errors.asset : null}
-              limits={uploadLimits}
-            />
           </div>
-        </aside>
+          {editingSubmission?.posterUrl && !upload.state.previewUrl && (
+            <div className="flex items-center gap-3 rounded-control bg-surface-muted p-2">
+              <img
+                src={editingSubmission.posterUrl}
+                alt="현재 포스터"
+                className="h-16 w-12 rounded-md bg-surface object-contain"
+              />
+              <span className="text-caption text-ink-muted">현재 포스터</span>
+            </div>
+          )}
+          <PosterDropzone
+            state={upload.state}
+            onSelectFile={(file) => {
+              markChanged();
+              void upload.selectFile(file);
+            }}
+            onRetry={upload.retry}
+            onClear={() => {
+              markChanged();
+              upload.clear();
+            }}
+            error={showErrors ? errors.asset : null}
+            limits={uploadLimits}
+          />
+        </section>
 
-        <aside className="order-2 flex flex-col border-b border-line bg-surface lg:order-3 lg:h-full lg:w-75 lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-l">
-          <div className="border-b border-line px-4 py-3.5">
-            <h2 className="text-heading text-ink">게시 정보</h2>
+        <section
+          aria-labelledby="poster-info"
+          className="space-y-4 border-t border-line pt-6"
+        >
+          <div>
+            <h2 id="poster-info" className="text-subhead text-ink">
+              게시 정보
+            </h2>
             <p className="mt-0.5 text-caption text-ink-muted">
-              제목·카테고리·게시 기간 설정
+              제목·카테고리·게시 기간
             </p>
           </div>
-
-          <div className="space-y-4 p-4">
-            {summary && (
-              <div ref={summaryRef} tabIndex={-1} className="outline-none">
-                <Alert variant="destructive">
-                  <AlertTriangle aria-hidden="true" />
-                  <AlertDescription>{summary}</AlertDescription>
-                </Alert>
-              </div>
-            )}
-
-            <SubmissionForm
-              draft={draft}
-              errors={errors}
-              showErrors={showErrors}
-              categories={categories.data ?? []}
-              config={config.data ?? null}
-              disabled={createSubmission.isSubmitting}
-              onChange={patchDraft}
-            />
-          </div>
-        </aside>
-
-        <main className="order-3 flex min-w-0 flex-col bg-canvas lg:order-2 lg:flex-1">
-          <div className="border-b border-line bg-surface/60 px-4 py-3 backdrop-blur">
-            <p className="text-center text-caption text-ink-muted">
-              TV 표시 미리보기 · 입력하는 대로 바로 반영됩니다
-            </p>
-          </div>
-          <div className="flex flex-1 items-center justify-center p-4 sm:p-6 lg:overflow-y-auto">
-            <DisplayPreview
-              poster={previewPoster}
-              companions={companions}
-              serverTime={serverNow}
-            />
-          </div>
-        </main>
-      </form>
+          <SubmissionForm
+            draft={draft}
+            errors={errors}
+            showErrors={showErrors}
+            categories={categories.data ?? []}
+            config={config.data ?? null}
+            disabled={createSubmission.isSubmitting}
+            onChange={patchDraft}
+          />
+        </section>
+      </UploadFrame>
 
       <SubmitSuccessDialog
         submission={submitted?.submission ?? null}

@@ -130,7 +130,7 @@ describe("게시 신청 스튜디오", () => {
     await user.type(screen.getByRole("textbox", { name: /주최/ }), "페이드인");
     await user.type(screen.getByRole("textbox", { name: /장소/ }), "대강당");
 
-    const preview = screen.getByRole("main");
+    const preview = screen.getByRole("region", { name: "TV 미리보기" });
     // 미리보기는 그림(role="img")이라 안쪽 제목은 보조기기에서 숨겨져 있다.
     expect(
       await within(preview).findByRole("heading", {
@@ -146,7 +146,7 @@ describe("게시 신청 스튜디오", () => {
   it("카테고리는 서버 목록에서 고르고 미리보기가 따라온다", async () => {
     const user = userEvent.setup();
     await openStudio();
-    const preview = screen.getByRole("main");
+    const preview = screen.getByRole("region", { name: "TV 미리보기" });
 
     await chooseCategory(user, "행사");
 
