@@ -1,5 +1,6 @@
 import { useDevices } from "@/entities/device/api/queries";
 import type { DecisionRecord } from "@/entities/review/model/types";
+import type { SubmissionKind } from "@/entities/submission/model/kind";
 import type {
   SubmissionStatus,
   SubmissionView,
@@ -10,12 +11,11 @@ import {
   useSubmissionViews,
 } from "@/features/submissions/api/queries";
 import { seoulDayDiff } from "@/shared/lib/datetime";
-import type { QueueNumbers } from "./QueueHero";
 
 /**
  * 하우스 관리자·운영자 홈이 함께 쓰는 데이터. (기획 4-0)
  *
- * 게시 중·예정 목록은 한 번만 받아 "오늘 TV에서"와 TV별 포스터 수가 나눠 쓴다.
+ * 게시 중·예정 목록은 한 번만 받아 "오늘 TV"와 TV별 포스터 수가 나눠 쓴다.
  * 게시판에 한 번에 걸리는 컨텐츠는 수십 건을 넘지 않는다.
  */
 const BOARD_STATUSES: readonly SubmissionStatus[] = [
@@ -24,7 +24,19 @@ const BOARD_STATUSES: readonly SubmissionStatus[] = [
   "APPROVED",
 ];
 const BOARD_LIMIT = 100;
-export const QUEUE_LIMIT = 5;
+/** 다음 차례 한 건 + 그다음 다섯 건 */
+export const QUEUE_LIMIT = 6;
+/** 24시간을 넘기면 오래 기다린 것으로 짚는다. */
+export const LONG_WAIT_MS = 24 * 60 * 60 * 1000;
+
+/** 심사 대기 수와 종류 구성 */
+export interface QueueNumbers {
+  total: number;
+  byKind: Record<SubmissionKind, number>;
+  /** 가장 오래 기다린 건이 낸 시각. 대기가 없으면 null */
+  oldestSubmittedAt: Date | null;
+  now: Date;
+}
 /** 오늘·이번 주 처리 수를 세려고 받는 최근 결정 수 */
 const DECISION_LIMIT = 50;
 

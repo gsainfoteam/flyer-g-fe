@@ -1,4 +1,10 @@
-import { CircleCheck, MonitorPlay, PenLine, ShieldCheck } from "lucide-react";
+import {
+  ChevronRight,
+  CircleCheck,
+  MonitorPlay,
+  PenLine,
+  ShieldCheck,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
@@ -8,37 +14,30 @@ import {
   indexImpressions,
 } from "@/entities/impression/model/types";
 import type { ImpressionStatsItem } from "@/entities/impression/model/types";
-import {
-  KIND_INFO,
-  fixActionOf,
-  formatPeriod,
-  getUserStatus,
-} from "@/entities/submission";
+import { KIND_INFO, fixActionOf, getUserStatus } from "@/entities/submission";
 import type {
   SubmissionStatus,
   SubmissionView,
 } from "@/entities/submission/model/types";
-import { USER_STATUS_TEXT } from "@/entities/submission/ui/user-status-style";
-import { SubmissionThumb } from "@/entities/submission/ui/SubmissionThumb";
-import { useSessionUser } from "@/features/auth/model/auth-context";
 import {
   useSubmissionSummary,
   useSubmissionViews,
 } from "@/features/submissions/api/queries";
-import { HeroPanel, IconTile, PageState } from "@/shared/components";
+import { IconTile, PageState } from "@/shared/components";
 import { to } from "@/shared/config/routes";
 import { cn } from "@/shared/lib/utils";
 import { ActivityFeed } from "./ActivityFeed";
 import { RecentStories } from "./RecentStories";
-import { UploadChoicesLarge, UploadChoicesStrip } from "./UploadChoices";
+import { UploadChoices } from "./UploadChoices";
 
 /**
- * 사용자 홈 (기획 4-0, 4-1).
+ * 사용자 홈 (기획 4-0, 4-1). 게시자가 홈에 오는 이유는 "무엇을 올릴까"라서 올리기
+ * 세 종류가 주인공이다. 하우스 관리자 홈(다음 차례)·운영자 홈(TV 화면)과 같은 틀에서
+ * 맨 위 칸만 역할의 일로 바뀐다.
  *
- * - 처음(올린 것 0건): "무엇을 TV에 띄워 볼까요?" 세 종류를 크게, 진행 순서 4단계.
- *   빈 "내 컨텐츠" 칸은 그리지 않는다.
- * - 다시 온 사람: 반려·중단된 것이 있으면 맨 위 어두운 카드("고칠 콘텐츠"), 올리기 세
- *   종류는 한 줄, 내 컨텐츠 진행 상황, 옆 칸에 최근 소식과 지금 TV의 제보.
+ * - 처음(올린 것 0건): 올리기 세 종류와 게시 절차. 빈 "내 컨텐츠" 칸은 그리지 않는다.
+ * - 다시 온 사람: 반려·중단된 것이 있으면 올리기 위에 한 줄 알림, 그 아래 올리기 세 종류,
+ *   내 컨텐츠 한 줄 표(고칠 것이 맨 위), 옆 칸에 최근 소식과 지금 TV의 제보.
  */
 const ACTIVE: readonly SubmissionStatus[] = [
   "REJECTED",
@@ -50,11 +49,13 @@ const ACTIVE: readonly SubmissionStatus[] = [
 ];
 const PAST: readonly SubmissionStatus[] = ["ENDED", "CANCELED"];
 const ACTIVE_LIMIT = 10;
-const SHOWN = 4;
+const SHOWN = 6;
 const IMPRESSION_DAYS = 365;
 
-/** 걸려 있는 것 → 걸릴 것 → 심사 중인 것. 고칠 것은 위 카드에 따로 모은다. */
+/** 고칠 것 → 걸려 있는 것 → 걸릴 것 → 심사 중인 것 */
 const ORDER: Partial<Record<SubmissionStatus, number>> = {
+  REJECTED: 0,
+  SUSPENDED: 0,
   PUBLISHED: 1,
   SCHEDULED: 2,
   APPROVED: 2,
@@ -103,47 +104,52 @@ export function UserHome() {
   );
 }
 
+function PageTitle() {
+  return (
+    <div>
+      <h1 className="text-[22px] leading-tight font-extrabold tracking-[-0.03em] text-ink">
+        무엇을 TV에 올릴까요?
+      </h1>
+      <p className="mt-1 text-label text-ink-muted">
+        심사 후 기숙사 로비 TV에 게시
+      </p>
+    </div>
+  );
+}
+
 function FirstVisit() {
-  const user = useSessionUser();
   return (
     <>
-      <div>
-        <p className="text-body font-bold text-accent">
-          {user.displayName}님의 콘텐츠
-        </p>
-        <h1 className="mt-1 text-[2rem] leading-tight font-black tracking-[-0.04em] text-ink sm:text-[2.25rem]">
-          콘텐츠 올리기
-        </h1>
-      </div>
-      <UploadChoicesLarge />
-      <div className="flex flex-wrap items-stretch gap-5">
-        <section
-          aria-labelledby="first-flow"
-          className="min-w-0 flex-[1.2_1_440px] rounded-block bg-surface px-7 pt-7 pb-6 ring-1 ring-line"
-        >
-          <h2 id="first-flow" className="text-heading text-ink">
-            게시 절차
-          </h2>
-          <ol className="relative mt-5">
-            <span
-              aria-hidden="true"
-              className="absolute top-5 bottom-6 left-[19px] w-0.5 bg-line"
-            />
-            <Step icon={PenLine} title="올리기">
-              콘텐츠를 작성한 뒤 심사를 요청합니다.
-            </Step>
-            <Step icon={ShieldCheck} title="하우스 관리자 심사">
-              심사 결과와 반려 사유는 상세 화면에서 확인할 수 있습니다. 반려된 제보는 새로 작성해야 합니다.
-            </Step>
-            <Step icon={MonitorPlay} title="TV에 게시">
-              게시 기간 동안 TV에 순환 표시됩니다. 노출 횟수는 내 콘텐츠에서 확인할 수 있습니다.
-            </Step>
-            <Step icon={CircleCheck} title="게시 종료" last>
-              게시 기간이 끝나면 자동 종료됩니다.
-            </Step>
-          </ol>
-        </section>
-      </div>
+      <PageTitle />
+      <UploadChoices />
+      <section
+        aria-labelledby="first-flow"
+        className="rounded-card bg-surface px-6 pt-5 pb-5 ring-1 ring-line sm:px-7"
+      >
+        <h2 id="first-flow" className="text-subhead text-ink">
+          게시 절차
+        </h2>
+        <ol className="relative mt-4">
+          <span
+            aria-hidden="true"
+            className="absolute top-5 bottom-6 left-[19px] w-0.5 bg-line"
+          />
+          <Step icon={PenLine} title="올리기">
+            콘텐츠를 작성한 뒤 심사를 요청합니다.
+          </Step>
+          <Step icon={ShieldCheck} title="하우스 관리자 심사">
+            심사 결과와 반려 사유는 상세 화면에서 확인할 수 있습니다. 반려된
+            제보는 새로 작성해야 합니다.
+          </Step>
+          <Step icon={MonitorPlay} title="TV에 게시">
+            게시 기간 동안 TV에 순환 표시됩니다. 노출 횟수는 내 콘텐츠에서
+            확인할 수 있습니다.
+          </Step>
+          <Step icon={CircleCheck} title="게시 종료" last>
+            게시 기간이 끝나면 자동 종료됩니다.
+          </Step>
+        </ol>
+      </section>
     </>
   );
 }
@@ -164,7 +170,7 @@ function Step({
       <IconTile
         icon={icon}
         size="md"
-        className="rounded-full bg-accent-100 text-accent-700 ring-2 ring-accent-200"
+        className="rounded-full bg-surface-muted text-ink-muted ring-2 ring-surface"
       />
       <div>
         <b className="text-ink">{title}</b>
@@ -185,69 +191,69 @@ function Returning({
   impressions: Map<string, ImpressionStatsItem>;
   now: Date;
 }) {
-  // 반려·중단 건은 맨 위 "고칠 콘텐츠"에 모으고 아래 목록에서는 뺀다.
-  const returned = active.filter((item) => fixActionOf(item) !== null);
-  const rest = active
-    .filter((item) => fixActionOf(item) === null)
-    .sort((a, b) => (ORDER[a.status] ?? 9) - (ORDER[b.status] ?? 9));
-  const shown = (rest.length > 0 ? rest : past).slice(0, SHOWN);
-  // 화면의 첫 제목(h1)은 지금 할 일이다. 고칠 것이 없으면 올리기가 할 일이다.
-  const UploadHeading = returned.length > 0 ? "h2" : "h1";
+  const ordered = [...active].sort(
+    (a, b) => (ORDER[a.status] ?? 9) - (ORDER[b.status] ?? 9),
+  );
+  const returned = ordered.filter((item) => fixActionOf(item) !== null);
+  const shown = (ordered.length > 0 ? ordered : past).slice(0, SHOWN);
 
   return (
     <>
-      {returned.length > 0 && <FixHero items={returned} now={now} />}
+      <PageTitle />
 
-      <section aria-labelledby="upload" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <UploadHeading
-            id="upload"
-            className={cn(
-              "text-ink",
-              returned.length > 0 ? "text-heading" : "text-title",
-            )}
-          >
-            콘텐츠 올리기
-          </UploadHeading>
-          <p className="text-label text-ink-muted">
-            심사 후 기숙사 로비 TV에 게시
-          </p>
-        </div>
-        <UploadChoicesStrip />
-      </section>
-
-      <div className="flex flex-wrap items-start gap-5">
-        <section
-          aria-labelledby="mine"
-          className="min-w-0 flex-[999_1_560px] rounded-block bg-surface py-2 ring-1 ring-line"
+      {returned.length > 0 && (
+        // 올리기가 주인공이라 고칠 것은 한 줄 알림으로 두고, 고치는 길은 아래 표에 둔다.
+        <a
+          href="#my-contents"
+          className="flex items-center gap-2.5 rounded-control bg-surface px-4 py-3 ring-1 ring-accent-300 transition-colors hover:bg-danger-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
-          <div className="flex items-baseline px-5 pt-3.5 pb-2 sm:px-6">
+          <span
+            aria-hidden="true"
+            className="size-1.75 shrink-0 rounded-full bg-accent"
+          />
+          <b className="shrink-0 text-accent-700">
+            고칠 콘텐츠 {returned.length}건
+          </b>
+          <span className="hidden min-w-0 flex-1 truncate text-ink-muted sm:block">
+            {returned.map((item) => item.title).join(" · ")}
+          </span>
+          <span className="ml-auto inline-flex shrink-0 items-center text-label font-semibold text-accent-700">
+            확인하기
+            <ChevronRight size={15} aria-hidden="true" />
+          </span>
+        </a>
+      )}
+
+      <UploadChoices />
+
+      <div className="mt-2 flex flex-wrap items-start gap-5">
+        <section
+          id="my-contents"
+          aria-labelledby="mine"
+          className="min-w-0 flex-[999_1_560px] scroll-mt-24 overflow-hidden rounded-card bg-surface ring-1 ring-line"
+        >
+          <div className="flex items-center border-b border-line px-5 py-3.5">
             <h2 id="mine" className="text-subhead text-ink">
               내 콘텐츠
             </h2>
             <Link
               to={to.mine()}
-              className="ml-auto text-label font-semibold text-ink hover:underline"
+              className="ml-auto inline-flex items-center text-label text-ink-muted hover:text-ink"
             >
               모두 보기
+              <ChevronRight size={15} aria-hidden="true" />
             </Link>
           </div>
-          {shown.length === 0 ? (
-            <p className="border-t border-surface-muted px-5 py-4 text-label text-ink-muted sm:px-6">
-              고칠 콘텐츠 말고는 진행 중인 것 없음
-            </p>
-          ) : (
-            <ul>
-              {shown.map((item) => (
-                <MineRow
-                  key={item.id}
-                  item={item}
-                  impressions={impressions.get(item.id)}
-                  now={now}
-                />
-              ))}
-            </ul>
-          )}
+          <ul>
+            {shown.map((item) => (
+              <MineRow
+                key={item.id}
+                item={item}
+                impressions={impressions.get(item.id)}
+                now={now}
+              />
+            ))}
+          </ul>
         </section>
 
         <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-5">
@@ -259,74 +265,10 @@ function Returning({
   );
 }
 
-const FIX_SHOWN = 3;
-
 /**
- * 반려·게시 중단된 콘텐츠. 다시 온 사람이 가장 먼저 해야 할 일이라 홈 맨 위의 어두운
- * 카드에 둔다. 사유는 상세에만 있어서 줄마다 사유로 가는 길과 고치러 가는 길을 함께 둔다.
+ * 내 콘텐츠 한 줄. 상태는 색을 아껴 쓴다: 고칠 것만 빨강, 게시 중은 초록 점, 나머지는
+ * 회색 글. 오른쪽 칸은 고칠 것이면 고치러 가는 길, 아니면 짧은 진행 정보다.
  */
-function FixHero({ items, now }: { items: SubmissionView[]; now: Date }) {
-  const shown = items.slice(0, FIX_SHOWN);
-  const more = items.length - shown.length;
-  return (
-    <HeroPanel labelledBy="fix-title">
-      <h1 id="fix-title" className="flex items-baseline gap-2 text-heading">
-        고칠 콘텐츠
-        <span className="font-black text-accent-300 tabular-nums">
-          {items.length}건
-        </span>
-      </h1>
-      <p className="mt-1 text-label text-hero-muted">
-        반려·게시 중단 · 사유 확인 후 다시 제출 가능
-      </p>
-      <ul className="mt-4 flex flex-col gap-2">
-        {shown.map((item) => {
-          const fix = fixActionOf(item)!;
-          const status = getUserStatus(item, now);
-          return (
-            <li
-              key={item.id}
-              className="flex flex-wrap items-center gap-3 rounded-card bg-hero-raised p-3"
-            >
-              <SubmissionThumb submission={item} />
-              <div className="min-w-0 flex-1 basis-40">
-                <p className="text-caption text-hero-muted">
-                  {KIND_INFO[item.type].name} ·{" "}
-                  <b className="font-bold text-accent-300">{status.label}</b>
-                  {" · "}
-                  <Link
-                    to={to.submissionDetail(item.id)}
-                    className="font-semibold text-hero-ink underline underline-offset-2 hover:no-underline"
-                  >
-                    사유 보기
-                  </Link>
-                </p>
-                <p className="mt-0.5 line-clamp-2 font-bold text-hero-ink">
-                  {item.title}
-                </p>
-              </div>
-              <Link
-                to={fix.href}
-                className="ml-auto inline-flex h-9 shrink-0 items-center justify-center rounded-tile bg-accent px-3.5 text-label font-extrabold text-accent-on transition-colors hover:bg-accent-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              >
-                {fix.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-      {more > 0 && (
-        <Link
-          to={to.mine()}
-          className="mt-3 inline-block text-label font-semibold text-hero-ink underline underline-offset-2 hover:no-underline"
-        >
-          {more}건 더 · 내 콘텐츠에서 보기
-        </Link>
-      )}
-    </HeroPanel>
-  );
-}
-
 function MineRow({
   item,
   impressions,
@@ -337,29 +279,62 @@ function MineRow({
   now: Date;
 }) {
   const status = getUserStatus(item, now);
+  const fix = fixActionOf(item);
+  const kind = KIND_INFO[item.type].name;
+  const note =
+    impressions && item.status === "PUBLISHED"
+      ? `TV 노출 ${impressions.impressions.toLocaleString("ko-KR")}번`
+      : status.note;
+  const statusLabel = (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5",
+        status.tone === "problem"
+          ? "font-semibold text-accent-700"
+          : status.tone === "live"
+            ? "text-ink"
+            : "text-ink-muted",
+      )}
+    >
+      {status.tone === "live" && (
+        <span aria-hidden="true" className="size-1.5 rounded-full bg-success" />
+      )}
+      {status.label}
+    </span>
+  );
+
   return (
-    <li className="flex items-center gap-4 border-t border-surface-muted px-5 py-3.5 sm:px-6">
-      <SubmissionThumb submission={item} />
+    <li className="flex items-center gap-3 border-t border-surface-muted px-5 py-3 first:border-t-0">
       <div className="min-w-0 flex-1">
-        <p className="text-caption text-ink-subtle">
-          {KIND_INFO[item.type].name} · {formatPeriod(item)}
-        </p>
-        <p className="line-clamp-2 font-bold text-ink">
-          <Link
-            to={to.submissionDetail(item.id)}
-            className="underline-offset-4 hover:underline"
-          >
-            {item.title}
-          </Link>
-        </p>
-        <p className="text-caption text-ink-muted">
-          <span className={cn("font-semibold", USER_STATUS_TEXT[status.tone])}>
-            {status.label}
-          </span>
-          {status.note && ` · ${status.note}`}
-          {impressions && ` · TV 노출 ${impressions.impressions.toLocaleString("ko-KR")}번`}
+        <Link
+          to={to.submissionDetail(item.id)}
+          className="block truncate font-semibold text-ink underline-offset-4 hover:underline"
+        >
+          {item.title}
+        </Link>
+        <p className="text-caption text-ink-subtle sm:hidden">
+          {kind} · {statusLabel}
         </p>
       </div>
+      <span className="hidden w-24 shrink-0 text-label text-ink-muted sm:block">
+        {kind}
+      </span>
+      <span className="hidden w-24 shrink-0 text-label sm:block">
+        {statusLabel}
+      </span>
+      <span className="shrink-0 text-right text-label sm:w-36">
+        {fix ? (
+          <Link
+            to={fix.href}
+            className="inline-flex items-center font-bold text-accent-700 hover:underline"
+          >
+            {fix.label}
+            <ChevronRight size={15} aria-hidden="true" />
+          </Link>
+        ) : (
+          <span className="text-ink-muted">{note}</span>
+        )}
+      </span>
     </li>
   );
 }

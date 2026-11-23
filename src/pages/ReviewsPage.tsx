@@ -23,7 +23,7 @@ import { formatElapsed } from "@/shared/lib/datetime";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Spinner } from "@/shared/ui/spinner";
-import { LONG_WAIT_MS } from "@/widgets/home/OldestQueue";
+import { LONG_WAIT_MS } from "@/widgets/home/use-review-desk";
 
 /**
  * 심사 (기획 4-2, 명세 FR-REV-01 ~ FR-REV-05).
