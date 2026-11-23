@@ -45,9 +45,10 @@ describe("기기 관리", () => {
       within(rows[0]!).getByText(/모아 보기 · 포스터 10초마다 넘김/),
     ).toBeInTheDocument();
     // 자주 하는 편성만 드러내고 나머지는 더보기 메뉴에 둔다.
-    expect(
-      within(rows[0]!).getByRole("button", { name: "편성" }),
-    ).toBeInTheDocument();
+    expect(within(rows[0]!).getByRole("link", { name: "편성" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/tv\/groups\//),
+    );
     expect(
       within(rows[0]!).queryByRole("button", { name: "토큰 재발급" }),
     ).toBeNull();

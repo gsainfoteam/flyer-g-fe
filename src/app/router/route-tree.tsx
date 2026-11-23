@@ -65,6 +65,9 @@ const reviewsPage = lazyPage(() =>
 const devicesPage = lazyPage(() =>
   import("@/pages/DevicesPage").then((m) => ({ default: m.DevicesPage })),
 );
+const lineupPage = lazyPage(() =>
+  import("@/pages/LineupPage").then((m) => ({ default: m.LineupPage })),
+);
 const usersPage = lazyPage(() =>
   import("@/pages/UsersPage").then((m) => ({ default: m.UsersPage })),
 );
@@ -272,6 +275,11 @@ export const routeTree = [
                     path: paths.tv,
                     handle: title("TV"),
                     element: devicesPage,
+                  },
+                  {
+                    path: paths.tvLineup,
+                    handle: title("편성"),
+                    element: lineupPage,
                   },
                   {
                     path: paths.roleSettings,

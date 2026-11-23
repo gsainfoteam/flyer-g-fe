@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import type { ReactNode } from "react";
 import {
   CalendarClock,
@@ -21,7 +22,6 @@ import type { SetupLinkResult } from "@/features/devices/model/setup-link";
 import { useRotateDeviceToken } from "@/features/devices/model/use-device-mutations";
 import { DeviceFormDialog } from "@/features/devices/ui/DeviceFormDialog";
 import { DeviceSetupLinkDialog } from "@/features/devices/ui/DeviceSetupLinkDialog";
-import { LineupDialog } from "@/features/devices/ui/LineupDialog";
 import { TargetGroupsSection } from "@/features/devices/ui/TargetGroupsSection";
 import { TimeSlotsDialog } from "@/features/devices/ui/TimeSlotsDialog";
 import { WidgetSettingsDialog } from "@/features/devices/ui/WidgetSettingsDialog";
@@ -34,6 +34,7 @@ import {
   SectionHeader,
 } from "@/shared/components";
 import { formatSeoulDate, formatTimeAgo } from "@/shared/lib/datetime";
+import { to } from "@/shared/config/routes";
 import { useSubmissionViews } from "@/features/submissions/api/queries";
 import { Button } from "@/shared/ui/button";
 import {
@@ -71,7 +72,6 @@ export function DevicesPage() {
   const [widgetsOf, setWidgetsOf] = useState<DisplayDevice | null>(null);
   const [setupLink, setSetupLink] = useState<SetupLinkResult | null>(null);
   const [editingSlots, setEditingSlots] = useState(false);
-  const [lineupGroup, setLineupGroup] = useState<TargetGroup | null>(null);
 
   const groupList = groups.data ?? [];
 
@@ -131,10 +131,8 @@ export function DevicesPage() {
                     onEdit={() => setEditing(device)}
                     onRotate={() => setRotating(device)}
                     onWidgets={() => setWidgetsOf(device)}
-                    onLineup={
-                      programGroup
-                        ? () => setLineupGroup(programGroup)
-                        : undefined
+                    lineupHref={
+                      programGroup ? to.tvLineup(programGroup.id) : undefined
                     }
                   />
                 );
@@ -143,7 +141,7 @@ export function DevicesPage() {
           )}
 
           <TargetGroupsSection
-            onLineup={setLineupGroup}
+            lineupHrefOf={(group) => to.tvLineup(group.id)}
             groups={groups.data}
             isLoading={groups.isPending}
             error={groups.error}
@@ -152,7 +150,6 @@ export function DevicesPage() {
         </>
       )}
 
-      {lineupGroup && <LineupDialog group={lineupGroup} devices={devices.data?.items ?? []} onClose={() => setLineupGroup(null)} />}
 
       {editingSlots && devices.data && (
         <TimeSlotsDialog
@@ -245,7 +242,7 @@ function DeviceCard({
   onEdit,
   onRotate,
   onWidgets,
-  onLineup,
+  lineupHref,
 }: {
   device: DisplayDevice;
   groups: readonly TargetGroup[];
@@ -254,7 +251,8 @@ function DeviceCard({
   onEdit: () => void;
   onRotate: () => void;
   onWidgets: () => void;
-  onLineup?: () => void;
+  /** 편성 화면 주소. 편성 그룹이 없으면 비운다. */
+  lineupHref?: string;
 }) {
   const lastSeen = device.lastSeenAt
     ? `마지막 연결 ${formatTimeAgo(device.lastSeenAt, serverNow)}`
@@ -304,15 +302,17 @@ function DeviceCard({
         </details>
 
         <div className="mt-auto flex items-center gap-2 pt-3.5">
-          {onLineup ? (
+          {lineupHref ? (
             <Button
               size="sm"
               variant="secondary"
-              onClick={onLineup}
+              asChild
               className="flex-1 bg-ink text-ink-inverse hover:bg-ink/90 active:bg-ink/80"
             >
-              <ListVideo aria-hidden="true" />
-              편성
+              <Link to={lineupHref}>
+                <ListVideo aria-hidden="true" />
+                편성
+              </Link>
             </Button>
           ) : (
             <p className="flex-1 text-caption text-ink-subtle">
