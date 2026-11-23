@@ -1,19 +1,14 @@
-import { Moon, WifiOff } from "lucide-react";
 import { Link } from "react-router";
-import { LAYOUT_LABELS } from "@/entities/playlist/model/rotation";
 import { isRenderStalled, isTargetedTo } from "@/entities/device/model/board";
 import type { DisplayDevice } from "@/entities/device/model/types";
+import { DeviceScreen } from "@/entities/device/ui/DeviceScreen";
 import type { SubmissionView } from "@/entities/submission/model/types";
 import { to } from "@/shared/config/routes";
-import { formatElapsed } from "@/shared/lib/datetime";
 import { cn } from "@/shared/lib/utils";
 
 /**
- * TV 지금 (기획 4-0 운영자). 기기마다 작은 TV 화면을 그린다.
- *
- * 지금 나오는 장면은 heartbeat `now`(배포 ⑦)부터 알 수 있다. 그 전에는 화면 방식과
- * 걸린 포스터 수를 보여 준다. 꺼진 TV는 빨간 화면에 연결 없음 시간을 적는다. 화면 끔
- * 시간의 TV는 정해 둔 대로 쉬는 것이라 꺼짐으로 표시하지 않는다.
+ * TV 지금 (기획 4-0 운영자). 기기마다 작은 TV 화면(`DeviceScreen`)을 그린다. TV 관리
+ * 화면과 같은 모양이다.
  */
 export function DeviceNow({
   devices,
@@ -64,46 +59,7 @@ export function DeviceNow({
             const stalled = isRenderStalled(device, now, posters > 0);
             return (
               <li key={device.id}>
-                <div
-                  className={cn(
-                    "relative flex aspect-video items-center justify-center rounded-tile",
-                    on
-                      ? "bg-stage ring-1 ring-zinc-800 ring-inset"
-                      : sleeping
-                        ? "bg-surface-muted ring-1 ring-line ring-inset"
-                        : "bg-danger-subtle ring-1 ring-accent-300 ring-inset",
-                  )}
-                >
-                  {on ? (
-                    <div className="flex flex-col items-center gap-1.5">
-                      <span className="inline-flex h-5 items-center rounded-pill bg-type-poster-bar px-2 text-overline font-extrabold text-white">
-                        {LAYOUT_LABELS[device.layout.type]}
-                      </span>
-                      <span className="text-label font-extrabold text-hero-ink">
-                        포스터 {posters}장
-                      </span>
-                    </div>
-                  ) : sleeping ? (
-                    <div className="flex flex-col items-center gap-1 text-ink-subtle">
-                      <Moon size={20} aria-hidden="true" />
-                      <span className="text-overline font-normal">화면 끔</span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-1 text-accent-700">
-                      <WifiOff size={20} aria-hidden="true" />
-                      <span className="text-overline font-bold">
-                        {device.lastSeenAt
-                          ? `${formatElapsed(device.lastSeenAt, now)}째 연결 없음`
-                          : "연결 기록 없음"}
-                      </span>
-                    </div>
-                  )}
-                  {stalled && (
-                    <span className="absolute top-2 left-2 inline-flex h-5 items-center rounded-pill bg-accent px-1.75 text-overline font-extrabold text-accent-on">
-                      재생 멈춤
-                    </span>
-                  )}
-                </div>
+                <DeviceScreen device={device} posters={posters} now={now} />
                 <p className="mt-2 flex items-center gap-1.5 text-label font-bold text-ink">
                   <span
                     aria-hidden="true"

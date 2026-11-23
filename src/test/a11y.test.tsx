@@ -84,7 +84,7 @@ describe("접근성 자동 검사", () => {
 
   it("기기 관리", async () => {
     const { container } = renderRoute("/tv", { role: "SUPER_ADMIN" });
-    await screen.findByRole("heading", { name: /디스플레이 기기/ });
+    await screen.findByRole("heading", { name: /로비 TV \d+대/ });
     await expectNoViolations(container);
   });
 

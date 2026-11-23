@@ -31,24 +31,35 @@ describe("기기 관리", () => {
     renderRoute("/tv", { role: "SUPER_ADMIN" });
 
     expect(
-      await screen.findByRole("heading", { name: "디스플레이 기기 2대" }),
+      await screen.findByRole("heading", { name: "로비 TV 2대" }),
     ).toBeInTheDocument();
+    // TV마다 카드 하나. 이름이 카드 제목이고, 설정 값은 접힌 세부 정보에 있다.
     const rows = screen
       .getAllByRole("listitem")
-      .filter((row) =>
-        within(row).queryByRole("button", { name: "토큰 재발급" }),
-      );
+      .filter((row) => within(row).queryByRole("heading", { level: 2 }));
     expect(rows).toHaveLength(2);
-    expect(within(rows[0]!).getByText("A동 로비")).toBeInTheDocument();
+    expect(
+      within(rows[0]!).getByRole("heading", { name: "A동 로비" }),
+    ).toBeInTheDocument();
     expect(
       within(rows[0]!).getByText(/모아 보기 · 포스터 10초마다 넘김/),
+    ).toBeInTheDocument();
+    // 자주 하는 편성만 드러내고 나머지는 더보기 메뉴에 둔다.
+    expect(
+      within(rows[0]!).getByRole("button", { name: "편성" }),
+    ).toBeInTheDocument();
+    expect(
+      within(rows[0]!).queryByRole("button", { name: "토큰 재발급" }),
+    ).toBeNull();
+    expect(
+      within(rows[0]!).getByRole("button", { name: "A동 로비 더보기" }),
     ).toBeInTheDocument();
   });
 
   it("기기를 등록하면 TV 설정 링크를 한 번 보여준다", async () => {
     const user = userEvent.setup();
     renderRoute("/tv", { role: "SUPER_ADMIN" });
-    await screen.findByRole("heading", { name: /디스플레이 기기/ });
+    await screen.findByRole("heading", { name: /로비 TV \d+대/ });
 
     await user.click(screen.getByRole("button", { name: "기기 등록" }));
     const form = await screen.findByRole("dialog");
@@ -78,7 +89,7 @@ describe("기기 관리", () => {
     await user.click(within(setup).getByRole("button", { name: "완료" }));
     await waitFor(() =>
       expect(
-        screen.getByRole("heading", { name: "디스플레이 기기 3대" }),
+        screen.getByRole("heading", { name: "로비 TV 3대" }),
       ).toBeInTheDocument(),
     );
   });
@@ -86,10 +97,11 @@ describe("기기 관리", () => {
   it("토큰을 재발급하면 새 설정 링크를 보여준다", async () => {
     const user = userEvent.setup();
     renderRoute("/tv", { role: "SUPER_ADMIN" });
-    await screen.findByRole("heading", { name: /디스플레이 기기/ });
+    await screen.findByRole("heading", { name: /로비 TV \d+대/ });
 
+    await user.click(screen.getByRole("button", { name: "A동 로비 더보기" }));
     await user.click(
-      screen.getAllByRole("button", { name: "토큰 재발급" })[0]!,
+      await screen.findByRole("menuitem", { name: "토큰 재발급" }),
     );
     const confirm = await screen.findByRole("dialog");
     expect(
@@ -102,6 +114,20 @@ describe("기기 관리", () => {
         name: "A동 로비 토큰 재발급 완료",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("위치 그룹의 수정·삭제는 더보기 메뉴에 있다", async () => {
+    const user = userEvent.setup();
+    renderRoute("/tv", { role: "SUPER_ADMIN" });
+    await screen.findByRole("heading", { name: /로비 TV \d+대/ });
+
+    await user.click(
+      await screen.findByRole("button", { name: "학사기숙사 A동 그룹 더보기" }),
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: "수정" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "삭제" })).toBeInTheDocument();
   });
 
   it("화면 끔 시간의 TV는 오프라인이 아니라 화면 끔으로 표시한다", async () => {
@@ -118,14 +144,15 @@ describe("기기 관리", () => {
     });
     renderRoute("/tv", { role: "SUPER_ADMIN", repositories });
 
-    expect(await screen.findByText("화면 끔")).toBeInTheDocument();
+    // 상태 표시와 TV 화면 둘 다 화면 끔이다.
+    expect((await screen.findAllByText("화면 끔")).length).toBeGreaterThan(0);
     expect(screen.queryByText("오프라인")).toBeNull();
   });
 
   it("등록 폼은 위치 그룹을 받고, 화면 설정은 그룹 편성을 따른다", async () => {
     const user = userEvent.setup();
     renderRoute("/tv", { role: "SUPER_ADMIN" });
-    await screen.findByRole("heading", { name: /디스플레이 기기/ });
+    await screen.findByRole("heading", { name: /로비 TV \d+대/ });
 
     await user.click(screen.getByRole("button", { name: "기기 등록" }));
     const form = await screen.findByRole("dialog");
@@ -152,7 +179,7 @@ describe("기기 관리", () => {
       name: "학사기숙사 C동",
     });
     renderRoute("/tv", { role: "SUPER_ADMIN", repositories });
-    await screen.findByRole("heading", { name: /디스플레이 기기/ });
+    await screen.findByRole("heading", { name: /로비 TV \d+대/ });
 
     await user.click(screen.getByRole("button", { name: "기기 등록" }));
     const form = await screen.findByRole("dialog");
