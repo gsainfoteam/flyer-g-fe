@@ -7,21 +7,24 @@ import { renderRoute } from "@/test/render-route";
  * (Phase 00 인수 조건 "App.tsx가 도메인 fixture와 비즈니스 계산을 직접 소유하지 않는다")
  */
 describe("첫 화면", () => {
-  it("주입한 repository의 심사 대기 건수를 가장 크게 보여준다", async () => {
+  it("주입한 repository의 심사 대기 건수를 제목으로 보여준다", async () => {
     renderRoute("/", { role: "REVIEWER" });
 
     // fixture의 승인 대기: 기자단 모집, 하우스오피스 공지, 가을 전시
-    const hero = (
-      await screen.findByRole("heading", { name: "심사 대기", level: 1 })
-    ).closest("section")!;
-    expect(within(hero).getByText("3", { selector: "p" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "심사 대기 3건", level: 1 }),
+    ).toBeInTheDocument();
   });
 
   it("홈에서 바로 승인하지 않고 심사 화면으로 보낸다", async () => {
     renderRoute("/", { role: "REVIEWER" });
-    const queue = (
-      await screen.findByRole("heading", { name: "오래 기다린 순" })
-    ).closest("section")!;
+    // 다음 차례 한 건은 그 건의 심사 화면으로 간다.
+    expect(
+      await screen.findByRole("link", { name: /심사 시작/ }),
+    ).toHaveAttribute("href", expect.stringMatching(/^\/review\//));
+    const queue = screen
+      .getByRole("heading", { name: "그다음" })
+      .closest("section")!;
 
     // 근거 없이 누르는 원클릭 승인 버튼은 두지 않는다. (명세 FR-REV-02)
     expect(
@@ -37,19 +40,19 @@ describe("첫 화면", () => {
   it("역할에 따라 첫 화면이 달라진다", async () => {
     const reviewer = renderRoute("/", { role: "REVIEWER" });
     expect(
-      await screen.findByRole("heading", { name: "심사 대기", level: 1 }),
+      await screen.findByRole("heading", { name: /^심사 대기/, level: 1 }),
     ).toBeInTheDocument();
     reviewer.unmount();
 
     const operator = renderRoute("/", { role: "SUPER_ADMIN" });
     expect(
-      await screen.findByRole("heading", { name: /확인할 것/ }),
+      await screen.findByRole("heading", { name: /^로비 TV \d+대$/, level: 1 }),
     ).toBeInTheDocument();
     operator.unmount();
 
     renderRoute("/", { role: "SUBMITTER" });
     expect(
-      await screen.findByRole("heading", { name: "콘텐츠 등록" }),
+      await screen.findByRole("heading", { name: "무엇을 TV에 올릴까요?" }),
     ).toBeInTheDocument();
   });
 

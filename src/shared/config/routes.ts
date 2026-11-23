@@ -16,6 +16,8 @@ export const paths = {
   review: "/review",
   reviewDetail: "/review/:submissionId",
   tv: "/tv",
+  /** 위치 그룹 하나의 편성 화면 */
+  tvLineup: "/tv/groups/:groupId",
   roleSettings: "/settings/roles",
   display: "/display/:deviceId",
   /** 폰 참여 화면. 로그인 없이 TV의 QR로 들어온다. */
@@ -77,6 +79,7 @@ export const to = {
   reviewDetail: (submissionId: string) =>
     `/review/${encodeURIComponent(submissionId)}`,
   tv: () => "/tv",
+  tvLineup: (groupId: string) => `/tv/groups/${encodeURIComponent(groupId)}`,
   roleSettings: () => "/settings/roles",
   display: (deviceId: string, options?: { preview?: boolean }) =>
     `/display/${encodeURIComponent(deviceId)}${options?.preview ? "?preview=1" : ""}`,

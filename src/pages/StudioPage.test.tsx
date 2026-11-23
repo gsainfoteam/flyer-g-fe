@@ -130,7 +130,7 @@ describe("게시 신청 스튜디오", () => {
     await user.type(screen.getByRole("textbox", { name: /주최/ }), "페이드인");
     await user.type(screen.getByRole("textbox", { name: /장소/ }), "대강당");
 
-    const preview = screen.getByRole("main");
+    const preview = screen.getByRole("region", { name: "TV 미리보기" });
     // 미리보기는 그림(role="img")이라 안쪽 제목은 보조기기에서 숨겨져 있다.
     expect(
       await within(preview).findByRole("heading", {
@@ -146,7 +146,7 @@ describe("게시 신청 스튜디오", () => {
   it("카테고리는 서버 목록에서 고르고 미리보기가 따라온다", async () => {
     const user = userEvent.setup();
     await openStudio();
-    const preview = screen.getByRole("main");
+    const preview = screen.getByRole("region", { name: "TV 미리보기" });
 
     await chooseCategory(user, "행사");
 
@@ -185,7 +185,7 @@ describe("게시 신청 스튜디오", () => {
     await openStudio(repositories);
     await fillForm(user);
 
-    await user.click(screen.getByRole("button", { name: "제출하기" }));
+    await user.click(screen.getByRole("button", { name: "심사 요청" }));
 
     expect(await screen.findByText(/포스터 이미지를 업로드/)).toBeInTheDocument();
     expect(createSpy).not.toHaveBeenCalled();
@@ -201,7 +201,7 @@ describe("게시 신청 스튜디오", () => {
     await user.type(link, "https://evil.example.com/notice/1");
     await uploadPoster(user);
 
-    await user.click(screen.getByRole("button", { name: "제출하기" }));
+    await user.click(screen.getByRole("button", { name: "심사 요청" }));
 
     expect(
       await screen.findByText(/ziggle.gistory.me의 https 주소만/),
@@ -217,7 +217,7 @@ describe("게시 신청 스튜디오", () => {
     await user.type(screen.getByRole("textbox", { name: /주최/ }), "페이드인");
     await uploadPoster(user);
 
-    await user.click(screen.getByRole("button", { name: "제출하기" }));
+    await user.click(screen.getByRole("button", { name: "심사 요청" }));
 
     expect(await screen.findByText("신청 접수 완료")).toBeInTheDocument();
     // 생성과 제출이 한 번이다. 재검토 요청을 따로 보내지 않는다.
@@ -247,7 +247,7 @@ describe("게시 신청 스튜디오", () => {
     await chooseCategory(user, "공연");
     await uploadPoster(user);
 
-    await user.click(screen.getByRole("button", { name: "제출하기" }));
+    await user.click(screen.getByRole("button", { name: "심사 요청" }));
 
     expect(await screen.findByText("신청 접수 완료")).toBeInTheDocument();
     expect(createSpy).toHaveBeenCalledWith(
@@ -263,7 +263,7 @@ describe("게시 신청 스튜디오", () => {
     await fillForm(user);
     await uploadPoster(user);
 
-    await user.dblClick(screen.getByRole("button", { name: "제출하기" }));
+    await user.dblClick(screen.getByRole("button", { name: "심사 요청" }));
 
     expect(await screen.findByText("신청 접수 완료")).toBeInTheDocument();
     const page = await repositories.submissions.list({
@@ -293,7 +293,7 @@ describe("게시 신청 스튜디오", () => {
     await fillForm(user);
     await uploadPoster(user);
 
-    await user.click(screen.getByRole("button", { name: "제출하기" }));
+    await user.click(screen.getByRole("button", { name: "심사 요청" }));
 
     expect(
       await screen.findByText("이 공지로 이미 신청한 게시물이 있습니다."),
@@ -352,7 +352,7 @@ describe("게시 신청 스튜디오", () => {
     await fillForm(user);
     await uploadPoster(user);
 
-    const submit = screen.getByRole("button", { name: "제출하기" });
+    const submit = screen.getByRole("button", { name: "심사 요청" });
     submit.focus();
     await user.keyboard("{Enter}");
 
@@ -379,7 +379,7 @@ describe("게시 신청 스튜디오", () => {
       await screen.findByText(/파일 내용이 이미지 형식과 일치하지/),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "제출하기" }));
+    await user.click(screen.getByRole("button", { name: "심사 요청" }));
     expect(createSpy).not.toHaveBeenCalled();
   });
 
@@ -387,7 +387,7 @@ describe("게시 신청 스튜디오", () => {
     const user = userEvent.setup();
     await openStudio();
 
-    await user.click(screen.getByRole("button", { name: "제출하기" }));
+    await user.click(screen.getByRole("button", { name: "심사 요청" }));
 
     // 포스터가 없다. 화면에서 가장 먼저 나오는 문제 칸은 포스터 입력이다.
     await waitFor(() =>
@@ -413,7 +413,7 @@ describe("게시 신청 스튜디오", () => {
     await fillForm(user);
     await uploadPoster(user);
 
-    await user.click(screen.getByRole("button", { name: "제출하기" }));
+    await user.click(screen.getByRole("button", { name: "심사 요청" }));
 
     expect(
       await screen.findByText("포스터 파일이 손상되었어요."),
@@ -445,7 +445,7 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
     await user.clear(title);
     await user.type(title, "슈퍼-피셜 겨울 모집");
 
-    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
+    await user.click(screen.getByRole("button", { name: "고쳐서 다시 내기" }));
 
     expect(await screen.findByText("재신청 완료")).toBeInTheDocument();
     expect(createSpy).not.toHaveBeenCalled();
@@ -606,7 +606,7 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
     expect(
       await screen.findByText(/현재 상태에서는 수정할 수 없습니다/),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "제출하기" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "심사 요청" })).toBeDisabled();
   });
 
   it("재검토 요청만 실패하면 다시 눌러도 저장을 반복하지 않고 자기 저장과 충돌하지 않는다", async () => {
@@ -616,10 +616,10 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
     openEdit("notice-901", repositories);
     await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
 
-    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
+    await user.click(screen.getByRole("button", { name: "고쳐서 다시 내기" }));
     await waitFor(() => expect(submitSpy).toHaveBeenCalledTimes(1));
 
-    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
+    await user.click(screen.getByRole("button", { name: "고쳐서 다시 내기" }));
 
     expect(await screen.findByText("재신청 완료")).toBeInTheDocument();
     expect(updateSpy).toHaveBeenCalledTimes(1);
@@ -640,12 +640,12 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
     const location = screen.getByDisplayValue("학생회관 305호");
     await user.clear(location);
     await user.type(location, "학생회관 2층");
-    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
+    await user.click(screen.getByRole("button", { name: "고쳐서 다시 내기" }));
     await waitFor(() => expect(submitSpy).toHaveBeenCalledTimes(1));
 
     await user.clear(title);
     await user.type(title, "슈퍼-피셜 겨울 모집");
-    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
+    await user.click(screen.getByRole("button", { name: "고쳐서 다시 내기" }));
 
     expect(await screen.findByText("재신청 완료")).toBeInTheDocument();
     expect(updateSpy).toHaveBeenLastCalledWith(
@@ -676,7 +676,7 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
     await user.upload(input!, posterFile());
     await screen.findByRole("button", { name: "다시 시도" });
 
-    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
+    await user.click(screen.getByRole("button", { name: "고쳐서 다시 내기" }));
 
     expect(await screen.findByText(/입력을 확인하세요/)).toBeInTheDocument();
     expect(updateSpy).not.toHaveBeenCalled();
@@ -688,7 +688,7 @@ describe("수정 모드 (명세 FR-DASH-02, `API-CHANGES-BACKEND.md` 5.6)", () =
     const { router } = openEdit("notice-901");
     await screen.findByDisplayValue("슈퍼-피셜 신입 부원 모집");
 
-    await user.click(screen.getByRole("button", { name: "다시 신청하기" }));
+    await user.click(screen.getByRole("button", { name: "고쳐서 다시 내기" }));
     await screen.findByText("재신청 완료");
     await user.keyboard("{Escape}");
 

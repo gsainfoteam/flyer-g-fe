@@ -23,11 +23,13 @@ test("게시자가 게시 정보를 입력해 신청하면 바로 승인 대기�
 
   // 미리보기가 입력을 따라온다.
   await expect(
-    page.getByRole("main").getByText("공연동아리 페이드인"),
+    page
+      .getByRole("region", { name: "TV 미리보기" })
+      .getByText("공연동아리 페이드인"),
   ).toBeVisible();
 
   await uploadGeneratedPoster(page);
-  await page.getByRole("button", { name: "제출하기" }).click();
+  await page.getByRole("button", { name: "심사 요청" }).click();
 
   await expect(
     page.getByRole("heading", { name: "신청 접수 완료" }),
@@ -98,7 +100,7 @@ test("반려 → 게시자가 사유 확인 후 수정 재신청", async ({ page
   await expect(page.getByText("반려된 신청 수정")).toBeVisible();
 
   // 그대로 다시 제출하면 승인 대기로 돌아간다.
-  await page.getByRole("button", { name: "다시 신청하기" }).click();
+  await page.getByRole("button", { name: "고쳐서 다시 내기" }).click();
   await expect(
     page.getByRole("heading", { name: "재신청 완료" }),
   ).toBeVisible();

@@ -42,14 +42,14 @@ describe("접근성 자동 검사", () => {
 
   it("첫 화면 (하우스 관리자)", async () => {
     const { container } = renderRoute("/", { role: "REVIEWER" });
-    await screen.findByRole("heading", { name: "오늘 TV에서" });
-    await screen.findByText(/TV 켜짐/);
+    await screen.findByRole("heading", { name: "오늘" });
+    await screen.findByText(/켜짐/);
     await expectNoViolations(container);
   });
 
   it("첫 화면 (운영자)", async () => {
     const { container } = renderRoute("/", { role: "SUPER_ADMIN" });
-    await screen.findByRole("heading", { name: "TV 지금" });
+    await screen.findByRole("heading", { name: /로비 TV \d+대/ });
     await screen.findByText(/B동 로비 꺼짐/);
     await expectNoViolations(container);
   });
@@ -84,7 +84,7 @@ describe("접근성 자동 검사", () => {
 
   it("기기 관리", async () => {
     const { container } = renderRoute("/tv", { role: "SUPER_ADMIN" });
-    await screen.findByRole("heading", { name: /디스플레이 기기/ });
+    await screen.findByRole("heading", { name: /로비 TV \d+대/ });
     await expectNoViolations(container);
   });
 

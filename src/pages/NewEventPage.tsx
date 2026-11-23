@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { EventScene, SceneFrame } from "@/entities/scene";
-import { ApprovalDelayNotice } from "@/entities/submission/ui/ApprovalDelayNotice";
 import { useSignageConfig } from "@/entities/submission/api/queries";
 import {
   EVENT_BANNER_TEXT_LIMITS,
@@ -25,12 +24,7 @@ import {
   useUpdateEventBanner,
 } from "@/features/submissions/create/model/use-create-content";
 import type { SignageSubmissionExpanded } from "@/entities/submission";
-import {
-  ChoicePills,
-  FormField,
-  PageState,
-  PillField,
-} from "@/shared/components";
+import { ChoicePills, FormField, PageState, PillField } from "@/shared/components";
 import { toUserMessage } from "@/shared/api/error";
 import type { ApiError } from "@/shared/api/error";
 import { to } from "@/shared/config/routes";
@@ -52,6 +46,7 @@ import {
 } from "@/shared/ui/select";
 import { Spinner } from "@/shared/ui/spinner";
 import { Textarea } from "@/shared/ui/textarea";
+import { UploadFrame } from "@/widgets/upload/UploadFrame";
 
 /**
  * 이벤트 배너 만들기 (기획 2-1, 배포 ③).
@@ -59,7 +54,7 @@ import { Textarea } from "@/shared/ui/textarea";
  * 문구로 만들기: 종류·받는 사람·문구·보낸 사람을 쓰면 TV 화면이 만들어진다. 사진은
  * 한 장까지, 넣으면 사진 속 사람의 동의를 확인한다. 이미지 올리기: 직접 만든 배너
  * 이미지를 그대로 띄운다. 기간은 하루 단위(서울 자정부터)로 최대 `eventBannerMaxDays`일,
- * 당일 신청도 된다. 오른쪽은 실제 TV 장면의 미리보기다.
+ * 당일 신청도 된다. 포스터·제보와 같은 틀(`UploadFrame`)이고, 미리보기는 실제 TV 장면이다.
  */
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -261,317 +256,293 @@ function EventBannerForm({
   const period = formatSeoulDayRange(startAt, endAt);
 
   return (
-    <>
-      <div>
-        <Link
-          to={editing ? to.submissionDetail(editing.id) : to.home()}
-          className="text-caption text-ink-muted hover:underline"
-        >
-          {editing ? "콘텐츠 상세" : "올리기"}
-        </Link>
-        <h1 className="mt-1 text-display text-ink">
-          {editing ? "이벤트 배너 고치기" : "이벤트 배너"}
-        </h1>
-        <p className="mt-1.5 text-label text-ink-muted">
-          생일·합격·수상 소식을 TV에 게시합니다. 하루 단위, 최대 {maxDays}일.
-        </p>
-        <ApprovalDelayNotice className="mt-2" />
+    <UploadFrame
+      kind="EVENT_BANNER"
+      back={
+        editing
+          ? { to: to.submissionDetail(editing.id), label: "콘텐츠 상세" }
+          : { to: to.home(), label: "홈" }
+      }
+      title={editing ? "이벤트 배너 고치기" : "이벤트 배너 올리기"}
+      description={`생일·합격·수상 소식을 하루 단위로 최대 ${maxDays}일 게시`}
+      onSubmit={submit}
+      submit={
+        <Button type="submit" disabled={busy || uploading}>
+          {busy && <Spinner aria-hidden="true" />}
+          {!editing ? "심사 요청" : returned ? "고쳐서 다시 내기" : "저장"}
+        </Button>
+      }
+      preview={
+        <SceneFrame>
+          <EventScene
+            qrValue={`${window.location.origin}${to.newEvent()}`}
+            content={{
+              mode,
+              occasion,
+              recipient,
+              headline,
+              message,
+              sender,
+              photoUrl: isTemplate ? photoUrl : null,
+              imageUrl: isTemplate ? null : imageUrl,
+            }}
+          />
+        </SceneFrame>
+      }
+      previewNote={`${period} 동안 모든 TV에 순환 게시`}
+    >
+      <div
+        role="tablist"
+        aria-label="만드는 방식"
+        className="grid grid-cols-2 rounded-control bg-surface-muted p-0.75"
+      >
+        {MODES.map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            role="tab"
+            aria-selected={mode === item.value}
+            onClick={() => {
+              setMode(item.value);
+              edit();
+            }}
+            className={cn(
+              "h-9 rounded-[6px] text-label transition-colors",
+              mode === item.value
+                ? "bg-surface font-bold text-ink shadow-sm"
+                : "text-ink-muted hover:text-ink",
+            )}
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
 
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
-        <form
-          noValidate
-          onSubmit={submit}
-          className="flex flex-col gap-5 rounded-block bg-surface p-6 ring-1 ring-line"
-        >
-          <div
-            role="tablist"
-            aria-label="만드는 방식"
-            className="grid grid-cols-2 rounded-control bg-surface-muted p-0.75"
-          >
-            {MODES.map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                role="tab"
-                aria-selected={mode === item.value}
-                onClick={() => {
-                  setMode(item.value);
-                  edit();
-                }}
-                className={cn(
-                  "h-9 rounded-[6px] text-label transition-colors",
-                  mode === item.value
-                    ? "bg-surface font-bold text-ink shadow-sm"
-                    : "text-ink-muted hover:text-ink",
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+      <PillField
+        label={isTemplate ? "이벤트 종류" : "이벤트 종류 (선택)"}
+        required={isTemplate}
+        error={errorOf("eventBanner.occasion")}
+      >
+        <ChoicePills
+          label="이벤트 종류"
+          options={OCCASION_OPTIONS}
+          value={occasion}
+          invalid={Boolean(errorOf("eventBanner.occasion"))}
+          onChange={(next) => {
+            setOccasion(next);
+            edit();
+          }}
+        />
+      </PillField>
 
-          <PillField
-            label={isTemplate ? "이벤트 종류" : "이벤트 종류 (선택)"}
-            required={isTemplate}
-            error={errorOf("eventBanner.occasion")}
-          >
-            <ChoicePills
-              label="이벤트 종류"
-              options={OCCASION_OPTIONS}
-              value={occasion}
-              invalid={Boolean(errorOf("eventBanner.occasion"))}
-              onChange={(next) => {
-                setOccasion(next);
+      <div className="grid gap-3 sm:grid-cols-2">
+        <FormField
+          label="받는 사람"
+          required
+          error={errorOf("eventBanner.recipient")}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              value={recipient}
+              maxLength={EVENT_BANNER_TEXT_LIMITS.recipient}
+              placeholder="예: 지민"
+              onChange={(event) => {
+                setRecipient(event.target.value);
                 edit();
               }}
             />
-          </PillField>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormField
-              label="받는 사람"
-              required
-              error={errorOf("eventBanner.recipient")}
-            >
-              {(control) => (
-                <Input
-                  {...control}
-                  value={recipient}
-                  maxLength={EVENT_BANNER_TEXT_LIMITS.recipient}
-                  placeholder="예: 지민"
-                  onChange={(event) => {
-                    setRecipient(event.target.value);
-                    edit();
-                  }}
-                />
-              )}
-            </FormField>
-            <FormField
-              label="보낸 사람 (선택)"
-              error={errorOf("eventBanner.sender")}
-            >
-              {(control) => (
-                <Input
-                  {...control}
-                  value={sender}
-                  maxLength={EVENT_BANNER_TEXT_LIMITS.sender}
-                  placeholder="예: 3층 친구들"
-                  onChange={(event) => {
-                    setSender(event.target.value);
-                    edit();
-                  }}
-                />
-              )}
-            </FormField>
-          </div>
-
-          {isTemplate && (
-            <FormField
-              label="큰 문구"
-              required
-              error={errorOf("eventBanner.headline")}
-              description={`${headline.trim().length} / ${EVENT_BANNER_TEXT_LIMITS.headline}자 · TV에 크게 표시`}
-            >
-              {(control) => (
-                <Input
-                  {...control}
-                  value={headline}
-                  maxLength={EVENT_BANNER_TEXT_LIMITS.headline}
-                  placeholder="예: 지민아, 생일 축하해"
-                  onChange={(event) => {
-                    setHeadline(event.target.value);
-                    edit();
-                  }}
-                />
-              )}
-            </FormField>
           )}
-
-          {isTemplate && (
-            <FormField
-              label="작은 문구"
-              required
-              error={errorOf("eventBanner.message")}
-              description={`${message.trim().length} / ${EVENT_BANNER_TEXT_LIMITS.message}자`}
-            >
-              {(control) => (
-                <Textarea
-                  {...control}
-                  rows={2}
-                  maxLength={EVENT_BANNER_TEXT_LIMITS.message}
-                  value={message}
-                  placeholder="예: 스물한 살 생일 축하해! 오늘 하루는 네가 주인공"
-                  onChange={(event) => {
-                    setMessage(event.target.value);
-                    edit();
-                  }}
-                />
-              )}
-            </FormField>
-          )}
-
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
-            <FormField label="시작일" required error={errorOf("startAt")}>
-              {(control) => (
-                <Input
-                  {...control}
-                  type="date"
-                  value={startDate}
-                  min={toSeoulDateInputValue(new Date())}
-                  onChange={(event) => {
-                    if (event.target.value) setStartDate(event.target.value);
-                    edit();
-                  }}
-                />
-              )}
-            </FormField>
-            <FormField label="기간" required error={errorOf("endAt")}>
-              {(control) => (
-                <Select
-                  value={String(days)}
-                  onValueChange={(value) => {
-                    setDays(Number(value));
-                    edit();
-                  }}
-                >
-                  <SelectTrigger id={control.id} className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: maxDays }, (_, index) => (
-                      <SelectItem key={index} value={String(index + 1)}>
-                        {index === 0 ? "하루" : `${index + 1}일`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </FormField>
-          </div>
-
-          {isTemplate ? (
-            <div className="space-y-2">
-              <p className="text-sm leading-none font-medium">
-                사진 (선택 · 1장)
-              </p>
-              {keptPhoto && photo.state.status === "idle" && (
-                <KeptMedia
-                  url={keptPhoto.url}
-                  label="지금 사진"
-                  onClear={() => {
-                    edit();
-                    setPhotoConsent(false);
-                    setKeptPhoto(null);
-                  }}
-                />
-              )}
-              <PosterDropzone
-                state={photo.state}
-                limits={uploadLimits}
-                onSelectFile={(file) => {
-                  edit();
-                  void photo.selectFile(file);
-                }}
-                onRetry={photo.retry}
-                onClear={() => {
-                  edit();
-                  setPhotoConsent(false);
-                  photo.clear();
-                }}
-              />
-              {(photo.state.status !== "idle" || keptPhoto) && (
-                <label className="flex items-start gap-2 text-label text-ink">
-                  <input
-                    type="checkbox"
-                    className="mt-1 accent-ink"
-                    checked={photoConsent}
-                    onChange={(event) => {
-                      setPhotoConsent(event.target.checked);
-                      edit();
-                    }}
-                  />
-                  사진 속 인물에게 TV 게시 동의를 받았습니다
-                </label>
-              )}
-              {errorOf("eventBanner.photoConsent") && (
-                <p className="text-caption text-danger-strong">
-                  {errorOf("eventBanner.photoConsent")}
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-sm leading-none font-medium">
-                배너 이미지
-                <span className="ml-1 text-danger" aria-hidden="true">
-                  *
-                </span>
-              </p>
-              {keptImage && image.state.status === "idle" && (
-                <KeptMedia
-                  url={keptImage.url}
-                  label="지금 배너 이미지"
-                  onClear={() => {
-                    edit();
-                    setKeptImage(null);
-                  }}
-                />
-              )}
-              <PosterDropzone
-                state={image.state}
-                limits={uploadLimits}
-                error={errorOf("eventBanner.assetId")}
-                onSelectFile={(file) => {
-                  edit();
-                  void image.selectFile(file);
-                }}
-                onRetry={image.retry}
-                onClear={() => {
-                  edit();
-                  image.clear();
-                }}
-              />
-            </div>
-          )}
-
-          <div className="flex items-center border-t border-surface-muted pt-4">
-            <Button
-              type="submit"
-              className="ml-auto"
-              disabled={busy || uploading}
-            >
-              {busy && <Spinner aria-hidden="true" />}
-              {!editing ? "심사 요청" : returned ? "고쳐서 다시 내기" : "저장"}
-            </Button>
-          </div>
-        </form>
-
-        <section aria-labelledby="event-preview" className="min-w-0">
-          <h2 id="event-preview" className="mb-2.5 text-subhead text-ink">
-            TV 미리보기
-          </h2>
-          <SceneFrame>
-            <EventScene
-              qrValue={`${window.location.origin}${to.newEvent()}`}
-              content={{
-                mode,
-                occasion,
-                recipient,
-                headline,
-                message,
-                sender,
-                photoUrl: isTemplate ? photoUrl : null,
-                imageUrl: isTemplate ? null : imageUrl,
+        </FormField>
+        <FormField
+          label="보낸 사람 (선택)"
+          error={errorOf("eventBanner.sender")}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              value={sender}
+              maxLength={EVENT_BANNER_TEXT_LIMITS.sender}
+              placeholder="예: 3층 친구들"
+              onChange={(event) => {
+                setSender(event.target.value);
+                edit();
               }}
             />
-          </SceneFrame>
-          <p className="mt-2 text-caption text-ink-muted">
-            {period} 동안 모든 TV에 순환 게시
-          </p>
-        </section>
+          )}
+        </FormField>
       </div>
-    </>
+
+      {isTemplate && (
+        <FormField
+          label="큰 문구"
+          required
+          error={errorOf("eventBanner.headline")}
+          description={`${headline.trim().length} / ${EVENT_BANNER_TEXT_LIMITS.headline}자 · TV에 크게 표시`}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              value={headline}
+              maxLength={EVENT_BANNER_TEXT_LIMITS.headline}
+              placeholder="예: 지민아, 생일 축하해"
+              onChange={(event) => {
+                setHeadline(event.target.value);
+                edit();
+              }}
+            />
+          )}
+        </FormField>
+      )}
+
+      {isTemplate && (
+        <FormField
+          label="작은 문구"
+          required
+          error={errorOf("eventBanner.message")}
+          description={`${message.trim().length} / ${EVENT_BANNER_TEXT_LIMITS.message}자`}
+        >
+          {(control) => (
+            <Textarea
+              {...control}
+              rows={2}
+              maxLength={EVENT_BANNER_TEXT_LIMITS.message}
+              value={message}
+              placeholder="예: 스물한 살 생일 축하해! 오늘 하루는 네가 주인공"
+              onChange={(event) => {
+                setMessage(event.target.value);
+                edit();
+              }}
+            />
+          )}
+        </FormField>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
+        <FormField label="시작일" required error={errorOf("startAt")}>
+          {(control) => (
+            <Input
+              {...control}
+              type="date"
+              value={startDate}
+              min={toSeoulDateInputValue(new Date())}
+              onChange={(event) => {
+                if (event.target.value) setStartDate(event.target.value);
+                edit();
+              }}
+            />
+          )}
+        </FormField>
+        <FormField label="기간" required error={errorOf("endAt")}>
+          {(control) => (
+            <Select
+              value={String(days)}
+              onValueChange={(value) => {
+                setDays(Number(value));
+                edit();
+              }}
+            >
+              <SelectTrigger id={control.id} className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: maxDays }, (_, index) => (
+                  <SelectItem key={index} value={String(index + 1)}>
+                    {index === 0 ? "하루" : `${index + 1}일`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </FormField>
+      </div>
+
+      {isTemplate ? (
+        <div className="space-y-2">
+          <p className="text-sm leading-none font-medium">
+            사진 (선택 · 1장)
+          </p>
+          {keptPhoto && photo.state.status === "idle" && (
+            <KeptMedia
+              url={keptPhoto.url}
+              label="지금 사진"
+              onClear={() => {
+                edit();
+                setPhotoConsent(false);
+                setKeptPhoto(null);
+              }}
+            />
+          )}
+          <PosterDropzone
+            state={photo.state}
+            limits={uploadLimits}
+            onSelectFile={(file) => {
+              edit();
+              void photo.selectFile(file);
+            }}
+            onRetry={photo.retry}
+            onClear={() => {
+              edit();
+              setPhotoConsent(false);
+              photo.clear();
+            }}
+          />
+          {(photo.state.status !== "idle" || keptPhoto) && (
+            <label className="flex items-start gap-2 text-label text-ink">
+              <input
+                type="checkbox"
+                className="mt-1 accent-ink"
+                checked={photoConsent}
+                onChange={(event) => {
+                  setPhotoConsent(event.target.checked);
+                  edit();
+                }}
+              />
+              사진 속 인물에게 TV 게시 동의를 받았습니다
+            </label>
+          )}
+          {errorOf("eventBanner.photoConsent") && (
+            <p className="text-caption text-danger-strong">
+              {errorOf("eventBanner.photoConsent")}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-sm leading-none font-medium">
+            배너 이미지
+            <span className="ml-1 text-danger" aria-hidden="true">
+              *
+            </span>
+          </p>
+          {keptImage && image.state.status === "idle" && (
+            <KeptMedia
+              url={keptImage.url}
+              label="지금 배너 이미지"
+              onClear={() => {
+                edit();
+                setKeptImage(null);
+              }}
+            />
+          )}
+          <PosterDropzone
+            state={image.state}
+            limits={uploadLimits}
+            error={errorOf("eventBanner.assetId")}
+            onSelectFile={(file) => {
+              edit();
+              void image.selectFile(file);
+            }}
+            onRetry={image.retry}
+            onClear={() => {
+              edit();
+              image.clear();
+            }}
+          />
+        </div>
+      )}
+
+    </UploadFrame>
   );
 }
 
