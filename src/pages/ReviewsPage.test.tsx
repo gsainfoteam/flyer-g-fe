@@ -81,8 +81,20 @@ describe("심사 대기열", () => {
     await user.click(screen.getByRole("tab", { name: "이벤트 0" }));
 
     expect(currentPath(router)).toBe("/review?type=EVENT_BANNER");
-    expect(await screen.findByText("기다리는 이벤트 없음")).toBeInTheDocument();
-    expect(screen.getByText("모두 처리함")).toBeInTheDocument();
+    // 볼 건이 없으면 두 칸으로 나누지 않고 안내 하나만 둔다.
+    expect(
+      await screen.findByRole("heading", { name: "기다리는 이벤트가 없어요" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("다른 종류에 기다리는 신청이 3건 있어요."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "고른 콘텐츠" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "전체 보기" }));
+    expect(currentPath(router)).toBe("/review");
+    expect(
+      await screen.findByRole("heading", { name: TITLE, level: 2 }),
+    ).toBeInTheDocument();
   });
 
   it("J·K로 대기열을 오가고 S로 다음 건으로 미룬다", async () => {
@@ -153,6 +165,45 @@ describe("고른 건", () => {
     await waitFor(async () =>
       expect(await statusOf(repositories)).toBe("SCHEDULED"),
     );
+  });
+
+  it("보낸 뒤 목록을 다시 받는 동안 처리한 건이 대기열에 되살아나지 않는다", async () => {
+    const user = setupUser();
+    const repositories = reviewRepositories();
+    // 결정 뒤 목록을 늦게 돌려주는 서버. 그 사이 낡은 목록이 화면에 남는다.
+    const listPending = repositories.reviews.listPending.bind(
+      repositories.reviews,
+    );
+    let release: (() => void) | null = null;
+    let gate: Promise<void> | null = null;
+    repositories.reviews.listPending = async (...args) => {
+      if (gate) await gate;
+      return listPending(...args);
+    };
+    renderRoute(`/review/${PENDING_ID}`, { role: "REVIEWER", repositories });
+    await screen.findByRole("heading", { name: TITLE, level: 2 });
+
+    await user.keyboard("a");
+    gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await passUndoWindow();
+    await waitFor(async () =>
+      expect(await statusOf(repositories)).toBe("SCHEDULED"),
+    );
+
+    const queue = () =>
+      within(screen.getByRole("region", { name: "대기열" }));
+    expect(queue().queryByText(TITLE)).toBeNull();
+
+    await act(async () => {
+      release?.();
+      gate = null;
+    });
+    await waitFor(() =>
+      expect(queue().queryAllByRole("link")).toHaveLength(2),
+    );
+    expect(queue().queryByText(TITLE)).toBeNull();
   });
 
   it("되돌리면 보내지 않고 대기열에 되돌린다", async () => {

@@ -24,17 +24,34 @@ interface Scheduled {
 export function useDeferredDecisions() {
   const send = useSendDecision();
   const scheduledRef = useRef(new Map<string, Scheduled>());
-  /** 대기열에서 숨길 신청. 보내는 중인 것도 응답이 올 때까지 숨긴다. */
-  const [hiddenIds, setHiddenIds] = useState<ReadonlySet<string>>(new Set());
+  /**
+   * 대기열에서 숨길 신청과 결정한 버전. 기다리는 동안, 보내는 동안, 그리고 처리된 뒤에도
+   * 숨긴다. 서버 목록이 늦게 따라와도 처리한 건이 대기열에 되살아나지 않는다. 게시자가
+   * 고쳐서 다시 내면 버전이 올라가 다시 보인다.
+   */
+  const [hidden, setHiddenMap] = useState<ReadonlyMap<string, number>>(
+    new Map(),
+  );
 
-  const setHidden = useCallback((id: string, hidden: boolean) => {
-    setHiddenIds((current) => {
-      const next = new Set(current);
-      if (hidden) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-  }, []);
+  const setHidden = useCallback(
+    (id: string, revision: number | null) => {
+      setHiddenMap((current) => {
+        const next = new Map(current);
+        if (revision === null) next.delete(id);
+        else next.set(id, revision);
+        return next;
+      });
+    },
+    [],
+  );
+
+  const isHidden = useCallback(
+    (item: { id: string; version: number }) => {
+      const revision = hidden.get(item.id);
+      return revision !== undefined && item.version <= revision;
+    },
+    [hidden],
+  );
 
   const execute = useCallback(
     (id: string) => {
@@ -44,8 +61,9 @@ export function useDeferredDecisions() {
       scheduledRef.current.delete(id);
       const { decision } = scheduled;
       const action = decision.kind === "approve" ? "승인" : "반려";
-      send(decision)
-        .catch((error: unknown) => {
+      send(decision).catch((error: unknown) => {
+          // 처리하지 못했으면 대기열에 되돌린다. 성공한 건은 계속 숨긴다.
+          setHidden(id, null);
           toast.error(`${action}하지 못했습니다`, {
             description:
               isApiError(error) && error.code === "CONFLICT"
@@ -54,9 +72,7 @@ export function useDeferredDecisions() {
                   ? toUserMessage(error)
                   : "잠시 후 다시 시도하세요.",
           });
-        })
-        // 목록을 새로 받은 뒤에 숨김을 푼다. 성공한 건은 목록에서 이미 빠져 있다.
-        .finally(() => setHidden(id, false));
+        });
     },
     [send, setHidden],
   );
@@ -67,7 +83,7 @@ export function useDeferredDecisions() {
       if (!scheduled) return false;
       clearTimeout(scheduled.timer);
       scheduledRef.current.delete(id);
-      setHidden(id, false);
+      setHidden(id, null);
       return true;
     },
     [setHidden],
@@ -82,7 +98,7 @@ export function useDeferredDecisions() {
         decision,
         timer: setTimeout(() => execute(id), UNDO_WINDOW_MS),
       });
-      setHidden(id, true);
+      setHidden(id, decision.revision);
       toast(label, {
         id: `decision-${id}`,
         duration: UNDO_WINDOW_MS,
@@ -110,5 +126,5 @@ export function useDeferredDecisions() {
     };
   }, [execute]);
 
-  return { schedule, undo, hiddenIds };
+  return { schedule, undo, isHidden };
 }
