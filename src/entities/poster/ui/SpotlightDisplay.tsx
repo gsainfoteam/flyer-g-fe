@@ -1,6 +1,6 @@
 import type { PosterRenderModel } from "@/entities/poster";
 import { hasKnownSize } from "@/entities/poster/model/types";
-import { spotlightImageSize } from "@/entities/poster/model/spotlight-layout";
+import { SPOTLIGHT_COLUMN_GAP, spotlightImageSize } from "@/entities/poster/model/spotlight-layout";
 import { PosterArtwork } from "@/entities/poster/ui/PosterArtwork";
 import { StageHeader } from "@/entities/poster/ui/StageHeader";
 import {
@@ -42,8 +42,6 @@ interface SpotlightDisplayProps {
   onPosterError?: (posterId: string) => void;
   onPosterLoad?: (posterId: string) => void;
 }
-
-const COLUMN_GAP = 64;
 
 /** 이 길이를 넘는 제목은 한 단계 작게 써서 줄 안에 담는다. */
 const LONG_TITLE_LENGTH = 26;
@@ -184,7 +182,7 @@ export function SpotlightDisplay({
           </div>
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1" style={{ gap: COLUMN_GAP }}>
+        <div className="flex min-h-0 flex-1" style={{ gap: SPOTLIGHT_COLUMN_GAP }}>
           {/* 높이를 다 채우지 못하는 가로 이미지는 세로 가운데에 둔다. */}
           <div className="flex shrink-0 items-center">{artwork}</div>
           <div className="flex min-w-0 flex-1 flex-col">
