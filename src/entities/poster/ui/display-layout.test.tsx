@@ -81,6 +81,8 @@ describe("모아 보기", () => {
     expect(screen.getAllByRole("figure")).toHaveLength(2);
     expect(screen.getByText("포스터 a")).toBeInTheDocument();
     expect(screen.getByText("게시 중 3건")).toBeInTheDocument();
+    expect(screen.queryByText("전단지")).not.toBeInTheDocument();
+    expect(screen.getByText("A동 로비").parentElement).toHaveTextContent("A동 로비·6월 8일 (월)");
     // 벽에는 QR이 없다. QR은 크게 보기가 맡는다.
     expect(screen.queryByText("Ziggle에서 자세히 보기")).toBeNull();
   });
@@ -132,23 +134,23 @@ describe("크게 보기", () => {
       width: 1080,
       height: 1440,
     });
-    // 본문 높이: 1080 − 위 여백 80 − 정보줄 96 − 간격 48 − 머리 줄 56 − 간격 32 = 768
-    expect(portrait).toMatchObject({ stacked: false, height: 768 });
-    expect(portrait.width).toBeCloseTo(576);
+    expect(portrait).toMatchObject({ stacked: false, height: 904 });
+    expect(portrait.width).toBeCloseTo(678);
 
     const square = spotlightImageSize({
       ...poster("a"),
       width: 1080,
       height: 1080,
     });
-    expect(square).toMatchObject({ stacked: false, width: 768, height: 768 });
+    expect(square).toMatchObject({ stacked: false, width: 904, height: 904 });
 
     const banner = spotlightImageSize({
       ...poster("a"),
       width: 3000,
       height: 1000,
     });
-    expect(banner).toMatchObject({ stacked: true, width: 1488, height: 496 });
+    expect(banner).toMatchObject({ stacked: true, width: 1856 });
+    expect(banner.height).toBeCloseTo(1856 / 3);
   });
 });
 

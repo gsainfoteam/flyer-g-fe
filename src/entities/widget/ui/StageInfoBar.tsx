@@ -54,7 +54,7 @@ export function StageInfoBar({
   const sky = weather ? SKY_LABEL[weather.sky] : null;
   const air = airChip(weather);
   return (
-    <div className="flex h-full items-center gap-8 overflow-hidden border-t border-line bg-surface px-[80px] text-[28px] whitespace-nowrap text-ink-muted tabular-nums">
+    <div className="flex h-full items-center gap-8 overflow-hidden border-t border-line bg-surface px-8 text-[28px] whitespace-nowrap text-ink-muted tabular-nums">
       <LiveClock
         now={now ?? undefined}
         ticking={clockTicking || now === null}
