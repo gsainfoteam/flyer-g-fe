@@ -134,23 +134,23 @@ describe("크게 보기", () => {
       width: 1080,
       height: 1440,
     });
-    expect(portrait).toMatchObject({ stacked: false, height: 904 });
-    expect(portrait.width).toBeCloseTo(678);
+    expect(portrait).toMatchObject({ stacked: false, height: 844 });
+    expect(portrait.width).toBeCloseTo(633);
 
     const square = spotlightImageSize({
       ...poster("a"),
       width: 1080,
       height: 1080,
     });
-    expect(square).toMatchObject({ stacked: false, width: 904, height: 904 });
+    expect(square).toMatchObject({ stacked: false, width: 844, height: 844 });
 
     const banner = spotlightImageSize({
       ...poster("a"),
       width: 3000,
       height: 1000,
     });
-    expect(banner).toMatchObject({ stacked: true, width: 1856 });
-    expect(banner.height).toBeCloseTo(1856 / 3);
+    expect(banner).toMatchObject({ stacked: true, width: 1716 });
+    expect(banner.height).toBeCloseTo(572);
   });
 });
 

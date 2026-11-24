@@ -28,7 +28,7 @@ import {
   imagesOf,
 } from "@/entities/poster/model/frames";
 import { StageFrame } from "@/entities/poster/ui/StageFrame";
-import { TV_STAGE_PADDING } from "@/entities/poster/ui/stage-metrics";
+import { INFO_BAR_HEIGHT } from "@/entities/poster/ui/stage-metrics";
 import {
   buildCafeteriaContent,
   buildWeatherContent,
@@ -509,13 +509,13 @@ export function DisplayPage() {
             )}
           </StageFrame>
         )}
-        {/* 미리보기 조작은 머리 줄 중앙에 둔다. */}
+        {/* 배포 환경에서도 preview=1이면 표시. 본문과 정보줄 사이 간격 안에 둔다. */}
         {isPreview && (
           <div
             role="toolbar"
             aria-label="미리보기 조작"
-            className="absolute left-1/2 z-10 flex h-9 -translate-x-1/2 items-center gap-2 rounded-pill bg-ink/85 px-3 text-ink-inverse shadow-floating"
-            style={{ top: TV_STAGE_PADDING }}
+            className="absolute left-1/2 z-10 flex h-10 -translate-x-1/2 items-center gap-2 rounded-pill bg-ink/85 px-3 text-ink-inverse shadow-floating"
+            style={{ bottom: INFO_BAR_HEIGHT + 4 }}
           >
             <span className="text-caption font-bold">미리보기</span>
             {feed.source === "cache" && (

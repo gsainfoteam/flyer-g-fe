@@ -4,6 +4,7 @@ import { cn } from "@/shared/lib/utils";
 import {
   TV_STAGE_HEIGHT,
   TV_STAGE_PADDING,
+  TV_STAGE_TOP_PADDING,
   TV_STAGE_WIDTH,
 } from "@/entities/poster/ui/stage-metrics";
 
@@ -57,6 +58,7 @@ export function ScaledStage({ children, className }: ScaledStageProps) {
           width: TV_STAGE_WIDTH,
           height: TV_STAGE_HEIGHT,
           padding: TV_STAGE_PADDING,
+          paddingTop: TV_STAGE_TOP_PADDING,
           // 첫 측정은 그리기 전(layout effect)에 끝난다. 측정하지 못하는 환경에서는
           // 원래 크기로 그린다.
           transform: `translate(-50%, -50%) scale(${scale ?? 1})`,
