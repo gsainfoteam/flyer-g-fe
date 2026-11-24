@@ -1,0 +1,36 @@
+/* 두 겹의 눈송이 무늬를 한 타일 높이만큼 내려 이음새 없이 반복한다. */
+.stage-snow::before,
+.stage-snow::after {
+  --tile-height: 310px;
+  content: "";
+  position: absolute;
+  inset: calc(-1 * var(--tile-height)) -20px 0;
+  background-image:
+    radial-gradient(circle at 8% 17%, #fff 2px, transparent 3.5px),
+    radial-gradient(circle at 43% 63%, #fff 1.5px, transparent 3px),
+    radial-gradient(circle at 75% 32%, #fff 3px, transparent 5px),
+    radial-gradient(circle at 91% 89%, #fff 2px, transparent 3px);
+  background-size: 370px var(--tile-height);
+  opacity: 0.76;
+  animation: stage-snowfall 6s linear infinite;
+}
+
+.stage-snow::before {
+  --tile-height: 239px;
+  background-size: 283px var(--tile-height);
+  opacity: 0.38;
+  animation-duration: 9s;
+  animation-delay: -4s;
+}
+
+@keyframes stage-snowfall {
+  50% { transform: translate(16px, calc(var(--tile-height) / 2)); }
+  100% { transform: translateY(var(--tile-height)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-snow::before,
+  .stage-snow::after {
+    display: none;
+  }
+}
