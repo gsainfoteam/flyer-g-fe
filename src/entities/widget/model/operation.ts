@@ -28,13 +28,12 @@ export const WIDGET_DURATIONS: Partial<Record<WidgetType, number>> = {
 /**
  * 위젯 공개일(서울 날짜). 이 날짜 전에는 평소 순환에서 뺀다. 0시가 되면 배포 없이 들어온다.
  * `null`이면 아직 공개하지 않는다(준비 중). 없는 종류는 늘 공개다.
+ * 게임은 지금 평소 순환에서 뺀다. 다시 넣으려면 그 게임에 날짜를 적는다.
  * 시간대 고정은 공개일과 상관없이 고를 수 있다(미리 시험해 보거나 행사에 먼저 쓸 때).
  */
 export const WIDGET_RELEASES: Partial<Record<WidgetType, string | null>> = {
-  // 평소 순환에는 아직 클릭 배틀만 둔다. 11/5–11/7 이벤트 시간에는 시간대 고정으로 띄운다.
-  // 순환에 넣을 때 날짜를 적는다.
+  CLICK_BATTLE: null,
   SHUFFLEBOARD: null,
-  // 시험 중. 공개할 때 날짜를 적는다.
   FLYER_DODGE: null,
 };
 
